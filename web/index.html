@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>marketpclce — AI-подбор специалистов</title>
+
+<link rel="preconnect" href="https://rsms.me/" />
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: {
+            950: "#050507",
+            900: "#08090c",
+            800: "#0c0d11",
+            700: "#121317",
+            600: "#191b20",
+            500: "#22252b",
+            400: "#3a3f4a",
+          },
+          mint: {
+            600: "#3bc2ad",
+            500: "#4ad6c1",
+            400: "#6eded0",
+            300: "#9fe9dd",
+          },
+          danger: "#ff6470",
+        },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        },
+        letterSpacing: {
+          'overline': '0.22em',
+        },
+        boxShadow: {
+          'card': '0 1px 0 rgba(255,255,255,0.03) inset, 0 14px 40px -22px rgba(0,0,0,0.8)',
+          'cta-mint': '0 10px 28px -14px rgba(74,214,193,0.55)',
+        },
+      },
+    },
+  };
+</script>
+
+<link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body class="font-sans bg-ink-900 text-white antialiased min-h-screen selection:bg-white selection:text-ink-900">
+
+<!-- ===== Topbar ===== -->
+<header class="sticky top-0 z-30 backdrop-blur-xl bg-ink-900/75 border-b border-white/[0.06]">
+  <div class="max-w-6xl mx-auto px-6 h-14 flex items-center gap-4">
+    <a href="/" class="flex items-center gap-3 text-[14px] font-medium tracking-tight">
+      <span class="w-6 h-6 rounded-sm bg-white text-ink-900 flex items-center justify-center text-[12px] font-bold">m</span>
+      <span class="uppercase tracking-[0.18em] text-[12px]">marketpclce</span>
+      <span class="ml-1 text-[10px] uppercase tracking-overline text-white/40">/ beta</span>
+    </a>
+    <div class="hidden md:block text-[11px] uppercase tracking-overline text-white/35 truncate ml-2">видео · контент · креатив</div>
+    <div class="ml-auto flex items-center gap-2.5">
+      <button id="me-btn" type="button" data-action="open-me" aria-label="Мой кабинет"
+        class="hidden inline-flex items-center gap-2 h-9 rounded-none border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-3.5 text-[12px] uppercase tracking-overline transition">
+        <span>[ Кабинет ]</span>
+      </button>
+      <button id="auth-btn" type="button" data-action="open-auth"
+        class="inline-flex items-center gap-2 h-9 rounded-none border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-3.5 text-[12px] uppercase tracking-overline transition">
+        <span>[ Войти ]</span>
+      </button>
+      <button id="cart-btn" type="button" aria-label="Мой проект"
+        class="inline-flex items-center gap-2.5 h-9 rounded-none border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-3.5 text-[12px] uppercase tracking-overline transition">
+        <span>[ Проект</span>
+        <span id="cart-count" class="cart-count inline-flex items-center justify-center min-w-[18px] h-4 px-1 text-[10px] font-semibold tabular-nums bg-mint-500 text-ink-900 rounded-sm">0</span>
+        <span>]</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== View: roadmap (home) ===== -->
+<main id="view-roadmap" class="view">
+  <!-- Hero -->
+  <section class="relative isolate border-b border-white/[0.06]">
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[640px] overflow-hidden">
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1100px] h-[600px] rounded-full bg-white/[0.025] blur-[140px]"></div>
+    </div>
+
+    <div class="max-w-3xl mx-auto px-6 pt-24 pb-16 text-center">
+      <div class="inline-flex items-center gap-3 text-[11px] uppercase tracking-overline text-white/55">
+        <span class="relative flex h-1.5 w-1.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-mint-500 opacity-60"></span>
+          <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-mint-500"></span>
+        </span>
+        <span>[ AI · подбор специалистов ]</span>
+      </div>
+
+      <h1 class="mt-8 text-[44px] sm:text-6xl md:text-7xl font-semibold leading-[1.02] tracking-tight">
+        <span class="block text-white">Опишите задачу.</span>
+        <span class="block text-white/35 font-light italic">ИИ соберёт команду.</span>
+      </h1>
+
+      <p class="mt-6 text-white/55 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
+        Без листания каталога. Задача, бюджет, сроки — и через минуту перед вами подходящие исполнители.
+      </p>
+
+      <form id="hero-form" class="mt-12 text-left">
+        <div class="relative border border-white/15 bg-ink-800 transition focus-within:border-white/60">
+          <textarea id="hero-input" rows="3" maxlength="500"
+            class="block w-full resize-none bg-transparent px-5 py-4 text-[15px] leading-relaxed text-white placeholder-white/35 outline-none"
+            placeholder="Например: нужен монтажёр для серии Reels по фитнесу, бюджет до 30 000, через 2 недели"></textarea>
+          <div class="flex items-center justify-between gap-3 px-3 py-2 border-t border-white/[0.06] bg-ink-900/40">
+            <div class="text-[10px] uppercase tracking-overline text-white/35 select-none">⌘ + Enter</div>
+            <button type="submit"
+              class="inline-flex items-center gap-2 bg-white text-ink-900 px-5 py-2.5 text-[12px] uppercase tracking-overline font-semibold hover:bg-mint-500 transition">
+              Подобрать специалистов
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-2">
+        <span class="text-[10px] uppercase tracking-overline text-white/35 mr-1">Часто ищут:</span>
+        <button type="button" data-prefill="Нужен монтажёр для серии Reels по фитнесу, бюджет до 30 000" class="suggestion-chip">монтажёр для Reels</button>
+        <button type="button" data-prefill="Нужен SMM-специалист для бренда одежды: ведение Instagram и TikTok" class="suggestion-chip">SMM для бренда</button>
+        <button type="button" data-prefill="Нужен UGC-креатор для отзыва на косметику" class="suggestion-chip">UGC-обзор</button>
+        <button type="button" data-prefill="Ищу таргетолога для запуска рекламы в Telegram Ads, бюджет 100к/мес" class="suggestion-chip">таргет в Telegram</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Categories: symmetric grid as quick entry -->
+  <section class="max-w-6xl mx-auto px-6 pt-16 pb-28">
+    <div class="flex items-end justify-between gap-6 mb-8 flex-wrap">
+      <div>
+        <div class="text-[10px] uppercase tracking-overline text-white/35">[ Категории ]</div>
+        <h2 class="mt-2 text-3xl md:text-4xl font-semibold tracking-tight">Быстрый вход</h2>
+        <p class="text-sm text-white/45 mt-2">Каждая категория — это вход в AI-подбор. Наведите карточку — раскроется описание.</p>
+      </div>
+      <button id="show-all-specialists" type="button"
+        class="inline-flex items-center gap-2.5 h-10 border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-4 text-[12px] uppercase tracking-overline text-white/85 transition">
+        <span>[ Все специалисты</span>
+        <span id="show-all-count" class="tabular-nums opacity-70"></span>
+        <span>]</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div id="roadmap"
+      class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-px bg-white/[0.06] border border-white/[0.06]"></div>
+  </section>
+</main>
+
+<!-- ===== View: clarify (chat) ===== -->
+<section id="view-clarify" class="view hidden">
+  <div class="max-w-2xl mx-auto px-6 py-14">
+    <button class="back inline-flex items-center gap-1.5 text-[11px] uppercase tracking-overline text-white/45 hover:text-white transition mb-6" data-action="back-roadmap">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+      [ на главную ]
+    </button>
+
+    <div class="border border-white/10 bg-ink-800 overflow-hidden">
+      <div class="px-6 pt-6 pb-2">
+        <div class="text-[10px] uppercase tracking-overline text-mint-400">[ AI · подбор ]</div>
+        <h2 id="clarify-title" class="mt-2 text-2xl md:text-3xl font-semibold tracking-tight">Уточняем задачу</h2>
+      </div>
+
+      <div id="chat" class="chat px-6 pt-4 pb-2 flex flex-col gap-3 min-h-[260px] max-h-[55vh] overflow-y-auto"></div>
+
+      <div class="px-4 pt-3 pb-4 border-t border-white/[0.06] bg-ink-900/40">
+        <form id="chat-form" class="flex gap-2 items-stretch" autocomplete="off">
+          <input id="chat-input" type="text" required
+            placeholder="Опишите задачу одной фразой…"
+            class="flex-1 bg-ink-700 border border-white/10 focus:border-white/50 outline-none px-4 py-3 text-[15px] text-white placeholder-white/35 transition" />
+          <button type="submit"
+            class="inline-flex items-center justify-center w-11 bg-white text-ink-900 hover:bg-mint-500 transition">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+        <button id="run-search" class="hidden mt-3 w-full inline-flex items-center justify-center gap-2 bg-mint-500 hover:bg-mint-400 text-ink-900 font-semibold px-5 py-3 text-[12px] uppercase tracking-overline transition">
+          [ Найти специалистов ]
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== View: results ===== -->
+<section id="view-results" class="view hidden">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <button class="back inline-flex items-center gap-1.5 text-[11px] uppercase tracking-overline text-white/45 hover:text-white transition mb-5" data-action="back-clarify">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+      [ уточнить запрос ]
+    </button>
+
+    <div class="text-[10px] uppercase tracking-overline text-white/35">[ Результаты ]</div>
+    <h2 id="results-title" class="mt-2 text-3xl md:text-4xl font-semibold tracking-tight mb-4">Результаты</h2>
+
+    <div class="results-summary" id="results-summary"></div>
+
+    <div class="results-facets flex flex-wrap gap-2 mt-6 mb-5" id="results-facets"></div>
+
+    <div class="results-grid flex flex-col" id="results"></div>
+
+    <div id="results-loading" class="hidden text-center text-white/45 text-[11px] uppercase tracking-overline py-6">Загружаем ещё…</div>
+    <div id="results-sentinel" class="h-px"></div>
+  </div>
+</section>
+
+<!-- ===== View: profile ===== -->
+<section id="view-profile" class="view hidden">
+  <div class="max-w-4xl mx-auto px-6 py-12">
+    <button class="back inline-flex items-center gap-1.5 text-[11px] uppercase tracking-overline text-white/45 hover:text-white transition mb-5" data-action="back-results">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+      [ к результатам ]
+    </button>
+    <div id="profile-content"></div>
+  </div>
+</section>
+
+<!-- ===== Cart dialog ===== -->
+<dialog id="cart-dialog" class="cart-dialog">
+  <div class="cart-panel p-6 flex flex-col gap-4">
+    <h3 class="text-xl font-semibold">Мой проект</h3>
+    <div id="cart-items" class="cart-items flex flex-col gap-2 max-h-[50vh] overflow-y-auto"></div>
+    <div id="cart-total" class="cart-total hidden">
+      <div class="cart-total-row flex justify-between items-baseline gap-3">
+        <span class="cart-total-label text-sm text-white/55">Итоговый бюджет</span>
+        <span id="cart-total-value" class="cart-total-value text-base font-bold tabular-nums"></span>
+      </div>
+      <div id="cart-total-note" class="cart-total-note text-xs text-white/45"></div>
+    </div>
+    <div class="cart-actions flex gap-2.5 justify-between items-center flex-wrap">
+      <button type="button" data-action="cart-clear" class="cart-btn-secondary">Очистить</button>
+      <div class="cart-actions-right flex gap-2.5">
+        <button type="button" data-action="cart-close" class="cart-btn-secondary">Закрыть</button>
+        <button id="cart-checkout" class="cart-btn-primary" type="button" data-action="cart-checkout">Заключить договор</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- ===== Lead dialog ===== -->
+<dialog id="lead-dialog" class="lead-dialog">
+  <form id="lead-form" method="dialog" class="p-6 flex flex-col gap-3">
+    <h3 class="text-xl font-semibold">Заключить договор</h3>
+    <p class="lead-target text-sm text-white/55 m-0" id="lead-target"></p>
+    <label>Ваше имя <input name="client_name" required minlength="2" /></label>
+    <label>Контакт (email или telegram) <input name="client_contact" required /></label>
+    <label>Описание задачи (бриф) <textarea name="brief" required minlength="10" rows="4"></textarea></label>
+    <div class="row grid grid-cols-2 gap-3">
+      <label>Бюджет от <input name="budget_min" type="number" min="0" /></label>
+      <label>до <input name="budget_max" type="number" min="0" /></label>
+    </div>
+    <label>Дедлайн <input name="deadline" type="date" /></label>
+    <div class="actions flex gap-2 justify-end mt-1">
+      <button type="button" data-action="cancel-lead" class="cart-btn-secondary">Отмена</button>
+      <button class="cart-btn-primary" type="submit">Отправить</button>
+    </div>
+    <div id="lead-error" class="error hidden text-danger text-sm"></div>
+  </form>
+</dialog>
+
+<!-- ===== Auth dialog ===== -->
+<dialog id="auth-dialog" class="lead-dialog">
+  <div class="p-6 flex flex-col gap-4 min-w-[320px]">
+    <div class="flex gap-2 text-[11px] uppercase tracking-overline">
+      <button type="button" data-auth-tab="login" class="auth-tab auth-tab-active px-3 py-1.5 border border-white/20">Вход</button>
+      <button type="button" data-auth-tab="register" class="auth-tab px-3 py-1.5 border border-white/10 text-white/60">Регистрация</button>
+    </div>
+
+    <form id="login-form" class="flex flex-col gap-3" autocomplete="on">
+      <h3 class="text-xl font-semibold m-0">Войти</h3>
+      <label>Email или телефон <input name="login" required autocomplete="username" /></label>
+      <label>Пароль <input name="password" type="password" required minlength="8" autocomplete="current-password" /></label>
+      <div class="actions flex gap-2 justify-end mt-1">
+        <button type="button" data-action="close-auth" class="cart-btn-secondary">Отмена</button>
+        <button class="cart-btn-primary" type="submit">Войти</button>
+      </div>
+      <div id="login-error" class="error hidden text-danger text-sm"></div>
+    </form>
+
+    <form id="register-form" class="hidden flex-col gap-3" autocomplete="on">
+      <h3 class="text-xl font-semibold m-0">Регистрация</h3>
+      <label>Email <input name="email" type="email" autocomplete="email" /></label>
+      <label>Телефон <input name="phone" autocomplete="tel" placeholder="+7..." /></label>
+      <p class="text-xs text-white/45 m-0">Заполните email или телефон (хотя бы что-то одно).</p>
+      <label>Пароль <input name="password" type="password" required minlength="8" autocomplete="new-password" /></label>
+      <label>Я хочу <select name="kind" required>
+        <option value="client">Искать специалистов</option>
+        <option value="specialist">Предлагать услуги</option>
+        <option value="both">И то, и другое</option>
+      </select></label>
+      <label class="reg-display-name">Имя/название (для профиля специалиста)
+        <input name="display_name" minlength="2" />
+      </label>
+      <div class="actions flex gap-2 justify-end mt-1">
+        <button type="button" data-action="close-auth" class="cart-btn-secondary">Отмена</button>
+        <button class="cart-btn-primary" type="submit">Создать</button>
+      </div>
+      <div id="register-error" class="error hidden text-danger text-sm"></div>
+    </form>
+  </div>
+</dialog>
+
+<!-- ===== View: me (личный кабинет) ===== -->
+<section id="view-me" class="view hidden">
+  <div class="max-w-3xl mx-auto px-6 py-12">
+    <button class="back inline-flex items-center gap-1.5 text-[11px] uppercase tracking-overline text-white/45 hover:text-white transition mb-5" data-action="back-roadmap">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+      [ на главную ]
+    </button>
+
+    <div class="text-[10px] uppercase tracking-overline text-white/35">[ Кабинет ]</div>
+    <div class="flex items-end justify-between gap-4 flex-wrap mb-8 mt-2">
+      <h2 class="text-3xl md:text-4xl font-semibold tracking-tight">Профиль специалиста</h2>
+      <div class="flex items-center gap-2">
+        <span id="me-status-pill" class="inline-flex items-center gap-2 px-3 h-8 border border-white/15 text-[11px] uppercase tracking-overline">не опубликован</span>
+        <button id="me-logout" type="button" data-action="logout" class="cart-btn-secondary text-[11px] uppercase tracking-overline">Выйти</button>
+      </div>
+    </div>
+
+    <div id="me-no-profile" class="hidden border border-white/10 bg-ink-800 p-6 mb-6">
+      <p class="m-0 text-white/70 text-sm">У этого аккаунта пока нет профиля специалиста. Можно перерегистрироваться с типом <em>«Предлагать услуги»</em> или <em>«И то, и другое»</em>, либо обратиться в поддержку.</p>
+    </div>
+
+    <form id="me-form" class="me-form hidden flex flex-col gap-5">
+      <div class="me-section border border-white/10 bg-ink-800 p-5 flex flex-col gap-3">
+        <h3 class="m-0 text-[11px] uppercase tracking-overline text-mint-400">[ Основное ]</h3>
+        <label>Имя/название <input name="display_name" required minlength="2" /></label>
+        <label>Город <input name="city" /></label>
+        <div class="grid grid-cols-3 gap-3">
+          <label>Ставка от <input name="rate_min" type="number" min="0" /></label>
+          <label>Ставка до <input name="rate_max" type="number" min="0" /></label>
+          <label>Валюта <input name="currency" maxlength="3" placeholder="RUB" /></label>
+        </div>
+        <label>Аватар (URL) <input name="avatar_url" type="url" placeholder="https://..." /></label>
+      </div>
+
+      <div class="me-section border border-white/10 bg-ink-800 p-5 flex flex-col gap-3">
+        <div class="flex items-baseline justify-between gap-2 flex-wrap">
+          <h3 class="m-0 text-[11px] uppercase tracking-overline text-mint-400">[ Описание (bio) ]</h3>
+          <button type="button" id="me-check-bio" class="cart-btn-secondary text-[11px] uppercase tracking-overline">Проверить ИИ</button>
+        </div>
+        <textarea name="bio" rows="6" placeholder="Расскажите о специализации, нишах, инструментах и платформах. Без контактов — заказчик свяжется через маркетплейс."></textarea>
+        <div id="me-bio-check" class="hidden bio-check border border-white/10 p-3 text-sm flex flex-col gap-2"></div>
+        <p class="text-xs text-white/40 m-0">Перед публикацией bio проверяется ИИ-модератором. Можно вызвать проверку вручную.</p>
+      </div>
+
+      <div class="me-section border border-white/10 bg-ink-800 p-5 flex flex-col gap-3">
+        <h3 class="m-0 text-[11px] uppercase tracking-overline text-mint-400">[ Категории ]</h3>
+        <div id="me-categories" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+        <p class="text-xs text-white/40 m-0">Отметьте категории. Кликните «★ основная» — она попадёт в primary.</p>
+      </div>
+
+      <div class="actions flex gap-2 justify-between flex-wrap">
+        <div class="flex gap-2 flex-wrap">
+          <button type="button" data-action="me-unpublish" class="cart-btn-secondary">Снять с публикации</button>
+          <button id="me-view-public" type="button" data-action="me-view-public" class="hidden cart-btn-secondary">Открыть публичный профиль</button>
+        </div>
+        <div class="flex gap-2">
+          <button type="submit" class="cart-btn-secondary">Сохранить</button>
+          <button type="button" data-action="me-publish" class="cart-btn-primary">Сохранить и опубликовать</button>
+        </div>
+      </div>
+      <div id="me-error" class="error hidden text-danger text-sm"></div>
+      <div id="me-saved" class="hidden text-mint-400 text-sm">Сохранено.</div>
+    </form>
+  </div>
+</section>
+
+<dialog id="lead-success" class="lead-dialog">
+  <div class="success p-7 text-center">
+    <div class="mx-auto w-12 h-12 rounded-full bg-mint-500/15 border border-mint-500/40 flex items-center justify-center text-mint-300 mb-3">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+    </div>
+    <h3 class="text-xl font-semibold mb-2">Заявка отправлена</h3>
+    <p id="lead-success-text" class="text-white/65 text-sm mb-4">Специалисты получат ваш бриф и свяжутся с вами по указанному контакту.</p>
+    <button class="cart-btn-primary" data-action="close-success">Хорошо</button>
+  </div>
+</dialog>
+
+<script src="/app.js"></script>
+</body>
+</html>
