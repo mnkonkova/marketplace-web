@@ -53,7 +53,7 @@
       <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1100px] h-[600px] rounded-full bg-white/[0.025] blur-[140px]"></div>
     </div>
 
-    <div class="max-w-3xl mx-auto px-6 pt-24 pb-16 text-center">
+    <div class="max-w-2xl mx-auto px-6 pt-16 pb-14 text-center">
       <div class="inline-flex items-center gap-3 text-[11px] uppercase tracking-overline text-white/55">
         <span class="relative flex h-1.5 w-1.5">
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-mint-500 opacity-60"></span>
@@ -62,24 +62,20 @@
         <span>[ подбор специалистов ]</span>
       </div>
 
-      <h1 class="mt-8 text-[44px] sm:text-6xl md:text-7xl font-semibold leading-[1.02] tracking-tight">
-        <span class="block text-white">Опишите задачу.</span>
-        <span class="block text-white/35 font-light italic">Мы соберём команду.</span>
+      <h1 class="mt-7 text-3xl sm:text-4xl md:text-5xl font-semibold leading-[1.08] tracking-tight">
+        <span class="text-white">Опишите задачу.</span>
+        <span class="text-white/35 font-light italic">Соберём команду.</span>
       </h1>
 
-      <p class="mt-6 text-white/55 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
-        Без листания каталога. Задача, бюджет, сроки — и через минуту перед вами подходящие исполнители.
-      </p>
-
-      <form id="hero-form" class="mt-12 text-left">
+      <form id="hero-form" class="mt-9 text-left">
         <div class="relative border border-white/15 bg-ink-800 transition focus-within:border-white/60">
-          <textarea id="hero-input" rows="3" maxlength="500"
-            class="block w-full resize-none bg-transparent px-5 py-4 text-[15px] leading-relaxed text-white placeholder-white/35 outline-none"
-            placeholder="Например: нужен монтажёр для серии Reels по фитнесу, бюджет до 30 000, через 2 недели"></textarea>
+          <textarea id="hero-input" rows="2" maxlength="500"
+            class="block w-full resize-none bg-transparent px-4 py-3 text-[14px] leading-relaxed text-white placeholder-white/35 outline-none"
+            placeholder="Например: монтажёр для Reels, бюджет до 30 000"></textarea>
           <div class="flex items-center justify-between gap-3 px-3 py-2 border-t border-white/[0.06] bg-ink-900/40">
             <div class="text-[10px] uppercase tracking-overline text-white/35 select-none hidden sm:block">⌘ + Enter</div>
             <button type="submit"
-              class="ml-auto inline-flex items-center justify-center gap-2 bg-white text-ink-900 w-full sm:w-auto px-5 py-2.5 text-[12px] uppercase tracking-overline font-semibold hover:bg-mint-500 transition">
+              class="ml-auto inline-flex items-center justify-center gap-2 bg-white text-ink-900 w-full sm:w-auto px-5 py-2 text-[12px] uppercase tracking-overline font-semibold hover:bg-mint-500 transition">
               Подобрать специалистов
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
@@ -87,7 +83,7 @@
         </div>
       </form>
 
-      <div class="mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-2">
+      <div class="mt-7 flex flex-wrap items-center justify-center gap-x-3 gap-y-3">
         <span class="text-[10px] uppercase tracking-overline text-white/35 mr-1">Часто ищут:</span>
         <button type="button" data-prefill="Нужен монтажёр для серии Reels по фитнесу, бюджет до 30 000" class="suggestion-chip">монтажёр для Reels</button>
         <button type="button" data-prefill="Нужен SMM-специалист для бренда одежды: ведение Instagram и TikTok" class="suggestion-chip">SMM для бренда</button>
@@ -99,11 +95,11 @@
 
   <!-- Categories: symmetric grid as quick entry -->
   <section class="max-w-6xl mx-auto px-6 pt-16 pb-28">
-    <div class="flex items-end justify-between gap-6 mb-8 flex-wrap">
+    <div class="flex items-end justify-between gap-6 mb-10 flex-wrap">
       <div>
         <div class="text-[10px] uppercase tracking-overline text-white/35">[ Категории ]</div>
-        <h2 class="mt-2 text-3xl md:text-4xl font-semibold tracking-tight">Быстрый вход</h2>
-        <p class="text-sm text-white/45 mt-2">Откройте категорию и листайте всех специалистов.</p>
+        <h2 class="mt-2 text-2xl md:text-3xl font-semibold tracking-tight">Или соберите команду сами</h2>
+        <p class="text-sm text-white/45 mt-2">Выберите категорию и листайте специалистов.</p>
       </div>
       <button id="show-all-specialists" type="button"
         class="inline-flex items-center gap-2.5 h-10 border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-4 text-[12px] uppercase tracking-overline text-white/85 transition">
@@ -114,8 +110,7 @@
       </button>
     </div>
 
-    <div id="roadmap"
-      class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-px bg-white/[0.06] border border-white/[0.06]"></div>
+    <div id="roadmap" class="flex flex-col gap-14"></div>
   </section>
 </main>
 

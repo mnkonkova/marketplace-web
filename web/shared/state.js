@@ -28,6 +28,25 @@ export const ICONS = {
   smm: "📱", ugc: "📸", blogger: "🌟", ads_seo: "🎯", seeding: "🌱",
 };
 
+// Группировка категорий на главной. Разделяет «кто делает контент» и «кто его
+// доставляет аудитории». Категории, чей код не попал ни в одну группу, всё
+// равно отрендерятся отдельной сеткой — чтобы новые коды в БД не пропадали
+// до правки фронта.
+export const CATEGORY_GROUPS = [
+  {
+    id: "production",
+    title: "Производство",
+    kicker: "контент-команды",
+    codes: ["editor", "video_director", "motion", "scriptwriter", "ugc"],
+  },
+  {
+    id: "promotion",
+    title: "Продвижение",
+    kicker: "медиа и реклама",
+    codes: ["smm", "blogger", "ads_seo", "seeding"],
+  },
+];
+
 // короткие тайтлы для компактных плиток bento (полное название всё равно
 // видно в aria-label, в описании, в clarify и в результатах)
 export const SHORT_TITLES = {

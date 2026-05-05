@@ -3,7 +3,7 @@
    Категории грузит shared/categories.js, тут только рендер и привязки.
    ────────────────────────────────────────────────────────────────── */
 
-import { state, ICONS, tileTitle } from "../shared/state.js";
+import { state, ICONS, tileTitle, CATEGORY_GROUPS } from "../shared/state.js";
 import { $, $$, escape, pluralSpecialists } from "../shared/ui.js";
 import { showView, navigate } from "../shared/router.js";
 import { openClarify } from "./clarify.js";
@@ -59,13 +59,63 @@ function categoryCardEl(cat, count, { index = 0 } = {}) {
   return card;
 }
 
+function pluralCategories(n) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return "категория";
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return "категории";
+  return "категорий";
+}
+
+function groupSectionEl(group, cats) {
+  const section = document.createElement("section");
+  section.className = "flex flex-col gap-6";
+
+  const header = document.createElement("div");
+  header.className = "flex items-baseline justify-between gap-3 flex-wrap";
+  header.innerHTML = `
+    <div class="flex items-baseline gap-3">
+      <span class="inline-block w-1.5 h-1.5 bg-mint-500"></span>
+      <h3 class="text-lg md:text-xl font-semibold tracking-tight text-white">${escape(group.title)}</h3>
+      <span class="text-[11px] uppercase tracking-overline text-white/40">${escape(group.kicker || "")}</span>
+    </div>
+    <span class="text-[10px] uppercase tracking-overline text-white/30 tabular-nums">${cats.length} ${pluralCategories(cats.length)}</span>
+  `;
+
+  const grid = document.createElement("div");
+  grid.className = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-px bg-white/[0.06] border border-white/[0.06]";
+  cats.forEach((cat, idx) => {
+    const count = state.categoryCounts[cat.code] || 0;
+    grid.appendChild(categoryCardEl(cat, count, { index: idx }));
+  });
+
+  section.appendChild(header);
+  section.appendChild(grid);
+  return section;
+}
+
 export function renderRoadmap() {
   const root = $("#roadmap");
   root.innerHTML = "";
-  state.categories.forEach((cat, idx) => {
-    const count = state.categoryCounts[cat.code] || 0;
-    root.appendChild(categoryCardEl(cat, count, { index: idx }));
+
+  const byCode = new Map(state.categories.map(c => [c.code, c]));
+  const used = new Set();
+
+  CATEGORY_GROUPS.forEach(group => {
+    const cats = group.codes.map(code => byCode.get(code)).filter(Boolean);
+    if (!cats.length) return;
+    cats.forEach(c => used.add(c.code));
+    root.appendChild(groupSectionEl(group, cats));
   });
+
+  // Хвост: категории, которых нет ни в одной группе (новые коды в БД).
+  const orphans = state.categories.filter(c => !used.has(c.code));
+  if (orphans.length) {
+    root.appendChild(groupSectionEl(
+      { id: "other", title: "Прочее", kicker: "" },
+      orphans,
+    ));
+  }
+
   const total = Object.values(state.categoryCounts).reduce((a, b) => a + b, 0);
   const totalEl = $("#show-all-count");
   const btn = $("#show-all-specialists");

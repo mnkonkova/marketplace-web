@@ -58,12 +58,13 @@ html, body { margin: 0; padding: 0; }
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 22px;
-  min-height: 200px;
+  gap: 16px;
+  padding: 28px 26px;
+  min-height: 220px;
   transition: background 220ms ease, color 200ms ease;
 }
 @media (max-width: 640px) {
-  .cat-card { padding: 14px; min-height: 168px; }
+  .cat-card { padding: 18px; min-height: 184px; gap: 12px; }
 }
 .cat-title {
   overflow-wrap: anywhere;
