@@ -276,7 +276,8 @@ async function renderAllInCategory(params, banner) {
     setSummary(`${scope} найдено ${total}. Добавляйте подходящих в проект — отправите бриф всем разом.`, banner);
     const root = $("#results");
     root.innerHTML = "";
-    items.forEach(it => root.appendChild(specCard(it)));
+    // browse-список — компактные строки. AI-выдача остаётся на богатых карточках.
+    items.forEach(it => root.appendChild(specRow(it)));
     if (state.allList.done) renderSimilarSection();
     else ensureAllListObserver();
   } catch (e) {
@@ -300,7 +301,7 @@ async function loadNextAllPage() {
     const data = await res.json();
     const items = data.items || [];
     const root = $("#results");
-    items.forEach(it => root.appendChild(specCard(it)));
+    items.forEach(it => root.appendChild(specRow(it)));
     a.offset += items.length;
     if (items.length === 0 || a.offset >= a.total) {
       a.done = true;
@@ -324,9 +325,9 @@ function renderSimilarSection() {
   sep.textContent = `Похожие специалисты — ${relaxedLabel(a.relaxed)}`;
   root.appendChild(sep);
   a.similar.forEach(it => {
-    const card = specCard(it);
-    card.classList.add("similar");
-    root.appendChild(card);
+    const row = specRow(it);
+    row.classList.add("similar");
+    root.appendChild(row);
   });
   a.similarRendered = true;
 }
@@ -455,7 +456,61 @@ function relaxedLabel(relaxed) {
   return parts.length ? `расширили поиск ${parts.join(", ")}` : "расширили поиск";
 }
 
-/* ───── component: spec card ───────────────────────────────────── */
+/* ───── component: compact spec row (browse-list view) ──────────
+   Одна строка на спеца: avatar + name/meta + rate + cart-button.
+   Используется в renderAllInCategory/loadNextAllPage. AI-flow рисует
+   богатые карточки через specCard ниже. */
+
+function specRow(it) {
+  const row = document.createElement("div");
+  row.className = "spec-row";
+  row.setAttribute("role", "button");
+  row.setAttribute("tabindex", "0");
+  const rate = formatRate(it.rate_min, it.rate_max, it.currency);
+  const ratingMeta = it.reviews_count
+    ? `★ ${(it.rating_avg || 0).toFixed(1)} · ${it.reviews_count}`
+    : "новый";
+  const primary = it.primary_category || (it.categories && it.categories[0]);
+  const catChip = primary
+    ? `<span class="spec-row-cat">${escape(categoryTitle(primary))}</span>`
+    : "";
+  const initial = (it.display_name || "?").trim().charAt(0).toUpperCase();
+  const avatar = it.avatar_url
+    ? `<img class="spec-row-avatar" src="${escape(it.avatar_url)}" alt="" loading="lazy" />`
+    : `<div class="spec-row-avatar spec-row-avatar-fallback">${escape(initial)}</div>`;
+
+  row.innerHTML = `
+    ${avatar}
+    <div class="spec-row-main">
+      <div class="spec-row-name">${escape(it.display_name)}</div>
+      <div class="spec-row-meta">
+        ${catChip}
+        <span class="spec-row-city">${escape(it.city || "удалённо")}</span>
+        <span class="spec-row-rating">${escape(ratingMeta)}</span>
+      </div>
+    </div>
+    <div class="spec-row-side">
+      <div class="spec-row-rate">${escape(rate)}</div>
+      <button class="btn-cart" data-cart-toggle="${escape(it.user_id)}">${inCart(it.user_id) ? "В проекте ✓" : "+ В проект"}</button>
+    </div>
+  `;
+  const cartBtn = row.querySelector(".btn-cart");
+  cartBtn.classList.toggle("in-cart", inCart(it.user_id));
+  cartBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    toggleCart(it, cartBtn);
+  });
+  row.addEventListener("click", () => gotoSpecialist(it));
+  row.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      gotoSpecialist(it);
+    }
+  });
+  return row;
+}
+
+/* ───── component: rich spec card (AI-picks view) ────────────── */
 
 function specCard(it) {
   const card = document.createElement("div");

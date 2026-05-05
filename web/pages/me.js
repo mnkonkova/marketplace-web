@@ -43,6 +43,9 @@ async function openMe() {
     $("#me-no-profile").classList.add("hidden");
     $("#me-form").classList.remove("hidden");
     renderMeForm(profile);
+    // Портфолио грузим после профиля — независимый блок, ошибка тут не блокирует
+    // редактирование основного.
+    loadMePortfolio().catch(() => {});
   } catch (err) {
     $("#me-error").textContent = `Не удалось загрузить профиль: ${err.message}`;
     $("#me-error").classList.remove("hidden");
@@ -145,6 +148,148 @@ export function bindMeForm() {
     saveMeProfile({ publish: false });
   });
   $("#me-check-bio").addEventListener("click", runProfileCheck);
+  bindPortfolioForm();
+}
+
+/* ───── portfolio (видео) ───────────────────────────────────────
+   Сейчас — только URL-добавление. Полноценный аплоад с устройства
+   подключим, когда появятся ключи Yandex Object Storage; форма
+   будет та же, добавится «или загрузите файл». */
+
+function bindPortfolioForm() {
+  const btn = $("#me-pf-add");
+  if (!btn) return;
+  btn.addEventListener("click", addPortfolioVideo);
+  // Список с delete-кнопками — делегатор, чтобы не перенавешивать при rerender.
+  const list = $("#me-portfolio-list");
+  if (list) {
+    list.addEventListener("click", e => {
+      const t = e.target.closest("[data-pf-delete]");
+      if (t) deletePortfolioVideo(t.dataset.pfDelete);
+    });
+  }
+}
+
+async function loadMePortfolio() {
+  try {
+    const res = await authFetch(`${API}/me/portfolio`);
+    if (!res.ok) throw new Error(`http_${res.status}`);
+    const data = await res.json();
+    renderMePortfolio(data.items || []);
+  } catch (err) {
+    setPortfolioMsg(`Не удалось загрузить портфолио: ${err.message}`, true);
+  }
+}
+
+function renderMePortfolio(items) {
+  const list = $("#me-portfolio-list");
+  const cnt = $("#me-portfolio-count");
+  if (!list) return;
+  list.innerHTML = "";
+  const videos = items.filter(it => it.video_url);
+  cnt.textContent = videos.length ? `${videos.length} видео` : "пока пусто";
+  if (videos.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "text-xs text-white/40 italic";
+    empty.textContent = "Добавьте первый ролик — он появится в ленте, когда профиль опубликован.";
+    list.appendChild(empty);
+    return;
+  }
+  videos.forEach(it => list.appendChild(portfolioRow(it)));
+}
+
+function portfolioRow(it) {
+  const row = document.createElement("div");
+  row.className = "me-pf-row";
+  const thumb = it.thumbnail_url
+    ? `<img class="me-pf-thumb" src="${escape(it.thumbnail_url)}" alt="" loading="lazy" />`
+    : `<div class="me-pf-thumb me-pf-thumb-empty">▶</div>`;
+  row.innerHTML = `
+    ${thumb}
+    <div class="me-pf-main">
+      <div class="me-pf-title">${escape(it.title || "(без названия)")}</div>
+      <div class="me-pf-meta"><a href="${escape(it.video_url)}" target="_blank" rel="noopener">открыть mp4 ↗</a>${it.duration_sec ? ` · ${it.duration_sec}s` : ""}${it.aspect ? ` · ${escape(it.aspect)}` : ""}</div>
+      ${it.description ? `<div class="me-pf-desc">${escape(it.description)}</div>` : ""}
+    </div>
+    <button type="button" class="me-pf-delete" data-pf-delete="${escape(it.id)}" aria-label="Удалить">✕</button>
+  `;
+  return row;
+}
+
+async function addPortfolioVideo() {
+  const videoURL = $("#me-pf-video-url").value.trim();
+  const thumbURL = $("#me-pf-thumb-url").value.trim();
+  const title = $("#me-pf-title").value.trim();
+  const description = $("#me-pf-description").value.trim();
+  if (!videoURL) {
+    setPortfolioMsg("Введите URL видео.", true);
+    return;
+  }
+  if (!title) {
+    setPortfolioMsg("Введите заголовок.", true);
+    return;
+  }
+  const btn = $("#me-pf-add");
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = "Добавляем…";
+  try {
+    const res = await authFetch(`${API}/me/portfolio`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        video_url: videoURL,
+        thumbnail_url: thumbURL,
+        title,
+        description,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `http_${res.status}`);
+    }
+    $("#me-pf-video-url").value = "";
+    $("#me-pf-thumb-url").value = "";
+    $("#me-pf-title").value = "";
+    $("#me-pf-description").value = "";
+    setPortfolioMsg("Добавлено.", false);
+    await loadMePortfolio();
+  } catch (err) {
+    setPortfolioMsg(`Не удалось добавить: ${err.message}`, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+async function deletePortfolioVideo(id) {
+  if (!confirm("Удалить это видео?")) return;
+  try {
+    const res = await authFetch(`${API}/me/portfolio/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    if (res.status !== 204 && !res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `http_${res.status}`);
+    }
+    setPortfolioMsg("Удалено.", false);
+    await loadMePortfolio();
+  } catch (err) {
+    setPortfolioMsg(`Не удалось удалить: ${err.message}`, true);
+  }
+}
+
+function setPortfolioMsg(text, isError) {
+  const el = $("#me-portfolio-msg");
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle("text-danger", !!isError);
+  el.classList.toggle("text-mint-400", !isError && !!text);
+  if (text) {
+    setTimeout(() => {
+      if (el.textContent === text) el.textContent = "";
+    }, 4000);
+  }
 }
 
 export async function saveMeProfile({ publish }) {

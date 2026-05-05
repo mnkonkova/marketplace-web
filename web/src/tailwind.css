@@ -260,7 +260,85 @@ html, body { margin: 0; padding: 0; }
 }
 .facet-count { font-variant-numeric: tabular-nums; color: inherit; opacity: 0.6; font-size: 10px; }
 
-/* ─── Spec card ──────────────────────────────────────────────────── */
+/* ─── Spec row (compact list view, browse) ─────────────────────── */
+.spec-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.spec-row:hover { background: rgba(255,255,255,0.025); }
+.spec-row:focus-visible { outline: none; background: rgba(255,255,255,0.04); box-shadow: inset 2px 0 0 var(--accent-2); }
+.spec-row.similar { opacity: 0.72; }
+.spec-row.similar:hover { opacity: 1; }
+
+.spec-row-avatar {
+  width: 44px; height: 44px;
+  border-radius: 0;
+  object-fit: cover;
+  background: rgba(255,255,255,0.04);
+  display: block;
+}
+.spec-row-avatar-fallback {
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 18px;
+  color: var(--fg);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--hair);
+}
+.spec-row-main { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.spec-row-name {
+  font-weight: 600; font-size: 15px;
+  color: var(--fg);
+  letter-spacing: -0.005em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.spec-row-meta {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase; letter-spacing: 0.12em;
+}
+.spec-row-cat {
+  padding: 2px 8px;
+  background: rgba(74,214,193,0.08);
+  color: var(--accent-2);
+  border: 1px solid rgba(74,214,193,0.28);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+.spec-row-city { white-space: nowrap; }
+.spec-row-rating {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+}
+.spec-row-side {
+  display: flex; align-items: center; gap: 14px;
+  white-space: nowrap;
+}
+.spec-row-rate {
+  font-size: 14px; font-weight: 600;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .spec-row {
+    grid-template-columns: 40px 1fr;
+    grid-template-areas: "av main" "side side";
+    row-gap: 10px;
+    padding: 12px 14px;
+  }
+  .spec-row-avatar { grid-area: av; width: 40px; height: 40px; }
+  .spec-row-main { grid-area: main; }
+  .spec-row-side { grid-area: side; justify-content: space-between; gap: 10px; }
+}
+
+/* ─── Spec card (AI-picks rich view) ────────────────────────────── */
 .results-grid > * + * { border-top: 1px solid var(--hair); }
 .results-grid {
   border: 1px solid var(--hair);
@@ -719,6 +797,55 @@ dialog select:focus { outline: none; border-color: rgba(255,255,255,0.45); }
 }
 .cat-pick-star:hover { color: var(--accent-2); }
 .cat-pick.is-primary .cat-pick-star { color: var(--accent-2); }
+
+.me-pf-row {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--hair);
+}
+.me-pf-thumb {
+  width: 64px; height: 96px;
+  object-fit: cover;
+  background: rgba(255,255,255,0.04);
+  display: block;
+}
+.me-pf-thumb-empty {
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.4);
+  font-size: 22px;
+  background: rgba(255,255,255,0.04);
+  border: 1px dashed var(--hair);
+}
+.me-pf-main { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.me-pf-title {
+  font-weight: 600; font-size: 14px; color: var(--fg);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.me-pf-meta {
+  font-size: 11px; color: rgba(255,255,255,0.5);
+  letter-spacing: 0.04em;
+}
+.me-pf-meta a { color: rgba(255,255,255,0.8); text-decoration: underline; }
+.me-pf-meta a:hover { color: var(--accent-2); }
+.me-pf-desc {
+  font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.me-pf-delete {
+  background: transparent;
+  color: rgba(255,255,255,0.45);
+  border: 1px solid var(--hair);
+  width: 28px; height: 28px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: color 140ms, border-color 140ms;
+}
+.me-pf-delete:hover { color: var(--danger); border-color: rgba(255,100,112,0.5); }
 
 .bio-check {
   display: flex; flex-direction: column; gap: 6px;
