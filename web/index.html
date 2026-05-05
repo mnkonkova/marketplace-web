@@ -149,6 +149,36 @@
   </div>
 </section>
 
+<!-- ===== View: feed (TikTok-style, vertical snap player) =====
+     Показывается на /search для browse-сценариев (категория/все). AI-picks
+     рендерятся в view-results (компактный список). Переключение между
+     лентой и списком — кнопкой в шапке, выбор в localStorage. -->
+<section id="view-feed" class="view hidden">
+  <div class="feed-shell">
+    <header class="feed-topbar">
+      <button class="feed-back" data-action="back-roadmap" aria-label="на главную">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+      </button>
+      <div id="feed-title" class="feed-title">Лента</div>
+      <button id="feed-mute" type="button" class="feed-icon-btn" aria-label="Включить звук" aria-pressed="false">
+        <svg class="feed-icon-mute"  width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        <svg class="feed-icon-sound hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      </button>
+      <button id="feed-view-toggle" type="button" class="feed-toggle">
+        <span>В список</span>
+      </button>
+    </header>
+
+    <div id="feed-list" class="feed"></div>
+
+    <div id="feed-empty" class="feed-empty hidden">
+      <div class="feed-empty-text">В этой категории пока нет видео.</div>
+      <button type="button" class="feed-empty-btn" data-action="feed-to-list">Открыть список</button>
+    </div>
+    <div id="feed-loading" class="feed-loading hidden">Загружаем…</div>
+  </div>
+</section>
+
 <!-- ===== View: results ===== -->
 <section id="view-results" class="view hidden">
   <div class="max-w-5xl mx-auto px-6 py-12">
@@ -158,7 +188,14 @@
     </button>
 
     <div class="text-[10px] uppercase tracking-overline text-white/35">[ Результаты ]</div>
-    <h2 id="results-title" class="mt-2 text-3xl md:text-4xl font-semibold tracking-tight mb-4">Результаты</h2>
+    <div class="flex items-baseline justify-between gap-3 flex-wrap mb-4">
+      <h2 id="results-title" class="mt-2 text-3xl md:text-4xl font-semibold tracking-tight">Результаты</h2>
+      <button id="results-view-toggle" type="button"
+        class="hidden inline-flex items-center gap-2 h-9 border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-3 text-[11px] uppercase tracking-overline transition">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>В ленту</span>
+      </button>
+    </div>
 
     <div class="results-summary" id="results-summary"></div>
 

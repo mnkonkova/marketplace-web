@@ -7,7 +7,7 @@ import { state, ICONS, tileTitle, CATEGORY_GROUPS } from "../shared/state.js";
 import { $, $$, escape, pluralSpecialists } from "../shared/ui.js";
 import { showView, navigate } from "../shared/router.js";
 import { openClarify } from "./clarify.js";
-import { showAllInCategory } from "./results.js";
+import { openCategory } from "./results.js";
 
 export function routeHome() {
   showView("roadmap");
@@ -48,11 +48,11 @@ function categoryCardEl(cat, count, { index = 0 } = {}) {
     </div>
   `;
 
-  card.addEventListener("click", () => showAllInCategory(cat));
+  card.addEventListener("click", () => openCategory(cat));
   card.addEventListener("keydown", e => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      showAllInCategory(cat);
+      openCategory(cat);
     }
   });
 

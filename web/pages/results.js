@@ -8,6 +8,14 @@ import { $, escape, categoryTitle, formatRate } from "../shared/ui.js";
 import { showView, syncURL, buildSearchQs, gotoSpecialist } from "../shared/router.js";
 import { inCart, toggleCart } from "../shared/cart.js";
 import { loadCategories } from "../shared/categories.js";
+import { preferFeedView, setPreferredView, showFeed, hideFeed } from "./feed.js";
+
+/* ───── routing ──────────────────────────────────────────────────
+   /search — единый URL для browse-сценария и для AI-выдачи.
+   - Если в qs есть q (clarify-флоу) → AI-summarize → список (компактные карточки).
+     Для AI-picks лента не идеальна: подбор уже маленький и кураторский.
+   - Иначе (browse: категория или все) → лента или список по preferFeedView().
+   ────────────────────────────────────────────────────────────── */
 
 export async function routeSearch(_params, qs) {
   if (!state.categories.length) {
@@ -33,9 +41,39 @@ export async function routeSearch(_params, qs) {
   }
 
   if (q) {
+    // AI-flow — всегда список. Лента включается явно из browse-сценария.
+    hideFeed();
     state.pendingSearch = { q, categories: cats, skills, city };
     await runSearch({ pushURL: false });
-  } else if (cats.length === 1 && state.currentCategory) {
+    setResultsBack("roadmap", "на главную");
+    return;
+  }
+
+  const params = { categories: cats, skills, city };
+  if (preferFeedView()) {
+    await showFeed(params);
+  } else {
+    await routeSearchAsList(params);
+  }
+}
+
+// routeSearchAsList — старый browse-флоу как список. Зовётся из feed.js при
+// переключении «В список», а также из routeSearch если pref=list.
+export async function routeSearchAsList(params) {
+  hideFeed();
+  if (!state.categories.length) {
+    try { await loadCategories(); } catch (_) {}
+  }
+  const cats = (params && params.categories) || [];
+  state.currentCategory = (cats.length === 1)
+    ? state.categories.find(c => c.code === cats[0]) || null
+    : null;
+
+  // Запоминаем browse-параметры — кнопка «В ленту» использует их при свитче.
+  state.lastBrowseParams = params || null;
+  setResultsViewToggleVisible(true);
+
+  if (cats.length === 1 && state.currentCategory) {
     await showAllInCategory(state.currentCategory, { pushURL: false });
   } else {
     showView("results");
@@ -46,9 +84,44 @@ export async function routeSearch(_params, qs) {
     $("#results-facets").innerHTML = "";
     await renderAllInCategory({ categories: cats }, "");
   }
-
-  // direct-load: back-кнопка указывает на главную (clarify пуст).
   setResultsBack("roadmap", "на главную");
+}
+
+function setResultsViewToggleVisible(visible) {
+  const btn = $("#results-view-toggle");
+  if (!btn) return;
+  btn.classList.toggle("hidden", !visible);
+}
+
+// openCategory — публичная точка входа из roadmap-тайла. Уважает выбор юзера
+// (лента/список). Внутренние свитчи категории (фасеты, «показать всех» из
+// AI-выдачи) продолжают звать showAllInCategory напрямую — там логика «остаться
+// в текущем виде» уместнее.
+export async function openCategory(category) {
+  const params = { categories: [category.code], skills: [], city: "", q: "" };
+  state.lastBrowseParams = params;
+  if (preferFeedView()) {
+    syncURL("/search" + buildSearchQs(params));
+    await showFeed(params);
+  } else {
+    syncURL("/search" + buildSearchQs(params));
+    await showAllInCategory(category, { pushURL: false });
+  }
+}
+
+// bindResultsViewToggle — однократно навешивает обработчик на кнопку «В ленту».
+// Зовётся из app.js при инициализации.
+export function bindResultsViewToggle() {
+  const btn = $("#results-view-toggle");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    setPreferredView("feed");
+    const params = state.lastBrowseParams || {
+      categories: state.currentCategory ? [state.currentCategory.code] : [],
+      skills: [], city: "", q: "",
+    };
+    await showFeed(params);
+  });
 }
 
 export async function runSearch({ pushURL = true } = {}) {
@@ -60,6 +133,7 @@ export async function runSearch({ pushURL = true } = {}) {
   if (pushURL) syncURL("/search" + buildSearchQs(params));
   showView("results");
   setResultsBack("clarify", "уточнить запрос");
+  setResultsViewToggleVisible(false); // AI-выдача — список, без свитча в ленту
   $("#results-title").textContent = state.currentCategory
     ? state.currentCategory.title
     : "Подбор по запросу";
@@ -128,6 +202,9 @@ export async function showAllInCategory(category, opts = {}) {
   showView("results");
   const labels = { roadmap: "на главную", clarify: "уточнить запрос", picks: "к нашему подбору" };
   setResultsBack(backTo, labels[backTo] || "назад");
+  // browse-режим: позволяем переключиться в ленту.
+  state.lastBrowseParams = { categories: [category.code], skills: [], city: "", q: "" };
+  setResultsViewToggleVisible(true);
   $("#results-title").textContent = category.title;
   setSummary("Загружаем всех специалистов в категории…", "");
   $("#results").innerHTML = "";

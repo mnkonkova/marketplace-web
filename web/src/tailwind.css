@@ -738,6 +738,262 @@ dialog select:focus { outline: none; border-color: rgba(255,255,255,0.45); }
   font-size: 12px; color: rgba(255,255,255,0.6); font-style: italic;
 }
 
+/* ─── Feed (TikTok-style vertical player) ───────────────────────
+   Поверх обычного потока страницы — фиксированный шелл на весь viewport.
+   body.feed-active гасит скролл фоновой страницы и шапку, чтобы лента
+   не конкурировала с topbar'ом сайта. */
+body.feed-active { overflow: hidden; }
+body.feed-active > header { display: none; }
+
+.feed-shell {
+  position: fixed; inset: 0;
+  background: #000;
+  z-index: 40;
+  display: flex; flex-direction: column;
+  overscroll-behavior: contain;
+}
+
+.feed-topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 56px; padding: 0 12px;
+  display: flex; align-items: center; gap: 8px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.65), rgba(0,0,0,0));
+  z-index: 3;
+  color: #fff;
+}
+.feed-back, .feed-icon-btn, .feed-toggle {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff;
+  border-radius: 0;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.feed-back, .feed-icon-btn {
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.feed-back:hover, .feed-icon-btn:hover, .feed-toggle:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.4);
+}
+.feed-icon-btn[aria-pressed="true"] {
+  background: var(--accent-2); color: var(--bg); border-color: var(--accent-2);
+}
+.feed-toggle {
+  margin-left: auto;
+  height: 36px;
+  padding: 0 14px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.feed-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #fff;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 6px;
+}
+
+.feed {
+  flex: 1;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.feed::-webkit-scrollbar { display: none; }
+
+.feed-item {
+  height: 100%;
+  min-height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.feed-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+  display: block;
+}
+.feed-poster-fallback {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  background: linear-gradient(135deg, #121317, #0c0d11);
+}
+
+.feed-overlay {
+  position: absolute; inset: 0;
+  display: flex;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 30%, rgba(0,0,0,0) 60%);
+}
+/* Overlay: pointer-events: none везде, кроме кнопок — чтобы тап «по тексту»
+   проваливался на video (toggle pause/play, как в TikTok). Кнопки явно
+   получают pointer-events: auto ниже. */
+.feed-overlay-left {
+  flex: 1; min-width: 0;
+  align-self: flex-end;
+  padding: 16px 88px 36px 18px;
+  display: flex; flex-direction: column; gap: 6px;
+  color: #fff;
+  pointer-events: none;
+}
+.feed-overlay-right {
+  align-self: flex-end;
+  padding: 16px 12px 36px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  pointer-events: none;
+}
+.feed-action,
+.feed-action-stack,
+.feed-empty-btn {
+  pointer-events: auto;
+}
+
+.feed-spec-name {
+  font-size: 16px; font-weight: 700; letter-spacing: -0.005em;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.5);
+}
+.feed-spec-meta {
+  font-size: 11px;
+  color: rgba(255,255,255,0.78);
+  text-transform: uppercase; letter-spacing: 0.12em;
+}
+.feed-spec-bio {
+  font-size: 13px; line-height: 1.45;
+  color: rgba(255,255,255,0.92);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+}
+.feed-spec-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.feed-cat-chip {
+  font-size: 10px; padding: 3px 8px;
+  text-transform: uppercase; letter-spacing: 0.14em;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: #fff;
+}
+.feed-spec-rate {
+  font-size: 13px; font-weight: 600;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-action {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: #fff;
+  width: 48px; height: 48px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.feed-action:hover { background: rgba(255,255,255,0.95); color: var(--bg); border-color: #fff; }
+.feed-action.is-on { background: var(--accent-2); color: var(--bg); border-color: var(--accent-2); }
+.feed-action-label {
+  font-size: 10px;
+  text-align: center;
+  color: rgba(255,255,255,0.85);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+.feed-action-stack {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+
+.feed-video-idx {
+  font-size: 10px;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-pick-reason {
+  font-size: 12px; line-height: 1.5;
+  color: #c8efe2;
+  background: rgba(74,214,193,0.14);
+  border-left: 2px solid var(--accent-2);
+  padding: 6px 10px;
+  margin-top: 4px;
+  text-shadow: none;
+}
+
+.feed-loading, .feed-empty {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: 24px;
+  z-index: 4;
+  color: rgba(255,255,255,0.65);
+  font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.16em;
+  background: rgba(0,0,0,0.55);
+  padding: 8px 14px;
+}
+.feed-empty {
+  top: 50%; bottom: auto; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; gap: 12px; align-items: center;
+  padding: 20px;
+  text-align: center;
+}
+.feed-empty-btn {
+  background: #fff; color: var(--bg);
+  border: none;
+  padding: 10px 16px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em;
+  font-weight: 600; cursor: pointer;
+}
+.feed-empty-btn:hover { background: var(--accent-2); }
+
+/* Tap-to-unmute hint, исчезает после первого клика по mute-кнопке */
+.feed-sound-hint {
+  position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
+  z-index: 3;
+  background: rgba(255,255,255,0.92);
+  color: var(--bg);
+  padding: 8px 14px;
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.14em;
+  pointer-events: none;
+  animation: feedHintFade 4s ease-out forwards;
+}
+@keyframes feedHintFade {
+  0%   { opacity: 0; transform: translate(-50%, -8px); }
+  10%  { opacity: 1; transform: translate(-50%, 0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (max-width: 640px) {
+  .feed-overlay-left { padding: 12px 76px 28px 14px; }
+  .feed-overlay-right { padding: 12px 10px 28px 0; }
+  .feed-spec-name { font-size: 15px; }
+}
+
 /* ─── Auth dialog tabs ─────────────────────────────────────────── */
 .auth-tab {
   cursor: pointer;

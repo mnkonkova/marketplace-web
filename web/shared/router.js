@@ -23,9 +23,19 @@ export function registerRoutes(list) {
 }
 
 export function showView(name) {
-  ["roadmap", "clarify", "results", "profile", "me"].forEach(v => {
+  const feedEl = $("#view-feed");
+  const wasFeed = feedEl && !feedEl.classList.contains("hidden");
+  ["roadmap", "clarify", "feed", "results", "profile", "me"].forEach(v => {
     $(`#view-${v}`).classList.toggle("hidden", v !== name);
   });
+  // body.feed-active гасит шапку и скролл — снимаем при выходе из feed,
+  // и одновременно паузим видео, чтобы звук не уходил «в фон».
+  if (name !== "feed") {
+    document.body.classList.remove("feed-active");
+    if (wasFeed) {
+      document.querySelectorAll("#view-feed .feed-video").forEach(v => v.pause());
+    }
+  }
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 

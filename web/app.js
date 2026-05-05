@@ -19,7 +19,8 @@ import { bindGlobalActions } from "./shared/actions.js";
 
 import { routeHome, renderRoadmap, bindHero } from "./pages/roadmap.js";
 import { bindClarify } from "./pages/clarify.js";
-import { routeSearch } from "./pages/results.js";
+import { routeSearch, bindResultsViewToggle } from "./pages/results.js";
+import { bindFeedShell } from "./pages/feed.js";
 import { routeSpec } from "./pages/profile.js";
 import { routeMe, bindMeForm } from "./pages/me.js";
 
@@ -42,6 +43,8 @@ document.addEventListener("DOMContentLoaded", () => {
   bindLeadDialog();
   bindAuthDialog();
   bindMeForm();
+  bindFeedShell();
+  bindResultsViewToggle();
   bindGlobalActions();
   syncAuthUI();
 
