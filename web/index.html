@@ -3,48 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>marketpclce — AI-подбор специалистов</title>
+<title>marketpclce — подбор специалистов</title>
 
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="preconnect" href="https://rsms.me/" />
 <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          ink: {
-            950: "#050507",
-            900: "#08090c",
-            800: "#0c0d11",
-            700: "#121317",
-            600: "#191b20",
-            500: "#22252b",
-            400: "#3a3f4a",
-          },
-          mint: {
-            600: "#3bc2ad",
-            500: "#4ad6c1",
-            400: "#6eded0",
-            300: "#9fe9dd",
-          },
-          danger: "#ff6470",
-        },
-        fontFamily: {
-          sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        },
-        letterSpacing: {
-          'overline': '0.22em',
-        },
-        boxShadow: {
-          'card': '0 1px 0 rgba(255,255,255,0.03) inset, 0 14px 40px -22px rgba(0,0,0,0.8)',
-          'cta-mint': '0 10px 28px -14px rgba(74,214,193,0.55)',
-        },
-      },
-    },
-  };
-</script>
 
 <link rel="stylesheet" href="/styles.css" />
 </head>
@@ -53,27 +16,30 @@
 
 <!-- ===== Topbar ===== -->
 <header class="sticky top-0 z-30 backdrop-blur-xl bg-ink-900/75 border-b border-white/[0.06]">
-  <div class="max-w-6xl mx-auto px-6 h-14 flex items-center gap-4">
-    <a href="/" class="flex items-center gap-3 text-[14px] font-medium tracking-tight">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-2 sm:gap-4">
+    <a id="home-link" href="/" class="flex items-center gap-2 sm:gap-3 text-[14px] font-medium tracking-tight shrink-0">
       <span class="w-6 h-6 rounded-sm bg-white text-ink-900 flex items-center justify-center text-[12px] font-bold">m</span>
       <span class="uppercase tracking-[0.18em] text-[12px]">marketpclce</span>
-      <span class="ml-1 text-[10px] uppercase tracking-overline text-white/40">/ beta</span>
+      <span class="hidden sm:inline ml-1 text-[10px] uppercase tracking-overline text-white/40">/ beta</span>
     </a>
     <div class="hidden md:block text-[11px] uppercase tracking-overline text-white/35 truncate ml-2">видео · контент · креатив</div>
-    <div class="ml-auto flex items-center gap-2.5">
+    <div class="ml-auto flex items-center gap-1.5 sm:gap-2.5">
       <button id="me-btn" type="button" data-action="open-me" aria-label="Мой кабинет"
-        class="hidden inline-flex items-center gap-2 h-9 rounded-none border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-3.5 text-[12px] uppercase tracking-overline transition">
-        <span>[ Кабинет ]</span>
+        class="hidden inline-flex items-center gap-2 h-9 rounded-none border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-2.5 sm:px-3.5 text-[12px] uppercase tracking-overline transition">
+        <span class="sm:hidden">Кабинет</span>
+        <span class="hidden sm:inline">[ Кабинет ]</span>
       </button>
       <button id="auth-btn" type="button" data-action="open-auth"
-        class="inline-flex items-center gap-2 h-9 rounded-none border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-3.5 text-[12px] uppercase tracking-overline transition">
-        <span>[ Войти ]</span>
+        class="inline-flex items-center gap-2 h-9 rounded-none border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-2.5 sm:px-3.5 text-[12px] uppercase tracking-overline transition">
+        <span class="sm:hidden">Войти</span>
+        <span class="hidden sm:inline">[ Войти ]</span>
       </button>
       <button id="cart-btn" type="button" aria-label="Мой проект"
-        class="inline-flex items-center gap-2.5 h-9 rounded-none border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-3.5 text-[12px] uppercase tracking-overline transition">
-        <span>[ Проект</span>
+        class="inline-flex items-center gap-2 sm:gap-2.5 h-9 rounded-none border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-2.5 sm:px-3.5 text-[12px] uppercase tracking-overline transition">
+        <span class="sm:hidden">Проект</span>
+        <span class="hidden sm:inline">[ Проект</span>
         <span id="cart-count" class="cart-count inline-flex items-center justify-center min-w-[18px] h-4 px-1 text-[10px] font-semibold tabular-nums bg-mint-500 text-ink-900 rounded-sm">0</span>
-        <span>]</span>
+        <span class="hidden sm:inline">]</span>
       </button>
     </div>
   </div>
@@ -93,12 +59,12 @@
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-mint-500 opacity-60"></span>
           <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-mint-500"></span>
         </span>
-        <span>[ AI · подбор специалистов ]</span>
+        <span>[ подбор специалистов ]</span>
       </div>
 
       <h1 class="mt-8 text-[44px] sm:text-6xl md:text-7xl font-semibold leading-[1.02] tracking-tight">
         <span class="block text-white">Опишите задачу.</span>
-        <span class="block text-white/35 font-light italic">ИИ соберёт команду.</span>
+        <span class="block text-white/35 font-light italic">Мы соберём команду.</span>
       </h1>
 
       <p class="mt-6 text-white/55 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
@@ -111,9 +77,9 @@
             class="block w-full resize-none bg-transparent px-5 py-4 text-[15px] leading-relaxed text-white placeholder-white/35 outline-none"
             placeholder="Например: нужен монтажёр для серии Reels по фитнесу, бюджет до 30 000, через 2 недели"></textarea>
           <div class="flex items-center justify-between gap-3 px-3 py-2 border-t border-white/[0.06] bg-ink-900/40">
-            <div class="text-[10px] uppercase tracking-overline text-white/35 select-none">⌘ + Enter</div>
+            <div class="text-[10px] uppercase tracking-overline text-white/35 select-none hidden sm:block">⌘ + Enter</div>
             <button type="submit"
-              class="inline-flex items-center gap-2 bg-white text-ink-900 px-5 py-2.5 text-[12px] uppercase tracking-overline font-semibold hover:bg-mint-500 transition">
+              class="ml-auto inline-flex items-center justify-center gap-2 bg-white text-ink-900 w-full sm:w-auto px-5 py-2.5 text-[12px] uppercase tracking-overline font-semibold hover:bg-mint-500 transition">
               Подобрать специалистов
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
@@ -137,7 +103,7 @@
       <div>
         <div class="text-[10px] uppercase tracking-overline text-white/35">[ Категории ]</div>
         <h2 class="mt-2 text-3xl md:text-4xl font-semibold tracking-tight">Быстрый вход</h2>
-        <p class="text-sm text-white/45 mt-2">Каждая категория — это вход в AI-подбор. Наведите карточку — раскроется описание.</p>
+        <p class="text-sm text-white/45 mt-2">Откройте категорию и листайте всех специалистов.</p>
       </div>
       <button id="show-all-specialists" type="button"
         class="inline-flex items-center gap-2.5 h-10 border border-white/15 hover:border-white/40 hover:bg-white hover:text-ink-900 px-4 text-[12px] uppercase tracking-overline text-white/85 transition">
@@ -163,7 +129,7 @@
 
     <div class="border border-white/10 bg-ink-800 overflow-hidden">
       <div class="px-6 pt-6 pb-2">
-        <div class="text-[10px] uppercase tracking-overline text-mint-400">[ AI · подбор ]</div>
+        <div class="text-[10px] uppercase tracking-overline text-mint-400">[ подбор ]</div>
         <h2 id="clarify-title" class="mt-2 text-2xl md:text-3xl font-semibold tracking-tight">Уточняем задачу</h2>
       </div>
 
@@ -332,10 +298,10 @@
         <h3 class="m-0 text-[11px] uppercase tracking-overline text-mint-400">[ Основное ]</h3>
         <label>Имя/название <input name="display_name" required minlength="2" /></label>
         <label>Город <input name="city" /></label>
-        <div class="grid grid-cols-3 gap-3">
-          <label>Ставка от <input name="rate_min" type="number" min="0" /></label>
-          <label>Ставка до <input name="rate_max" type="number" min="0" /></label>
-          <label>Валюта <input name="currency" maxlength="3" placeholder="RUB" /></label>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <label>Ставка от <input name="rate_min" type="number" min="0" inputmode="numeric" /></label>
+          <label>Ставка до <input name="rate_max" type="number" min="0" inputmode="numeric" /></label>
+          <label class="col-span-2 sm:col-span-1">Валюта <input name="currency" maxlength="3" placeholder="RUB" /></label>
         </div>
         <label>Аватар (URL) <input name="avatar_url" type="url" placeholder="https://..." /></label>
       </div>
@@ -343,11 +309,11 @@
       <div class="me-section border border-white/10 bg-ink-800 p-5 flex flex-col gap-3">
         <div class="flex items-baseline justify-between gap-2 flex-wrap">
           <h3 class="m-0 text-[11px] uppercase tracking-overline text-mint-400">[ Описание (bio) ]</h3>
-          <button type="button" id="me-check-bio" class="cart-btn-secondary text-[11px] uppercase tracking-overline">Проверить ИИ</button>
+          <button type="button" id="me-check-bio" class="cart-btn-secondary text-[11px] uppercase tracking-overline">Проверить</button>
         </div>
         <textarea name="bio" rows="6" placeholder="Расскажите о специализации, нишах, инструментах и платформах. Без контактов — заказчик свяжется через маркетплейс."></textarea>
-        <div id="me-bio-check" class="hidden bio-check border border-white/10 p-3 text-sm flex flex-col gap-2"></div>
-        <p class="text-xs text-white/40 m-0">Перед публикацией bio проверяется ИИ-модератором. Можно вызвать проверку вручную.</p>
+        <div id="me-bio-check" class="hidden flex flex-col gap-3 text-sm"></div>
+        <p class="text-xs text-white/40 m-0">Перед публикацией мы проверим и описание, и имя/название. Можно вызвать проверку вручную.</p>
       </div>
 
       <div class="me-section border border-white/10 bg-ink-800 p-5 flex flex-col gap-3">
@@ -356,14 +322,13 @@
         <p class="text-xs text-white/40 m-0">Отметьте категории. Кликните «★ основная» — она попадёт в primary.</p>
       </div>
 
-      <div class="actions flex gap-2 justify-between flex-wrap">
+      <div class="actions flex flex-wrap gap-2 sm:flex-nowrap sm:justify-between">
         <div class="flex gap-2 flex-wrap">
           <button type="button" data-action="me-unpublish" class="cart-btn-secondary">Снять с публикации</button>
           <button id="me-view-public" type="button" data-action="me-view-public" class="hidden cart-btn-secondary">Открыть публичный профиль</button>
         </div>
-        <div class="flex gap-2">
-          <button type="submit" class="cart-btn-secondary">Сохранить</button>
-          <button type="button" data-action="me-publish" class="cart-btn-primary">Сохранить и опубликовать</button>
+        <div class="flex gap-2 sm:shrink-0">
+          <button type="button" data-action="me-publish" class="cart-btn-primary">Опубликовать</button>
         </div>
       </div>
       <div id="me-error" class="error hidden text-danger text-sm"></div>
@@ -383,6 +348,6 @@
   </div>
 </dialog>
 
-<script src="/app.js"></script>
+<script type="module" src="/app.js"></script>
 </body>
 </html>
