@@ -80,6 +80,10 @@ export async function routeSearchAsList(params) {
   if (cats.length === 1 && state.currentCategory) {
     await showAllInCategory(state.currentCategory, { pushURL: false });
   } else {
+    // Дескриптор для возврата из ленты на «всех специалистов» (или
+    // multi-cat browse). Ставим до renderAllInCategory, чтобы возможный
+    // toggle во время загрузки уже знал куда возвращаться.
+    state.lastListView = { kind: "browse", params };
     showView("results");
     setResultsBack("roadmap", "на главную");
     $("#results-title").textContent = "Все специалисты";
@@ -123,8 +127,38 @@ export function bindResultsViewToggle() {
       categories: state.currentCategory ? [state.currentCategory.code] : [],
       skills: [], city: "", q: "",
     };
-    await showFeed(params);
+    // Снэпшот текущего list-view (AI-подбор / showAllInCategory /
+    // showAllForFreeform / browse) — выход из ленты вернёт ровно в него.
+    const returnTo = state.lastListView ? { ...state.lastListView } : null;
+    await showFeed(params, returnTo ? { returnTo } : {});
   });
+}
+
+// renderListView — единая точка входа на «вернуться в последний список».
+// Зовётся из feed.js при выходе из ленты, чтобы не дублировать диспатч.
+export async function renderListView(descriptor) {
+  if (!descriptor) return false;
+  switch (descriptor.kind) {
+    case "ai-picks":
+      restoreAiPicks();
+      return true;
+    case "all-in-cat":
+      if (descriptor.category) {
+        await showAllInCategory(descriptor.category, { ...(descriptor.opts || {}), pushURL: false });
+        return true;
+      }
+      return false;
+    case "all-by-q":
+      if (descriptor.params) {
+        await showAllForFreeform(descriptor.params);
+        return true;
+      }
+      return false;
+    case "browse":
+      await routeSearchAsList(descriptor.params || {});
+      return true;
+  }
+  return false;
 }
 
 export async function runSearch({ pushURL = true } = {}) {
@@ -141,7 +175,11 @@ export async function runSearch({ pushURL = true } = {}) {
   if (pushURL) syncURL("/search" + buildSearchQs(params));
   showView("results");
   setResultsBack("clarify", "уточнить запрос");
-  setResultsViewToggleVisible(false); // AI-выдача — список, без свитча в ленту
+  // AI-выдача дефолтно списком (короткий кураторский подбор), но юзер может
+  // нажать «В ленту» — feed-toggle берёт state.lastBrowseParams (см. ниже).
+  state.lastBrowseParams = params;
+  state.lastListView = { kind: "ai-picks" };
+  setResultsViewToggleVisible(true);
   $("#results-title").textContent = state.currentCategory
     ? state.currentCategory.title
     : "Подбор по запросу";
@@ -212,6 +250,13 @@ export async function showAllInCategory(category, opts = {}) {
   setResultsBack(backTo, labels[backTo] || "назад");
   // browse-режим: позволяем переключиться в ленту.
   state.lastBrowseParams = { categories: [category.code], skills: [], city: "", q: "" };
+  // Дескриптор для feed→back. «Посмотреть всех в категории» (CTA из AI-подбора,
+  // backTo="picks") — это короткий детур из AI-списка, поэтому из ленты
+  // возвращаем сразу в AI-подбор, минуя showAllInCategory. В browse-режиме
+  // (backTo="roadmap" и т.п.) возврат — в этот же showAllInCategory.
+  state.lastListView = backTo === "picks"
+    ? { kind: "ai-picks" }
+    : { kind: "all-in-cat", category, opts: { backTo, keepClarify } };
   setResultsViewToggleVisible(true);
   $("#results-title").textContent = category.title;
   setSummary("Загружаем всех специалистов в категории…", "");
@@ -231,6 +276,10 @@ export function restoreAiPicks() {
   if (meta.searchParams) syncURL("/search" + buildSearchQs(meta.searchParams));
   showView("results");
   setResultsBack("clarify", "уточнить запрос");
+  // Возврат на AI-подбор — тогл «В ленту» доступен, как и при первом показе.
+  state.lastBrowseParams = meta.searchParams || state.lastBrowseParams;
+  state.lastListView = { kind: "ai-picks" };
+  setResultsViewToggleVisible(true);
   $("#results-title").textContent = state.currentCategory ? state.currentCategory.title : "Подбор по запросу";
   $("#results-facets").innerHTML = "";
   const note = meta.broadened
@@ -434,6 +483,11 @@ async function showAllForFreeform(params) {
   syncURL("/search" + buildSearchQs(params));
   showView("results");
   setResultsBack("clarify", "уточнить запрос");
+  // Дескриптор: feed→back должен вернуть в тот же free-form список,
+  // а не в AI-подбор (даже если lastPicks остались с keepClarify).
+  state.lastListView = { kind: "all-by-q", params };
+  state.lastBrowseParams = params;
+  setResultsViewToggleVisible(true);
   $("#results-title").textContent = "Все совпадения по запросу";
   setSummary("Загружаем все совпадения…", "");
   $("#results").innerHTML = "";

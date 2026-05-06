@@ -34,6 +34,12 @@ function ensureFeedState() {
       muted: localStorage.getItem(MUTED_KEY) !== "off",
       observer: null,
       activeEl: null,
+      // returnTo — дескриптор list-view'а, с которого тогл открыл ленту.
+      // На выходе renderListView воспроизводит ровно тот список (AI-picks /
+      // showAllInCategory / showAllForFreeform / browse). null = ленту
+      // открыли не из списка (roadmap → openCategory или /search browse) —
+      // тогда выход дефолтно идёт на главную / routeSearchAsList.
+      returnTo: null,
     };
   }
   return state.feedView;
@@ -50,7 +56,7 @@ export function setPreferredView(view) {
 /* ───── public entry ─────────────────────────────────────────── */
 
 export async function showFeed(params, opts = {}) {
-  const { pushURL = false, autoFallback = false } = opts;
+  const { pushURL = false, autoFallback = false, returnTo = null } = opts;
   if (pushURL) syncURL("/search" + buildSearchQs(params));
   const f = ensureFeedState();
   f.params = params || {};
@@ -58,6 +64,7 @@ export async function showFeed(params, opts = {}) {
   f.cursor = "";
   f.loading = false;
   f.done = false;
+  f.returnTo = returnTo;
 
   showView("feed");
   document.body.classList.add("feed-active");
@@ -171,11 +178,14 @@ function orderCats(cats, primary) {
 }
 
 function feedItemEl(it, index) {
-  const f = state.feedView;
   const article = document.createElement("article");
   article.className = "feed-item";
   article.dataset.index = String(index);
   article.dataset.specId = it.specialist.user_id;
+  // Item кладём на DOM-узел: ensureVideoEl будет ходить за ним отсюда, чтобы
+  // не зависеть от индекса в state.feedView.items (который дырявый из-за
+  // dropFeedItem).
+  article._feedItem = it;
 
   const sp = it.specialist;
   const v = it.video;
@@ -193,14 +203,16 @@ function feedItemEl(it, index) {
     return `<span class="${cls}">${escape(categoryTitle(code))}</span>`;
   }).join("");
 
-  // Видео: muted=true до user gesture, поэтому autoplay стартует. После первого
-  // тапа по 🔊 в шапке state.feedView.muted=false, и play() уже идёт со звуком.
+  // Двухэтапный рендер: сначала карточка с постером (thumb → avatar → градиент)
+  // и оверлеем, чтобы инфа о спеце появлялась мгновенно, без чёрного провала.
+  // Тяжёлый <video> добавляет ensureVideoEl на активации/соседстве.
+  const posterUrl = v.thumb || sp.avatar_url || "";
+  const posterHtml = posterUrl
+    ? `<img class="feed-poster" src="${escape(posterUrl)}" alt="">`
+    : `<div class="feed-poster-fallback"></div>`;
+
   article.innerHTML = `
-    <video class="feed-video"
-           src="${escape(v.url)}"
-           ${v.thumb ? `poster="${escape(v.thumb)}"` : ""}
-           playsinline loop preload="none"
-           ${f.muted ? "muted" : ""}></video>
+    ${posterHtml}
     <div class="feed-overlay">
       <div class="feed-overlay-left">
         <div class="feed-spec-name">${escape(sp.display_name)}</div>
@@ -258,18 +270,46 @@ function feedItemEl(it, index) {
     });
   });
 
-  // Тап по самому видео — toggle pause/play.
-  const video = article.querySelector(".feed-video");
+  return article;
+}
+
+// Stage 2: лениво вставляем <video> в готовую карточку. Постер остаётся под
+// видео и прячется по loadeddata, чтобы переход «карточка → карточка с видео»
+// был без чёрного флэша.
+function ensureVideoEl(article) {
+  let video = article.querySelector(".feed-video");
+  if (video) return video;
+  const it = article._feedItem;
+  if (!it) return null;
+  const f = state.feedView;
+  const v = it.video;
+
+  video = document.createElement("video");
+  video.className = "feed-video";
+  video.src = v.url;
+  if (v.thumb) video.poster = v.thumb;
+  video.playsInline = true;
+  video.loop = true;
+  video.preload = "auto";
+  video.muted = !!(f && f.muted);
+
+  // Тап по видео — toggle pause/play.
   video.addEventListener("click", () => {
     if (video.paused) video.play().catch(() => {});
     else video.pause();
   });
   // Видео не загрузилось — выкидываем плитку целиком, чтобы пустые карточки
-  // не разбавляли ленту между живыми. Если она была активной — IO позже
-  // подцепит соседа.
+  // не разбавляли ленту между живыми.
   video.addEventListener("error", () => dropFeedItem(article));
+  video.addEventListener("loadeddata", () => {
+    const poster = article.querySelector(".feed-poster, .feed-poster-fallback");
+    if (poster) poster.classList.add("is-hidden");
+  });
 
-  return article;
+  // Видео должно лежать ПОД оверлеем (overlay имеет pointer-events:none и
+  // позиционирует кнопки над видео). DOM-порядок: poster → video → overlay.
+  article.insertBefore(video, article.querySelector(".feed-overlay"));
+  return video;
 }
 
 function dropFeedItem(article) {
@@ -341,15 +381,19 @@ function activate(el) {
   }
   f.activeEl = el;
 
-  // обновляем preload у соседей: текущий + ±1 = "auto", остальное = "none"
+  // Соседи (текущий + ±1) — лениво монтируем <video> и держим preload="auto".
+  // Дальние — ставим preload="none", если видео уже когда-то монтировалось.
   const list = $("#feed-list");
   const items = $$(".feed-item", list);
   const i = items.indexOf(el);
-  items.forEach((it, j) => {
-    const v = it.querySelector(".feed-video");
-    if (!v) return;
-    if (Math.abs(j - i) <= 1) v.preload = "auto";
-    else v.preload = "none";
+  items.forEach((article, j) => {
+    if (Math.abs(j - i) <= 1) {
+      const vEl = ensureVideoEl(article);
+      if (vEl) vEl.preload = "auto";
+    } else {
+      const v = article.querySelector(".feed-video");
+      if (v) v.preload = "none";
+    }
   });
 
   // запускаем активное
@@ -400,12 +444,7 @@ export function bindFeedShell() {
   if (toggle) {
     toggle.addEventListener("click", () => {
       setPreferredView("list");
-      // импортируем по требованию, чтобы не тащить results.js в граф feed.js
-      import("./results.js").then(m => {
-        const f = state.feedView;
-        hideFeed();
-        m.routeSearchAsList(f && f.params).catch(() => {});
-      });
+      exitFeedToList();
     });
   }
 
@@ -414,11 +453,41 @@ export function bindFeedShell() {
     const t = e.target.closest("[data-action='feed-to-list']");
     if (!t) return;
     setPreferredView("list");
-    import("./results.js").then(m => {
-      const f = state.feedView;
+    exitFeedToList();
+  });
+
+  // Левая стрелка в шапке. Если ленту открыли из конкретного list-view
+  // (returnTo), возвращаемся ровно в него; иначе — на главную.
+  document.addEventListener("click", e => {
+    const t = e.target.closest("[data-action='feed-back']");
+    if (!t) return;
+    const f = state.feedView;
+    if (f && f.returnTo) {
+      import("./results.js").then(m => {
+        hideFeed();
+        m.renderListView(f.returnTo).catch(() => {});
+      });
+      return;
+    }
+    import("../shared/router.js").then(m => {
       hideFeed();
-      m.routeSearchAsList(f && f.params).catch(() => {});
+      m.navigate("/");
     });
+  });
+}
+
+// Единый выход «в список». Если есть returnTo — отдаём в renderListView
+// (AI-подбор / showAllInCategory / showAllForFreeform / browse); иначе —
+// плоский routeSearchAsList по f.params.
+function exitFeedToList() {
+  import("./results.js").then(m => {
+    const f = state.feedView;
+    hideFeed();
+    if (f && f.returnTo) {
+      m.renderListView(f.returnTo).catch(() => {});
+      return;
+    }
+    m.routeSearchAsList(f && f.params).catch(() => {});
   });
 }
 

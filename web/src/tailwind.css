@@ -1078,11 +1078,19 @@ body.feed-active > header { display: none; }
   overflow: hidden;
 }
 .feed-video {
+  position: absolute; inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  background: #000;
+  background: transparent;
   display: block;
+}
+.feed-poster {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  background: #000;
+  pointer-events: none;
 }
 .feed-poster-fallback {
   position: absolute; inset: 0;
@@ -1092,7 +1100,10 @@ body.feed-active > header { display: none; }
   text-transform: uppercase;
   letter-spacing: 0.16em;
   background: linear-gradient(135deg, #121317, #0c0d11);
+  pointer-events: none;
 }
+.feed-poster.is-hidden,
+.feed-poster-fallback.is-hidden { display: none; }
 
 .feed-overlay {
   position: absolute; inset: 0;
