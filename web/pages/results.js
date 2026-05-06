@@ -250,13 +250,10 @@ export async function showAllInCategory(category, opts = {}) {
   setResultsBack(backTo, labels[backTo] || "назад");
   // browse-режим: позволяем переключиться в ленту.
   state.lastBrowseParams = { categories: [category.code], skills: [], city: "", q: "" };
-  // Дескриптор для feed→back. «Посмотреть всех в категории» (CTA из AI-подбора,
-  // backTo="picks") — это короткий детур из AI-списка, поэтому из ленты
-  // возвращаем сразу в AI-подбор, минуя showAllInCategory. В browse-режиме
-  // (backTo="roadmap" и т.п.) возврат — в этот же showAllInCategory.
-  state.lastListView = backTo === "picks"
-    ? { kind: "ai-picks" }
-    : { kind: "all-in-cat", category, opts: { backTo, keepClarify } };
+  // Дескриптор для feed→back: всегда возвращаем в этот же showAllInCategory
+  // (с тем же backTo/keepClarify). Если ленту открыли из «Посмотреть всех в
+  // категории» — выходим обратно туда, а не в AI-подбор.
+  state.lastListView = { kind: "all-in-cat", category, opts: { backTo, keepClarify } };
   setResultsViewToggleVisible(true);
   $("#results-title").textContent = category.title;
   setSummary("Загружаем всех специалистов в категории…", "");
@@ -482,9 +479,11 @@ function renderShowAllCTA(totalInCategory, picksCount) {
 async function showAllForFreeform(params) {
   syncURL("/search" + buildSearchQs(params));
   showView("results");
-  setResultsBack("clarify", "уточнить запрос");
-  // Дескриптор: feed→back должен вернуть в тот же free-form список,
-  // а не в AI-подбор (даже если lastPicks остались с keepClarify).
+  // Симметрично с «Посмотреть всех в категории»: эта страница — детур из
+  // AI-подбора, поэтому back ведёт в «Подбор по запросу» (restoreAiPicks).
+  // Если picks случайно нет (deep link), back-picks упадёт в clarify сам.
+  setResultsBack("picks", "к нашему подбору");
+  // Дескриптор: feed→back возвращает на этот же free-form список.
   state.lastListView = { kind: "all-by-q", params };
   state.lastBrowseParams = params;
   setResultsViewToggleVisible(true);
