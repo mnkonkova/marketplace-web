@@ -335,7 +335,21 @@
           <label>Ставка до <input name="rate_max" type="number" min="0" inputmode="numeric" /></label>
           <label class="col-span-2 sm:col-span-1">Валюта <input name="currency" maxlength="3" placeholder="RUB" /></label>
         </div>
-        <label>Аватар (URL) <input name="avatar_url" type="url" placeholder="https://..." /></label>
+        <div class="me-avatar-row">
+          <div class="me-avatar-preview">
+            <img id="me-avatar-img" alt="" />
+            <span id="me-avatar-fallback">?</span>
+          </div>
+          <div class="me-avatar-controls">
+            <input type="hidden" name="avatar_url" />
+            <input id="me-avatar-file" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+            <div class="flex gap-2 flex-wrap">
+              <button type="button" id="me-avatar-pick" class="cart-btn-secondary text-[11px] uppercase tracking-overline">Загрузить аватар</button>
+              <button type="button" id="me-avatar-clear" class="cart-btn-secondary text-[11px] uppercase tracking-overline hidden">Убрать</button>
+            </div>
+            <span id="me-avatar-msg" class="text-xs text-white/55"></span>
+          </div>
+        </div>
       </div>
 
       <div class="me-section border border-white/10 bg-ink-800 p-5 flex flex-col gap-3">
@@ -402,7 +416,21 @@
                 <span id="me-pf-file-progress" class="me-pf-file-progress hidden"></span>
               </div>
             </label>
-            <input id="me-pf-file-thumb" type="url" placeholder="https://… превью к видео (опционально)" />
+            <div class="me-pf-thumb-row">
+              <div class="me-pf-thumb-preview">
+                <img id="me-pf-file-thumb-img" alt="" />
+                <span id="me-pf-file-thumb-empty">превью</span>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <input type="hidden" id="me-pf-file-thumb" />
+                <input id="me-pf-file-thumb-file" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+                <div class="flex gap-2 flex-wrap">
+                  <button type="button" id="me-pf-file-thumb-pick" class="cart-btn-secondary text-[11px] uppercase tracking-overline">Превью к видео</button>
+                  <button type="button" id="me-pf-file-thumb-clear" class="cart-btn-secondary text-[11px] uppercase tracking-overline hidden">Убрать</button>
+                </div>
+                <span id="me-pf-file-thumb-msg" class="text-xs text-white/55"></span>
+              </div>
+            </div>
             <input id="me-pf-file-title" type="text" maxlength="200" placeholder="Заголовок ролика" />
             <textarea id="me-pf-file-desc" maxlength="1000" rows="2" placeholder="Короткое описание (опционально)"></textarea>
             <div class="flex gap-2 items-center justify-end">

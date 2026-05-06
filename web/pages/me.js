@@ -76,9 +76,28 @@ function renderMeForm(p) {
   form.elements.bio.value = p.bio || "";
   form.elements.contact_email.value = p.contact_email || "";
   form.elements.contact_phone.value = p.contact_phone || "";
+  renderMeAvatarPreview(p.avatar_url || "", p.display_name || "");
   renderMeStatus(!!p.is_published);
   renderMeCategories(p.categories || [], p.primary_category || "");
   renderMeSkills(p.skill_ids || []);
+}
+
+function renderMeAvatarPreview(url, displayName) {
+  const wrap = document.querySelector(".me-avatar-preview");
+  const img = $("#me-avatar-img");
+  const fallback = $("#me-avatar-fallback");
+  const clearBtn = $("#me-avatar-clear");
+  if (!wrap || !img || !fallback) return;
+  if (url) {
+    img.src = url;
+    wrap.classList.add("has-image");
+    if (clearBtn) clearBtn.classList.remove("hidden");
+  } else {
+    img.removeAttribute("src");
+    wrap.classList.remove("has-image");
+    fallback.textContent = (displayName || "?").trim().charAt(0).toUpperCase() || "?";
+    if (clearBtn) clearBtn.classList.add("hidden");
+  }
 }
 
 function renderMeStatus(isPublished) {
@@ -198,7 +217,92 @@ export function bindMeForm() {
     saveMeProfile({ publish: false });
   });
   $("#me-check-bio").addEventListener("click", runProfileCheck);
+  bindAvatarPicker();
   bindPortfolioForm();
+}
+
+/* ───── avatar (image upload) ──────────────────────────────────── */
+
+function bindAvatarPicker() {
+  const pick = $("#me-avatar-pick");
+  const file = $("#me-avatar-file");
+  const clear = $("#me-avatar-clear");
+  const form = $("#me-form");
+  if (!pick || !file || !form) return;
+
+  pick.addEventListener("click", () => file.click());
+
+  file.addEventListener("change", async () => {
+    const f = file.files && file.files[0];
+    if (!f) return;
+    const url = await uploadImage(f, $("#me-avatar-msg"), pick);
+    if (url) {
+      form.elements.avatar_url.value = url;
+      const displayName = form.elements.display_name.value || "";
+      renderMeAvatarPreview(url, displayName);
+    }
+    file.value = "";
+  });
+
+  if (clear) {
+    clear.addEventListener("click", () => {
+      form.elements.avatar_url.value = "";
+      const displayName = form.elements.display_name.value || "";
+      renderMeAvatarPreview("", displayName);
+      $("#me-avatar-msg").textContent = "Сохранится после нажатия «Сохранить».";
+    });
+  }
+}
+
+// uploadImage — общий upload-helper для аватара и превью видео.
+// Возвращает public_url или null при ошибке. msgEl/btn — элементы для
+// статуса/блокировки в конкретном UI (у каждого пикера свой).
+async function uploadImage(file, msgEl, btn) {
+  const MAX = 5 * 1024 * 1024;
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type || "")) {
+    if (msgEl) msgEl.textContent = "Поддерживаем jpg, png, webp.";
+    return null;
+  }
+  if (file.size > MAX) {
+    if (msgEl) msgEl.textContent = "Файл больше 5 МБ — пережми.";
+    return null;
+  }
+  if (btn) btn.disabled = true;
+  if (msgEl) msgEl.textContent = "Загружаем…";
+  try {
+    const urlRes = await authFetch(`${API}/me/uploads/image`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        filename: file.name,
+        content_type: file.type,
+        size_bytes: file.size,
+      }),
+    });
+    if (urlRes.status === 503) throw new Error("хранилище не настроено");
+    if (!urlRes.ok) {
+      const err = await urlRes.json().catch(() => ({}));
+      throw new Error(err.error || `http_${urlRes.status}`);
+    }
+    const { upload_url, public_url } = await urlRes.json();
+
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", upload_url);
+      xhr.setRequestHeader("Content-Type", file.type);
+      xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`upload_${xhr.status}`)));
+      xhr.onerror = () => reject(new Error("upload_failed"));
+      xhr.send(file);
+    });
+
+    if (msgEl) msgEl.textContent = "Загружено.";
+    return public_url;
+  } catch (e) {
+    if (msgEl) msgEl.textContent = `Не удалось: ${e.message}`;
+    return null;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 /* ───── portfolio (видео) ───────────────────────────────────────
@@ -249,6 +353,49 @@ function bindPortfolioForm() {
 
   const upBtn = $("#me-pf-upload");
   if (upBtn) upBtn.addEventListener("click", uploadPortfolioFile);
+
+  // Thumbnail file picker для file-таба. Аплоад идёт сразу при выборе,
+  // полученный public_url пишется в скрытое поле #me-pf-file-thumb,
+  // которое потом читает uploadPortfolioFile при создании записи.
+  const thumbPick = $("#me-pf-file-thumb-pick");
+  const thumbFile = $("#me-pf-file-thumb-file");
+  const thumbClear = $("#me-pf-file-thumb-clear");
+  if (thumbPick && thumbFile) {
+    thumbPick.addEventListener("click", () => thumbFile.click());
+    thumbFile.addEventListener("change", async () => {
+      const f = thumbFile.files && thumbFile.files[0];
+      if (!f) return;
+      const url = await uploadImage(f, $("#me-pf-file-thumb-msg"), thumbPick);
+      if (url) {
+        $("#me-pf-file-thumb").value = url;
+        renderThumbPreview(url);
+      }
+      thumbFile.value = "";
+    });
+  }
+  if (thumbClear) {
+    thumbClear.addEventListener("click", () => {
+      $("#me-pf-file-thumb").value = "";
+      renderThumbPreview("");
+      $("#me-pf-file-thumb-msg").textContent = "";
+    });
+  }
+}
+
+function renderThumbPreview(url) {
+  const wrap = document.querySelector(".me-pf-thumb-preview");
+  const img = $("#me-pf-file-thumb-img");
+  const clear = $("#me-pf-file-thumb-clear");
+  if (!wrap || !img) return;
+  if (url) {
+    img.src = url;
+    wrap.classList.add("has-image");
+    if (clear) clear.classList.remove("hidden");
+  } else {
+    img.removeAttribute("src");
+    wrap.classList.remove("has-image");
+    if (clear) clear.classList.add("hidden");
+  }
 }
 
 function switchPortfolioTab(name) {
@@ -528,6 +675,9 @@ async function uploadPortfolioFile() {
     fileInput.value = "";
     $("#me-pf-file-label").textContent = "Нажмите, чтобы выбрать файл";
     $("#me-pf-file-thumb").value = "";
+    renderThumbPreview("");
+    const thumbMsg = $("#me-pf-file-thumb-msg");
+    if (thumbMsg) thumbMsg.textContent = "";
     $("#me-pf-file-title").value = "";
     $("#me-pf-file-desc").value = "";
     progressEl.classList.add("hidden");
