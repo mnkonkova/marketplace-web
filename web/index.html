@@ -349,6 +349,15 @@
       </div>
 
       <div class="me-section border border-white/10 bg-ink-800 p-5 flex flex-col gap-3">
+        <h3 class="m-0 text-[11px] uppercase tracking-overline text-mint-400">[ Контакты для заявок ]</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label>Email <input name="contact_email" type="email" placeholder="you@example.com" /></label>
+          <label>Телефон / Telegram <input name="contact_phone" placeholder="+7 999 …" /></label>
+        </div>
+        <p class="text-xs text-white/40 m-0">В ленте, поиске и публичном профиле эти данные не показываются. Их увидит только заказчик после того, как создаст заявку и выберет вас. Логин для входа в аккаунт остаётся прежним — даже если поменяете контакт здесь.</p>
+      </div>
+
+      <div class="me-section border border-white/10 bg-ink-800 p-5 flex flex-col gap-3">
         <h3 class="m-0 text-[11px] uppercase tracking-overline text-mint-400">[ Категории ]</h3>
         <div id="me-categories" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
         <p class="text-xs text-white/40 m-0">Отметьте категории. Кликните «★ основная» — она попадёт в primary.</p>
@@ -438,6 +447,7 @@
     </div>
     <h3 class="text-xl font-semibold mb-2">Заявка отправлена</h3>
     <p id="lead-success-text" class="text-white/65 text-sm mb-4">Специалисты получат ваш бриф и свяжутся с вами по указанному контакту.</p>
+    <div id="lead-success-contacts" class="hidden text-left mb-4"></div>
     <button class="cart-btn-primary" data-action="close-success">Хорошо</button>
   </div>
 </dialog>

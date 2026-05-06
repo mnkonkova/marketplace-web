@@ -74,6 +74,8 @@ function renderMeForm(p) {
   form.elements.currency.value = p.currency || "RUB";
   form.elements.avatar_url.value = p.avatar_url || "";
   form.elements.bio.value = p.bio || "";
+  form.elements.contact_email.value = p.contact_email || "";
+  form.elements.contact_phone.value = p.contact_phone || "";
   renderMeStatus(!!p.is_published);
   renderMeCategories(p.categories || [], p.primary_category || "");
   renderMeSkills(p.skill_ids || []);
@@ -582,6 +584,8 @@ export async function saveMeProfile({ publish }) {
     avatar_url: String(data.get("avatar_url") || "").trim(),
     city: String(data.get("city") || "").trim(),
     currency: String(data.get("currency") || "RUB").trim().toUpperCase() || "RUB",
+    contact_email: String(data.get("contact_email") || "").trim(),
+    contact_phone: String(data.get("contact_phone") || "").trim(),
   };
   const rmin = data.get("rate_min");
   const rmax = data.get("rate_max");

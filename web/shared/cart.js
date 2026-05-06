@@ -249,13 +249,53 @@ async function submitLead(form) {
     $("#lead-error").classList.remove("hidden");
     return;
   }
+  // Ответ /leads теперь содержит контакты выбранных спецов — показываем их
+  // менеджеру в success-диалоге (видны только здесь, в feed/search/публичном
+  // профиле они не появляются).
+  const leadResp = await res.json().catch(() => ({}));
+  const specialists = Array.isArray(leadResp.specialists) ? leadResp.specialists : [];
   const recipients = state.cart.map(s => s.display_name).join(", ");
   $("#lead-dialog").close();
   $("#lead-success-text").textContent =
     `Заявка отправлена (${state.cart.length}): ${recipients}. Бриф ушёл специалистам, ответят на ${payload.client_contact}.`;
+  renderLeadSuccessContacts(specialists);
   $("#lead-success").showModal();
   form.reset();
   clearCart();
+}
+
+function renderLeadSuccessContacts(specialists) {
+  const root = $("#lead-success-contacts");
+  if (!root) return;
+  if (!specialists.length) {
+    root.classList.add("hidden");
+    root.innerHTML = "";
+    return;
+  }
+  const rows = specialists.map(s => {
+    const name = escape(s.display_name || "Специалист");
+    const lines = [];
+    if (s.contact_email) {
+      lines.push(`<a class="underline decoration-dotted hover:text-white" href="mailto:${escape(s.contact_email)}">${escape(s.contact_email)}</a>`);
+    }
+    if (s.contact_phone) {
+      lines.push(`<span>${escape(s.contact_phone)}</span>`);
+    }
+    if (!lines.length) {
+      lines.push(`<span class="text-white/40">контакты не указаны — ответят через маркетплейс</span>`);
+    }
+    return `
+      <div class="border border-white/10 bg-ink-900/60 px-3 py-2 flex flex-col gap-0.5 text-sm">
+        <div class="font-medium">${name}</div>
+        <div class="text-white/65 flex flex-col gap-0.5 text-[13px]">${lines.join("")}</div>
+      </div>
+    `;
+  }).join("");
+  root.innerHTML = `
+    <div class="text-[10px] uppercase tracking-overline text-white/45 mb-2">Контакты для прямой связи</div>
+    <div class="flex flex-col gap-2">${rows}</div>
+  `;
+  root.classList.remove("hidden");
 }
 
 export function bindLeadDialog() {
