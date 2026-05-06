@@ -157,16 +157,66 @@ export function bindMeForm() {
    будет та же, добавится «или загрузите файл». */
 
 function bindPortfolioForm() {
+  // URL-форма
   const btn = $("#me-pf-add");
-  if (!btn) return;
-  btn.addEventListener("click", addPortfolioVideo);
-  // Список с delete-кнопками — делегатор, чтобы не перенавешивать при rerender.
+  if (btn) btn.addEventListener("click", addPortfolioVideo);
+
+  // delete-делегатор на списке
   const list = $("#me-portfolio-list");
   if (list) {
     list.addEventListener("click", e => {
       const t = e.target.closest("[data-pf-delete]");
       if (t) deletePortfolioVideo(t.dataset.pfDelete);
     });
+  }
+
+  // tab-switch между «С устройства» и «По ссылке»
+  $$("[data-pf-tab]").forEach(t => {
+    t.addEventListener("click", () => switchPortfolioTab(t.dataset.pfTab));
+  });
+
+  // file-picker
+  const fileInput = $("#me-pf-file");
+  if (fileInput) {
+    fileInput.addEventListener("change", () => {
+      const f = fileInput.files && fileInput.files[0];
+      const label = $("#me-pf-file-label");
+      const upBtn = $("#me-pf-upload");
+      if (f) {
+        label.textContent = `${f.name} · ${(f.size / (1024 * 1024)).toFixed(1)} МБ`;
+        upBtn.disabled = false;
+      } else {
+        label.textContent = "Нажмите, чтобы выбрать файл";
+        upBtn.disabled = true;
+      }
+    });
+  }
+
+  const upBtn = $("#me-pf-upload");
+  if (upBtn) upBtn.addEventListener("click", uploadPortfolioFile);
+}
+
+function switchPortfolioTab(name) {
+  $$("[data-pf-tab]").forEach(t => {
+    const on = t.dataset.pfTab === name;
+    t.classList.toggle("me-pf-tab-active", on);
+    t.classList.toggle("text-white/60", !on);
+    t.classList.toggle("border-white/20", on);
+    t.classList.toggle("border-white/10", !on);
+  });
+  // hidden + flex flex-col управляем явно — Tailwind '.hidden' = display:none
+  const file = $("#me-pf-tab-file");
+  const url = $("#me-pf-tab-url");
+  if (name === "file") {
+    file.classList.remove("hidden");
+    file.classList.add("flex");
+    url.classList.add("hidden");
+    url.classList.remove("flex");
+  } else {
+    url.classList.remove("hidden");
+    url.classList.add("flex");
+    file.classList.add("hidden");
+    file.classList.remove("flex");
   }
 }
 
@@ -256,6 +306,105 @@ async function addPortfolioVideo() {
     await loadMePortfolio();
   } catch (err) {
     setPortfolioMsg(`Не удалось добавить: ${err.message}`, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+async function uploadPortfolioFile() {
+  const fileInput = $("#me-pf-file");
+  const f = fileInput.files && fileInput.files[0];
+  if (!f) return;
+  const title = ($("#me-pf-file-title").value || "").trim() || f.name.replace(/\.(mp4|mov)$/i, "");
+  const description = ($("#me-pf-file-desc").value || "").trim();
+  const thumb = ($("#me-pf-file-thumb").value || "").trim();
+
+  const MAX = 50 * 1024 * 1024;
+  if (f.size > MAX) {
+    setPortfolioMsg(`Файл больше 50 МБ — пока ограничение, перекодируйте поменьше.`, true);
+    return;
+  }
+  if (!/^video\/(mp4|quicktime)$/.test(f.type || "")) {
+    setPortfolioMsg("Поддерживаем mp4 и mov. Конвертируйте файл.", true);
+    return;
+  }
+
+  const btn = $("#me-pf-upload");
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = "Готовим аплоад…";
+  const progressEl = $("#me-pf-file-progress");
+  progressEl.classList.remove("hidden");
+  progressEl.textContent = "0%";
+
+  try {
+    // 1) presigned PUT URL
+    const urlRes = await authFetch(`${API}/me/portfolio/upload-url`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        filename: f.name,
+        content_type: f.type,
+        size_bytes: f.size,
+      }),
+    });
+    if (urlRes.status === 503) throw new Error("хранилище не настроено на сервере");
+    if (!urlRes.ok) {
+      const err = await urlRes.json().catch(() => ({}));
+      throw new Error(err.error || `http_${urlRes.status}`);
+    }
+    const { upload_url, public_url } = await urlRes.json();
+
+    // 2) PUT файла в S3 — через XHR, чтобы был progress-event.
+    btn.textContent = "Загружаем…";
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", upload_url);
+      xhr.setRequestHeader("Content-Type", f.type);
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) {
+          progressEl.textContent = `${Math.round((e.loaded / e.total) * 100)}%`;
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`upload_${xhr.status}`));
+      };
+      xhr.onerror = () => reject(new Error("upload_failed"));
+      xhr.onabort = () => reject(new Error("upload_aborted"));
+      xhr.send(f);
+    });
+
+    // 3) создаём запись в portfolio_items
+    btn.textContent = "Сохраняем…";
+    const createRes = await authFetch(`${API}/me/portfolio`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        video_url: public_url,
+        thumbnail_url: thumb,
+        title,
+        description,
+      }),
+    });
+    if (!createRes.ok) {
+      const err = await createRes.json().catch(() => ({}));
+      throw new Error(err.error || `http_${createRes.status}`);
+    }
+
+    // reset UI
+    fileInput.value = "";
+    $("#me-pf-file-label").textContent = "Нажмите, чтобы выбрать файл";
+    $("#me-pf-file-thumb").value = "";
+    $("#me-pf-file-title").value = "";
+    $("#me-pf-file-desc").value = "";
+    progressEl.classList.add("hidden");
+    setPortfolioMsg("Загружено.", false);
+    await loadMePortfolio();
+  } catch (err) {
+    setPortfolioMsg(`Не удалось загрузить: ${err.message}`, true);
+    progressEl.classList.add("hidden");
   } finally {
     btn.disabled = false;
     btn.textContent = orig;

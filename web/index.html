@@ -363,15 +363,40 @@
         <div id="me-portfolio-list" class="flex flex-col gap-2"></div>
 
         <div class="border-t border-white/[0.06] pt-4 flex flex-col gap-3">
-          <div class="text-[11px] uppercase tracking-overline text-white/55">Добавить видео по ссылке</div>
-          <p class="text-xs text-white/40 m-0">Пока что добавляем видео по URL — подойдёт прямой mp4 (вертикальный, 9:16). Загрузка с устройства появится после подключения хранилища.</p>
-          <input id="me-pf-video-url" type="url" placeholder="https://… ваш mp4-файл" />
-          <input id="me-pf-thumb-url" type="url" placeholder="https://… превью (опционально)" />
-          <input id="me-pf-title" type="text" maxlength="200" placeholder="Заголовок ролика" />
-          <textarea id="me-pf-description" maxlength="1000" rows="2" placeholder="Короткое описание (опционально)"></textarea>
-          <div class="flex gap-2 items-center justify-end">
-            <span id="me-portfolio-msg" class="text-xs text-white/55 mr-auto"></span>
-            <button id="me-pf-add" type="button" class="cart-btn-primary">Добавить</button>
+          <div class="flex gap-2 text-[11px] uppercase tracking-overline">
+            <button type="button" data-pf-tab="file" class="me-pf-tab me-pf-tab-active px-3 py-1.5 border border-white/20">С устройства</button>
+            <button type="button" data-pf-tab="url" class="me-pf-tab px-3 py-1.5 border border-white/10 text-white/60">По ссылке</button>
+          </div>
+
+          <!-- Tab: file upload -->
+          <div id="me-pf-tab-file" class="flex flex-col gap-3">
+            <p class="text-xs text-white/40 m-0">Загрузите вертикальный mp4 (9:16), до 50&nbsp;МБ. Файл уходит напрямую в наше хранилище — наш сервер не проксирует.</p>
+            <label class="me-pf-file-drop" for="me-pf-file">
+              <input id="me-pf-file" type="file" accept="video/mp4,video/quicktime" hidden />
+              <div class="me-pf-file-drop-inner">
+                <span id="me-pf-file-label" class="me-pf-file-label">Нажмите, чтобы выбрать файл</span>
+                <span id="me-pf-file-progress" class="me-pf-file-progress hidden"></span>
+              </div>
+            </label>
+            <input id="me-pf-file-thumb" type="url" placeholder="https://… превью к видео (опционально)" />
+            <input id="me-pf-file-title" type="text" maxlength="200" placeholder="Заголовок ролика" />
+            <textarea id="me-pf-file-desc" maxlength="1000" rows="2" placeholder="Короткое описание (опционально)"></textarea>
+            <div class="flex gap-2 items-center justify-end">
+              <span id="me-portfolio-msg" class="text-xs text-white/55 mr-auto"></span>
+              <button id="me-pf-upload" type="button" class="cart-btn-primary" disabled>Загрузить</button>
+            </div>
+          </div>
+
+          <!-- Tab: by URL -->
+          <div id="me-pf-tab-url" class="hidden flex-col gap-3">
+            <p class="text-xs text-white/40 m-0">Если ваш mp4 уже хостится — вставьте прямую ссылку на файл (вертикальный, 9:16).</p>
+            <input id="me-pf-video-url" type="url" placeholder="https://… ваш mp4-файл" />
+            <input id="me-pf-thumb-url" type="url" placeholder="https://… превью (опционально)" />
+            <input id="me-pf-title" type="text" maxlength="200" placeholder="Заголовок ролика" />
+            <textarea id="me-pf-description" maxlength="1000" rows="2" placeholder="Короткое описание (опционально)"></textarea>
+            <div class="flex gap-2 items-center justify-end">
+              <button id="me-pf-add" type="button" class="cart-btn-primary">Добавить по ссылке</button>
+            </div>
           </div>
         </div>
       </div>

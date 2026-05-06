@@ -847,6 +847,45 @@ dialog select:focus { outline: none; border-color: rgba(255,255,255,0.45); }
 }
 .me-pf-delete:hover { color: var(--danger); border-color: rgba(255,100,112,0.5); }
 
+/* Tabs «С устройства» / «По ссылке» */
+.me-pf-tab {
+  cursor: pointer;
+  background: transparent;
+  font-family: inherit;
+  letter-spacing: 0.16em;
+  transition: background 140ms, color 140ms;
+}
+.me-pf-tab-active {
+  background: rgba(255,255,255,0.06);
+  color: var(--fg);
+}
+
+/* File drop-зона */
+.me-pf-file-drop {
+  display: block;
+  cursor: pointer;
+  border: 1px dashed rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.015);
+  padding: 18px;
+  text-align: center;
+  transition: border-color 140ms, background 140ms;
+}
+.me-pf-file-drop:hover {
+  border-color: rgba(74,214,193,0.5);
+  background: rgba(74,214,193,0.04);
+}
+.me-pf-file-drop-inner {
+  display: flex; flex-direction: column; gap: 6px; align-items: center;
+}
+.me-pf-file-label {
+  font-size: 13px; color: rgba(255,255,255,0.75);
+}
+.me-pf-file-progress {
+  font-size: 11px; color: var(--accent-2);
+  letter-spacing: 0.16em; font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+
 .bio-check {
   display: flex; flex-direction: column; gap: 6px;
   background: rgba(255,255,255,0.02);
