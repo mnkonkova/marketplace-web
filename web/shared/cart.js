@@ -69,9 +69,23 @@ export function toggleCart(spec, btn) {
   if (btn) updateCartButton(btn, spec.user_id);
 }
 
+// Иконки для feed-варианта кнопки (круглый 48×48). Текст «В проект» в этой
+// форме переполнял кнопку — поэтому для feed-cart рендерим только +/−.
+const FEED_PLUS_SVG  = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
+const FEED_MINUS_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>';
+
 export function updateCartButton(btn, userId) {
   const inside = inCart(userId);
-  btn.textContent = inside ? "В проекте ✓" : "В проект";
+  if (btn.classList.contains("feed-cart")) {
+    btn.innerHTML = inside ? FEED_MINUS_SVG : FEED_PLUS_SVG;
+    btn.setAttribute("aria-label", inside ? "Убрать из проекта" : "В проект");
+    // Подпись лежит соседом в .feed-action-stack — обновляем синхронно.
+    const stack = btn.parentElement;
+    const label = stack && stack.querySelector(".feed-action-label");
+    if (label) label.textContent = inside ? "В проекте" : "В проект";
+  } else {
+    btn.textContent = inside ? "В проекте ✓" : "В проект";
+  }
   btn.classList.toggle("in-cart", inside);
 }
 

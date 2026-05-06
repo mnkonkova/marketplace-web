@@ -21,3 +21,16 @@ export async function loadCategories() {
     (stats.items || []).forEach(s => { state.categoryCounts[s.code] = s.count; });
   }
 }
+
+// loadSkills — кеширует справочник навыков (slug → title/kind). Используется
+// в результатах поиска (рендер skill-чипов) и /me (редактор навыков).
+// Идемпотентен: повторный вызов после успешной загрузки — no-op.
+export async function loadSkills() {
+  if (state.skills && state.skills.length) return;
+  try {
+    const res = await fetch(`${API}/skills`);
+    if (!res.ok) return;
+    const data = await res.json();
+    state.skills = data.items || [];
+  } catch (_) { /* tолерантно — без каталога чипы покажутся слагами */ }
+}

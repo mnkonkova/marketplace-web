@@ -34,6 +34,15 @@ export function categoryTitle(code) {
   return c ? c.title : code;
 }
 
+// skillTitle — превращает slug навыка в человекочитаемое имя через каталог
+// в state.skills. Если каталог ещё не загружен или slug неизвестен — отдаём
+// сам slug (лучше что-то, чем ничего).
+export function skillTitle(slug) {
+  const all = state.skills || [];
+  const s = all.find(x => x.slug === slug);
+  return s ? s.title : slug;
+}
+
 export function formatRate(min, max, cur) {
   cur = cur || "RUB";
   if (min == null && max == null) return "ставка по договорённости";

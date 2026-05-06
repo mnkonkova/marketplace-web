@@ -7,7 +7,7 @@ import { API, state } from "../shared/state.js";
 import { $, $$, escape } from "../shared/ui.js";
 import { syncURL, showView } from "../shared/router.js";
 import { isLoggedIn, authFetch, openAuthDialog } from "../shared/auth.js";
-import { loadCategories } from "../shared/categories.js";
+import { loadCategories, loadSkills } from "../shared/categories.js";
 
 export async function routeMe() {
   if (!state.categories.length) {
@@ -31,14 +31,19 @@ async function openMe() {
     try { await loadCategories(); } catch (_) {}
   }
   try {
-    const res = await authFetch(`${API}/me/profile`);
-    if (res.status === 404) {
+    // Skills-каталог нужен для рендера секции навыков. Грузим параллельно с
+    // профилем, кешируем в state.skills.
+    const [profileRes] = await Promise.all([
+      authFetch(`${API}/me/profile`),
+      loadSkills(),
+    ]);
+    if (profileRes.status === 404) {
       $("#me-no-profile").classList.remove("hidden");
       $("#me-form").classList.add("hidden");
       return;
     }
-    if (!res.ok) throw new Error(`http_${res.status}`);
-    const profile = await res.json();
+    if (!profileRes.ok) throw new Error(`http_${profileRes.status}`);
+    const profile = await profileRes.json();
     state.me = profile;
     $("#me-no-profile").classList.add("hidden");
     $("#me-form").classList.remove("hidden");
@@ -71,6 +76,7 @@ function renderMeForm(p) {
   form.elements.bio.value = p.bio || "";
   renderMeStatus(!!p.is_published);
   renderMeCategories(p.categories || [], p.primary_category || "");
+  renderMeSkills(p.skill_ids || []);
 }
 
 function renderMeStatus(isPublished) {
@@ -141,6 +147,48 @@ function paintMeCategoryCell(cell, code) {
   cell.classList.toggle("is-primary", isPrimary);
 }
 
+/* ───── навыки ──────────────────────────────────────────────────
+   Backend ждёт skill_ids (UUID), профиль возвращает их в p.skill_ids.
+   Каталог в state.skills — там лежат id+slug+title+kind. Рисуем чипы
+   двумя группами: tools и platforms; in-memory selection — Set строк-id. */
+
+const meSkills = { ids: new Set() };
+
+function renderMeSkills(currentIDs) {
+  const tools = $("#me-skills-tools");
+  const platforms = $("#me-skills-platforms");
+  if (!tools || !platforms) return;
+  tools.innerHTML = "";
+  platforms.innerHTML = "";
+  meSkills.ids = new Set(currentIDs || []);
+  const all = state.skills || [];
+  if (all.length === 0) {
+    tools.innerHTML = '<span class="text-xs text-white/40 italic">Каталог навыков не загрузился.</span>';
+    return;
+  }
+  all.forEach(sk => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "skill-chip";
+    chip.dataset.id = sk.id;
+    chip.textContent = sk.title;
+    chip.addEventListener("click", () => toggleMeSkill(sk.id, chip));
+    paintMeSkillChip(chip);
+    if (sk.kind === "platform") platforms.appendChild(chip);
+    else tools.appendChild(chip);
+  });
+}
+
+function toggleMeSkill(id, chip) {
+  if (meSkills.ids.has(id)) meSkills.ids.delete(id);
+  else meSkills.ids.add(id);
+  paintMeSkillChip(chip);
+}
+
+function paintMeSkillChip(chip) {
+  chip.classList.toggle("is-on", meSkills.ids.has(chip.dataset.id));
+}
+
 export function bindMeForm() {
   const form = $("#me-form");
   form.addEventListener("submit", e => {
@@ -161,12 +209,17 @@ function bindPortfolioForm() {
   const btn = $("#me-pf-add");
   if (btn) btn.addEventListener("click", addPortfolioVideo);
 
-  // delete-делегатор на списке
+  // delete- и cat-toggle-делегатор на списке.
   const list = $("#me-portfolio-list");
   if (list) {
     list.addEventListener("click", e => {
-      const t = e.target.closest("[data-pf-delete]");
-      if (t) deletePortfolioVideo(t.dataset.pfDelete);
+      const del = e.target.closest("[data-pf-delete]");
+      if (del) {
+        deletePortfolioVideo(del.dataset.pfDelete);
+        return;
+      }
+      const cat = e.target.closest("[data-pf-cat]");
+      if (cat) togglePortfolioCat(cat);
     });
   }
 
@@ -220,6 +273,56 @@ function switchPortfolioTab(name) {
   }
 }
 
+// portfolioCats — текущее состояние category_codes по id, чтобы toggle работал
+// между моментами загрузки списка. Перезаписывается на каждом renderMePortfolio.
+const portfolioCats = new Map();
+
+// defaultVideoCategories — что прислать в `category_codes` при создании. Сейчас
+// это primary категория профиля (если есть), иначе []. Бэк дополнительно
+// подставит primary, если массив пустой, но пробрасываем явно — на случай
+// будущего расширения формы.
+function defaultVideoCategories() {
+  const primary = (state.me && state.me.primary_category) || "";
+  return primary ? [primary] : [];
+}
+
+async function togglePortfolioCat(chip) {
+  const id = chip.dataset.pfCat;
+  const code = chip.dataset.pfCatCode;
+  if (!id || !code) return;
+  const current = new Set(portfolioCats.get(id) || []);
+  if (current.has(code)) current.delete(code);
+  else current.add(code);
+  const next = [...current];
+  // Дизейблим все чипы этой строки на время запроса, чтобы не было
+  // race-update'ов; после успеха обновляем DOM-classes по одной строке.
+  const cellChips = chip.parentElement
+    ? chip.parentElement.querySelectorAll("[data-pf-cat]")
+    : [chip];
+  cellChips.forEach(c => { c.disabled = true; });
+  try {
+    const res = await authFetch(`${API}/me/portfolio/${encodeURIComponent(id)}/categories`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ codes: next }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `http_${res.status}`);
+    }
+    const item = await res.json();
+    portfolioCats.set(id, item.category_codes || []);
+    const selected = new Set(item.category_codes || []);
+    cellChips.forEach(c => {
+      c.classList.toggle("is-on", selected.has(c.dataset.pfCatCode));
+    });
+  } catch (err) {
+    setPortfolioMsg(`Не удалось сохранить категории: ${err.message}`, true);
+  } finally {
+    cellChips.forEach(c => { c.disabled = false; });
+  }
+}
+
 async function loadMePortfolio() {
   try {
     const res = await authFetch(`${API}/me/portfolio`);
@@ -236,6 +339,7 @@ function renderMePortfolio(items) {
   const cnt = $("#me-portfolio-count");
   if (!list) return;
   list.innerHTML = "";
+  portfolioCats.clear();
   const videos = items.filter(it => it.video_url);
   cnt.textContent = videos.length ? `${videos.length} видео` : "пока пусто";
   if (videos.length === 0) {
@@ -245,7 +349,10 @@ function renderMePortfolio(items) {
     list.appendChild(empty);
     return;
   }
-  videos.forEach(it => list.appendChild(portfolioRow(it)));
+  videos.forEach(it => {
+    portfolioCats.set(it.id, it.category_codes || []);
+    list.appendChild(portfolioRow(it));
+  });
 }
 
 function portfolioRow(it) {
@@ -260,10 +367,30 @@ function portfolioRow(it) {
       <div class="me-pf-title">${escape(it.title || "(без названия)")}</div>
       <div class="me-pf-meta"><a href="${escape(it.video_url)}" target="_blank" rel="noopener">открыть mp4 ↗</a>${it.duration_sec ? ` · ${it.duration_sec}s` : ""}${it.aspect ? ` · ${escape(it.aspect)}` : ""}</div>
       ${it.description ? `<div class="me-pf-desc">${escape(it.description)}</div>` : ""}
+      ${renderPortfolioCats(it)}
     </div>
     <button type="button" class="me-pf-delete" data-pf-delete="${escape(it.id)}" aria-label="Удалить">✕</button>
   `;
   return row;
+}
+
+// renderPortfolioCats — рисует toggleable-чипы из категорий профиля.
+// Активный чип — категория уже привязана к видео. Click шлёт PUT и
+// перерисовывает чип; видео без категорий не пропадает из галереи кабинета,
+// но не попадёт под фильтр в /feed.
+function renderPortfolioCats(it) {
+  const profileCats = (state.me && state.me.categories) || [];
+  if (profileCats.length === 0) {
+    return `<div class="me-pf-cats-empty">Сначала выберите категории профиля выше — тогда сможете привязать видео.</div>`;
+  }
+  const titleByCode = new Map((state.categories || []).map(c => [c.code, c.title]));
+  const selected = new Set(it.category_codes || []);
+  const chips = profileCats.map(code => {
+    const title = titleByCode.get(code) || code;
+    const on = selected.has(code);
+    return `<button type="button" class="me-pf-cat-chip ${on ? "is-on" : ""}" data-pf-cat="${escape(it.id)}" data-pf-cat-code="${escape(code)}">${escape(title)}</button>`;
+  }).join("");
+  return `<div class="me-pf-cats">${chips}</div>`;
 }
 
 async function addPortfolioVideo() {
@@ -292,6 +419,7 @@ async function addPortfolioVideo() {
         thumbnail_url: thumbURL,
         title,
         description,
+        category_codes: defaultVideoCategories(),
       }),
     });
     if (!res.ok) {
@@ -386,6 +514,7 @@ async function uploadPortfolioFile() {
         thumbnail_url: thumb,
         title,
         description,
+        category_codes: defaultVideoCategories(),
       }),
     });
     if (!createRes.ok) {
@@ -509,6 +638,18 @@ export async function saveMeProfile({ publish }) {
       }
       profile = await res.json();
     }
+
+    // Skills: PUT всегда, в т.ч. с пустым массивом — позволяет «снять все».
+    res = await authFetch(`${API}/me/profile/skills`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ skill_ids: [...meSkills.ids] }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `http_${res.status}`);
+    }
+    profile = await res.json();
 
     if (publish) {
       res = await authFetch(`${API}/me/profile/publish`, { method: "POST" });

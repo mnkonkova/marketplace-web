@@ -118,13 +118,33 @@ function renderReviewItem(rev) {
 }
 
 function renderPortfolioItem(p) {
-  const href = p.external_url || p.video_url || "";
+  // Видео — встраиваем нативный <video> с контролами, чтобы юзер мог посмотреть
+  // прямо на странице профиля. preload="metadata" — тянем только размеры/постер,
+  // полный байтстрим стартует с тапа на play.
+  // Заголовок (title) на публичной карточке не показываем — он обычно
+  // совпадает с именем файла и не несёт пользы заказчику. Описание остаётся,
+  // если автор его явно заполнил.
+  if (p.video_url) {
+    const poster = p.thumbnail_url ? `poster="${escape(p.thumbnail_url)}"` : "";
+    const desc = (p.description || "").trim();
+    return `
+      <div class="portfolio-card portfolio-card-video">
+        <video class="portfolio-video"
+               src="${escape(p.video_url)}"
+               ${poster}
+               playsinline preload="metadata" controls></video>
+        ${desc ? `<div class="portfolio-body"><div class="portfolio-desc">${escape(desc)}</div></div>` : ""}
+      </div>
+    `;
+  }
+  // Не-видео (external_url или image) — прежняя логика: постер-плитка + ссылка.
+  const href = p.external_url || "";
   const tag = href ? "a" : "div";
   const attrs = href ? `href="${escape(href)}" target="_blank" rel="noopener noreferrer"` : "";
   const thumbStyle = p.thumbnail_url
     ? `background-image:url('${escape(p.thumbnail_url)}')`
     : "";
-  const thumbContent = p.thumbnail_url ? "" : (p.video_url ? "▶" : "🖼");
+  const thumbContent = p.thumbnail_url ? "" : "🖼";
   return `
     <${tag} class="portfolio-card" ${attrs}>
       <div class="portfolio-thumb" style="${thumbStyle}">${thumbContent}</div>

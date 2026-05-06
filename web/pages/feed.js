@@ -50,7 +50,7 @@ export function setPreferredView(view) {
 /* ───── public entry ─────────────────────────────────────────── */
 
 export async function showFeed(params, opts = {}) {
-  const { pushURL = false } = opts;
+  const { pushURL = false, autoFallback = false } = opts;
   if (pushURL) syncURL("/search" + buildSearchQs(params));
   const f = ensureFeedState();
   f.params = params || {};
@@ -78,6 +78,16 @@ export async function showFeed(params, opts = {}) {
   $("#feed-empty").classList.add("hidden");
 
   await loadNextPage();
+
+  // Smart default: если в этой категории нет ни одного видео и нас позвали с
+  // autoFallback — молча уходим в список. Без баннера: юзер вообще не должен
+  // понять, что был промежуточный шаг.
+  if (autoFallback && f.items.length === 0) {
+    const m = await import("./results.js");
+    await m.routeSearchAsList(params);
+    return;
+  }
+
   startPlayback();
 }
 
@@ -97,6 +107,10 @@ async function loadNextPage() {
   const f = state.feedView;
   if (!f || f.loading || f.done) return;
   f.loading = true;
+  // Прячем плашку «нет видео» на время каждого загрузочного цикла —
+  // если предыдущий ответ был пуст, а сейчас придут items, плашка не должна
+  // остаться на экране поверх айтемов.
+  $("#feed-empty").classList.add("hidden");
   $("#feed-loading").classList.remove("hidden");
 
   try {
@@ -141,9 +155,20 @@ function appendItems(items) {
     f.items.push(it);
     list.appendChild(feedItemEl(it, f.items.length - 1));
   }
+  // Защита от прилипшей плашки: если хоть что-то добавили — плашке тут точно
+  // нечего делать.
+  if (items.length > 0) {
+    $("#feed-empty").classList.add("hidden");
+  }
 }
 
 /* ───── item element ─────────────────────────────────────────── */
+
+// orderCats — primary категория первой, остальные в исходном порядке.
+function orderCats(cats, primary) {
+  if (!primary || !cats.includes(primary)) return cats;
+  return [primary, ...cats.filter(c => c !== primary)];
+}
 
 function feedItemEl(it, index) {
   const f = state.feedView;
@@ -160,10 +185,13 @@ function feedItemEl(it, index) {
     ? `★ ${(sp.rating_avg || 0).toFixed(1)} · ${sp.reviews_count} отз.`
     : "новый";
   const cityLine = `${escape(sp.city || "удалённо")} · ${escape(ratingMeta)}`;
-  const primary = sp.primary_category || (sp.categories && sp.categories[0]);
-  const catChip = primary
-    ? `<span class="feed-cat-chip">${escape(categoryTitle(primary))}</span>`
-    : "";
+  // Показываем все категории спеца, primary первой и подсвеченной. До 3 чипов,
+  // чтобы не съесть всю ширину overlay'я при 5+ категориях.
+  const cats = orderCats(sp.categories || [], sp.primary_category || "");
+  const catChips = cats.slice(0, 3).map((code, i) => {
+    const cls = i === 0 && code === sp.primary_category ? "feed-cat-chip is-primary" : "feed-cat-chip";
+    return `<span class="${cls}">${escape(categoryTitle(code))}</span>`;
+  }).join("");
 
   // Видео: muted=true до user gesture, поэтому autoplay стартует. После первого
   // тапа по 🔊 в шапке state.feedView.muted=false, и play() уже идёт со звуком.
@@ -176,9 +204,9 @@ function feedItemEl(it, index) {
     <div class="feed-overlay">
       <div class="feed-overlay-left">
         <div class="feed-spec-name">${escape(sp.display_name)}</div>
+        ${catChips ? `<div class="feed-spec-cats">${catChips}</div>` : ""}
         <div class="feed-spec-meta">${cityLine} · <span class="feed-spec-rate">${escape(rate)}</span></div>
         <div class="feed-spec-bio">${escape(sp.bio || "")}</div>
-        <div class="feed-spec-cats">${catChip}</div>
       </div>
       <div class="feed-overlay-right">
         <div class="feed-action-stack">
@@ -186,14 +214,11 @@ function feedItemEl(it, index) {
                   data-cart-toggle="${escape(sp.user_id)}">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           </button>
-          <span class="feed-action-label">в проект</span>
+          <span class="feed-action-label">В проект</span>
         </div>
-        <div class="feed-action-stack">
-          <button class="feed-action feed-profile" type="button" aria-label="Профиль">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </button>
-          <span class="feed-action-label">профиль</span>
-        </div>
+        <button class="feed-action feed-profile" type="button" aria-label="Профиль">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
         <div class="feed-video-idx">${it.video_idx + 1}/${it.video_total}</div>
       </div>
     </div>
@@ -239,16 +264,25 @@ function feedItemEl(it, index) {
     if (video.paused) video.play().catch(() => {});
     else video.pause();
   });
-  // Если видео не загрузилось — оставляем постер.
-  video.addEventListener("error", () => {
-    video.style.display = "none";
-    const fb = document.createElement("div");
-    fb.className = "feed-poster-fallback";
-    fb.textContent = "Видео недоступно";
-    article.insertBefore(fb, article.firstChild);
-  });
+  // Видео не загрузилось — выкидываем плитку целиком, чтобы пустые карточки
+  // не разбавляли ленту между живыми. Если она была активной — IO позже
+  // подцепит соседа.
+  video.addEventListener("error", () => dropFeedItem(article));
 
   return article;
+}
+
+function dropFeedItem(article) {
+  const f = state.feedView;
+  if (!f) { article.remove(); return; }
+  if (f.observer) f.observer.unobserve(article);
+  if (f.activeEl === article) f.activeEl = null;
+  // выпиливаем из state.feedView.items по совпадению element-индекса
+  const idx = parseInt(article.dataset.index, 10);
+  if (!isNaN(idx) && f.items[idx]) {
+    f.items[idx] = null; // не сдвигаем массив, чтобы не ломать data-index у соседей
+  }
+  article.remove();
 }
 
 /* ───── playback (IntersectionObserver) ───────────────────────── */
@@ -258,6 +292,10 @@ function startPlayback() {
   if (f.observer) f.observer.disconnect();
 
   const list = $("#feed-list");
+  // Если в момент старта в DOM есть хоть один айтем — плашке тут не место.
+  if (list.firstElementChild) {
+    $("#feed-empty").classList.add("hidden");
+  }
   f.observer = new IntersectionObserver(handleIntersections, {
     root: list,
     threshold: [0, 0.5, 0.75, 1],

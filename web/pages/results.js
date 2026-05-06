@@ -4,10 +4,10 @@
    ────────────────────────────────────────────────────────────────── */
 
 import { API, state } from "../shared/state.js";
-import { $, escape, categoryTitle, formatRate } from "../shared/ui.js";
+import { $, escape, categoryTitle, skillTitle, formatRate } from "../shared/ui.js";
 import { showView, syncURL, buildSearchQs, gotoSpecialist } from "../shared/router.js";
 import { inCart, toggleCart } from "../shared/cart.js";
-import { loadCategories } from "../shared/categories.js";
+import { loadCategories, loadSkills } from "../shared/categories.js";
 import { preferFeedView, setPreferredView, showFeed, hideFeed } from "./feed.js";
 
 /* ───── routing ──────────────────────────────────────────────────
@@ -21,6 +21,9 @@ export async function routeSearch(_params, qs) {
   if (!state.categories.length) {
     try { await loadCategories(); } catch (_) {}
   }
+  // skills нужны для рендера чипов в spec-row/spec-card. Грузим параллельно
+  // с поиском (await не блокируем); если не успеет — отрисуются slug'и.
+  loadSkills().catch(() => {});
 
   const cats = qs.getAll("category");
   const skills = qs.getAll("skill");
@@ -50,8 +53,9 @@ export async function routeSearch(_params, qs) {
   }
 
   const params = { categories: cats, skills, city };
+  state.lastBrowseParams = params;
   if (preferFeedView()) {
-    await showFeed(params);
+    await showFeed(params, { autoFallback: true });
   } else {
     await routeSearchAsList(params);
   }
@@ -93,20 +97,19 @@ function setResultsViewToggleVisible(visible) {
   btn.classList.toggle("hidden", !visible);
 }
 
-// openCategory — публичная точка входа из roadmap-тайла. Уважает выбор юзера
-// (лента/список). Внутренние свитчи категории (фасеты, «показать всех» из
-// AI-выдачи) продолжают звать showAllInCategory напрямую — там логика «остаться
-// в текущем виде» уместнее.
+// openCategory — публичная точка входа из roadmap-тайла. Двухуровневое
+// решение: (1) если юзер явно выбрал «список» — открываем список; (2) иначе
+// открываем ленту с autoFallback=true: лента сама уйдёт в список, если
+// видео в этой категории нет.
 export async function openCategory(category) {
   const params = { categories: [category.code], skills: [], city: "", q: "" };
   state.lastBrowseParams = params;
-  if (preferFeedView()) {
-    syncURL("/search" + buildSearchQs(params));
-    await showFeed(params);
-  } else {
-    syncURL("/search" + buildSearchQs(params));
+  syncURL("/search" + buildSearchQs(params));
+  if (!preferFeedView()) {
     await showAllInCategory(category, { pushURL: false });
+    return;
   }
+  await showFeed(params, { autoFallback: true });
 }
 
 // bindResultsViewToggle — однократно навешивает обработчик на кнопку «В ленту».
@@ -130,6 +133,11 @@ export async function runSearch({ pushURL = true } = {}) {
     skills: [], city: "",
   };
 
+  // Гасим browse-пагинацию ДО любых await: иначе живой IntersectionObserver
+  // успеет дёрнуть loadNextAllPage между плейсхолдером и AI-ответом и
+  // дорисует browse-строки в #results.
+  state.allList = null;
+
   if (pushURL) syncURL("/search" + buildSearchQs(params));
   showView("results");
   setResultsBack("clarify", "уточнить запрос");
@@ -138,7 +146,7 @@ export async function runSearch({ pushURL = true } = {}) {
     ? state.currentCategory.title
     : "Подбор по запросу";
   setSummary("Подбираем для вас…", "");
-  $("#results").innerHTML = "";
+  $("#results").innerHTML = `<div class="text-center text-white/45 text-[11px] uppercase tracking-overline py-16">AI подбор…</div>`;
   $("#results-facets").innerHTML = "";
 
   try {
@@ -297,8 +305,12 @@ async function loadNextAllPage() {
     qs.set("limit", String(a.pageSize));
     qs.set("offset", String(a.offset));
     const res = await fetch(`${API}/specialists?${qs.toString()}`);
+    // Если за время fetch юзер ушёл из browse (state.allList сбросили в
+    // runSearch/showAllInCategory), не дорисовываем чужие строки в #results.
+    if (state.allList !== a) return;
     if (!res.ok) throw new Error("search_failed");
     const data = await res.json();
+    if (state.allList !== a) return;
     const items = data.items || [];
     const root = $("#results");
     items.forEach(it => root.appendChild(specRow(it)));
@@ -461,6 +473,20 @@ function relaxedLabel(relaxed) {
    Используется в renderAllInCategory/loadNextAllPage. AI-flow рисует
    богатые карточки через specCard ниже. */
 
+// renderSkillChips — превращает skill_slugs в HTML-набор чипов с лимитом
+// (после лимита — «+N»). Возвращает "" если скиллов нет вовсе. limit < 0
+// = без обрезания.
+function renderSkillChips(slugs, limit) {
+  if (!slugs || !slugs.length) return "";
+  const all = slugs.map(s => skillTitle(s)).filter(Boolean);
+  if (!all.length) return "";
+  const visible = limit > 0 ? all.slice(0, limit) : all;
+  const rest = all.length - visible.length;
+  const chips = visible.map(t => `<span class="skill-tag">${escape(t)}</span>`).join("");
+  const more = rest > 0 ? `<span class="skill-tag skill-tag-more">+${rest}</span>` : "";
+  return chips + more;
+}
+
 function specRow(it) {
   const row = document.createElement("div");
   row.className = "spec-row";
@@ -479,6 +505,10 @@ function specRow(it) {
     ? `<img class="spec-row-avatar" src="${escape(it.avatar_url)}" alt="" loading="lazy" />`
     : `<div class="spec-row-avatar spec-row-avatar-fallback">${escape(initial)}</div>`;
 
+  // Скиллы: первые 4 чипа + «+N», чтобы не разрывать строку у тех, у кого
+  // выбрано 10 платформ. Слаги, тайтлы — из state.skills.
+  const skillChips = renderSkillChips(it.skill_slugs || [], 4);
+
   row.innerHTML = `
     ${avatar}
     <div class="spec-row-main">
@@ -488,6 +518,7 @@ function specRow(it) {
         <span class="spec-row-city">${escape(it.city || "удалённо")}</span>
         <span class="spec-row-rating">${escape(ratingMeta)}</span>
       </div>
+      ${skillChips ? `<div class="spec-row-skills">${skillChips}</div>` : ""}
     </div>
     <div class="spec-row-side">
       <div class="spec-row-rate">${escape(rate)}</div>
@@ -519,6 +550,7 @@ function specCard(it) {
   card.setAttribute("tabindex", "0");
   const rate = formatRate(it.rate_min, it.rate_max, it.currency);
   const cats = (it.categories || []).map(c => `<span class="tag-chip">${escape(categoryTitle(c))}</span>`).join("");
+  const skills = renderSkillChips(it.skill_slugs || [], 6);
   const ratingMeta = it.reviews_count
     ? `★ ${(it.rating_avg || 0).toFixed(1)} · ${it.reviews_count} отз.`
     : "новый специалист";
@@ -529,6 +561,7 @@ function specCard(it) {
       ${it._reason ? `<div class="spec-pick-reason">${escape(it._reason)}</div>` : ""}
       <div class="spec-bio">${escape(it.bio || "")}</div>
       <div class="tags">${cats}</div>
+      ${skills ? `<div class="tags spec-skills">${skills}</div>` : ""}
     </div>
     <div class="spec-side">
       <div class="rate">${rate}</div>
