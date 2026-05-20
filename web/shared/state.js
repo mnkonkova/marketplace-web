@@ -2,7 +2,11 @@
    shared/state — конфиг, общие константы, in-memory store.
    ────────────────────────────────────────────────────────────────── */
 
-export const API = "/api/v1";
+// API base — берём из window.__API_BASE__ (можно переопределить в
+// index.html для разных окружений), иначе same-origin /api/v1 (если фронт
+// проксируется на тот же домен, что и API).
+const API_BASE = (typeof window !== "undefined" && window.__API_BASE__) || "";
+export const API = `${API_BASE}/api/v1`;
 
 // Ключи storage объявлены здесь, потому что и cart.js, и auth.js используют
 // одни и те же значения для миграции между sessionStorage/localStorage.

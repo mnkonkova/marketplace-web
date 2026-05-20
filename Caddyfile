@@ -1,0 +1,38 @@
+# Caddy: статика фронта + TLS. DOMAIN берётся из env compose'а.
+# При первом запуске Caddy сам выпишет Let's Encrypt-сертификат через
+# HTTP-01 challenge — DNS должен резолвиться на IP сервера, порт 80
+# должен быть открыт.
+#
+# Вариант 1 (рекомендуется): фронт и API на одном домене, /api/* проксируется
+# на бэкенд, остальное — статика. Тогда в index.html __API_BASE__ = "" и CORS
+# на API не нужен.
+#
+# Вариант 2: фронт и API на разных доменах — убрать reverse_proxy /api/*,
+# в index.html прописать __API_BASE__ = "https://api.example.com", и на API
+# выставить CORS_ORIGINS со своим доменом.
+
+{$DOMAIN} {
+	encode zstd gzip
+	root * /srv
+
+	# /api/* → бэкенд. Замени upstream на адрес своего API (или убери блок,
+	# если API живёт на отдельном домене).
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM:api:8080} {
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# /swagger/* тоже на бэкенд (если хочешь оставить swagger UI публичным).
+	handle /swagger/* {
+		reverse_proxy {$API_UPSTREAM:api:8080}
+	}
+
+	# Статика + SPA fallback: любой GET вне /api отдаёт index.html, чтобы
+	# /search и /specialist/:id работали при прямом заходе.
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}
