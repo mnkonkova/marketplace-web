@@ -1,7 +1,7 @@
 # Caddy: статика фронта + TLS. DOMAIN берётся из env compose'а.
 # При первом запуске Caddy сам выпишет Let's Encrypt-сертификат через
 # HTTP-01 challenge — DNS должен резолвиться на IP сервера, порт 80
-# должен быть открыт.
+# должен быть открыт. Для тестового деплоя по IP без TLS — DOMAIN=:80.
 #
 # Вариант 1 (рекомендуется): фронт и API на одном домене, /api/* проксируется
 # на бэкенд, остальное — статика. Тогда в index.html __API_BASE__ = "" и CORS
@@ -17,8 +17,16 @@
 
 	# /api/* → бэкенд. Замени upstream на адрес своего API (или убери блок,
 	# если API живёт на отдельном домене).
+	#
+	# lb_try_duration + lb_try_interval — zero-downtime ретраи. Если api
+	# рестартует (deploy), Caddy ждёт пока upstream поднимется и повторяет
+	# запрос — пользователь видит «медленный» запрос, а не 502.
+	# fail_duration — сколько помнить, что upstream был сломан.
 	handle /api/* {
 		reverse_proxy {$API_UPSTREAM:api:8080} {
+			lb_try_duration 15s
+			lb_try_interval 250ms
+			fail_duration   1s
 			header_up X-Forwarded-For {remote_host}
 			header_up X-Real-IP {remote_host}
 		}
@@ -26,7 +34,11 @@
 
 	# /swagger/* тоже на бэкенд (если хочешь оставить swagger UI публичным).
 	handle /swagger/* {
-		reverse_proxy {$API_UPSTREAM:api:8080}
+		reverse_proxy {$API_UPSTREAM:api:8080} {
+			lb_try_duration 15s
+			lb_try_interval 250ms
+			fail_duration   1s
+		}
 	}
 
 	# Статика + SPA fallback: любой GET вне /api отдаёт index.html, чтобы
