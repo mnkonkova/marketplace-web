@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { EMPTY } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
@@ -20,6 +21,7 @@ import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
     NzButtonModule,
     NzInputModule,
     NzFormModule,
+    NzIconModule,
     AppHeaderComponent,
   ],
   templateUrl: './reset-password.page.html',
