@@ -12,6 +12,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { EMPTY, Observable, firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -61,6 +62,7 @@ interface PortfolioForm {
     NzButtonModule,
     NzInputModule,
     NzTagModule,
+    NzAlertModule,
     AppHeaderComponent,
   ],
   templateUrl: './cabinet.page.html',
@@ -524,7 +526,9 @@ export class CabinetPage implements OnInit {
 
   private failSave(err: { error?: ApiErrorBody | null }): void {
     this.saving.set(false);
-    this.error.set(apiErrorMessage(err.error ?? null, 'Не удалось сохранить'));
+    const message = apiErrorMessage(err.error ?? null, 'Не удалось сохранить');
+    this.error.set(message);
+    this.msg.error(message);
   }
 
   private uploadViaPresign(

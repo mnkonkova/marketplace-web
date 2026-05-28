@@ -282,6 +282,17 @@
     </div>
   </section>
 
+  @if (error()) {
+  <nz-alert
+    nzType="error"
+    [nzMessage]="error()"
+    nzShowIcon
+    nzCloseable
+    (nzOnClose)="error.set('')"
+    class="cabinet-error"
+  />
+  }
+
   <div class="actions">
     <button nz-button nzDanger type="button" (click)="logout()">Выйти</button>
     <button nz-button nzType="default" type="button" [nzLoading]="saving()" (click)="save(false)">
