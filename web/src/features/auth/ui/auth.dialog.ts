@@ -48,6 +48,12 @@ export class AuthDialogComponent {
 
   public readonly loading = signal(false);
 
+  // forgot-режим: показываем мини-форму запроса reset вместо полей логина.
+  // Toggle'ится из ссылки «Забыли пароль?» под полем пароля.
+  public readonly forgotMode = signal(false);
+
+  public readonly forgotSent = signal(false);
+
   public readonly loginForm = this.fb.group({
     login: ['', Validators.required],
     password: ['', Validators.required],
@@ -58,6 +64,10 @@ export class AuthDialogComponent {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
     kind: ['', Validators.required],
+  });
+
+  public readonly forgotForm = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
   });
 
   public login(): void {
@@ -75,6 +85,38 @@ export class AuthDialogComponent {
       .subscribe(() => {
         this.msg.success('Вы вошли', { nzDuration: 3000 });
         this.modal.destroy(true);
+      });
+  }
+
+  public openForgot(): void {
+    this.forgotMode.set(true);
+    this.forgotSent.set(false);
+    const login = this.loginForm.get('login')?.value ?? '';
+    if (login.includes('@')) {
+      this.forgotForm.patchValue({ email: login });
+    }
+  }
+
+  public cancelForgot(): void {
+    this.forgotMode.set(false);
+    this.forgotSent.set(false);
+  }
+
+  public submitForgot(): void {
+    if (this.forgotForm.invalid) return;
+    this.loading.set(true);
+    const email = this.forgotForm.value.email!;
+    this.auth
+      .requestPasswordReset(email)
+      .pipe(
+        catchError((e) => {
+          this.msg.error(apiErrorMessage(e.error, 'Не удалось запросить сброс пароля'));
+          return EMPTY;
+        }),
+        finalize(() => this.loading.set(false)),
+      )
+      .subscribe(() => {
+        this.forgotSent.set(true);
       });
   }
 

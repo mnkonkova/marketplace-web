@@ -11,6 +11,10 @@ import { CreateLeadResponse, LeadSubmitFormValue } from '@features/project-cart/
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
 import { buildCreateLeadPayload } from '@features/project-cart/lib/build-create-lead-payload';
 import { buildLeadSuccessMessage } from '@features/project-cart/lib/build-lead-success-message';
+import {
+  isEmailUnverifiedError,
+  openEmailUnverifiedDialog,
+} from '@features/auth/lib/open-email-unverified-dialog';
 import { LeadSuccessDialogComponent } from '../lead-success/lead-success.dialog';
 
 @Component({
@@ -69,6 +73,10 @@ export class LeadSubmitDialogComponent {
       .post<CreateLeadResponse>(`${this.api}/leads`, payload)
       .pipe(
         catchError((err) => {
+          if (isEmailUnverifiedError(err)) {
+            openEmailUnverifiedDialog(this.modalService);
+            return EMPTY;
+          }
           this.error.set(apiErrorMessage(err.error, 'Не удалось отправить заявку'));
           return EMPTY;
         }),

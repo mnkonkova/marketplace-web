@@ -1,0 +1,39 @@
+<app-header />
+
+<main class="verify-page">
+  <section class="verify-card">
+    @switch (state()) {
+      @case ('loading') {
+        <div class="state state-loading">
+          <nz-spin nzSimple nzSize="large"></nz-spin>
+          <h2>Подтверждаем email…</h2>
+          <p>Секунду, проверяем токен из письма.</p>
+        </div>
+      }
+      @case ('success') {
+        <nz-result
+          nzStatus="success"
+          nzTitle="Email подтверждён"
+          nzSubTitle="Готово — теперь можно публиковать профиль и отправлять заявки."
+        >
+          <div nz-result-extra>
+            <button nz-button nzType="primary" (click)="goToCabinet()">В кабинет</button>
+            <a nz-button routerLink="/">На главную</a>
+          </div>
+        </nz-result>
+      }
+      @case ('error') {
+        <nz-result
+          nzStatus="warning"
+          nzTitle="Не получилось подтвердить email"
+          [nzSubTitle]="errorText()"
+        >
+          <div nz-result-extra>
+            <a nz-button nzType="primary" routerLink="/me">Войти в кабинет</a>
+            <a nz-button routerLink="/">На главную</a>
+          </div>
+        </nz-result>
+      }
+    }
+  </section>
+</main>

@@ -66,6 +66,35 @@ export class AuthSessionStore {
       .pipe(tap((pair) => this.save(pair)));
   }
 
+  // verifyEmail — обмен raw-токена из ссылки в письме на новую пару токенов.
+  // Сохраняем их в localStorage сразу: после verify юзер логинится этим же
+  // действием, чтобы не просить ещё раз ввести пароль.
+  public verifyEmail(token: string): Observable<TokenPair> {
+    return this.http
+      .post<TokenPair>(`${this.api}/auth/verify-email`, { token })
+      .pipe(tap((pair) => this.save(pair)));
+  }
+
+  public resendVerification(): Observable<void> {
+    return this.http.post<void>(`${this.api}/auth/resend-verification`, {});
+  }
+
+  // requestPasswordReset — попросить ссылку сброса по email. Бэк всегда
+  // отвечает 204 (anti-enumeration); фронт показывает один и тот же тост
+  // независимо от того, есть юзер или нет.
+  public requestPasswordReset(email: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/auth/password-reset/request`, { email });
+  }
+
+  // confirmPasswordReset — применить новый пароль по токену из письма.
+  // Бэк возвращает свежую пару токенов — сразу сохраняем сессию, чтобы
+  // юзер был залогинен без повторного ввода.
+  public confirmPasswordReset(token: string, password: string): Observable<TokenPair> {
+    return this.http
+      .post<TokenPair>(`${this.api}/auth/password-reset/confirm`, { token, password })
+      .pipe(tap((pair) => this.save(pair)));
+  }
+
   private read(): AuthSession | null {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);

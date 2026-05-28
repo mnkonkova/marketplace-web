@@ -1,0 +1,18 @@
+<div>
+  <p>
+    Чтобы продолжить, подтвердите email — мы отправили вам письмо со ссылкой.
+    Не пришло? Проверьте папку «Спам» или отправьте письмо ещё раз.
+  </p>
+  <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+    <button nz-button nzType="default" (click)="close()">Закрыть</button>
+    <button
+      nz-button
+      nzType="primary"
+      [nzLoading]="loading()"
+      [disabled]="sent()"
+      (click)="resend()"
+    >
+      {{ sent() ? 'Письмо отправлено' : 'Отправить ещё раз' }}
+    </button>
+  </div>
+</div>

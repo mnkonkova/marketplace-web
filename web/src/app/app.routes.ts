@@ -24,5 +24,14 @@ export const routes: Routes = [
     path: 'me',
     loadComponent: () => import('@pages/cabinet/cabinet.page').then((m) => m.CabinetPage),
   },
+  {
+    path: 'verify',
+    loadComponent: () => import('@pages/verify/verify.page').then((m) => m.VerifyPage),
+  },
+  {
+    path: 'auth/reset',
+    loadComponent: () =>
+      import('@pages/reset-password/reset-password.page').then((m) => m.ResetPasswordPage),
+  },
   { path: '**', redirectTo: '' },
 ];

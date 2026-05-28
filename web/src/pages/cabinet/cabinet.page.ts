@@ -32,6 +32,11 @@ import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import { ApiErrorBody, apiErrorMessage } from '@shared/api/api-error';
 import { groupCategoriesByType } from '@shared/lib/category-groups';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import { NzModalService } from 'ng-zorro-antd/modal';
+import {
+  isEmailUnverifiedError,
+  openEmailUnverifiedDialog,
+} from '@features/auth/lib/open-email-unverified-dialog';
 
 interface ProfileForm {
   display_name: string;
@@ -79,6 +84,8 @@ export class CabinetPage implements OnInit {
   private readonly categoryApi = inject(CategoryApi);
 
   private readonly msg = inject(NzMessageService);
+
+  private readonly modalService = inject(NzModalService);
 
   private readonly sessionStorage = window.sessionStorage;
 
@@ -488,6 +495,11 @@ export class CabinetPage implements OnInit {
       .publishProfile()
       .pipe(
         catchError((err) => {
+          if (isEmailUnverifiedError(err)) {
+            this.saving.set(false);
+            openEmailUnverifiedDialog(this.modalService);
+            return EMPTY;
+          }
           if (err.status === 422 && err.error?.check) {
             this.check.set(err.error.check);
           }

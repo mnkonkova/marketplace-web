@@ -1,5 +1,6 @@
 <nz-tabset [nzSelectedIndex]="tab()">
   <nz-tab nzTitle="Вход" (nzClick)="tab.set(0)">
+    @if (!forgotMode()) {
     <form nz-form [formGroup]="loginForm" (ngSubmit)="login()">
       <nz-form-item>
         <nz-form-control>
@@ -30,6 +31,11 @@
           </nz-form-item>
         </nz-form-control>
       </nz-form-item>
+      <div class="auth-forgot-row">
+        <button type="button" class="auth-forgot-link" (click)="openForgot()">
+          Забыли пароль?
+        </button>
+      </div>
       <button
         nz-button
         nzType="primary"
@@ -40,6 +46,39 @@
         Войти
       </button>
     </form>
+    } @else {
+    <form nz-form [formGroup]="forgotForm" (ngSubmit)="submitForgot()">
+      @if (!forgotSent()) {
+      <p class="auth-forgot-hint">
+        Введите email от аккаунта — пришлём ссылку для сброса пароля.
+      </p>
+      <nz-form-item>
+        <nz-form-control>
+          <input nz-input formControlName="email" placeholder="Email" type="email" />
+        </nz-form-control>
+      </nz-form-item>
+      <button
+        nz-button
+        nzType="primary"
+        nzBlock
+        [nzLoading]="loading()"
+        [disabled]="forgotForm.invalid"
+      >
+        Прислать ссылку
+      </button>
+      } @else {
+      <p class="auth-forgot-hint">
+        Если такой email зарегистрирован — мы отправили на него письмо со ссылкой. Она
+        действует 1 час.
+      </p>
+      }
+      <div class="auth-forgot-row">
+        <button type="button" class="auth-forgot-link" (click)="cancelForgot()">
+          ← Назад ко входу
+        </button>
+      </div>
+    </form>
+    }
   </nz-tab>
   <nz-tab nzTitle="Регистрация" (nzClick)="tab.set(1)">
     <form nz-form [formGroup]="registerForm" (ngSubmit)="register()">
