@@ -1,14 +1,14 @@
-# Сборка Tailwind → web/styles.css и упаковка статики в caddy-образ.
-# В рантайме нужны env: DOMAIN (домен фронта), API_UPSTREAM (host:port
-# или https://api.example.com — куда проксировать /api/*).
+# Сборка Angular-фронта → статика, отдаётся через Caddy.
+# В рантайме нужны env: DOMAIN (домен фронта), API_UPSTREAM (host:port,
+# куда Caddy проксирует /api/*).
 
-FROM node:20-alpine AS css
+FROM node:20-alpine AS build
 WORKDIR /src
-COPY package.json package-lock.json tailwind.config.js ./
-RUN npm ci
-COPY web ./web
-RUN npm run build:css
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY web ./
+RUN npm run build
 
 FROM caddy:2-alpine
-COPY --from=css /src/web /srv
+COPY --from=build /src/dist/frontend/browser /srv
 COPY Caddyfile /etc/caddy/Caddyfile
