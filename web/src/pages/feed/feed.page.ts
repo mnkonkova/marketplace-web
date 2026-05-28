@@ -165,7 +165,7 @@ export class FeedPage implements OnInit {
     this.loading.set(true);
     this.summary.set('Загружаем каталог…');
     this.picks.set([]);
-    const searchParams: SearchParams = { ...params, limit: 30, offset: 0 };
+    const searchParams: SearchParams = { ...params, limit: 50, offset: 0 };
 
     this.specialistApi
       .search(searchParams)
