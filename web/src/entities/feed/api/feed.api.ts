@@ -14,6 +14,7 @@ export class FeedApi {
     let hp = new HttpParams();
     (params.categories ?? []).forEach((c) => (hp = hp.append('category', c)));
     (params.skills ?? []).forEach((s) => (hp = hp.append('skill', s)));
+    if (params.ids?.length) hp = hp.set('ids', params.ids.join(','));
     if (params.cursor) hp = hp.set('cursor', params.cursor);
     return this.http.get<FeedResponse>(`${this.api}/feed`, { params: hp });
   }

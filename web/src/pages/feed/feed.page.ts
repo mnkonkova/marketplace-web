@@ -82,6 +82,11 @@ export class FeedPage implements OnInit {
       const city = qp.get('city') ?? undefined;
       const rateMin = qp.get('rate_min') ? Number(qp.get('rate_min')) : undefined;
       const rateMax = qp.get('rate_max') ? Number(qp.get('rate_max')) : undefined;
+      const ids = qp
+        .getAll('ids')
+        .flatMap((v) => v.split(','))
+        .map((s) => s.trim())
+        .filter(Boolean);
       const next: ClarifySearchParams = {
         q,
         categories: categories.length ? categories : undefined,
@@ -91,9 +96,12 @@ export class FeedPage implements OnInit {
         rate_max: Number.isFinite(rateMax) ? rateMax : undefined,
       };
       this.currentSearch = next;
-      this.params.set(next);
+      this.params.set({ ...next, ids: ids.length ? ids : undefined });
       this.resolveTitle(categories, q);
-      if (q?.trim()) {
+      if (ids.length) {
+        this.mode.set('feed');
+        this.feedKey.update((k) => k + 1);
+      } else if (q?.trim()) {
         this.runAiSearch(next);
       } else {
         this.mode.set('feed');
@@ -127,6 +135,14 @@ export class FeedPage implements OnInit {
 
   public showAllMatches(): void {
     this.runListSearch(this.currentSearch, 'Все совпадения по запросу');
+  }
+
+  public viewWorks(): void {
+    const ids = this.picks()
+      .map((p) => p.user_id)
+      .filter(Boolean);
+    if (!ids.length) return;
+    this.router.navigate(['/search'], { queryParams: { ids: ids.join(',') } });
   }
 
   private runAiSearch(params: ClarifySearchParams): void {

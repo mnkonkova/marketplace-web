@@ -36,4 +36,5 @@ export interface FeedParams {
   skills?: string[];
   city?: string;
   cursor?: string;
+  ids?: string[];
 }

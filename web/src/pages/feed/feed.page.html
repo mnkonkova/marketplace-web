@@ -14,9 +14,14 @@
         <h2>{{ title() }}</h2>
       </div>
       @if (mode() === 'ai' && picks().length) {
-      <button nz-button nzType="default" type="button" (click)="showAllMatches()">
-        Посмотреть все совпадения
-      </button>
+      <div class="head-actions">
+        <button nz-button nzType="primary" type="button" (click)="viewWorks()">
+          Смотреть работы
+        </button>
+        <button nz-button nzType="default" type="button" (click)="showAllMatches()">
+          Посмотреть все совпадения
+        </button>
+      </div>
       }
     </header>
     @if (summary()) {
