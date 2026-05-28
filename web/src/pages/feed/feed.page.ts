@@ -97,7 +97,7 @@ export class FeedPage implements OnInit {
       };
       this.currentSearch = next;
       this.params.set({ ...next, ids: ids.length ? ids : undefined });
-      this.resolveTitle(categories, q);
+      this.resolveTitle(categories, q, ids.length > 0);
       if (ids.length) {
         this.mode.set('feed');
         this.feedKey.update((k) => k + 1);
@@ -217,7 +217,11 @@ export class FeedPage implements OnInit {
     return out;
   }
 
-  private resolveTitle(categories: string[], q?: string): void {
+  private resolveTitle(categories: string[], q?: string, hasIds = false): void {
+    if (hasIds) {
+      this.title.set('Подобранные специалисты');
+      return;
+    }
     if (q) {
       this.title.set('Подбор по запросу');
       return;

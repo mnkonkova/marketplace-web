@@ -225,21 +225,12 @@
   }
 
   .quick-tags {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 8px;
-    margin: 12px -14px 0;
-    padding: 0 14px 4px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
+    margin: 12px 0 0;
   }
 
   .tag {
-    flex: 0 0 auto;
     padding: 8px 12px;
     background: rgba(255, 255, 255, 0.08);
     white-space: nowrap;
@@ -280,11 +271,6 @@
   }
 
   .hero-inner {
-    padding-inline: 10px;
-  }
-
-  .quick-tags {
-    margin-inline: -10px;
     padding-inline: 10px;
   }
 
