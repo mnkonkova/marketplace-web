@@ -78,6 +78,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export const HERO_QUICK_TAGS = [
+  'ИИ-креатор',
   'Монтажёр для Reels',
   'SMM для бренда',
   'UGC-креатор',
