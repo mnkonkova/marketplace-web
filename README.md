@@ -1,39 +1,61 @@
 # marketplace-web
 
-Фронт marketplace MVP — ванильная статика (ES-модули) + Tailwind CSS.
+Фронт marketplace MVP — Angular 17+ (standalone-компоненты, signals).
 Бэкенд живёт в отдельном репо [`marketplace-api`](https://github.com/mnkonkova/marketplace-api).
 
 ## Структура
 
-- `web/index.html` — корневая страница, подключает `app.js` и собранный `styles.css`.
-- `web/app.js` — entry-точка: регистрирует роуты, биндит UI, делает первый dispatch.
-- `web/shared/` — state, ui, router, auth, cart, categories, actions.
-- `web/pages/` — `roadmap.js`, `clarify.js`, `results.js`, `profile.js`, `me.js`, `feed.js`.
-- `web/src/tailwind.css` — вход для Tailwind; результат собирается в `web/styles.css`.
+- `web/` — Angular-проект (`angular.json`, `package.json`, `src/`).
+  - `src/app/` — корневой компонент, `app.routes.ts`, `app.config.ts`.
+  - `src/pages/` — страницы (main, clarify, feed, cabinet, specialist-profile, …).
+  - `src/widgets/` — переиспользуемые UI-блоки (app-header, feed-view, portfolio-grid, …).
+  - `src/features/` — фичи с собственным state (project-cart, auth).
+  - `src/entities/` — API-клиенты и типы (auth, category, feed, me, specialist).
+  - `src/shared/` — общая инфраструктура (`api/`, `lib/`).
+  - `src/environments/` — `environment.ts`, `environment.development.ts`, `environment.prod.ts`.
+- `Dockerfile` — two-stage сборка: Angular → Caddy со статикой.
+- `Caddyfile` — TLS + SPA-fallback + reverse-proxy `/api/*`, `/swagger/*` на backend.
 
 ## Локальный запуск
 
-1. Поднять API из `marketplace-api`: `make up && make migrate-up && make run` (слушает `:8080`).
-2. Собрать стили: `npm ci && npm run build:css` (или `npm run watch:css` в watch-режиме).
-3. Выбрать одно из двух:
-   - **Same-origin через Caddy**: `docker compose up` — фронт на http://localhost:8081, `/api/*` проксируется на хостовый API (`host.docker.internal:8080`). В `index.html` оставь `__API_BASE__ = ""`.
-   - **Прямой к API через CORS**: в `web/index.html` поставь `window.__API_BASE__ = "http://localhost:8080"`, в API поставь `CORS_ORIGINS=http://localhost:5173` (или какой у тебя dev-хост) и отдавай `web/` любым статик-сервером (`python3 -m http.server`, Vite preview, и т.п.).
+1. Поднять API из `marketplace-api`: `./scripts/local_run.sh` (postgres/opensearch/redis в docker + API на `:8080` + worker).
+2. Поставить зависимости фронта и запустить dev-server:
+   ```bash
+   cd web
+   npm ci
+   npm start          # ng serve, открыт на http://localhost:4200
+   ```
+3. Прокси `/api/*` настроен в `proxy.conf.js` — `ng serve` сам форвардит на хостовый API.
 
 ## Конфигурация API base
 
-`web/shared/state.js` читает `window.__API_BASE__`. Этот global ставится в `<head>` `index.html` — переопредели его под окружение:
+Файлы `web/src/environments/`:
+- `environment.ts` — дефолт (`apiBaseUrl: '/api/v1'`, same-origin).
+- `environment.development.ts` — dev (`/api/v1` через proxy.conf.js).
+- `environment.prod.ts` — прод (`/api/v1`, same-origin через Caddy).
 
-```html
-<script>window.__API_BASE__ = "https://api.example.com";</script>
-```
+Angular CLI подменяет `environment.ts` на `environment.prod.ts` при `ng build`
+(см. `fileReplacements` в `angular.json`).
 
-Пусто = same-origin (`/api/v1`).
+Если фронт нужно положить на отдельном домене от API — поменяй `apiBaseUrl`
+на абсолютный URL (`https://api.example.com/api/v1`) и в API выстави
+`CORS_ORIGINS` со своим доменом фронта.
 
 ## Деплой
 
-`Dockerfile` собирает Tailwind и упаковывает статику в `caddy:2-alpine`. На сервере нужны env:
+`Dockerfile` — two-stage: `node:20-alpine` собирает `web/` через `ng build`
+(результат в `web/dist/frontend/browser/`), `caddy:2-alpine` отдаёт статику
+с SPA-fallback и проксирует `/api/*` на backend.
 
-- `DOMAIN` — публичный домен (Caddy сам выпишет Let's Encrypt).
-- `API_UPSTREAM` — `host:port` или `https://api.example.com`, куда проксировать `/api/*` и `/swagger/*`.
+В рантайме нужны env (берутся из `docker-compose.prod.yml` в `marketplace-api`):
 
-Если API на отдельном домене и проксирование не нужно — выкинь `handle /api/*` из `Caddyfile`, а в `index.html` пропиши абсолютный `__API_BASE__`.
+- `DOMAIN` — публичный домен (Caddy сам выпишет Let's Encrypt по HTTP-01).
+- `API_UPSTREAM` — `host:port` бэкенда (для деплоя одним стеком — `api:8080`).
+
+Деплой запускается из `marketplace-api`:
+```bash
+make redeploy-web    # только фронт: git pull web → docker build → recreate
+make redeploy        # всё: api + worker + web
+```
+
+Подробности — в README `marketplace-api`.
