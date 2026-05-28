@@ -1,8 +1,13 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { API_URL } from '@shared/api/api-url.token';
 import { Category, CategoryStat, Skill } from '../model/category.types';
+
+export interface SkillsQuery {
+  category?: string;
+  kind?: 'tool' | 'platform' | 'genre' | 'skill';
+}
 
 @Injectable({ providedIn: 'root' })
 export class CategoryApi {
@@ -28,7 +33,12 @@ export class CategoryApi {
     );
   }
 
-  public skills(): Observable<Skill[]> {
-    return this.http.get<{ items: Skill[] }>(`${this.api}/skills`).pipe(map((r) => r.items ?? []));
+  public skills(query: SkillsQuery = {}): Observable<Skill[]> {
+    let params = new HttpParams();
+    if (query.category) params = params.set('category', query.category);
+    if (query.kind) params = params.set('kind', query.kind);
+    return this.http
+      .get<{ items: Skill[] }>(`${this.api}/skills`, { params })
+      .pipe(map((r) => r.items ?? []));
   }
 }

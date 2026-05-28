@@ -14,7 +14,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { EMPTY, Observable, firstValueFrom, of } from 'rxjs';
+import { EMPTY, Observable, firstValueFrom, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { MeUser } from '@entities/auth/model/auth.types';
@@ -97,7 +97,14 @@ export class CabinetPage implements OnInit {
 
   public readonly categories = signal<Category[]>([]);
 
-  public readonly skills = signal<Skill[]>([]);
+  // Рекомендованные навыки текущей подборки категорий (kind != platform).
+  // Перезагружается на каждый toggle категории, потому что фронт обращается
+  // к /skills?category=... и получает уже отфильтрованный набор из БД.
+  public readonly recommendedSkills = signal<Skill[]>([]);
+
+  // Платформы — общий фасет, не зависит от выбранных категорий.
+  // Грузится один раз в loadAll() через /skills?kind=platform.
+  public readonly platformSkills = signal<Skill[]>([]);
 
   public readonly portfolio = signal<PortfolioItem[]>([]);
 
@@ -141,9 +148,9 @@ export class CabinetPage implements OnInit {
     thumbnail_url: '',
   };
 
-  public readonly tools = computed(() => this.skills().filter((s) => s.kind !== 'platform'));
+  public readonly tools = computed(() => this.recommendedSkills());
 
-  public readonly platforms = computed(() => this.skills().filter((s) => s.kind === 'platform'));
+  public readonly platforms = computed(() => this.platformSkills());
 
   public readonly categoryGroups = computed(() => groupCategoriesByType(this.categories()));
 
@@ -176,14 +183,17 @@ export class CabinetPage implements OnInit {
       if (!this.primaryCategory()) this.primaryCategory.set(code);
     }
     this.selectedCategories.set(next);
+    this.refreshRecommendedSkills();
   }
 
   public setPrimary(code: string, ev: Event): void {
     ev.stopPropagation();
     const next = new Set(this.selectedCategories());
+    const added = !next.has(code);
     next.add(code);
     this.selectedCategories.set(next);
     this.primaryCategory.set(code);
+    if (added) this.refreshRecommendedSkills();
   }
 
   public toggleSkill(id: string): void {
@@ -436,7 +446,11 @@ export class CabinetPage implements OnInit {
         this.user.set(u);
       });
     this.categoryApi.list().subscribe((items) => this.categories.set(items));
-    this.categoryApi.skills().subscribe((items) => this.skills.set(items));
+    // Платформы (reels/tiktok/...) — отдельный фасет, общий для всех категорий,
+    // подгружаем один раз. Остальные навыки — динамически на refreshRecommendedSkills().
+    this.categoryApi.skills({ kind: 'platform' }).subscribe((items) => {
+      this.platformSkills.set(items);
+    });
     this.meRepo
       .getProfile()
       .pipe(
@@ -487,6 +501,44 @@ export class CabinetPage implements OnInit {
     this.selectedCategories.set(new Set(p.categories ?? []));
     this.primaryCategory.set(p.primary_category || p.categories?.[0] || '');
     this.selectedSkills.set(new Set(p.skill_ids ?? []));
+    this.refreshRecommendedSkills();
+  }
+
+  // Подгружает рекомендованные навыки под выбранные категории и подрезает
+  // selectedSkills: если убрали категорию, навыки которой больше нигде не
+  // встречаются, они исчезнут из чипов — нельзя оставлять их выбранными
+  // в сохраняемом наборе. Платформы не трогаем — они всегда разрешены.
+  private refreshRecommendedSkills(): void {
+    const codes = [...this.selectedCategories()];
+    if (codes.length === 0) {
+      this.recommendedSkills.set([]);
+      this.pruneSelectedSkills(new Set());
+      return;
+    }
+    forkJoin(codes.map((c) => this.categoryApi.skills({ category: c }))).subscribe((lists) => {
+      const seen = new Set<string>();
+      const merged: Skill[] = [];
+      for (const list of lists) {
+        for (const s of list) {
+          if (!seen.has(s.id)) {
+            seen.add(s.id);
+            merged.push(s);
+          }
+        }
+      }
+      this.recommendedSkills.set(merged);
+      this.pruneSelectedSkills(new Set(merged.map((s) => s.id)));
+    });
+  }
+
+  private pruneSelectedSkills(allowedRecommendedIds: Set<string>): void {
+    const platformIds = new Set(this.platformSkills().map((s) => s.id));
+    const current = this.selectedSkills();
+    const next = new Set<string>();
+    for (const id of current) {
+      if (allowedRecommendedIds.has(id) || platformIds.has(id)) next.add(id);
+    }
+    if (next.size !== current.size) this.selectedSkills.set(next);
   }
 
 
