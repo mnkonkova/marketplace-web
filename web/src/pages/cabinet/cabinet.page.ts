@@ -22,7 +22,7 @@ import { MeRepository } from '@entities/me/repository/me.repository';
 import { putFileToPresignedUrl } from '@entities/me/repository/me-upload';
 import {
   MeProfile,
-  MeProfilePatch,
+  MeProfileFullPatch,
   ProfileCheckResult,
   UploadURLResponse,
 } from '@entities/me/model/me.types';
@@ -187,7 +187,6 @@ export class CabinetPage implements OnInit {
   }
 
   public save(publish = false): void {
-    const updated_at = this.sessionStorage.getItem('updated_at') ?? '';
     this.error.set('');
     this.check.set(null);
     if (!this.form.display_name.trim()) {
@@ -211,15 +210,44 @@ export class CabinetPage implements OnInit {
       return;
     }
     this.saving.set(true);
+
+    // Одной транзакцией: профиль + категории + навыки под одним updated_at.
+    // Раньше шла цепочка из трёх запросов и updated_at между ними расходился —
+    // второй/третий получали 409. См. backend handler PatchFull.
+    const codes = [...this.selectedCategories()];
+    const payload: MeProfileFullPatch = {
+      display_name: this.form.display_name.trim(),
+      bio: this.form.bio,
+      avatar_url: this.form.avatar_url?.trim() ?? '',
+      city: this.form.city.trim(),
+      currency: (this.form.currency || 'RUB').trim().toUpperCase(),
+      contact_email: this.form.contact_email.trim(),
+      contact_phone: this.form.contact_phone.trim(),
+      rate_min: this.form.rate_min ?? null,
+      rate_max: this.form.rate_max ?? null,
+      skills: { skill_ids: [...this.selectedSkills()] },
+      updated_at: this.sessionStorage.getItem('updated_at') ?? undefined,
+    };
+    if (codes.length) {
+      payload.categories = { codes, primary: this.primaryCategory() || codes[0] };
+    }
+
     this.meRepo
-      .patchProfile(this.patchPayload())
+      .patchProfileFull(payload)
       .pipe(
         catchError((err) => {
           this.failSave(err);
           return EMPTY;
         }),
       )
-      .subscribe(() => this.saveCategories(publish));
+      .subscribe((p) => {
+        this.setUpdatedAt(p.updated_at);
+        if (publish) {
+          this.publish();
+        } else {
+          this.doneSave(p, 'Сохранено');
+        }
+      });
   }
 
   public unpublish(): void {
@@ -454,54 +482,6 @@ export class CabinetPage implements OnInit {
     this.selectedSkills.set(new Set(p.skill_ids ?? []));
   }
 
-  private patchPayload(): MeProfilePatch {
-    return {
-      display_name: this.form.display_name.trim(),
-      bio: this.form.bio,
-      avatar_url: this.form.avatar_url?.trim() ?? '',
-      city: this.form.city.trim(),
-      currency: (this.form.currency || 'RUB').trim().toUpperCase(),
-      contact_email: this.form.contact_email.trim(),
-      contact_phone: this.form.contact_phone.trim(),
-      rate_min: this.form.rate_min ?? null,
-      rate_max: this.form.rate_max ?? null,
-      updated_at: this.sessionStorage.getItem('updated_at') ?? '',
-    };
-  }
-
-  private saveCategories(publish: boolean): void {
-    const codes = [...this.selectedCategories()];
-    if (!codes.length) {
-      this.saveSkills(publish);
-      return;
-    }
-    this.meRepo
-      .setCategories(codes, this.primaryCategory() || codes[0])
-      .pipe(
-        catchError((err) => {
-          this.failSave(err);
-          return EMPTY;
-        }),
-      )
-      .subscribe(() => this.saveSkills(publish));
-  }
-
-  private saveSkills(publish: boolean): void {
-    const updated_at = this.sessionStorage.getItem('updated_at') ?? '';
-    const payload = {
-      skill_ids: [...this.selectedSkills()],
-      updated_at: updated_at,
-    };
-    this.meRepo
-      .setSkills(payload)
-      .pipe(
-        catchError((err) => {
-          this.failSave(err);
-          return EMPTY;
-        }),
-      )
-      .subscribe((p) => (publish ? this.publish() : this.doneSave(p, 'Сохранено')));
-  }
 
   private publish(): void {
     this.meRepo

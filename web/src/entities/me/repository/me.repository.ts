@@ -6,7 +6,7 @@ import { MeUser } from '@entities/auth/model/auth.types';
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import {
   MeProfile,
-  MeProfilePatch,
+  MeProfileFullPatch,
   PortfolioCreateInput,
   ProfileCheckResult,
   UploadURLResponse,
@@ -26,7 +26,9 @@ export class MeRepository {
     return this.http.get<MeProfile>(`${this.api}/me/profile`);
   }
 
-  public patchProfile(payload: MeProfilePatch): Observable<MeProfile> {
+  // patchProfileFull — атомарный апдейт профиля + categories + skills
+  // одной транзакцией под одной optimistic-lock версией.
+  public patchProfileFull(payload: MeProfileFullPatch): Observable<MeProfile> {
     return this.http.patch<MeProfile>(`${this.api}/me/profile`, payload);
   }
 
@@ -43,17 +45,6 @@ export class MeRepository {
       display_name,
       bio,
     });
-  }
-
-  public setCategories(codes: string[], primary: string): Observable<MeProfile> {
-    return this.http.put<MeProfile>(`${this.api}/me/profile/categories`, {
-      codes,
-      primary,
-    });
-  }
-
-  public setSkills(payload: { skill_ids: string[]; updated_at: string }): Observable<MeProfile> {
-    return this.http.put<MeProfile>(`${this.api}/me/profile/skills`, payload);
   }
 
   public presignAvatarUpload(file: File): Observable<UploadURLResponse> {
