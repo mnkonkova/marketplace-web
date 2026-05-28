@@ -24,6 +24,10 @@
   &:last-child {
     border-right: 0;
   }
+
+  &.has-video {
+    cursor: pointer;
+  }
 }
 
 .portfolio-video {
@@ -32,6 +36,27 @@
   display: block;
   object-fit: cover;
   background: #000;
+}
+
+.play-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+
+  svg {
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+  }
+}
+
+.portfolio-video::-webkit-media-controls-overlay-play-button,
+.portfolio-video::-webkit-media-controls-overlay-enclosure {
+  display: none !important;
 }
 
 .thumb-only {
