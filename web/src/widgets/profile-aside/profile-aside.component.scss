@@ -1,0 +1,59 @@
+.aside-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 88px;
+}
+
+.aside-card {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+
+  ::ng-deep .ant-card-head-title {
+    color: var(--text);
+    font-size: 14px;
+  }
+}
+
+.price-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 8px 0;
+
+    strong {
+      color: var(--accent);
+      white-space: nowrap;
+    }
+  }
+}
+
+.accent-btn {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #041012 !important;
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.big {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.in-cart {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}

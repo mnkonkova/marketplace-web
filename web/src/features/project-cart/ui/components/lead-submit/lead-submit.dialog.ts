@@ -1,0 +1,94 @@
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
+import { NzModalRef, NzModalService } from 'ng-zorro-antd/modal';
+import { EMPTY } from 'rxjs';
+import { catchError, finalize } from 'rxjs/operators';
+import { API_URL } from '@shared/api/api-url.token';
+import { apiErrorMessage } from '@shared/api/api-error';
+import { CreateLeadResponse, LeadSubmitFormValue } from '@features/project-cart/model/lead.types';
+import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
+import { buildCreateLeadPayload } from '@features/project-cart/lib/build-create-lead-payload';
+import { buildLeadSuccessMessage } from '@features/project-cart/lib/build-lead-success-message';
+import { LeadSuccessDialogComponent } from '../lead-success/lead-success.dialog';
+
+@Component({
+  selector: 'app-lead-submit-dialog',
+  standalone: true,
+  imports: [ReactiveFormsModule, NzDatePickerModule],
+  templateUrl: './lead-submit.dialog.html',
+  styleUrl: '../../project-dialog.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class LeadSubmitDialogComponent {
+  private readonly fb = inject(FormBuilder);
+
+  private readonly http = inject(HttpClient);
+
+  private readonly api = inject(API_URL);
+
+  private readonly cart = inject(ProjectCartStore);
+
+  private readonly modalService = inject(NzModalService);
+
+  public readonly modalRef = inject(NzModalRef);
+
+  public readonly specialists = this.cart.specialists;
+
+  public readonly loading = signal(false);
+
+  public readonly error = signal('');
+
+  public readonly form = this.fb.group({
+    client_name: ['', [Validators.required, Validators.minLength(2)]],
+    client_contact: ['', Validators.required],
+    brief: ['', [Validators.required]],
+    budget_min: [null as number | null],
+    budget_max: [null as number | null],
+    deadline: [null as Date | null],
+  });
+
+  public readonly disabledPastDates = (current: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return current < today;
+  };
+
+  public submit(): void {
+    if (this.form.invalid || !this.specialists().length) return;
+    this.loading.set(true);
+    this.error.set('');
+    const specialists = this.specialists();
+    const formValue = this.form.getRawValue() as LeadSubmitFormValue;
+    const payload = buildCreateLeadPayload(
+      formValue,
+      specialists.map((s) => s.user_id),
+    );
+    this.http
+      .post<CreateLeadResponse>(`${this.api}/leads`, payload)
+      .pipe(
+        catchError((err) => {
+          this.error.set(apiErrorMessage(err.error, 'Не удалось отправить заявку'));
+          return EMPTY;
+        }),
+        finalize(() => this.loading.set(false)),
+      )
+      .subscribe((res) => {
+        const message = buildLeadSuccessMessage(specialists, formValue.client_contact);
+        this.cart.clear();
+        this.modalRef.destroy();
+        this.modalService.create({
+          nzContent: LeadSuccessDialogComponent,
+          nzData: {
+            message,
+            specialists: res.specialists ?? [],
+          },
+          nzFooter: null,
+          nzWidth: 540,
+          nzClassName: 'project-modal',
+          nzCentered: true,
+        });
+      });
+  }
+}

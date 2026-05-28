@@ -1,0 +1,107 @@
+<div class="header-wrap" [class.header-wrap--menu-open]="menuOpen()">
+  <header class="header">
+    <button
+      type="button"
+      class="burger"
+      [attr.aria-expanded]="menuOpen()"
+      aria-controls="mobile-nav"
+      aria-label="Меню"
+      (click)="toggleMenu()"
+    >
+      <span nz-icon [nzType]="menuOpen() ? 'close' : 'menu'" nzTheme="outline"></span>
+    </button>
+
+    <a routerLink="/" class="brand" (click)="onHomeClick($event)">
+      <img class="brand-logo" src="/favicon.svg" width="24" height="24" alt="" />
+      <span class="brand-name">marketplace</span>
+      <span class="brand-beta">/ beta</span>
+    </a>
+
+    <nav class="nav">
+      <a routerLink="/" [class.is-active]="activeNav() === 'home'" (click)="onHomeClick($event)">
+        Главная
+      </a>
+      <button
+        type="button"
+        class="nav-item"
+        [class.is-active]="activeNav() === 'production'"
+        (click)="openProduction()"
+      >
+        Производство
+      </button>
+      <button
+        type="button"
+        class="nav-item"
+        [class.is-active]="activeNav() === 'promotion'"
+        (click)="openPromotion()"
+      >
+        Продвижение
+      </button>
+      <a routerLink="/search" [class.is-active]="activeNav() === 'search'">
+        Все специалисты
+      </a>
+    </nav>
+
+    <div class="header-actions">
+      @if (isLoggedIn()) {
+        <a routerLink="/me" class="link" [class.is-active]="activeNav() === 'cabinet'">
+          Кабинет
+        </a>
+      } @else {
+        <button type="button" class="link" (click)="openAuth()">Войти</button>
+      }
+      <nz-badge [nzCount]="cartCount()" [nzShowZero]="false">
+        <button nz-button nzType="primary" class="cta" (click)="openProject()">
+          Создать проект
+        </button>
+      </nz-badge>
+    </div>
+  </header>
+
+  @if (menuOpen()) {
+    <button
+      type="button"
+      class="mobile-nav-backdrop"
+      aria-label="Закрыть меню"
+      (click)="closeMenu()"
+    ></button>
+    <nav id="mobile-nav" class="mobile-nav">
+      <a routerLink="/" [class.is-active]="activeNav() === 'home'" (click)="onHomeClick($event)">
+        Главная
+      </a>
+      <button
+        type="button"
+        class="mobile-nav-item"
+        [class.is-active]="activeNav() === 'production'"
+        (click)="openProduction()"
+      >
+        Производство
+      </button>
+      <button
+        type="button"
+        class="mobile-nav-item"
+        [class.is-active]="activeNav() === 'promotion'"
+        (click)="openPromotion()"
+      >
+        Продвижение
+      </button>
+      <a
+        routerLink="/search"
+        [class.is-active]="activeNav() === 'search'"
+        (click)="closeMenu()"
+      >
+        Все специалисты
+      </a>
+      @if (isLoggedIn()) {
+        <a
+          routerLink="/me"
+          class="mobile-nav-item"
+          [class.is-active]="activeNav() === 'cabinet'"
+          (click)="closeMenu()"
+        >
+          Кабинет
+        </a>
+      }
+    </nav>
+  }
+</div>

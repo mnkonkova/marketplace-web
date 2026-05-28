@@ -1,0 +1,21 @@
+<div class="aside-stack">
+  <nz-card nzTitle="Стоимость услуг" class="aside-card">
+    <ul class="price-list">
+      <li>
+        <span>Работа специалиста</span>
+        <strong>{{
+          formatRate(profile().rate_min, profile().rate_max, profile().currency)
+        }}</strong>
+      </li>
+    </ul>
+  </nz-card>
+
+  <nz-card nzTitle="Занятость" class="aside-card">
+    <nz-tag nzColor="success">Свободен</nz-tag>
+    <p class="hint">Готов начать в течение 1–2 дней</p>
+  </nz-card>
+
+  <nz-card nzTitle="Среднее время ответа" class="aside-card">
+    <p class="big">~2 часа</p>
+  </nz-card>
+</div>

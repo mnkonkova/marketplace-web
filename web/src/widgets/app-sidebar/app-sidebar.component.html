@@ -1,0 +1,29 @@
+<aside class="sidebar">
+  <nav class="sidebar-nav">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      <span nz-icon nzType="appstore" nzTheme="outline"></span>
+      Каталог
+    </a>
+    <span class="disabled"><span nz-icon nzType="project" nzTheme="outline"></span> Проекты</span>
+    <span class="disabled"><span nz-icon nzType="team" nzTheme="outline"></span> Команды</span>
+    <span class="disabled"><span nz-icon nzType="heart" nzTheme="outline"></span> Избранное</span>
+    <span class="disabled"><span nz-icon nzType="message" nzTheme="outline"></span> Сообщения</span>
+  </nav>
+
+  <div class="sidebar-block">
+    <div class="sidebar-label">Категории</div>
+    @for (group of categoryGroups(); track group.type) {
+      <div class="sidebar-type">{{ group.type }}</div>
+      @for (c of group.categories; track c.code) {
+        <a class="cat-link" [routerLink]="['/search']" [queryParams]="{ category: c.code }">
+          {{ c.title }}
+        </a>
+      }
+    }
+  </div>
+
+  <div class="sidebar-block sidebar-bottom">
+    <a routerLink="/me" routerLinkActive="active">Профиль</a>
+    <span class="disabled">Настройки</span>
+  </div>
+</aside>

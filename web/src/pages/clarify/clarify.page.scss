@@ -1,0 +1,135 @@
+@use '../../assets/size' as *;
+
+.clarify-page {
+  min-height: calc(100dvh - 64px);
+  padding: 24px clamp(16px, 5vw, 64px) 64px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(32, 161, 148, 0.16), transparent 34%), var(--bg);
+}
+
+.back {
+  display: inline-flex;
+  margin-bottom: 24px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+
+  &:hover {
+    color: var(--accent);
+  }
+}
+
+.clarify-card {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: clamp(22px, 4vw, 40px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: $default-radius;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 8px 0 8px;
+  font-size: clamp(28px, 5vw, 48px);
+  line-height: 1;
+}
+
+.intro {
+  margin: 0;
+  max-width: 560px;
+  color: var(--text-muted);
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 280px;
+  max-height: 48dvh;
+  overflow: auto;
+  margin: 28px 0 18px;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--border);
+  border-radius: $default-radius;
+}
+
+.message {
+  max-width: min(76%, 620px);
+  padding: 12px 14px;
+  border-radius: $default-radius;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.assistant {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #03100f;
+}
+
+.typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+}
+
+.notice,
+.ready {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: $default-radius;
+  border: 1px solid rgba(32, 161, 148, 0.28);
+  background: rgba(32, 161, 148, 0.1);
+}
+
+.ready {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  span {
+    color: var(--text-muted);
+  }
+}
+
+.chat-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .message {
+    max-width: 92%;
+  }
+
+  .ready,
+  .chat-form {
+    grid-template-columns: 1fr;
+  }
+
+  .ready {
+    align-items: stretch;
+  }
+}

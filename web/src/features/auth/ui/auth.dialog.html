@@ -1,0 +1,102 @@
+<nz-tabset [nzSelectedIndex]="tab()">
+  <nz-tab nzTitle="Вход" (nzClick)="tab.set(0)">
+    <form nz-form [formGroup]="loginForm" (ngSubmit)="login()">
+      <nz-form-item>
+        <nz-form-control>
+          <input nz-input formControlName="login" placeholder="Email" />
+        </nz-form-control>
+      </nz-form-item>
+      <nz-form-item>
+        <nz-form-control>
+          <nz-form-item>
+            <nz-form-control>
+              <nz-input-group [nzSuffix]="suffixTemplate">
+                <input
+                  [type]="passwordVisible ? 'text' : 'password'"
+                  nz-input
+                  placeholder="Пароль"
+                  formControlName="password"
+                />
+              </nz-input-group>
+              <ng-template #suffixTemplate>
+                <span
+                  nz-icon
+                  class="ant-input-password-icon"
+                  [nzType]="passwordVisible ? 'eye-invisible' : 'eye'"
+                  (click)="passwordVisible = !passwordVisible"
+                ></span>
+              </ng-template>
+            </nz-form-control>
+          </nz-form-item>
+        </nz-form-control>
+      </nz-form-item>
+      <button
+        nz-button
+        nzType="primary"
+        nzBlock
+        [nzLoading]="loading()"
+        [disabled]="loginForm.invalid"
+      >
+        Войти
+      </button>
+    </form>
+  </nz-tab>
+  <nz-tab nzTitle="Регистрация" (nzClick)="tab.set(1)">
+    <form nz-form [formGroup]="registerForm" (ngSubmit)="register()">
+      <nz-form-item>
+        <nz-form-control>
+          <input nz-input formControlName="display_name" placeholder="Имя" />
+        </nz-form-control>
+      </nz-form-item>
+      <nz-form-item>
+        <nz-form-control>
+          <input nz-input formControlName="email" placeholder="Email" />
+        </nz-form-control>
+      </nz-form-item>
+      <nz-form-item>
+        <nz-form-control>
+          <nz-select
+            class="auth-select"
+            formControlName="kind"
+            nzPlaceHolder="Тип аккаунта"
+            nzDropdownClassName="auth-select-dropdown"
+          >
+            <nz-option nzLabel="Клиент" nzValue="client"></nz-option>
+            <nz-option nzLabel="Специалист" nzValue="specialist"></nz-option>
+            <nz-option nzLabel="И то, и другое" nzValue="both"></nz-option>
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+      <nz-form-item>
+        <nz-form-control>
+          <nz-input-group [nzSuffix]="suffixTemplate">
+            <input
+              [type]="passwordVisible ? 'text' : 'password'"
+              nz-input
+              placeholder="Пароль"
+              formControlName="password"
+            />
+          </nz-input-group>
+          <ng-template #suffixTemplate>
+            <span
+              nz-icon
+              class="ant-input-password-icon"
+              [nzType]="passwordVisible ? 'eye-invisible' : 'eye'"
+              (click)="passwordVisible = !passwordVisible"
+            ></span>
+          </ng-template>
+        </nz-form-control>
+      </nz-form-item>
+
+      <button
+        nz-button
+        nzType="primary"
+        nzBlock
+        [nzLoading]="loading()"
+        [disabled]="registerForm.invalid"
+      >
+        Создать аккаунт
+      </button>
+    </form>
+  </nz-tab>
+</nz-tabset>

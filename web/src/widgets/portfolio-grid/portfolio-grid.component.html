@@ -1,0 +1,27 @@
+<div class="portfolio-grid">
+  @for (p of items().slice(0, 6); track p.id) {
+    @if (p.video_url) {
+      <div class="portfolio-card">
+        <video
+          [src]="p.video_url"
+          [poster]="p.thumbnail_url || ''"
+          playsinline
+          preload="metadata"
+          controls
+          class="portfolio-video"
+        ></video>
+      </div>
+    } @else {
+      <a
+        class="portfolio-card thumb-only"
+        [href]="p.external_url || null"
+        [attr.target]="p.external_url ? '_blank' : null"
+        [style.background-image]="p.thumbnail_url ? 'url(' + p.thumbnail_url + ')' : null"
+      >
+        @if (!p.thumbnail_url) {
+          <span>🖼</span>
+        }
+      </a>
+    }
+  }
+</div>

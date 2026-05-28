@@ -1,0 +1,6 @@
+<span class="stars">★</span>
+<span class="rating-avg">{{ rating() | number: '1.1-1' }}</span>
+<span class="reviews-count"
+  >{{ reviewsCount() }} {{ reviewsCount() === 1 ? 'отзыв' : 'отзыва' }}
+  {{ reviewsCount() > 4 ? 'ов' : '' }}</span
+>

@@ -1,0 +1,135 @@
+<app-header />
+<div class="feed-page">
+  @if (mode() === 'feed') { @for (k of [feedKey()]; track k) {
+  <app-feed-view [params]="params()" [title]="title()" (specialistClick)="goProfile($event)" />
+  } } @else {
+  <main class="results-page">
+    <div class="results-nav">
+      <button type="button" class="back" (click)="backToClarify()">← Уточнить запрос</button>
+    </div>
+
+    <header class="results-head">
+      <div>
+        <div class="eyebrow">Подбор специалистов</div>
+        <h2>{{ title() }}</h2>
+      </div>
+      @if (mode() === 'ai' && picks().length) {
+      <button nz-button nzType="default" type="button" (click)="showAllMatches()">
+        Посмотреть все совпадения
+      </button>
+      }
+    </header>
+    @if (summary()) {
+    <p class="results-summary">{{ summary() }}</p>
+    } @if (mode() === 'ai') {
+    <div class="results-grid">
+      @for (pick of picks(); track pick.user_id) { @let spec = pick.profile;
+      <article class="spec-card pick" (click)="goProfile(spec)" tabindex="0">
+        <div class="spec-main">
+          <div class="spec-rank">#{{ pick.rank || $index + 1 }}</div>
+          <h2>{{ spec.display_name }}</h2>
+          <div class="spec-meta">
+            {{ spec.city || 'удалённо' }} · @if (spec.reviews_count) {
+            <app-rate-stars [rating]="spec.rating_avg!" [reviewsCount]="spec.reviews_count" />
+            } @else { новый специалист }
+          </div>
+          <p class="pick-reason">{{ pick.reason }}</p>
+          @if (spec.bio) {
+          <p class="bio">{{ spec.bio }}</p>
+          }
+          <div class="chips">
+            @for (cat of (spec.categories ?? []).slice(0, 3); track cat) {
+            <span>{{ categoryTitle(cat) }}</span>
+            }
+          </div>
+        </div>
+        <div class="spec-side">
+          <div class="rate">{{ formatRate(spec.rate_min, spec.rate_max, spec.currency) }}</div>
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            class="project-cart-btn"
+            [class.in-project]="inCart(spec.user_id)"
+            (click)="toggleCart(spec, $event)"
+          >
+            {{ inCart(spec.user_id) ? 'В проекте' : 'В проект' }}
+          </button>
+        </div>
+      </article>
+      }
+    </div>
+    } @else {
+    <div class="results-list">
+      @for (spec of list(); track spec.user_id) {
+      <article class="spec-row" (click)="goProfile(spec)" tabindex="0">
+        <div class="avatar">
+          @if (spec.avatar_url) {
+          <img [src]="spec.avatar_url" alt="" />
+          } @else {
+          <span>{{ spec.display_name.slice(0, 1) }}</span>
+          }
+        </div>
+        <div class="spec-main">
+          <h2>{{ spec.display_name }}</h2>
+          <div class="spec-meta">
+            @if (spec.primary_category) {
+            <span class="cat">{{ categoryTitle(spec.primary_category) }}</span>
+            }
+            <span>{{ spec.city || 'удалённо' }}</span>
+            <span>
+              @if (spec.reviews_count) {
+              <app-rate-stars [rating]="spec.rating_avg!" [reviewsCount]="spec.reviews_count" />
+              } @else { новый }
+            </span>
+          </div>
+        </div>
+        <div class="spec-side">
+          <div class="rate">{{ formatRate(spec.rate_min, spec.rate_max, spec.currency) }}</div>
+          <button
+            nz-button
+            type="button"
+            nzType="primary"
+            class="project-cart-btn"
+            [class.in-project]="inCart(spec.user_id)"
+            (click)="toggleCart(spec, $event)"
+          >
+            {{ inCart(spec.user_id) ? 'В проекте' : 'В проект' }}
+          </button>
+        </div>
+      </article>
+      } @if (similar().length) {
+      <div class="similar-title">Похожие специалисты</div>
+      @for (spec of similar(); track spec.user_id) {
+      <article class="spec-row similar" (click)="goProfile(spec)" tabindex="0">
+        <div class="avatar">
+          @if (spec.avatar_url) {
+          <img [src]="spec.avatar_url" alt="" />
+          } @else {
+          <span>{{ spec.display_name.slice(0, 1) }}</span>
+          }
+        </div>
+        <div class="spec-main">
+          <h2>{{ spec.display_name }}</h2>
+          <div class="spec-meta">{{ spec.city || 'удалённо' }}</div>
+        </div>
+        <div class="spec-side">
+          <div class="rate">{{ formatRate(spec.rate_min, spec.rate_max, spec.currency) }}</div>
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            class="project-cart-btn"
+            [class.in-project]="inCart(spec.user_id)"
+            (click)="toggleCart(spec, $event)"
+          >
+            {{ inCart(spec.user_id) ? 'В проекте' : 'В проект' }}
+          </button>
+        </div>
+      </article>
+      } }
+    </div>
+    }
+  </main>
+  }
+</div>

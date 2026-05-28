@@ -1,0 +1,71 @@
+::ng-deep.ant-tabs-top > .ant-tabs-nav::before {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-bottom: none;
+  content: '';
+}
+
+:host {
+  ::ng-deep span > svg {
+    fill: var(--text) !important;
+  }
+
+  ::ng-deep .auth-select.ant-select {
+    display: block;
+    width: 100%;
+  }
+
+  ::ng-deep .auth-select:not(.ant-select-customize-input) .ant-select-selector {
+    width: 100%;
+    min-height: 32px;
+    height: 32px;
+    padding: 0 11px;
+    border-radius: 6px;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    box-shadow: none !important;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+  }
+
+  ::ng-deep .auth-select .ant-select-selection-search-input {
+    height: 30px;
+    color: var(--text) !important;
+  }
+
+  ::ng-deep .auth-select .ant-select-selection-item,
+  ::ng-deep .auth-select .ant-select-selection-placeholder {
+    line-height: 30px;
+    font-size: 14px;
+  }
+
+  ::ng-deep .auth-select .ant-select-selection-placeholder {
+    color: var(--text-dim) !important;
+  }
+
+  ::ng-deep .auth-select .ant-select-selection-item {
+    color: var(--text) !important;
+  }
+
+  ::ng-deep .auth-select .ant-select-arrow {
+    color: var(--text-muted) !important;
+  }
+
+  ::ng-deep .auth-select:hover:not(.ant-select-disabled) .ant-select-selector {
+    border-color: rgba(255, 255, 255, 0.16) !important;
+  }
+
+  ::ng-deep .auth-select.ant-select-focused:not(.ant-select-disabled) .ant-select-selector {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px var(--accent-dim) !important;
+  }
+
+  ::ng-deep .auth-select.ant-select-disabled .ant-select-selector {
+    background: var(--surface) !important;
+    color: var(--text-dim) !important;
+    opacity: 0.65;
+  }
+}

@@ -1,0 +1,432 @@
+:host {
+  --app-header-height: 0px;
+  display: block;
+  box-sizing: border-box;
+  height: 100%;
+  max-height: calc(100dvh - var(--app-header-height));
+  min-height: 0;
+}
+
+.feed-shell {
+  position: relative;
+  height: 100%;
+  max-height: inherit;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(32, 161, 148, 0.12), transparent 28%), #050505;
+}
+
+.feed-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 10px clamp(14px, 3vw, 28px);
+  border-bottom: 1px solid var(--border);
+  background: rgba(6, 10, 12, 0.82);
+  backdrop-filter: blur(18px);
+
+  h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+}
+
+.mute-btn {
+  min-width: 42px;
+  height: 42px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.feed-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  overscroll-behavior-y: contain;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 0 clamp(52px, 7dvw, 96px);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.feed-item {
+  position: relative;
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  background: #000;
+  overflow: hidden;
+  border-radius: 28px;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.feed-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.feed-poster {
+  z-index: 0;
+  transition: opacity 0.2s;
+
+  &.is-hidden {
+    opacity: 0;
+  }
+}
+
+.feed-poster-fallback {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 40% 20%, rgba(32, 161, 148, 0.25), transparent 32%),
+    linear-gradient(160deg, #0d1518, #1a2a30);
+}
+
+.feed-video {
+  z-index: 1;
+  display: block;
+  background: #000;
+}
+
+/* Вертикальное — на весь экран, cover (Reels / Shorts) */
+.feed-item.is-portrait {
+  .feed-poster,
+  .feed-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+}
+
+/* Горизонтальное — по центру, contain + letterbox */
+.feed-item.is-landscape {
+  .feed-poster,
+  .feed-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+  }
+}
+
+.feed-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 74px 16px 24px 20px;
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.42), transparent 24%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.12) 54%, transparent);
+  pointer-events: none;
+}
+
+.feed-overlay-left,
+.feed-overlay-right {
+  pointer-events: auto;
+}
+
+.feed-overlay-left {
+  min-width: 0;
+  max-width: calc(100% - 76px);
+}
+
+.feed-top-badges {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  left: 16px;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.reels-badge,
+.sound-badge {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.feed-spec-name {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1.05;
+  font-weight: 800;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+}
+
+.feed-video-title {
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.feed-spec-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.feed-cat-chip {
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+
+  &.is-primary {
+    background: rgba(45, 212, 191, 0.25);
+    color: var(--accent);
+  }
+}
+
+.feed-spec-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+
+  .rate {
+    color: var(--accent);
+  }
+}
+
+.feed-spec-bio {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.4;
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.feed-overlay-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 2px;
+}
+
+.feed-action {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(20, 20, 20, 0.72);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32);
+
+  &.is-on {
+    background: var(--accent);
+    color: #041012;
+    border-color: var(--accent);
+  }
+}
+
+.feed-action-label {
+  margin-bottom: 9px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
+}
+
+.feed-video-idx {
+  margin-top: 4px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.feed-empty,
+.feed-loading {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+@media (max-width: 720px) {
+  .feed-shell {
+    height: 100%;
+    max-height: 100%;
+    background: #000;
+  }
+
+  .feed-top {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 20;
+    min-height: 48px;
+    padding: max(8px, env(safe-area-inset-top)) 14px 0;
+    border-bottom: 0;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), transparent);
+    pointer-events: none;
+
+    .mute-btn {
+      pointer-events: auto;
+    }
+  }
+
+  .feed-list {
+    gap: 0;
+    padding: 0;
+    height: 100%;
+    justify-content: flex-start;
+    scroll-snap-type: y mandatory;
+  }
+
+  .feed-item {
+    flex: 0 0 100%;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .feed-overlay {
+    padding: max(58px, env(safe-area-inset-top) + 38px) 12px
+      max(18px, env(safe-area-inset-bottom) + 14px) 16px;
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.44), transparent 22%),
+      linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.14) 58%, transparent);
+  }
+
+  .feed-overlay-left {
+    max-width: calc(100% - 66px);
+  }
+
+  .feed-top-badges {
+    top: max(50px, env(safe-area-inset-top) + 38px);
+    right: 12px;
+    left: 12px;
+  }
+
+  .reels-badge {
+    display: none;
+  }
+
+  .feed-spec-name {
+    font-size: clamp(20px, 6vw, 26px);
+  }
+
+  .feed-video-title,
+  .feed-spec-meta,
+  .feed-spec-bio {
+    font-size: clamp(12px, 3.4vw, 13px);
+  }
+
+  .feed-spec-bio {
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+  }
+
+  .feed-cat-chip {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .feed-action {
+    width: clamp(44px, 12vw, 52px);
+    height: clamp(44px, 12vw, 52px);
+    font-size: 22px;
+  }
+
+  .feed-action-label {
+    margin-bottom: 7px;
+    font-size: 9px;
+  }
+
+  .feed-video-idx {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 390px) {
+  .feed-overlay {
+    padding-right: 10px;
+    padding-left: 12px;
+  }
+
+  .feed-overlay-left {
+    max-width: calc(100% - 58px);
+  }
+
+  .feed-spec-cats {
+    gap: 4px;
+  }
+
+  .feed-action-label {
+    display: none;
+  }
+}

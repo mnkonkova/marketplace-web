@@ -1,0 +1,93 @@
+<app-header />
+
+<div class="profile-layout">
+  <main class="profile-main">
+    <a class="back" [routerLink]="['/search']">← Назад к каталогу</a>
+
+    @if (loading()) {
+    <div class="loading"><nz-spin nzSize="large"></nz-spin></div>
+    } @else if (profile()) { @let p = profile()!;
+    <div class="profile-grid">
+      <div class="profile-content">
+        <header class="profile-hero">
+          <nz-avatar [nzSize]="96" [nzSrc]="p.avatar_url || undefined" class="avatar">
+            {{ p.display_name.slice(0, 1) }}
+          </nz-avatar>
+          <div class="hero-text">
+            <h1>{{ p.display_name }}</h1>
+            <p class="role">{{ primaryRole(p) }}</p>
+            <p class="meta">
+              {{ p.city || 'Удалённо' }} · @if (p.reviews_count) {
+              <app-rate-stars [rating]="p.rating_avg!" [reviewsCount]="p.reviews_count" />
+              } @else { новый специалист }
+            </p>
+            <div class="hero-actions">
+              <button
+                nz-button
+                nzType="primary"
+                type="button"
+                class="project-cart-btn"
+                [class.in-project]="inCart()"
+                (click)="toggleProject()"
+              >
+                {{ inCart() ? 'В проекте' : 'Пригласить в проект' }}
+              </button>
+            </div>
+          </div>
+        </header>
+
+        @if (p.bio) {
+        <section class="block">
+          <h2>О себе</h2>
+          <p class="bio">{{ p.bio }}</p>
+        </section>
+        } @if (p.skills?.length) {
+        <section class="block">
+          <h2>Навыки</h2>
+          <div class="chips">
+            @for (s of p.skills; track s.id) {
+            <nz-tag>{{ s.title }}</nz-tag>
+            }
+          </div>
+        </section>
+        } @if (p.portfolio?.length) {
+        <section class="block">
+          <div class="block-head">
+            <h2>Портфолио</h2>
+            <span class="muted">{{ p.portfolio.length }} работ</span>
+          </div>
+          <app-portfolio-grid [items]="p.portfolio" />
+        </section>
+        } @if (p.reviews.length) {
+        <section class="block">
+          <h2>Отзывы</h2>
+          <div class="reviews">
+            @for (r of p.reviews; track r.id) {
+            <article class="review">
+              <div class="review-head">
+                <span class="stars">{{ '★'.repeat(r.rating) }}</span>
+                <strong>{{ r.author_name }}</strong>
+                <time>{{ r.created_at | date: 'longDate' : '' : 'ru' }}</time>
+              </div>
+              @if (r.text) {
+              <p>{{ r.text }}</p>
+              }
+            </article>
+            }
+          </div>
+        </section>
+        }
+      </div>
+
+      <app-profile-aside
+        [profile]="p"
+        [inProject]="inCart()"
+        (addToProject)="toggleProject()"
+        (discuss)="toggleProject()"
+      />
+    </div>
+    } @else {
+    <p class="empty">Профиль не найден</p>
+    }
+  </main>
+</div>

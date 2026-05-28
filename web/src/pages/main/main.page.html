@@ -1,0 +1,49 @@
+<app-header />
+
+<main class="main">
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-inner">
+      <div class="hero-content-wrap">
+        <div class="hero-content">Опишите задачу</div>
+        <div class="hero-content-subtitle">Соберём команду</div>
+      </div>
+      <form class="hero-search" (submit)="$event.preventDefault(); search()">
+        <span nz-icon nzType="search" class="search-icon"></span>
+        <input
+          nz-input
+          [(ngModel)]="query"
+          name="q"
+          placeholder="Монтажёр для Reels, SMM для бренда…"
+        />
+        <button nz-button nzType="primary" type="submit">Подобрать специалистов</button>
+      </form>
+      <div class="quick-tags">
+        @for (tag of quickTags; track tag) {
+        <button type="button" class="tag" (click)="openQuick(tag)">{{ tag }}</button>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="section-header" id="categories">
+    <h2>Категории специалистов</h2>
+    <div class="see-all" (click)="seeAll()">
+      <span> Смотреть все </span>
+      <span nz-icon nzType="arrow-right" nzTheme="outline"></span>
+    </div>
+  </div>
+
+  <section class="categories-section">
+    @for (group of categoryGroups(); track group.type) {
+    <app-category-grid
+      [sectionId]="group.sectionId"
+      [title]="group.type"
+      [kicker]="group.kicker ?? ''"
+      [categories]="group.categories"
+      [counts]="counts()"
+      (categoryClick)="openCategory($event)"
+    />
+    }
+  </section>
+</main>

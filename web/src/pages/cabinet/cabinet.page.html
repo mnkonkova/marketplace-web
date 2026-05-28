@@ -1,0 +1,304 @@
+<app-header />
+
+<main class="cabinet">
+  @if (loading()) {
+  <nz-spin nzSize="large"></nz-spin>
+  } @else if (profile()) { @let p = profile()!; @let u = user()!;
+
+  <section class="panel profile-panel">
+    <div class="panel-head">
+      <h2>Профиль</h2>
+    </div>
+
+    <div class="profile-grid">
+      <div class="avatar-column">
+        <div class="avatar-preview" [class.has-image]="form.avatar_url">
+          @if (form.avatar_url) {
+          <img [src]="form.avatar_url" alt="" />
+          } @else {
+          <span>{{ (form.display_name || '?').slice(0, 1) }}</span>
+          }
+        </div>
+        <input
+          #avatarFile
+          type="file"
+          class="hidden-file"
+          accept="image/jpeg,image/png,image/webp"
+          (change)="uploadAvatar($event)"
+        />
+        <button
+          nz-button
+          nzType="default"
+          [nzLoading]="avatarUploading()"
+          (click)="avatarFile.click()"
+        >
+          Загрузить аватар
+        </button>
+        @if (form.avatar_url) {
+        <button nz-button type="button" (click)="clearAvatar()">Очистить</button>
+        }
+        <p class="hint">JPG, PNG или WEBP до 5 МБ. После загрузки нажмите «Сохранить».</p>
+      </div>
+
+      <div class="fields">
+        <label>
+          Имя / название
+          <input nz-input [(ngModel)]="form.display_name" name="display_name" />
+        </label>
+        <label>
+          Город
+          <input nz-input [(ngModel)]="form.city" name="city" placeholder="Москва или удалённо" />
+        </label>
+        <div class="inline-fields">
+          <label>
+            Ставка от
+            <input nz-input type="number" [(ngModel)]="form.rate_min" name="rate_min" />
+          </label>
+          <label>
+            Ставка до
+            <input nz-input type="number" [(ngModel)]="form.rate_max" name="rate_max" />
+          </label>
+          <label>
+            Валюта
+            <input nz-input [(ngModel)]="form.currency" name="currency" />
+          </label>
+        </div>
+        <label>
+          Описание
+          <textarea nz-input rows="7" [(ngModel)]="form.bio" name="bio"></textarea>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel check-panel" [class.rejected]="check() && !check()!.ok">
+    <div class="panel-head check-head">
+      <div>
+        <h2>Проверка профиля</h2>
+        <p>AI-подсказки по имени и описанию перед публикацией.</p>
+      </div>
+      <button
+        nz-button
+        nzType="default"
+        type="button"
+        (click)="runCheck()"
+        [nzLoading]="checkLoading()"
+      >
+        Проверить bio
+      </button>
+    </div>
+
+    @if (check(); as c) { @if (c.name) {
+    <div class="check-row">
+      <strong>Имя: {{ c.name.ok ? 'OK' : 'нужно доработать' }} · {{ c.name.score }}/100</strong>
+      @if (c.name.suggestion) { <span>{{ c.name.suggestion }}</span> }
+    </div>
+    @if (c.name.reasons?.length) {
+    <ul>
+      @for (reason of c.name.reasons; track reason) {
+      <li>{{ reason }}</li>
+      }
+    </ul>
+    } } @if (c.bio) {
+    <div class="check-row">
+      <strong>Описание: {{ c.bio.ok ? 'OK' : 'нужно доработать' }} · {{ c.bio.score }}/100</strong>
+      @if (c.bio.suggestion) { <span>{{ c.bio.suggestion }}</span> }
+    </div>
+    @if (c.bio.reasons?.length) {
+    <ul>
+      @for (reason of c.bio.reasons; track reason) {
+      <li>{{ reason }}</li>
+      }
+    </ul>
+    } } } @else {
+    <p class="hint">Нажмите «Проверить bio», чтобы получить рекомендации.</p>
+    }
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Контакты для заявок</h2>
+        <p>
+          Эти контакты не видны в публичном профиле. Они вернутся менеджеру после отправки заявки.
+        </p>
+      </div>
+    </div>
+    <div class="inline-fields two">
+      <label>
+        Контактный email
+        <input nz-input [(ngModel)]="form.contact_email" name="contact_email" />
+      </label>
+      <label>
+        Телефон
+        <input nz-input [(ngModel)]="form.contact_phone" name="contact_phone" />
+      </label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Категории</h2>
+        <p>Выберите одну или несколько. Звёздочка задаёт основную категорию.</p>
+      </div>
+    </div>
+    @for (group of categoryGroups(); track group.type) {
+    <h3 class="pick-type">{{ group.type }}</h3>
+    <div class="pick-grid">
+      @for (cat of group.categories; track cat.code) {
+      <button
+        type="button"
+        class="cat-pick"
+        [class.is-on]="selectedCategories().has(cat.code)"
+        [class.is-primary]="primaryCategory() === cat.code && selectedCategories().has(cat.code)"
+        (click)="toggleCategory(cat.code)"
+      >
+        <span class="cat-title">{{ cat.title }}</span>
+        <span class="cat-desc">{{ cat.description }}</span>
+        <span class="primary-action" (click)="setPrimary(cat.code, $event)">★ основная</span>
+      </button>
+      }
+    </div>
+    }
+  </section>
+
+  <section class="panel">
+    <h2>Навыки</h2>
+    <div class="skill-block">
+      <h3>Инструменты и форматы</h3>
+      <div class="chips">
+        @for (skill of tools(); track skill.id) {
+        <button
+          type="button"
+          class="chip"
+          [class.is-on]="selectedSkills().has(skill.id)"
+          (click)="toggleSkill(skill.id)"
+        >
+          {{ skill.title }}
+        </button>
+        }
+      </div>
+    </div>
+    <div class="skill-block">
+      <h3>Платформы</h3>
+      <div class="chips">
+        @for (skill of platforms(); track skill.id) {
+        <button
+          type="button"
+          class="chip"
+          [class.is-on]="selectedSkills().has(skill.id)"
+          (click)="toggleSkill(skill.id)"
+        >
+          {{ skill.title }}
+        </button>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Портфолио</h2>
+        <p>Видео появятся в ленте, когда профиль опубликован.</p>
+      </div>
+      <span class="muted">{{ portfolio().length }} видео</span>
+    </div>
+
+    <div class="portfolio-form">
+      <input
+        nz-input
+        [(ngModel)]="portfolioForm.title"
+        name="pf_title"
+        placeholder="Название видео"
+      />
+      <textarea
+        nz-input
+        rows="3"
+        [(ngModel)]="portfolioForm.description"
+        name="pf_desc"
+        placeholder="Описание"
+      ></textarea>
+      <input
+        #videoFile
+        type="file"
+        class="hidden-file"
+        accept="video/mp4,video/quicktime"
+        (change)="uploadPortfolioFile($event)"
+      />
+      <button nz-button nzType="default" [nzLoading]="videoUploading()" (click)="videoFile.click()">
+        Загрузить видео с устройства
+      </button>
+      @if (videoUploadProgress()) {
+      <div class="upload-progress">Загрузка: {{ videoUploadProgress() }}</div>
+      }
+      <button
+        nz-button
+        nzType="primary"
+        type="button"
+        [nzLoading]="portfolioSaving()"
+        (click)="addPortfolio()"
+      >
+        Добавить видео
+      </button>
+    </div>
+
+    <div class="portfolio-list">
+      @for (item of portfolio(); track item.id) {
+      <article class="portfolio-row">
+        <div class="thumb">
+          @if (item.thumbnail_url) {
+          <img [src]="item.thumbnail_url" alt="" />
+          } @else {
+          <span>▶</span>
+          }
+        </div>
+        <div class="portfolio-main">
+          <strong>{{ item.title || '(без названия)' }}</strong>
+          @if (item.video_url) {
+          <a [href]="item.video_url" target="_blank" rel="noopener">открыть видео ↗</a>
+          } @if (item.description) {
+          <p>{{ item.description }}</p>
+          }
+          <div class="chips">
+            @for (code of selectedCategories(); track code) {
+            <button
+              type="button"
+              class="chip small"
+              [class.is-on]="item.category_codes.includes(code)"
+              (click)="togglePortfolioCategory(item, code)"
+            >
+              {{ categoryTitle(code) }}
+            </button>
+            }
+          </div>
+        </div>
+        <span nz-icon nzType="delete" nzTheme="outline" (click)="deletePortfolio(item.id)"></span>
+      </article>
+      } @empty {
+      <p class="hint">Добавьте первый ролик — он появится в кабинете и ленте.</p>
+      }
+    </div>
+  </section>
+
+  <div class="actions">
+    <button nz-button nzDanger type="button" (click)="logout()">Выйти</button>
+    <button nz-button nzType="default" type="button" [nzLoading]="saving()" (click)="save(false)">
+      Сохранить
+    </button>
+    @if (p.is_published) {
+    <button nz-button nzDanger type="button" [nzLoading]="saving()" (click)="unpublish()">
+      Снять с публикации
+    </button>
+    } @else {
+    <button nz-button nzType="primary" type="button" [nzLoading]="saving()" (click)="save(true)">
+      Опубликовать
+    </button>
+    }
+  </div>
+  } @else {
+  <div class="alert">Профиль не найден или недоступен.</div>
+  <button type="button" class="logout" (click)="logout()">Выйти</button>
+  }
+</main>

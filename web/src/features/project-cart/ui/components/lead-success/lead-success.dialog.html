@@ -1,0 +1,29 @@
+<div class="project-dialog lead-success">
+  <div class="lead-success-icon" aria-hidden="true">✓</div>
+  <h3>Заявка отправлена</h3>
+  <p class="lead-success-text">{{ data.message }}</p>
+
+  @if (data.specialists.length) {
+  <div class="lead-success-contacts">
+    <p class="lead-success-contacts-title">Контакты для прямой связи</p>
+    @for (s of data.specialists; track s.user_id) {
+    <article class="lead-contact-card">
+      <strong>{{ s.display_name }}</strong>
+      <p>
+        @if (s.contact_email) {
+        <a [href]="'mailto:' + s.contact_email">{{ s.contact_email }}</a>
+        } @if (s.contact_email && s.contact_phone) {
+        <br />
+        } @if (s.contact_phone) {
+        <span>{{ s.contact_phone }}</span>
+        } @if (!s.contact_email && !s.contact_phone) {
+        <span>контакты не указаны — ответят через маркетплейс</span>
+        }
+      </p>
+    </article>
+    }
+  </div>
+  }
+
+  <button type="button" class="cart-btn-primary" (click)="close()">Хорошо</button>
+</div>

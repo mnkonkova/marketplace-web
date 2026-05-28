@@ -1,0 +1,197 @@
+@use '../../assets/size' as *;
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  /* Якоря для скролла с хедера; в main.page.scss не сработает из-за encapsulation. */
+  &[id] {
+    scroll-margin-top: 80px;
+  }
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.section-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+  }
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.kicker {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.count-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+  @media (min-width: 1024px) {
+    gap: 20px;
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.card {
+  border-radius: $default-radius;
+  background: var(--surface);
+  border: none;
+  padding: 20px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 180px;
+  transition: background 0.15s;
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-top-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.idx {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.icon {
+  font-size: 20px;
+}
+
+.pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.card-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.cta {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.meta {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+@media (max-width: 720px) {
+  .section[id] {
+    scroll-margin-top: calc(56px + env(safe-area-inset-top, 0px) + 12px);
+  }
+
+  .section {
+    gap: 12px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .card {
+    min-height: 118px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .card-top {
+    order: 2;
+  }
+
+  .pill {
+    padding: 3px 9px;
+    font-size: 10px;
+  }
+
+  .card-title {
+    font-size: 19px;
+    line-height: 1.05;
+  }
+
+  .card-desc {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.35;
+    display: -webkit-box;
+    overflow: hidden;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+}

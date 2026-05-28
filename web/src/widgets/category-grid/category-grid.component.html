@@ -1,0 +1,29 @@
+<section class="section" [attr.id]="sectionId() ?? null">
+  @if (title()) {
+    <div class="section-head">
+      <div class="section-title-wrap">
+        <span class="dot" aria-hidden="true"></span>
+        <h3>{{ title() }}</h3>
+        @if (kicker()) {
+          <span class="kicker">{{ kicker() }}</span>
+        }
+      </div>
+      <span class="count-badge">{{ categoriesLabel() }}</span>
+    </div>
+  }
+
+  <div class="grid">
+    @for (cat of categories(); track cat.code; let i = $index) {
+      <button type="button" class="card" (click)="categoryClick.emit(cat)">
+        <div class="card-top">
+          <span class="pill">{{ counts()[cat.code] || '—' }}</span>
+        </div>
+        <div class="card-title">{{ displayTitle(cat) }}</div>
+        <p class="card-desc">{{ cat.description }}</p>
+        <div class="card-foot">
+          <span class="cta">Смотреть всех →</span>
+        </div>
+      </button>
+    }
+  </div>
+</section>

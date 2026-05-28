@@ -1,0 +1,303 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg: #060a0c;
+  --bg-elevated: #0a1012;
+  --surface: #0f1619;
+  --surface-hover: #141e22;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #eef6f8;
+  --text-muted: rgba(238, 246, 248, 0.62);
+  --text-dim: rgba(238, 246, 248, 0.38);
+  --accent: #20a194;
+  --accent-dim: rgba(45, 212, 191, 0.15);
+  --danger: #ff6470;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Manrope', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text);
+}
+
+/* ng-zorro dark overrides */
+.ant-layout,
+.ant-modal-content,
+.ant-card,
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector,
+.ant-btn-default {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+.ant-modal-header,
+.ant-card-head {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+.ant-input::placeholder {
+  color: var(--text-dim) !important;
+}
+
+.ant-picker {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+.ant-picker-input > input {
+  color: var(--text) !important;
+
+  &::placeholder {
+    color: var(--text-dim) !important;
+  }
+}
+
+.ant-picker-suffix,
+.ant-picker-clear {
+  color: var(--text-muted) !important;
+}
+
+.ant-picker-focused,
+.ant-picker:hover {
+  border-color: var(--accent) !important;
+}
+
+.ant-picker-dropdown .ant-picker-panel-container {
+  background: var(--surface) !important;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.ant-picker-panel {
+  background: var(--surface) !important;
+  border: none !important;
+}
+
+.ant-picker-header,
+.ant-picker-footer {
+  border-color: var(--border) !important;
+}
+
+.ant-picker-header button,
+.ant-picker-content th,
+.ant-picker-cell {
+  color: var(--text-muted) !important;
+}
+
+.ant-picker-header-view button {
+  color: var(--text) !important;
+  font-weight: 600;
+
+  &:hover {
+    color: var(--accent) !important;
+  }
+}
+
+.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+.ant-picker-cell-in-view.ant-picker-cell-range-start .ant-picker-cell-inner,
+.ant-picker-cell-in-view.ant-picker-cell-range-end .ant-picker-cell-inner {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+
+.ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-color: var(--accent) !important;
+}
+
+.ant-picker-cell:hover:not(.ant-picker-cell-selected):not(.ant-picker-cell-disabled)
+  .ant-picker-cell-inner {
+  background: var(--surface-hover) !important;
+}
+
+.ant-picker-cell-disabled {
+  color: var(--text-dim) !important;
+  opacity: 0.45;
+}
+
+.ant-picker-today-btn {
+  color: var(--accent) !important;
+}
+
+.auth-select-dropdown .ant-select-dropdown {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.auth-select-dropdown .ant-select-item {
+  color: var(--text-muted) !important;
+  border-radius: 4px;
+}
+
+.auth-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background: var(--surface-hover) !important;
+}
+
+.auth-select-dropdown .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+.ant-tabs-tab {
+  color: var(--text-muted) !important;
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--accent) !important;
+}
+
+.ant-tag {
+  background: var(--accent-dim) !important;
+  border-color: transparent !important;
+  color: var(--accent) !important;
+}
+
+.ant-btn-primary {
+  color: #fff !important;
+  background: var(--accent);
+  border-color: var(--accent) !important;
+}
+.ant-btn-primary:disabled {
+  background: var(--accent-dim) !important;
+  border-color: var(--accent-dim) !important;
+  color: var(--text-dim) !important;
+}
+
+.ant-btn-primary:focus {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+}
+
+.ant-btn-primary:hover {
+  background: var(--accent);
+  color: #fff !important;
+  border-color: var(--accent) !important;
+}
+
+.ant-btn-primary:active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #000 !important;
+}
+
+.project-cart-btn.in-project {
+  color: var(--accent) !important;
+  background: white !important;
+  border-color: var(--accent) !important;
+
+  &:hover,
+  &:focus,
+  &:active {
+    color: var(--accent) !important;
+    background: white !important;
+    border-color: var(--accent) !important;
+  }
+}
+
+.ant-btn-dangerous {
+  background: var(--surface);
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+}
+
+.ant-btn-dangerous:hover {
+  background: var(--danger) !important;
+  border-color: var(--danger) !important;
+  color: white !important;
+}
+
+.ant-btn-default:hover {
+  color: white !important;
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Модалки проекта / брифа */
+.project-modal {
+  .ant-modal-content {
+    background: var(--surface) !important;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+    padding: 24px;
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+  }
+
+  .ant-modal-close {
+    top: 16px;
+    inset-inline-end: 16px;
+    color: var(--text-muted);
+    border-radius: 6px;
+    transition:
+      color 0.15s ease,
+      background 0.15s ease;
+
+    &:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+  }
+
+  .ant-modal-body {
+    padding: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .project-modal .ant-modal-content {
+    margin: 12px;
+    padding: 20px 16px;
+    max-width: calc(100vw - 24px);
+  }
+}
+.ant-tabs-ink-bar {
+  background: var(--accent) !important;
+}
+
+/* Глобально: на экранах <960px навигация только через бургер (все страницы). */
+@media (max-width: 959px) {
+  app-header {
+    .nav {
+      display: none !important;
+    }
+
+    .burger {
+      display: inline-flex !important;
+    }
+
+    .brand {
+      display: none !important;
+    }
+  }
+}

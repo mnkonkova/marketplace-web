@@ -1,0 +1,55 @@
+<div class="project-dialog">
+  <h3>Мой проект</h3>
+
+  <div class="cart-items">
+    @if (!specialists().length) {
+    <div class="cart-empty">
+      Проект пуст — добавляйте подходящих специалистов кнопкой «В проект».
+    </div>
+    } @else { @for (s of specialists(); track s.user_id) {
+    <article
+      class="cart-item"
+      tabindex="0"
+      (click)="openProfile(s)"
+      (keydown.enter)="openProfile(s)"
+      (keydown.space)="$event.preventDefault(); openProfile(s)"
+    >
+      <div>
+        <div class="cart-item-name">{{ s.display_name }}</div>
+        <div class="cart-item-meta">{{ s.city || 'удалённо' }}</div>
+      </div>
+      <div class="cart-item-rate">{{ formatRate(s.rate_min, s.rate_max, s.currency) }}</div>
+      <button type="button" class="cart-item-remove" (click)="remove(s.user_id, $event)">
+        Убрать
+      </button>
+    </article>
+    } }
+  </div>
+
+  @if (specialists().length) {
+  <div class="cart-total">
+    <div class="cart-total-row">
+      <span class="cart-total-label">Итоговый бюджет</span>
+      <span class="cart-total-value">{{ total().label }}</span>
+    </div>
+    @if (total().note) {
+    <div class="cart-total-note">{{ total().note }}</div>
+    }
+  </div>
+  }
+
+  <div class="cart-actions">
+    <button type="button" class="cart-btn-secondary" (click)="clear()">Очистить</button>
+    <div class="cart-actions-right">
+      <button type="button" class="cart-btn-secondary" (click)="close()">Закрыть</button>
+      <button
+        type="button"
+        class="cart-btn-primary"
+        [disabled]="!specialists().length"
+        (click)="checkout()"
+      >
+        Заключить договор
+      </button>
+    </div>
+  </div>
+</div>

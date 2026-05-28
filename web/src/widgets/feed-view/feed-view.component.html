@@ -1,0 +1,98 @@
+<div class="feed-shell">
+  <div class="feed-top">
+    <h2>{{ title() }}</h2>
+    <button type="button" class="mute-btn" (click)="toggleMute()">
+      {{ muted() ? '🔇' : '🔊' }}
+    </button>
+  </div>
+
+  @if (empty()) {
+    <div class="feed-empty">В этой подборке пока нет видео</div>
+  } @else {
+    <div class="feed-list" #list>
+      @for (it of videos(); track it.video.id; let i = $index) {
+        <article
+          class="feed-item"
+          [class.is-landscape]="isLandscape(it)"
+          [class.is-portrait]="!isLandscape(it)"
+          [attr.data-index]="i"
+        >
+          <div class="feed-media">
+            @if (it.video.thumb || it.specialist.avatar_url) {
+              <img class="feed-poster" [src]="it.video.thumb || it.specialist.avatar_url" alt="" />
+            } @else {
+              <div class="feed-poster feed-poster-fallback"></div>
+            }
+          </div>
+
+          <div class="feed-overlay">
+            <div class="feed-top-badges">
+              <span class="sound-badge">{{ muted() ? 'звук выкл.' : 'звук вкл.' }}</span>
+            </div>
+
+            <div class="feed-overlay-left">
+              <button
+                type="button"
+                class="feed-spec-name"
+                (click)="specialistClick.emit(it.specialist)"
+              >
+                {{ it.specialist.display_name }}
+              </button>
+              @if (it.video.title) {
+                <div class="feed-video-title">{{ it.video.title }}</div>
+              }
+              <div class="feed-spec-cats">
+                @for (c of it.specialist.categories.slice(0, 3); track c) {
+                  <span
+                    class="feed-cat-chip"
+                    [class.is-primary]="c === it.specialist.primary_category"
+                  >
+                    {{ categoryTitle(c) }}
+                  </span>
+                }
+              </div>
+              <div class="feed-spec-meta">
+                {{ it.specialist.city || 'удалённо' }} ·
+                @if (it.specialist.reviews_count) {
+                  <app-rate-stars
+                    [rating]="it.specialist.rating_avg!"
+                    [reviewsCount]="it.specialist.reviews_count"
+                  />
+                } @else {
+                  новый
+                }
+                ·
+                <span class="rate">{{
+                  formatRate(it.specialist.rate_min, it.specialist.rate_max, it.specialist.currency)
+                }}</span>
+              </div>
+              @if (it.specialist.bio) {
+                <p class="feed-spec-bio">{{ it.specialist.bio }}</p>
+              }
+            </div>
+
+            <div class="feed-overlay-right">
+              <button
+                type="button"
+                class="feed-action feed-project"
+                [class.is-on]="isInCart(it.specialist.user_id)"
+                (click)="toggleCart(it.specialist, $event)"
+                [attr.aria-label]="isInCart(it.specialist.user_id) ? 'В проекте' : 'В проект'"
+              >
+                {{ isInCart(it.specialist.user_id) ? '✓' : '+' }}
+              </button>
+              <span class="feed-action-label">
+                {{ isInCart(it.specialist.user_id) ? 'В проекте' : 'В проект' }}
+              </span>
+              <span class="feed-video-idx">{{ it.video_idx + 1 }}/{{ it.video_total }}</span>
+            </div>
+          </div>
+        </article>
+      }
+    </div>
+
+    @if (loading()) {
+      <div class="feed-loading"><nz-spin nzSimple></nz-spin></div>
+    }
+  }
+</div>

@@ -1,0 +1,55 @@
+<app-header />
+
+<main class="clarify-page">
+  <section class="clarify-card">
+    <div class="eyebrow">AI-брифинг</div>
+    <h2>{{ title() }}</h2>
+    <p class="intro">
+      Ответьте на пару вопросов, а затем мы соберём короткий список специалистов под задачу.
+    </p>
+
+    <div class="chat">
+      @for (msg of messages(); track $index) {
+      <div
+        class="message"
+        [class.user]="msg.role === 'user'"
+        [class.assistant]="msg.role === 'assistant'"
+      >
+        {{ msg.content }}
+      </div>
+      } @if (loading()) {
+      <div class="message assistant typing">
+        <nz-spin nzSimple></nz-spin>
+        <span>Думаю над уточнением…</span>
+      </div>
+      }
+    </div>
+
+    @if (error()) {
+    <div class="notice">{{ error() }}</div>
+    } @if (pendingSearch()) {
+    <div class="ready">
+      <div>
+        <strong>Запрос готов.</strong>
+        <span>Можно перейти к подбору и посмотреть рекомендованных специалистов.</span>
+      </div>
+      <button nz-button nzType="primary" type="button" (click)="runSearch()">
+        Запустить подбор
+      </button>
+    </div>
+    }
+
+    <form class="chat-form" (submit)="$event.preventDefault(); submit()">
+      <input
+        nz-input
+        [(ngModel)]="input"
+        name="clarify"
+        [disabled]="loading()"
+        placeholder="Например: Reels для фитнес-клуба, Москва, бюджет до 30 000"
+      />
+      <button nz-button nzType="primary" type="submit" [disabled]="loading() || !input.trim()">
+        Отправить
+      </button>
+    </form>
+  </section>
+</main>
