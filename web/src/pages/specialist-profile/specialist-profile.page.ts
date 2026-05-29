@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -11,7 +11,6 @@ import { CategoryApi } from '@entities/category/api/category.api';
 import { Category } from '@entities/category/model/category.types';
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { AppSidebarComponent } from '@widgets/app-sidebar/app-sidebar.component';
 import { PortfolioGridComponent } from '@widgets/portfolio-grid/portfolio-grid.component';
 import { ProfileAsideComponent } from '@widgets/profile-aside/profile-aside.component';
 import { formatRate } from '@shared/lib/format';
@@ -25,13 +24,11 @@ import { catchError, finalize } from 'rxjs/operators';
   imports: [
     RouterLink,
     DatePipe,
-    DecimalPipe,
     NzAvatarModule,
     NzButtonModule,
     NzTagModule,
     NzSpinModule,
     AppHeaderComponent,
-    AppSidebarComponent,
     PortfolioGridComponent,
     ProfileAsideComponent,
     RateStarsComponent,

@@ -41,7 +41,7 @@
           <h2>О себе</h2>
           <p class="bio">{{ p.bio }}</p>
         </section>
-        } @if (p.skills?.length) {
+        } @if (p.skills.length) {
         <section class="block">
           <h2>Навыки</h2>
           <div class="chips">
@@ -50,7 +50,7 @@
             }
           </div>
         </section>
-        } @if (p.portfolio?.length) {
+        } @if (p.portfolio.length) {
         <section class="block">
           <div class="block-head">
             <h2>Портфолио</h2>

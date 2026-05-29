@@ -74,7 +74,7 @@ export class AppHeaderComponent implements OnInit {
     this.modal.create({
       nzContent: AuthDialogComponent,
       nzFooter: null,
-      nzWidth: 420,
+      nzWidth: 'min(420px, 92vw)',
     });
   }
 

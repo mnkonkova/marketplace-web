@@ -1,6 +1,5 @@
-import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { FeedViewComponent } from '@widgets/feed-view/feed-view.component';
@@ -24,8 +23,6 @@ import { catchError, finalize } from 'rxjs/operators';
   selector: 'app-feed-page',
   standalone: true,
   imports: [
-    DecimalPipe,
-    RouterLink,
     NzButtonModule,
     AppHeaderComponent,
     FeedViewComponent,
