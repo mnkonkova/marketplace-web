@@ -49,6 +49,9 @@
         </a>
       } @else {
         <button type="button" class="link" (click)="openAuth()">Войти</button>
+        <button nz-button nzType="default" class="cta cta-secondary" (click)="openAuth(1)">
+          Я специалист
+        </button>
       }
       <nz-badge [nzCount]="cartCount()" [nzShowZero]="false">
         <button nz-button nzType="primary" class="cta" (click)="openProject()">

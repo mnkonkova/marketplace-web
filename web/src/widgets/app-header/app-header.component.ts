@@ -70,11 +70,12 @@ export class AppHeaderComponent implements OnInit {
     });
   }
 
-  public openAuth(): void {
+  public openAuth(initialTab: 0 | 1 = 0): void {
     this.modal.create({
       nzContent: AuthDialogComponent,
       nzFooter: null,
       nzWidth: 'min(420px, 92vw)',
+      nzData: { initialTab },
     });
   }
 

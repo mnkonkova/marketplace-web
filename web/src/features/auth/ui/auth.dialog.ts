@@ -3,7 +3,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzModalModule, NzModalRef } from 'ng-zorro-antd/modal';
+import { NZ_MODAL_DATA, NzModalModule, NzModalRef } from 'ng-zorro-antd/modal';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
@@ -44,7 +44,11 @@ export class AuthDialogComponent {
 
   public readonly modal = inject(NzModalRef);
 
-  public readonly tab = signal(0);
+  private readonly data = inject<{ initialTab?: number } | null>(NZ_MODAL_DATA, {
+    optional: true,
+  });
+
+  public readonly tab = signal(this.data?.initialTab ?? 0);
 
   public readonly loading = signal(false);
 
