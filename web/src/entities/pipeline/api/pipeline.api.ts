@@ -81,4 +81,8 @@ export class PipelineApi {
   ): Observable<void> {
     return this.http.put<void>(`${this.api}/admin/pipelines/${pipelineId}/reorder`, { stages });
   }
+
+  public makeDefault(pipelineId: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/admin/pipelines/${pipelineId}/make_default`, {});
+  }
 }

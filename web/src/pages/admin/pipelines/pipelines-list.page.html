@@ -26,11 +26,23 @@
             } @else {
               <nz-tag>Деактивирована</nz-tag>
             }
+            @if (p.is_default) {
+              <nz-tag nzColor="gold">★ Default</nz-tag>
+            }
           </td>
-          <td>
-            <button nz-button nzSize="small" (click)="open(p); $event.stopPropagation()">
-              Открыть
-            </button>
+          <td (click)="$event.stopPropagation()">
+            <button nz-button nzSize="small" (click)="open(p)">Открыть</button>
+            @if (!p.is_default && p.is_active) {
+              <button
+                nz-button
+                nzSize="small"
+                nzType="dashed"
+                style="margin-left: 6px"
+                (click)="makeDefault(p)"
+              >
+                Сделать default
+              </button>
+            }
           </td>
         </tr>
       }

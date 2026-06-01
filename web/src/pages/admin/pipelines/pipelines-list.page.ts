@@ -53,6 +53,16 @@ export class AdminPipelinesListPage implements OnInit {
     void this.router.navigate(['/admin/pipelines', p.id]);
   }
 
+  public makeDefault(p: Pipeline): void {
+    this.api.makeDefault(p.id).subscribe({
+      next: () => {
+        this.msg.success(`«${p.name}» — теперь default`);
+        this.fetch();
+      },
+      error: () => this.msg.error('Не удалось'),
+    });
+  }
+
   public openCreate(tpl: unknown): void {
     this.draft.set({ name: '', description: '', revisions_included: 2 });
     this.modal.create({

@@ -4,6 +4,7 @@ export interface Pipeline {
   description: string;
   version: number;
   is_active: boolean;
+  is_default: boolean;
   revisions_included: number;
   created_at: string;
   updated_at: string;
