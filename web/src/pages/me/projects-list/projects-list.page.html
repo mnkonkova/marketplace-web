@@ -11,6 +11,45 @@
     <button nz-button nzDanger type="button" (click)="logout()">Выйти</button>
   </header>
 
+  <section class="contacts-panel" [class.collapsed]="!contactsExpanded()">
+    <button type="button" class="contacts-head" (click)="toggleContacts()">
+      <span nz-icon nzType="contacts" nzTheme="outline"></span>
+      <strong>Контакты для связи</strong>
+      <small>{{ contactsExpanded() ? 'свернуть' : 'развернуть' }}</small>
+      <span class="caret" [class.up]="contactsExpanded()">▾</span>
+    </button>
+    @if (contactsExpanded()) {
+      <div class="contacts-body">
+        <p class="hint">
+          Это контакты, по которым с вами свяжется менеджер по проекту.
+          Заполните один раз — будут подтягиваться в брифы и заявки автоматически.
+        </p>
+        <div class="contact-row">
+          <label>Имя</label>
+          <input nz-input [(ngModel)]="displayName" placeholder="Как к вам обращаться" />
+        </div>
+        <div class="contact-row">
+          <label>Телефон</label>
+          <input nz-input [(ngModel)]="phone" placeholder="+7..." />
+        </div>
+        <div class="contact-row">
+          <label>Telegram</label>
+          <input nz-input [(ngModel)]="telegram" placeholder="@username" />
+        </div>
+        <div class="contacts-actions">
+          <button
+            nz-button
+            nzType="primary"
+            [nzLoading]="contactsSaving()"
+            (click)="saveContacts()"
+          >
+            Сохранить
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+
   @if (loading()) {
     <div class="center"><nz-spin nzSize="large"></nz-spin></div>
   } @else if (projects().length === 0) {

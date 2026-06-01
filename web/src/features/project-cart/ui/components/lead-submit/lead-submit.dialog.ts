@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { RouterLink } from '@angular/router';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzModalRef, NzModalService } from 'ng-zorro-antd/modal';
 import { EMPTY } from 'rxjs';
@@ -15,12 +16,14 @@ import {
   isEmailUnverifiedError,
   openEmailUnverifiedDialog,
 } from '@features/auth/lib/open-email-unverified-dialog';
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
+import { ClientProfileApi } from '@entities/me/api/client-profile.api';
 import { LeadSuccessDialogComponent } from '../lead-success/lead-success.dialog';
 
 @Component({
   selector: 'app-lead-submit-dialog',
   standalone: true,
-  imports: [ReactiveFormsModule, NzDatePickerModule],
+  imports: [ReactiveFormsModule, NzDatePickerModule, RouterLink],
   templateUrl: './lead-submit.dialog.html',
   styleUrl: '../../project-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,7 +39,15 @@ export class LeadSubmitDialogComponent {
 
   private readonly modalService = inject(NzModalService);
 
+  private readonly auth = inject(AuthSessionStore);
+
+  private readonly clientProfileApi = inject(ClientProfileApi);
+
   public readonly modalRef = inject(NzModalRef);
+
+  // Если юзер залогинен — поля контактов из формы убираем (они уже в
+  // /me/client-profile). Если незалогинен — старая форма с полями.
+  public readonly isLoggedIn = this.auth.isLoggedIn;
 
   public readonly specialists = this.cart.specialists;
 
@@ -45,13 +56,33 @@ export class LeadSubmitDialogComponent {
   public readonly error = signal('');
 
   public readonly form = this.fb.group({
-    client_name: ['', [Validators.required, Validators.minLength(2)]],
-    client_contact: ['', Validators.required],
+    client_name: [''],
+    client_contact: [''],
     brief: ['', [Validators.required]],
     budget_min: [null as number | null],
     budget_max: [null as number | null],
     deadline: [null as Date | null],
   });
+
+  public constructor() {
+    if (this.isLoggedIn()) {
+      // Подтянем контакты из профиля; если пусто — поле остаётся пустым, и
+      // юзеру покажем ссылку «заполнить контакты».
+      this.clientProfileApi.get().subscribe((cp) => {
+        this.form.patchValue({
+          client_name: cp.display_name || '',
+          client_contact: cp.telegram || cp.phone || '',
+        });
+      });
+    } else {
+      // Анонимный бриф — контакты обязательные.
+      this.form.controls.client_name.addValidators([
+        Validators.required,
+        Validators.minLength(2),
+      ]);
+      this.form.controls.client_contact.addValidators([Validators.required]);
+    }
+  }
 
   public readonly disabledPastDates = (current: Date): boolean => {
     const today = new Date();
