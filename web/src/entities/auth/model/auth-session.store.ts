@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
 import { API_URL } from '@shared/api/api-url.token';
-import { AuthSession, LoginPayload, RegisterPayload, TokenPair } from './auth.types';
+import { AuthSession, LoginPayload, MeUser, RegisterPayload, TokenPair } from './auth.types';
 
 const STORAGE_KEY = 'marketpclce.auth.v1';
 
@@ -21,6 +21,13 @@ export class AuthSessionStore {
 
   public readonly kind = computed(() => this.session()?.kind ?? '');
 
+  // CRM v5: роль определяет какие кабинеты доступны и куда редиректить
+  // после логина. Подтягивается из /me, поэтому может быть пустой если
+  // юзер ещё не открыл страницу с подгрузкой /me.
+  public readonly role = computed(() => this.session()?.role ?? '');
+
+  public readonly isApproved = computed(() => this.session()?.is_approved ?? true);
+
   public accessToken(): string {
     return this.session()?.access_token ?? '';
   }
@@ -30,13 +37,35 @@ export class AuthSessionStore {
   }
 
   public save(pair: TokenPair, kind?: string): void {
+    const prev = this.session();
     const next: AuthSession = {
       access_token: pair.access_token,
       refresh_token: pair.refresh_token,
-      kind: kind ?? this.session()?.kind,
+      kind: kind ?? prev?.kind,
+      role: prev?.role,
+      is_approved: prev?.is_approved,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     this.session.set(next);
+  }
+
+  // fetchMe — подгрузить /me и сохранить role/is_approved/kind в сессию.
+  // Зовётся из guard/layout-ов после логина, чтобы знать куда направить юзера.
+  public fetchMe(): Observable<MeUser> {
+    return this.http.get<MeUser>(`${this.api}/me`).pipe(
+      tap((u) => {
+        const prev = this.session();
+        if (!prev) return;
+        const next: AuthSession = {
+          ...prev,
+          kind: u.kind || prev.kind,
+          role: u.role,
+          is_approved: u.is_approved,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        this.session.set(next);
+      }),
+    );
   }
 
   public clear(): void {

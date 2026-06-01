@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -10,7 +17,15 @@ import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
 import { ProjectCartDialogComponent, ProjectCartStore } from '@features/project-cart';
 import { scrollToAnchorWhenReady } from '@shared/lib/scroll-to-anchor';
 
-type NavItem = 'home' | 'production' | 'promotion' | 'search' | 'cabinet';
+type NavItem =
+  | 'home'
+  | 'production'
+  | 'promotion'
+  | 'search'
+  | 'cabinet'
+  | 'projects'
+  | 'manager'
+  | 'admin';
 type HomeSection = 'production' | 'promotion';
 
 @Component({
@@ -33,6 +48,19 @@ export class AppHeaderComponent implements OnInit {
   public readonly isLoggedIn = this.auth.isLoggedIn;
 
   public readonly cartCount = this.cart.count;
+
+  // CRM v5: показываем разные пункты по role. Пока role не подгружена,
+  // считаем что это базовый юзер (показываем «Кабинет» как раньше).
+  public readonly showClientProjects = computed(() => this.auth.role() === 'client');
+
+  public readonly showManagerCabinet = computed(() => this.auth.role() === 'manager');
+
+  public readonly showAdminCabinet = computed(() => this.auth.role() === 'admin');
+
+  public readonly showSpecialistCabinet = computed(() => {
+    const r = this.auth.role();
+    return r === 'specialist' || r === '';
+  });
 
   public readonly menuOpen = signal(false);
 

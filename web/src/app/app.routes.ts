@@ -25,6 +25,16 @@ export const routes: Routes = [
     loadComponent: () => import('@pages/cabinet/cabinet.page').then((m) => m.CabinetPage),
   },
   {
+    path: 'me/projects',
+    loadComponent: () =>
+      import('@pages/me/projects-list/projects-list.page').then((m) => m.ProjectsListPage),
+  },
+  {
+    path: 'me/projects/:id',
+    loadComponent: () =>
+      import('@pages/me/project-detail/project-detail.page').then((m) => m.ProjectDetailPage),
+  },
+  {
     path: 'verify',
     loadComponent: () => import('@pages/verify/verify.page').then((m) => m.VerifyPage),
   },

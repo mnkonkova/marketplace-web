@@ -1,0 +1,37 @@
+<app-header />
+
+<main class="projects-list">
+  <h1>Мои проекты</h1>
+
+  @if (loading()) {
+    <nz-spin nzSize="large"></nz-spin>
+  } @else if (projects().length === 0) {
+    <nz-empty nzNotFoundContent="Пока нет проектов"></nz-empty>
+  } @else {
+    <div class="cards">
+      @for (p of projects(); track p.id) {
+        <article
+          class="card"
+          [class.waiting]="p.display_status === 'waiting_action'"
+          (click)="open(p)"
+        >
+          <header>
+            <h3>{{ p.title }}</h3>
+            <nz-tag [nzColor]="color(p.display_status)">
+              {{ label(p.display_status) }}
+            </nz-tag>
+          </header>
+          @if (p.current_step_title) {
+            <p class="cur">Сейчас: {{ p.current_step_title }}</p>
+          }
+          <nz-progress
+            [nzPercent]="p.progress"
+            nzSize="small"
+            [nzShowInfo]="false"
+          ></nz-progress>
+          <small>{{ p.progress | number: '1.0-0' }}% выполнено</small>
+        </article>
+      }
+    </div>
+  }
+</main>

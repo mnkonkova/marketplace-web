@@ -44,9 +44,38 @@
 
     <div class="header-actions">
       @if (isLoggedIn()) {
-        <a routerLink="/me" class="link" [class.is-active]="activeNav() === 'cabinet'">
-          Кабинет
-        </a>
+        @if (showClientProjects()) {
+          <a
+            routerLink="/me/projects"
+            class="link"
+            [class.is-active]="activeNav() === 'projects'"
+          >
+            Мои проекты
+          </a>
+        }
+        @if (showManagerCabinet()) {
+          <a
+            routerLink="/manager/board"
+            class="link"
+            [class.is-active]="activeNav() === 'manager'"
+          >
+            Менеджер
+          </a>
+        }
+        @if (showAdminCabinet()) {
+          <a
+            routerLink="/admin/projects"
+            class="link"
+            [class.is-active]="activeNav() === 'admin'"
+          >
+            Админ
+          </a>
+        }
+        @if (showSpecialistCabinet()) {
+          <a routerLink="/me" class="link" [class.is-active]="activeNav() === 'cabinet'">
+            Кабинет
+          </a>
+        }
       } @else {
         <button type="button" class="link" (click)="openAuth()">Войти</button>
         <button nz-button nzType="default" class="cta cta-secondary" (click)="openAuth(1)">

@@ -1,0 +1,109 @@
+<app-header />
+
+<main class="project-detail">
+  @if (loading()) {
+    <nz-spin nzSize="large"></nz-spin>
+  } @else if (project()) { @let p = project()!;
+    <header class="hero">
+      <div class="title-row">
+        <h1>{{ p.title }}</h1>
+        <nz-tag [nzColor]="projectStatusColor(p.display_status)">
+          {{ projectStatusLabel(p.display_status) }}
+        </nz-tag>
+      </div>
+
+      <nz-progress
+        [nzPercent]="p.progress"
+        nzSize="small"
+        [nzShowInfo]="false"
+      ></nz-progress>
+      <p class="hint">Прогресс: {{ p.progress | number: '1.0-0' }}%</p>
+
+      @if (p.current_step_title) {
+        <div class="current-block">
+          <span>Сейчас:</span>
+          <strong>{{ p.current_step_title }}</strong>
+        </div>
+      }
+    </header>
+
+    @for (stage of p.stages; track stage.id) {
+      <section
+        class="stage"
+        [class.is-active]="stage.display_status === 'active'"
+        [class.is-completed]="stage.display_status === 'completed'"
+      >
+        <header>
+          <h2>{{ stage.name }}</h2>
+          <nz-tag [nzColor]="stageStatusColor(stage.display_status)">
+            @if (stage.display_status === 'completed') {
+              Готово
+            } @else {
+              {{ stage.steps_done }} из {{ stage.steps_total }}
+            }
+          </nz-tag>
+        </header>
+
+        @for (step of stage.steps; track step.id) {
+          @let badge = stepBadge(step);
+          <article
+            class="step"
+            [class.step-current]="step.is_current"
+            [class.step-done]="step.status === 'done' || step.status === 'skipped'"
+          >
+            <div class="step-main">
+              <strong>{{ step.name }}</strong>
+              <small>{{ ownerLabel(step.owner) }}</small>
+            </div>
+            <nz-tag [nzColor]="badge.color">{{ badge.label }}</nz-tag>
+
+            @if (canApprove(step)) {
+              <div class="actions">
+                <button
+                  nz-button
+                  nzType="primary"
+                  [nzLoading]="busy() === step.id"
+                  (click)="approve(step)"
+                >
+                  Принять
+                </button>
+                <button
+                  nz-button
+                  nzDanger
+                  [nzLoading]="busy() === step.id"
+                  (click)="requestRevision(step, revisionTpl)"
+                >
+                  Запросить правки
+                </button>
+              </div>
+            }
+            @if (canSubmitReview(step)) {
+              <div class="actions">
+                <button
+                  nz-button
+                  nzType="primary"
+                  [nzLoading]="busy() === step.id"
+                  (click)="submitReview(step)"
+                >
+                  Оставить отзыв
+                </button>
+              </div>
+            }
+          </article>
+        }
+      </section>
+    }
+  } @else {
+    <p class="not-found">Проект не найден.</p>
+  }
+</main>
+
+<ng-template #revisionTpl>
+  <p>Опишите, что нужно поправить:</p>
+  <textarea
+    nz-input
+    rows="4"
+    [ngModel]="revisionComment()"
+    (ngModelChange)="revisionComment.set($event)"
+  ></textarea>
+</ng-template>
