@@ -1,0 +1,131 @@
+<app-manager-layout>
+  @if (loading()) {
+    <nz-spin nzSize="large"></nz-spin>
+  } @else if (project()) { @let p = project()!;
+    <header class="hero">
+      <div class="title-row">
+        <h1>{{ p.title }}</h1>
+        <nz-tag [nzColor]="statusColor(p.display_status)">
+          {{ statusLabel(p.display_status) }}
+        </nz-tag>
+      </div>
+      <nz-progress
+        [nzPercent]="p.progress"
+        nzSize="small"
+        [nzShowInfo]="false"
+      ></nz-progress>
+    </header>
+
+    <div class="cols">
+      <section class="funnel">
+        @for (stage of p.stages; track stage.id) {
+          <article class="stage">
+            <header>
+              <h2>{{ stage.name }}</h2>
+              <nz-tag [nzColor]="stageStatusColor(stage.display_status)">
+                {{ stageStatusLabel(stage.display_status) }} · {{ stage.steps_done }}/{{
+                  stage.steps_total
+                }}
+              </nz-tag>
+            </header>
+            @for (step of stage.steps; track step.id) {
+              @let badge = stepBadge(step);
+              <div class="step" [class.is-current]="step.is_current">
+                <div class="step-main">
+                  <strong>{{ step.name }}</strong>
+                  <small>{{ step.owner }}</small>
+                </div>
+                <nz-tag [nzColor]="badge.color">{{ badge.label }}</nz-tag>
+                <div class="actions">
+                  @if (canStart(step)) {
+                    <button
+                      nz-button
+                      nzSize="small"
+                      [nzLoading]="busy() === step.id"
+                      (click)="start(step)"
+                    >
+                      Старт
+                    </button>
+                  }
+                  @if (canComplete(step)) {
+                    <button
+                      nz-button
+                      nzSize="small"
+                      nzType="primary"
+                      [nzLoading]="busy() === step.id"
+                      (click)="complete(step)"
+                    >
+                      Завершить
+                    </button>
+                  }
+                  <button
+                    nz-button
+                    nzSize="small"
+                    nzDanger
+                    [nzLoading]="busy() === step.id"
+                    (click)="skip(step, skipTpl)"
+                  >
+                    Пропустить
+                  </button>
+                </div>
+              </div>
+            }
+          </article>
+        }
+      </section>
+
+      <aside class="side">
+        <section class="panel">
+          <h3>Комментарии</h3>
+          <div class="comments">
+            @for (c of comments(); track c.id) {
+              <article class="comment">
+                <strong>{{ c.author_name || 'Без имени' }}</strong>
+                <p>{{ c.body }}</p>
+                <small>{{ ago(c.created_at) }}</small>
+              </article>
+            } @empty {
+              <p class="empty">Комментариев пока нет.</p>
+            }
+          </div>
+          <textarea
+            nz-input
+            rows="3"
+            placeholder="Написать..."
+            [(ngModel)]="commentBodyValue"
+          ></textarea>
+          <!-- TODO: заменить textarea на TipTap (ngx-tiptap) когда понадобится rich-text -->
+          <button nz-button nzType="primary" (click)="sendComment()">Отправить</button>
+        </section>
+
+        <section class="panel">
+          <h3>Активность</h3>
+          <ul class="feed">
+            @for (e of events(); track e.id) {
+              <li>
+                <span class="actor">{{ e.actor_display_name || e.actor_type }}</span>
+                <span class="kind">{{ e.event_kind }}</span>
+                @if (e.from_status && e.to_status) {
+                  <small>{{ e.from_status }} → {{ e.to_status }}</small>
+                }
+                @if (e.comment) {
+                  <em>{{ e.comment }}</em>
+                }
+                <time>{{ ago(e.created_at) }}</time>
+              </li>
+            }
+          </ul>
+        </section>
+      </aside>
+    </div>
+  }
+</app-manager-layout>
+
+<ng-template #skipTpl>
+  <p>Причина пропуска:</p>
+  <textarea
+    nz-input
+    rows="3"
+    [(ngModel)]="skipCommentValue"
+  ></textarea>
+</ng-template>

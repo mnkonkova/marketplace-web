@@ -40,6 +40,23 @@ export const routes: Routes = [
       import('@pages/me/specialist/specialist-cabinet.page').then((m) => m.SpecialistCabinetPage),
   },
   {
+    path: 'manager',
+    loadComponent: () =>
+      import('@pages/manager/inbox/inbox.page').then((m) => m.ManagerInboxPage),
+  },
+  {
+    path: 'manager/board',
+    loadComponent: () =>
+      import('@pages/manager/board/board.page').then((m) => m.ManagerBoardPage),
+  },
+  {
+    path: 'manager/projects/:id',
+    loadComponent: () =>
+      import('@pages/manager/project-detail/manager-project-detail.page').then(
+        (m) => m.ManagerProjectDetailPage,
+      ),
+  },
+  {
     path: 'verify',
     loadComponent: () => import('@pages/verify/verify.page').then((m) => m.VerifyPage),
   },

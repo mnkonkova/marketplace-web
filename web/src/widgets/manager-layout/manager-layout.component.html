@@ -1,0 +1,15 @@
+<app-header />
+
+<div class="manager-layout">
+  <aside class="sidebar">
+    <a routerLink="/manager" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">
+      <span nz-icon nzType="inbox" nzTheme="outline"></span> Входящие
+    </a>
+    <a routerLink="/manager/board" routerLinkActive="is-active">
+      <span nz-icon nzType="appstore" nzTheme="outline"></span> Канбан
+    </a>
+  </aside>
+  <main class="content">
+    <ng-content></ng-content>
+  </main>
+</div>

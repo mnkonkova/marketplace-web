@@ -1,0 +1,37 @@
+<app-manager-layout>
+  <h1>Входящие проекты</h1>
+
+  @if (loading()) {
+    <nz-spin nzSize="large"></nz-spin>
+  } @else if (projects().length === 0) {
+    <nz-empty nzNotFoundContent="Пуст — все проекты разобраны"></nz-empty>
+  } @else {
+    <div class="cards">
+      @for (p of projects(); track p.id) {
+        <article class="card">
+          <header>
+            <h3>{{ p.title }}</h3>
+            <nz-tag [nzColor]="statusColor(p.display_status)">
+              {{ statusLabel(p.display_status) }}
+            </nz-tag>
+          </header>
+          @if (p.client_display_name) {
+            <p class="meta">Клиент: {{ p.client_display_name }}</p>
+          }
+          @if (p.current_stage_name) {
+            <p class="meta">Стадия: {{ p.current_stage_name }}</p>
+          }
+          <button
+            nz-button
+            nzType="primary"
+            block
+            [nzLoading]="claiming() === p.id"
+            (click)="claim(p)"
+          >
+            Взять на себя
+          </button>
+        </article>
+      }
+    </div>
+  }
+</app-manager-layout>
