@@ -8,6 +8,10 @@
     <a routerLink="/manager/board" routerLinkActive="is-active">
       <span nz-icon nzType="appstore" nzTheme="outline"></span> Канбан
     </a>
+    <div class="spacer"></div>
+    <button type="button" class="logout-btn" (click)="logout()">
+      <span nz-icon nzType="logout" nzTheme="outline"></span> Выйти
+    </button>
   </aside>
   <main class="content">
     <ng-content></ng-content>

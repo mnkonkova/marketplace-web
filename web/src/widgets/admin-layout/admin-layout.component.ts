@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 
 @Component({
@@ -13,4 +14,13 @@ import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
   templateUrl: './admin-layout.component.html',
   styleUrl: './admin-layout.component.scss',
 })
-export class AdminLayoutComponent {}
+export class AdminLayoutComponent {
+  private readonly auth = inject(AuthSessionStore);
+
+  private readonly router = inject(Router);
+
+  public logout(): void {
+    this.auth.clear();
+    void this.router.navigateByUrl('/');
+  }
+}

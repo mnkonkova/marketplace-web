@@ -1,13 +1,11 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 
-// Минимальный layout менеджерского кабинета: общая шапка сайта +
-// боковая навигация по разделам (inbox / board / детальная страница
-// открывается из карточек напрямую, без отдельного пункта).
 @Component({
   selector: 'app-manager-layout',
   standalone: true,
@@ -16,4 +14,13 @@ import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
   templateUrl: './manager-layout.component.html',
   styleUrl: './manager-layout.component.scss',
 })
-export class ManagerLayoutComponent {}
+export class ManagerLayoutComponent {
+  private readonly auth = inject(AuthSessionStore);
+
+  private readonly router = inject(Router);
+
+  public logout(): void {
+    this.auth.clear();
+    void this.router.navigateByUrl('/');
+  }
+}

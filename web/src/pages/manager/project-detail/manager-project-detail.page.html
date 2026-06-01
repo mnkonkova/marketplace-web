@@ -18,6 +18,26 @@
         Движение по шагам — только через <strong>канбан</strong>.
         Эта страница — для комментариев и активности.
       </p>
+
+      @if (isAdmin() === 'admin') {
+        <div class="assign-row">
+          <span class="assign-label">Ответственный менеджер:</span>
+          <nz-select
+            [(ngModel)]="assignedManagerValue"
+            style="min-width: 260px"
+            nzPlaceHolder="— не назначен —"
+            nzAllowClear
+          >
+            @for (m of managers(); track m.user_id) {
+              <nz-option
+                [nzValue]="m.user_id"
+                [nzLabel]="(m.display_name || m.email || m.user_id)"
+              ></nz-option>
+            }
+          </nz-select>
+          <button nz-button (click)="assignManager()">Применить</button>
+        </div>
+      }
     </header>
 
     <div class="cols">

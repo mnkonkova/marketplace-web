@@ -12,6 +12,28 @@
   flex-direction: column;
   gap: 4px;
 
+  .spacer {
+    flex: 1;
+  }
+
+  .logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--danger, #f87171);
+    cursor: pointer;
+    font: inherit;
+
+    &:hover {
+      background: rgba(248, 113, 113, 0.1);
+      border-color: var(--danger, #f87171);
+    }
+  }
+
   a {
     display: flex;
     align-items: center;

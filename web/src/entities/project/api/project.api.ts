@@ -220,6 +220,17 @@ export class ProjectApi {
     );
   }
 
+  // Назначить/снять менеджера на проекте. managerUserId=null → unassign.
+  public adminAssignManager(
+    projectId: string,
+    managerUserId: string | null,
+  ): Observable<void> {
+    return this.http.post<void>(
+      `${this.api}/admin/projects/${projectId}/assign`,
+      { manager_user_id: managerUserId },
+    );
+  }
+
   public adminListEvents(projectId: string): Observable<ListResp<ProjectEvent>> {
     return this.http.get<ListResp<ProjectEvent>>(`${this.api}/admin/projects/${projectId}/events`);
   }

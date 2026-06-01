@@ -11,6 +11,10 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { formatDistanceToNow } from 'date-fns';
 
+import { NzSelectModule } from 'ng-zorro-antd/select';
+
+import { AdminApi, ManagerInfo } from '@entities/admin/api/admin.api';
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { ProjectApi } from '@entities/project/api/project.api';
 import {
   ProjectComment,
@@ -39,6 +43,7 @@ import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.c
     NzInputModule,
     NzProgressModule,
     NzModalModule,
+    NzSelectModule,
     ManagerLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -48,11 +53,44 @@ import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.c
 export class ManagerProjectDetailPage implements OnInit {
   private readonly api = inject(ProjectApi);
 
+  private readonly adminApi = inject(AdminApi);
+
+  private readonly auth = inject(AuthSessionStore);
+
   private readonly route = inject(ActivatedRoute);
 
   private readonly msg = inject(NzMessageService);
 
   private readonly modal = inject(NzModalService);
+
+  // Список всех менеджеров (для админ-блока «Назначить менеджера»). Грузится
+  // только если текущий юзер admin. Если manager — блок не показывается.
+  public readonly managers = signal<ManagerInfo[]>([]);
+
+  public readonly isAdmin = this.auth.role;
+
+  public readonly assignedManagerId = signal<string | null>(null);
+
+  public get assignedManagerValue(): string {
+    return this.assignedManagerId() ?? '';
+  }
+
+  public set assignedManagerValue(v: string) {
+    this.assignedManagerId.set(v || null);
+  }
+
+  public assignManager(): void {
+    const p = this.project();
+    if (!p) return;
+    this.api.adminAssignManager(p.id, this.assignedManagerId()).subscribe({
+      next: () => {
+        this.msg.success(this.assignedManagerId() ? 'Менеджер назначен' : 'Менеджер снят');
+        this.fetch(p.id, true);
+      },
+      error: (e: { error?: { message?: string } }) =>
+        this.msg.error(e?.error?.message || 'Не удалось назначить менеджера'),
+    });
+  }
 
   public readonly loading = signal(true);
 
@@ -205,6 +243,7 @@ export class ManagerProjectDetailPage implements OnInit {
     this.api.managerGetFull(id).subscribe({
       next: (p) => {
         this.project.set(p);
+        this.assignedManagerId.set(p.assigned_to_user_id ?? null);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
@@ -215,5 +254,11 @@ export class ManagerProjectDetailPage implements OnInit {
     this.api.managerListComments(id).subscribe({
       next: (r) => this.comments.set(r.items),
     });
+    // Только админ может назначать менеджера. Грузим список разово.
+    if (this.isAdmin() === 'admin' && this.managers().length === 0) {
+      this.adminApi.listManagers(true).subscribe({
+        next: (r) => this.managers.set(r.items),
+      });
+    }
   }
 }
