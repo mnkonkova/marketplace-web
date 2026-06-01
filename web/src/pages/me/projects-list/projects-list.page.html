@@ -8,10 +8,7 @@
         Здесь — все проекты с командой. Цветной бейдж сверху показывает, на ком сейчас «мяч».
       </p>
     </div>
-    <button nz-button class="logout-btn" (click)="logout()">
-      <span nz-icon nzType="logout" nzTheme="outline"></span>
-      Выйти
-    </button>
+    <button nz-button nzDanger type="button" (click)="logout()">Выйти</button>
   </header>
 
   @if (loading()) {
