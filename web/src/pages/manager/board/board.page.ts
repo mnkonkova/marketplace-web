@@ -147,9 +147,7 @@ export class ManagerBoardPage implements OnInit {
         );
         this.boards.set([...this.boards()]);
         const code = e?.error?.error as string | undefined;
-        if (code === 'stage_blocked') {
-          this.msg.warning('Нельзя пропустить шаг клиента');
-        } else if (code === 'stale_updated_at') {
+        if (code === 'stale_updated_at') {
           this.msg.warning('Проект уже обновили — перезагружаю...');
           this.fetch();
         } else if (code === 'not_found') {

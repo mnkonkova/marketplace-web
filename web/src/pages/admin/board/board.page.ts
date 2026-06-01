@@ -12,6 +12,7 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { ManagerBoardPage } from '@pages/manager/board/board.page';
+import { ProjectManagerView } from '@entities/project/model/project.types';
 import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 
 // Админский канбан — всё то же что у менеджера, но без assigned-фильтра
@@ -42,5 +43,10 @@ export class AdminBoardPage extends ManagerBoardPage {
 
   protected override moveStep(projectId: string, targetStepId: string, updatedAt?: string) {
     return this.projectApi.adminMoveStep(projectId, targetStepId, updatedAt);
+  }
+
+  // В админке открываем проект в новой вкладке, чтобы не терять контекст канбана.
+  public override open(p: ProjectManagerView): void {
+    window.open(`/manager/projects/${p.id}`, '_blank', 'noopener');
   }
 }

@@ -31,24 +31,6 @@ export class ProjectApi {
     return this.http.get<ProjectClientView>(`${this.api}/me/projects/${projectId}/funnel`);
   }
 
-  public clientApprove(projectId: string, stepId: string): Observable<ProjectStepView> {
-    return this.http.post<ProjectStepView>(
-      `${this.api}/me/projects/${projectId}/steps/${stepId}/approve`,
-      {},
-    );
-  }
-
-  public clientRequestRevision(
-    projectId: string,
-    stepId: string,
-    comment: string,
-  ): Observable<ProjectStepView> {
-    return this.http.post<ProjectStepView>(
-      `${this.api}/me/projects/${projectId}/steps/${stepId}/request_revision`,
-      { comment },
-    );
-  }
-
   public clientSubmitReview(projectId: string, stepId: string): Observable<ProjectStepView> {
     return this.http.post<ProjectStepView>(
       `${this.api}/me/projects/${projectId}/steps/${stepId}/submit_review`,
@@ -157,10 +139,14 @@ export class ProjectApi {
     );
   }
 
-  public managerCreateComment(projectId: string, body: string): Observable<ProjectComment> {
+  public managerCreateComment(
+    projectId: string,
+    body: string,
+    isInternal: boolean,
+  ): Observable<ProjectComment> {
     return this.http.post<ProjectComment>(
       `${this.api}/manager/projects/${projectId}/comments`,
-      { body },
+      { body, is_internal: isInternal },
     );
   }
 
@@ -241,10 +227,14 @@ export class ProjectApi {
     );
   }
 
-  public adminCreateComment(projectId: string, body: string): Observable<ProjectComment> {
+  public adminCreateComment(
+    projectId: string,
+    body: string,
+    isInternal: boolean,
+  ): Observable<ProjectComment> {
     return this.http.post<ProjectComment>(
       `${this.api}/admin/projects/${projectId}/comments`,
-      { body },
+      { body, is_internal: isInternal },
     );
   }
 }

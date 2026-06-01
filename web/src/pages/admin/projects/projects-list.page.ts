@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
@@ -27,8 +26,6 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
 export class AdminProjectsListPage implements OnInit {
   private readonly api = inject(ProjectApi);
 
-  private readonly router = inject(Router);
-
   public readonly items = signal<ProjectManagerView[]>([]);
 
   public ngOnInit(): void {
@@ -36,7 +33,7 @@ export class AdminProjectsListPage implements OnInit {
   }
 
   public open(p: ProjectManagerView): void {
-    void this.router.navigate(['/manager/projects', p.id]);
+    window.open(`/manager/projects/${p.id}`, '_blank', 'noopener');
   }
 
   public statusLabel(s: ProjectManagerView['display_status']): string {

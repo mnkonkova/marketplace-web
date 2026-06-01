@@ -7,6 +7,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { formatDistanceToNow } from 'date-fns';
@@ -44,6 +45,7 @@ import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.c
     NzProgressModule,
     NzModalModule,
     NzSelectModule,
+    NzSwitchModule,
     ManagerLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -101,6 +103,8 @@ export class ManagerProjectDetailPage implements OnInit {
   public readonly comments = signal<ProjectComment[]>([]);
 
   public readonly commentBody = signal('');
+
+  public readonly commentInternal = signal(false);
 
   public readonly skipComment = signal('');
 
@@ -212,13 +216,29 @@ export class ManagerProjectDetailPage implements OnInit {
     const p = this.project();
     const body = this.commentBody().trim();
     if (!p || !body) return;
-    this.api.managerCreateComment(p.id, body).subscribe({
+    const internal = this.commentInternal();
+    this.api.managerCreateComment(p.id, body, internal).subscribe({
       next: () => {
         this.commentBody.set('');
+        this.commentInternal.set(false);
         this.fetch(p.id, true);
       },
       error: () => this.msg.error('Не удалось отправить'),
     });
+  }
+
+  public get commentInternalValue(): boolean {
+    return this.commentInternal();
+  }
+
+  public set commentInternalValue(v: boolean) {
+    this.commentInternal.set(v);
+  }
+
+  // Telegram-хэндл может быть `@user` или просто `user` — нормализуем в https-ссылку.
+  public tgLink(handle: string): string {
+    const h = handle.replace(/^@/, '').trim();
+    return `https://t.me/${h}`;
   }
 
   // Двусторонняя привязка ngModel ↔ signal.

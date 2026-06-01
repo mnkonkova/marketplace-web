@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter } from 'rxjs';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
@@ -18,6 +19,24 @@ export class ManagerLayoutComponent {
   private readonly auth = inject(AuthSessionStore);
 
   private readonly router = inject(Router);
+
+  // На мобиле сайдбар закрыт по умолчанию (CSS делает его off-canvas).
+  // Кнопка-гамбургер открывает; навигация по ссылке — закрывает.
+  public readonly sidebarOpen = signal(false);
+
+  public constructor() {
+    this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe(() => this.sidebarOpen.set(false));
+  }
+
+  public toggleSidebar(): void {
+    this.sidebarOpen.set(!this.sidebarOpen());
+  }
+
+  public closeSidebar(): void {
+    this.sidebarOpen.set(false);
+  }
 
   public logout(): void {
     this.auth.clear();

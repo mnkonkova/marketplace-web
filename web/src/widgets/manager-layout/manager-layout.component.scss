@@ -2,6 +2,44 @@
   display: grid;
   grid-template-columns: 220px 1fr;
   min-height: calc(100vh - 64px);
+  position: relative;
+}
+
+.hamburger {
+  display: none;
+  position: fixed;
+  /* app-header — 64px сверху; ставим гамбургер ровно под ним. */
+  top: 76px;
+  left: 12px;
+  z-index: 30;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+}
+
+.backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 18;
+  animation: fade-in 150ms ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .sidebar {
@@ -56,4 +94,42 @@
 
 .content {
   padding: 24px;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .manager-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 240px;
+    padding-top: 64px;
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .manager-layout.sidebar-open {
+    .sidebar {
+      transform: translateX(0);
+    }
+
+    .backdrop {
+      display: block;
+    }
+  }
+
+  .content {
+    padding: 64px 12px 16px;
+  }
 }

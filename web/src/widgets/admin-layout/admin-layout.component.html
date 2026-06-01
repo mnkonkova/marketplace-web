@@ -1,6 +1,20 @@
 <app-header />
 
-<div class="admin-layout">
+<div class="admin-layout" [class.sidebar-open]="sidebarOpen()">
+  <button
+    type="button"
+    class="hamburger"
+    [attr.aria-label]="sidebarOpen() ? 'Закрыть меню' : 'Открыть меню'"
+    [attr.aria-expanded]="sidebarOpen()"
+    (click)="toggleSidebar()"
+  >
+    <span nz-icon [nzType]="sidebarOpen() ? 'close' : 'menu'" nzTheme="outline"></span>
+  </button>
+
+  @if (sidebarOpen()) {
+    <div class="backdrop" (click)="closeSidebar()"></div>
+  }
+
   <aside class="sidebar">
     <a routerLink="/admin/productions" routerLinkActive="is-active">
       <span nz-icon nzType="bank" nzTheme="outline"></span> Продакшены

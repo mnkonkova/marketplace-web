@@ -122,26 +122,6 @@
                   </div>
                   <nz-tag [nzColor]="badge.color">{{ badge.label }}</nz-tag>
 
-                  @if (canApprove(step)) {
-                    <div class="actions">
-                      <button
-                        nz-button
-                        nzType="primary"
-                        [nzLoading]="busy() === step.id"
-                        (click)="approve(step)"
-                      >
-                        ✓ Принять
-                      </button>
-                      <button
-                        nz-button
-                        nzDanger
-                        [nzLoading]="busy() === step.id"
-                        (click)="requestRevision(step, revisionTpl)"
-                      >
-                        Запросить правки
-                      </button>
-                    </div>
-                  }
                   @if (canSubmitReview(step)) {
                     <div class="actions">
                       <button
@@ -187,13 +167,3 @@
     <p class="not-found">Проект не найден.</p>
   }
 </main>
-
-<ng-template #revisionTpl>
-  <p>Опишите, что нужно поправить:</p>
-  <textarea
-    nz-input
-    rows="4"
-    [ngModel]="revisionComment()"
-    (ngModelChange)="revisionComment.set($event)"
-  ></textarea>
-</ng-template>

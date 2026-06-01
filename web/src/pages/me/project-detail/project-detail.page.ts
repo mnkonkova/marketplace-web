@@ -8,7 +8,6 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -40,7 +39,6 @@ import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
     NzProgressModule,
     NzSpinModule,
     NzButtonModule,
-    NzModalModule,
     NzInputModule,
     NzIconModule,
     RouterLink,
@@ -55,8 +53,6 @@ export class ProjectDetailPage implements OnDestroy {
 
   private readonly route = inject(ActivatedRoute);
 
-  private readonly modal = inject(NzModalService);
-
   private readonly msg = inject(NzMessageService);
 
   private pollSub?: Subscription;
@@ -66,8 +62,6 @@ export class ProjectDetailPage implements OnDestroy {
   public readonly project = signal<ProjectClientView | null>(null);
 
   public readonly busy = signal<string | null>(null);
-
-  public readonly revisionComment = signal('');
 
   public readonly comments = signal<ProjectComment[]>([]);
 
@@ -130,33 +124,10 @@ export class ProjectDetailPage implements OnDestroy {
     return getStepBadge(step.status, step.owner);
   }
 
-  public canApprove(step: ProjectStepView): boolean {
-    return (
-      step.status === 'waiting_client' && step.owner === 'client' && !step.is_review
-    );
-  }
-
   public canSubmitReview(step: ProjectStepView): boolean {
     return (
       step.status === 'waiting_client' && step.owner === 'client' && step.is_review
     );
-  }
-
-  public approve(step: ProjectStepView): void {
-    const p = this.project();
-    if (!p) return;
-    this.busy.set(step.id);
-    this.api.clientApprove(p.id, step.id).subscribe({
-      next: () => {
-        this.busy.set(null);
-        this.msg.success('Шаг принят');
-        this.fetch(p.id, true);
-      },
-      error: () => {
-        this.busy.set(null);
-        this.msg.error('Не удалось принять шаг');
-      },
-    });
   }
 
   public submitReview(step: ProjectStepView): void {
@@ -172,37 +143,6 @@ export class ProjectDetailPage implements OnDestroy {
       error: () => {
         this.busy.set(null);
         this.msg.error('Не удалось засчитать отзыв');
-      },
-    });
-  }
-
-  public requestRevision(step: ProjectStepView, modalContent: unknown): void {
-    const p = this.project();
-    if (!p) return;
-    this.revisionComment.set('');
-    this.modal.create({
-      nzTitle: 'Запросить правки',
-      nzContent: modalContent as never,
-      nzOnOk: () => {
-        const comment = this.revisionComment().trim();
-        this.busy.set(step.id);
-        this.api.clientRequestRevision(p.id, step.id, comment).subscribe({
-          next: () => {
-            this.busy.set(null);
-            this.msg.success('Заявка на правки отправлена');
-            this.fetch(p.id, true);
-          },
-          error: (e) => {
-            this.busy.set(null);
-            const code = e?.error?.error as string | undefined;
-            if (code === 'revisions_exhausted') {
-              this.msg.warning('Лимит правок исчерпан, дело передано менеджеру');
-            } else {
-              this.msg.error('Не удалось запросить правки');
-            }
-            this.fetch(p.id, true);
-          },
-        });
       },
     });
   }

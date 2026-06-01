@@ -4,10 +4,22 @@
   align-items: center;
   gap: 24px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 
   h1 {
     margin: 0;
+    font-size: clamp(20px, 5vw, 28px);
   }
+}
+
+.board {
+  /* На узком экране даём канбану «уехать» за правый край с горизонтальным
+     скроллом, а не заворачиваться. Также включает scroll-snap по колонкам. */
+  scroll-snap-type: x mandatory;
+}
+
+.board > .col {
+  scroll-snap-align: start;
 }
 
 .hint {
@@ -88,6 +100,11 @@
   background: var(--bg-elevated);
   border-radius: 8px;
   padding: 12px;
+
+  @media (max-width: 600px) {
+    flex-basis: 86vw;
+    max-width: 320px;
+  }
 
   header {
     display: flex;

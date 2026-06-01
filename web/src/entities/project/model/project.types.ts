@@ -99,6 +99,8 @@ export interface ProjectClientView extends ProjectBase {
 
 export interface ProjectManagerView extends ProjectBase {
   client_display_name?: string;
+  client?: PartyContact;
+  specialist?: PartyContact;
   display_status: ProjectDisplayStatus;
   progress: number;
   current_stage_id?: string;
@@ -111,6 +113,8 @@ export interface ProjectManagerView extends ProjectBase {
 }
 
 export interface ProjectFullView extends ProjectBase {
+  client?: PartyContact;
+  specialist?: PartyContact;
   display_status: ProjectDisplayStatus;
   progress: number;
   current_step_id?: string;
@@ -120,6 +124,13 @@ export interface ProjectFullView extends ProjectBase {
   stages: ProjectStageView[];
 }
 
+export interface PartyContact {
+  display_name?: string;
+  email?: string;
+  phone?: string;
+  telegram?: string;
+}
+
 export interface ProjectComment {
   id: string;
   project_id: string;
@@ -127,6 +138,7 @@ export interface ProjectComment {
   author_name?: string;
   body: string;
   body_format: 'plain' | 'html' | 'tiptap_json';
+  is_internal: boolean;
   created_at: string;
   updated_at: string;
   deleted_at?: string;

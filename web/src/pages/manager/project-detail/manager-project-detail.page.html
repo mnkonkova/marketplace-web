@@ -68,12 +68,61 @@
       </section>
 
       <aside class="side">
+        <section class="panel contacts-panel">
+          <h3>Контакты</h3>
+          <div class="party">
+            <div class="party-head">
+              <span class="role">Клиент</span>
+              <strong>{{ p.client?.display_name || '—' }}</strong>
+            </div>
+            @if (p.client?.email || p.client?.phone || p.client?.telegram) {
+              <ul class="links">
+                @if (p.client?.email) {
+                  <li><a [href]="'mailto:' + p.client!.email">{{ p.client!.email }}</a></li>
+                }
+                @if (p.client?.phone) {
+                  <li><a [href]="'tel:' + p.client!.phone">{{ p.client!.phone }}</a></li>
+                }
+                @if (p.client?.telegram) {
+                  <li><a [href]="tgLink(p.client!.telegram!)" target="_blank" rel="noopener">{{ p.client!.telegram }}</a></li>
+                }
+              </ul>
+            } @else {
+              <p class="empty">Контактов нет — клиент не заполнил профиль.</p>
+            }
+          </div>
+
+          <div class="party">
+            <div class="party-head">
+              <span class="role">Исполнитель</span>
+              <strong>{{ p.specialist?.display_name || '— не назначен —' }}</strong>
+            </div>
+            @if (p.specialist?.email || p.specialist?.phone) {
+              <ul class="links">
+                @if (p.specialist?.email) {
+                  <li><a [href]="'mailto:' + p.specialist!.email">{{ p.specialist!.email }}</a></li>
+                }
+                @if (p.specialist?.phone) {
+                  <li><a [href]="'tel:' + p.specialist!.phone">{{ p.specialist!.phone }}</a></li>
+                }
+              </ul>
+            }
+          </div>
+        </section>
+
         <section class="panel">
           <h3>Комментарии</h3>
           <div class="comments">
             @for (c of comments(); track c.id) {
-              <article class="comment">
-                <strong>{{ c.author_name || 'Без имени' }}</strong>
+              <article class="comment" [class.internal]="c.is_internal">
+                <header class="comment-head">
+                  <strong>{{ c.author_name || 'Без имени' }}</strong>
+                  @if (c.is_internal) {
+                    <span class="badge-internal" title="Видно только команде">
+                      🔒 внутренний
+                    </span>
+                  }
+                </header>
                 <p>{{ c.body }}</p>
                 <small>{{ ago(c.created_at) }}</small>
               </article>
@@ -84,10 +133,19 @@
           <textarea
             nz-input
             rows="3"
-            placeholder="Написать..."
+            [placeholder]="commentInternalValue ? 'Заметка для команды (не видна клиенту)...' : 'Написать клиенту и команде...'"
             [(ngModel)]="commentBodyValue"
           ></textarea>
-          <button nz-button nzType="primary" (click)="sendComment()">Отправить</button>
+          <div class="comment-actions">
+            <label class="internal-toggle" [class.on]="commentInternalValue">
+              <nz-switch
+                [ngModel]="commentInternalValue"
+                (ngModelChange)="commentInternalValue = $event"
+              ></nz-switch>
+              <span>{{ commentInternalValue ? '🔒 Внутренний (не видит клиент)' : 'Видно клиенту' }}</span>
+            </label>
+            <button nz-button nzType="primary" (click)="sendComment()">Отправить</button>
+          </div>
         </section>
 
         <section class="panel">

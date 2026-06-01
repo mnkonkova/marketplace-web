@@ -83,6 +83,16 @@ export class ProjectsListPage {
     this.contactsExpanded.set(!this.contactsExpanded());
   }
 
+  public contactsFilled(): boolean {
+    const c = this.contacts();
+    return !!(c.display_name || c.phone || c.telegram);
+  }
+
+  public contactsPreview(): string {
+    const c = this.contacts();
+    return [c.display_name, c.phone || c.telegram].filter(Boolean).join(' · ');
+  }
+
   public saveContacts(): void {
     this.contactsSaving.set(true);
     const c = this.contacts();
