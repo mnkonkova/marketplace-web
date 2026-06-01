@@ -25,7 +25,8 @@ type NavItem =
   | 'cabinet'
   | 'projects'
   | 'manager'
-  | 'admin';
+  | 'admin'
+  | 'specialist';
 type HomeSection = 'production' | 'promotion';
 
 @Component({

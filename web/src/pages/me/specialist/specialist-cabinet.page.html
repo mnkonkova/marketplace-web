@@ -1,0 +1,70 @@
+<app-header />
+
+<main class="specialist-cabinet">
+  <h1>Специалист</h1>
+
+  @if (loading()) {
+    <nz-spin nzSize="large"></nz-spin>
+  } @else if (profile()) {
+    <section class="panel">
+      <header>
+        <h2>Где вы работаете</h2>
+      </header>
+      <div class="picker">
+        <nz-select
+          style="min-width: 320px"
+          [(ngModel)]="selectedValue"
+          nzPlaceHolder="Выберите вариант"
+        >
+          <nz-option nzValue="" nzLabel="— не выбрано —"></nz-option>
+          <nz-option nzValue="freelance" nzLabel="Фрилансер"></nz-option>
+          @for (pr of productions(); track pr.id) {
+            <nz-option [nzValue]="pr.id" [nzLabel]="pr.name"></nz-option>
+          }
+        </nz-select>
+        <button
+          nz-button
+          nzType="primary"
+          [nzLoading]="saving()"
+          (click)="save()"
+        >
+          Сохранить
+        </button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header>
+        <h2>Назначенные проекты</h2>
+        <small>read-only — менеджер ведёт ход работы</small>
+      </header>
+      @if (projects().length === 0) {
+        <nz-empty nzNotFoundContent="Пока нет назначений"></nz-empty>
+      } @else {
+        <div class="cards">
+          @for (p of projects(); track p.id) {
+            <article class="card">
+              <header>
+                <h3>{{ p.title }}</h3>
+                <nz-tag [nzColor]="projectStatusColor(p.display_status)">
+                  {{ projectStatusLabel(p.display_status) }}
+                </nz-tag>
+              </header>
+              @if (p.current_step_title) {
+                <p class="cur">Сейчас: {{ p.current_step_title }}</p>
+              }
+              @if (p.client_display_name) {
+                <p class="meta">Клиент: {{ p.client_display_name }}</p>
+              }
+              <nz-progress
+                [nzPercent]="p.progress"
+                nzSize="small"
+                [nzShowInfo]="false"
+              ></nz-progress>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+</main>

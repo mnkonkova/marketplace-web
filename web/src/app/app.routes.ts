@@ -35,6 +35,11 @@ export const routes: Routes = [
       import('@pages/me/project-detail/project-detail.page').then((m) => m.ProjectDetailPage),
   },
   {
+    path: 'me/specialist',
+    loadComponent: () =>
+      import('@pages/me/specialist/specialist-cabinet.page').then((m) => m.SpecialistCabinetPage),
+  },
+  {
     path: 'verify',
     loadComponent: () => import('@pages/verify/verify.page').then((m) => m.VerifyPage),
   },

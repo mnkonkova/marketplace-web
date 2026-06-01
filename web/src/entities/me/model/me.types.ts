@@ -14,6 +14,10 @@ export interface MeProfile {
   skill_ids: string[];
   contact_email?: string;
   contact_phone?: string;
+  // CRM v5: выбор работодателя (XOR на CHECK в БД). Оба пустые/false =
+  // выбор не сделан.
+  production_id?: string | null;
+  is_freelance: boolean;
 }
 
 // MeProfileFullPatch — payload для PATCH /me/profile.
@@ -32,6 +36,11 @@ export interface MeProfileFullPatch {
   categories?: { codes: string[]; primary: string };
   skills?: { skill_ids: string[] };
   updated_at?: string;
+  // CRM v5: production_id="uuid" → выбрать; ""=снять; не задано=не трогать.
+  // is_freelance=true/false → переключить флаг (сервер автоматом снимет
+  // другой выбор по XOR-правилу).
+  production_id?: string;
+  is_freelance?: boolean;
 }
 
 export interface ProfileCheckPart {
