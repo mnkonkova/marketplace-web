@@ -1,10 +1,21 @@
 <app-header />
 
 <main class="projects-list">
-  <h1>Мои проекты</h1>
+  <header class="head">
+    <div>
+      <h1>Мои проекты</h1>
+      <p class="subtitle">
+        Здесь — все проекты с командой. Цветной бейдж сверху показывает, на ком сейчас «мяч».
+      </p>
+    </div>
+    <button nz-button class="logout-btn" (click)="logout()">
+      <span nz-icon nzType="logout" nzTheme="outline"></span>
+      Выйти
+    </button>
+  </header>
 
   @if (loading()) {
-    <nz-spin nzSize="large"></nz-spin>
+    <div class="center"><nz-spin nzSize="large"></nz-spin></div>
   } @else if (projects().length === 0) {
     <nz-empty nzNotFoundContent="Пока нет проектов"></nz-empty>
   } @else {
@@ -13,23 +24,48 @@
         <article
           class="card"
           [class.waiting]="p.display_status === 'waiting_action'"
+          [class.completed]="p.display_status === 'completed'"
           (click)="open(p)"
         >
-          <header>
-            <h3>{{ p.title }}</h3>
+          <header class="card-head">
             <nz-tag [nzColor]="color(p.display_status)">
               {{ label(p.display_status) }}
             </nz-tag>
+            <span class="progress-num">{{ p.progress | number: '1.0-0' }}%</span>
           </header>
+
+          <h3>{{ p.title }}</h3>
+
           @if (p.current_step_title) {
-            <p class="cur">Сейчас: {{ p.current_step_title }}</p>
+            <p class="cur">
+              <span class="cur-label">Сейчас:</span>
+              <strong>{{ p.current_step_title }}</strong>
+            </p>
           }
+
           <nz-progress
             [nzPercent]="p.progress"
             nzSize="small"
             [nzShowInfo]="false"
+            [nzStrokeColor]="
+              p.display_status === 'waiting_action' ? '#f59e0b' :
+              p.display_status === 'completed' ? '#10b981' :
+              '#2dd4bf'
+            "
           ></nz-progress>
-          <small>{{ p.progress | number: '1.0-0' }}% выполнено</small>
+
+          <footer class="card-foot">
+            <span>
+              <span nz-icon nzType="calendar" nzTheme="outline"></span>
+              {{ p.created_at | date: 'd MMM y' }}
+            </span>
+            @if (p.budget) {
+              <span>
+                <span nz-icon nzType="dollar" nzTheme="outline"></span>
+                {{ p.budget | number }} ₽
+              </span>
+            }
+          </footer>
         </article>
       }
     </div>

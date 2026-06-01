@@ -2,97 +2,165 @@
 
 <main class="project-detail">
   @if (loading()) {
-    <nz-spin nzSize="large"></nz-spin>
+    <div class="center"><nz-spin nzSize="large"></nz-spin></div>
   } @else if (project()) { @let p = project()!;
-    <header class="hero">
-      <div class="title-row">
+    <a routerLink="/me/projects" class="back-link">← Все мои проекты</a>
+
+    <header class="hero" [class.waiting]="p.display_status === 'waiting_action'">
+      <div class="hero-row">
         <h1>{{ p.title }}</h1>
         <nz-tag [nzColor]="projectStatusColor(p.display_status)">
           {{ projectStatusLabel(p.display_status) }}
         </nz-tag>
       </div>
 
-      <nz-progress
-        [nzPercent]="p.progress"
-        nzSize="small"
-        [nzShowInfo]="false"
-      ></nz-progress>
-      <p class="hint">Прогресс: {{ p.progress | number: '1.0-0' }}%</p>
+      <div class="progress-row">
+        <nz-progress
+          [nzPercent]="p.progress"
+          [nzShowInfo]="false"
+          [nzStrokeColor]="
+            p.display_status === 'waiting_action' ? '#f59e0b' :
+            p.display_status === 'completed' ? '#10b981' :
+            '#2dd4bf'
+          "
+        ></nz-progress>
+        <span class="progress-num">{{ p.progress | number: '1.0-0' }}%</span>
+      </div>
 
-      @if (p.current_step_title) {
-        <div class="current-block">
-          <span>Сейчас:</span>
-          <strong>{{ p.current_step_title }}</strong>
+      <div class="hero-meta">
+        @if (p.current_step_title) {
+          <div class="now-block">
+            <span class="now-label">Сейчас</span>
+            <strong>{{ p.current_step_title }}</strong>
+            @if (p.current_step_owner === 'client' && p.current_step_status === 'waiting_client') {
+              <small>— нужно ваше действие</small>
+            } @else if (p.current_step_owner === 'team') {
+              <small>— делает команда</small>
+            }
+          </div>
+        }
+
+        <div class="meta-grid">
+          @if (p.specialist_user_id) {
+            <a
+              [routerLink]="['/specialist', p.specialist_user_id]"
+              class="meta-link"
+              title="Открыть профиль исполнителя"
+            >
+              <span class="meta-label">Исполнитель</span>
+              <strong>
+                {{ p.specialist_display_name || 'Открыть профиль' }}
+                <span nz-icon nzType="arrow-right" nzTheme="outline"></span>
+              </strong>
+            </a>
+          }
+          @if (p.budget) {
+            <div>
+              <span class="meta-label">Бюджет</span>
+              <strong>{{ p.budget | number }} ₽</strong>
+            </div>
+          }
+          <div>
+            <span class="meta-label">Правки</span>
+            <strong>{{ p.revisions_used }} из {{ p.revisions_total }}</strong>
+          </div>
+          <div>
+            <span class="meta-label">Старт</span>
+            <strong>{{ p.created_at | date: 'd MMM y' }}</strong>
+          </div>
         </div>
-      }
+      </div>
     </header>
 
-    @for (stage of p.stages; track stage.id) {
-      <section
-        class="stage"
-        [class.is-active]="stage.display_status === 'active'"
-        [class.is-completed]="stage.display_status === 'completed'"
-      >
-        <header>
-          <h2>{{ stage.name }}</h2>
-          <nz-tag [nzColor]="stageStatusColor(stage.display_status)">
-            @if (stage.display_status === 'completed') {
-              Готово
-            } @else {
-              {{ stage.steps_done }} из {{ stage.steps_total }}
-            }
-          </nz-tag>
-        </header>
-
-        @for (step of stage.steps; track step.id) {
-          @let badge = stepBadge(step);
-          <article
-            class="step"
-            [class.step-current]="step.is_current"
-            [class.step-done]="step.status === 'done' || step.status === 'skipped'"
-          >
-            <div class="step-main">
-              <strong>{{ step.name }}</strong>
-              <small>{{ ownerLabel(step.owner) }}</small>
+    <section class="timeline">
+      <h2>Этапы</h2>
+      @for (stage of p.stages; track stage.id; let isLast = $last) {
+        <article
+          class="timeline-row"
+          [class.is-active]="stage.display_status === 'active'"
+          [class.is-completed]="stage.display_status === 'completed'"
+          [class.is-last]="isLast"
+        >
+          <aside class="rail">
+            <div class="dot">
+              @if (stage.display_status === 'completed') {
+                <span nz-icon nzType="check" nzTheme="outline"></span>
+              } @else if (stage.display_status === 'active') {
+                <span class="pulse"></span>
+              }
             </div>
-            <nz-tag [nzColor]="badge.color">{{ badge.label }}</nz-tag>
+            @if (!isLast) {
+              <div class="line"></div>
+            }
+          </aside>
 
-            @if (canApprove(step)) {
-              <div class="actions">
-                <button
-                  nz-button
-                  nzType="primary"
-                  [nzLoading]="busy() === step.id"
-                  (click)="approve(step)"
+          <div class="stage-body">
+            <header>
+              <h3>{{ stage.name }}</h3>
+              <nz-tag [nzColor]="stageStatusColor(stage.display_status)">
+                @if (stage.display_status === 'completed') {
+                  Готово
+                } @else if (stage.display_status === 'active') {
+                  {{ stage.steps_done }} из {{ stage.steps_total }}
+                } @else {
+                  Впереди
+                }
+              </nz-tag>
+            </header>
+
+            <ul class="steps">
+              @for (step of stage.steps; track step.id) {
+                @let badge = stepBadge(step);
+                <li
+                  class="step"
+                  [class.is-current]="step.is_current"
+                  [class.is-done]="step.status === 'done' || step.status === 'skipped'"
                 >
-                  Принять
-                </button>
-                <button
-                  nz-button
-                  nzDanger
-                  [nzLoading]="busy() === step.id"
-                  (click)="requestRevision(step, revisionTpl)"
-                >
-                  Запросить правки
-                </button>
-              </div>
-            }
-            @if (canSubmitReview(step)) {
-              <div class="actions">
-                <button
-                  nz-button
-                  nzType="primary"
-                  [nzLoading]="busy() === step.id"
-                  (click)="submitReview(step)"
-                >
-                  Оставить отзыв
-                </button>
-              </div>
-            }
-          </article>
-        }
-      </section>
-    }
+                  <div class="step-main">
+                    <strong>{{ step.name }}</strong>
+                    <span class="step-owner">{{ ownerLabel(step.owner) }}</span>
+                  </div>
+                  <nz-tag [nzColor]="badge.color">{{ badge.label }}</nz-tag>
+
+                  @if (canApprove(step)) {
+                    <div class="actions">
+                      <button
+                        nz-button
+                        nzType="primary"
+                        [nzLoading]="busy() === step.id"
+                        (click)="approve(step)"
+                      >
+                        ✓ Принять
+                      </button>
+                      <button
+                        nz-button
+                        nzDanger
+                        [nzLoading]="busy() === step.id"
+                        (click)="requestRevision(step, revisionTpl)"
+                      >
+                        Запросить правки
+                      </button>
+                    </div>
+                  }
+                  @if (canSubmitReview(step)) {
+                    <div class="actions">
+                      <button
+                        nz-button
+                        nzType="primary"
+                        [nzLoading]="busy() === step.id"
+                        (click)="submitReview(step)"
+                      >
+                        ★ Оставить отзыв
+                      </button>
+                    </div>
+                  }
+                </li>
+              }
+            </ul>
+          </div>
+        </article>
+      }
+    </section>
   } @else {
     <p class="not-found">Проект не найден.</p>
   }

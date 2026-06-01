@@ -78,13 +78,25 @@ export class AuthSessionStore {
   public register(payload: RegisterPayload): Observable<{ user_id: string; tokens: TokenPair }> {
     return this.http
       .post<{ user_id: string; tokens: TokenPair }>(`${this.api}/auth/register`, payload)
-      .pipe(tap((res) => this.save(res.tokens, payload.kind)));
+      .pipe(
+        tap((res) => {
+          this.save(res.tokens, payload.kind);
+          // Подтянуть role/is_approved сразу после регистрации, чтобы
+          // шапка показала правильные пункты без релога.
+          this.fetchMe().subscribe();
+        }),
+      );
   }
 
   public login(payload: LoginPayload, kind?: string): Observable<TokenPair> {
     return this.http
       .post<TokenPair>(`${this.api}/auth/login`, payload)
-      .pipe(tap((pair) => this.save(pair, kind)));
+      .pipe(
+        tap((pair) => {
+          this.save(pair, kind);
+          this.fetchMe().subscribe();
+        }),
+      );
   }
 
   public refresh(): Observable<TokenPair> {

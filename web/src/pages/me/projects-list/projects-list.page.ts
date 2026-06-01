@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { ProjectApi } from '@entities/project/api/project.api';
 import { ProjectClientView } from '@entities/project/model/project.types';
@@ -25,6 +28,8 @@ import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
     NzProgressModule,
     NzSpinModule,
     NzEmptyModule,
+    NzIconModule,
+    NzButtonModule,
     AppHeaderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,6 +40,8 @@ export class ProjectsListPage {
   private readonly api = inject(ProjectApi);
 
   private readonly router = inject(Router);
+
+  private readonly auth = inject(AuthSessionStore);
 
   public readonly loading = signal(true);
 
@@ -60,5 +67,10 @@ export class ProjectsListPage {
 
   public open(p: ProjectClientView): void {
     void this.router.navigate(['/me/projects', p.id]);
+  }
+
+  public logout(): void {
+    this.auth.clear();
+    void this.router.navigateByUrl('/');
   }
 }

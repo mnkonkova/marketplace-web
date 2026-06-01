@@ -1,11 +1,60 @@
 .head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 24px;
   margin-bottom: 24px;
 
   h1 {
+    margin: 0 0 4px;
+  }
+
+  .hint {
     margin: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    max-width: 600px;
+  }
+}
+
+.head-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.legend {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+
+  h3 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    row-gap: 8px;
+    column-gap: 12px;
+    font-size: 13px;
+  }
+
+  dt {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  dd {
+    margin: 0;
+    color: var(--text-muted);
   }
 }
 
@@ -16,52 +65,81 @@
 }
 
 .stage {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
+}
 
-  > header {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 12px;
-  }
+.stage-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.step-head-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 130px 80px 80px 110px 110px 40px;
+  gap: 8px;
+  padding: 0 0 6px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 8px;
+}
+
+.col-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .steps {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .step {
-  display: flex;
+  display: grid;
+  grid-template-columns: 24px 1fr 130px 80px 80px 110px 110px 40px;
   gap: 8px;
   align-items: center;
   padding: 8px 0;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--border);
 
-  label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    white-space: nowrap;
+  &:first-child {
+    border-top: none;
   }
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .grab {
   cursor: grab;
-  color: #9ca3af;
+  color: var(--text-dim);
   padding: 0 4px;
   user-select: none;
+  font-size: 14px;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 48px 0;
 }
 
 .cdk-drag-preview {
-  background: #fff;
+  background: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
 }
 
 .cdk-drag-placeholder {

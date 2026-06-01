@@ -9,8 +9,8 @@ h1 {
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
 
@@ -29,7 +29,7 @@ h1 {
 
   .meta {
     margin: 0 0 8px;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 13px;
   }
 }

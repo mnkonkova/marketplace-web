@@ -302,6 +302,95 @@ h6 {
   background: var(--accent) !important;
 }
 
+/* === CRM-кабинеты: тёмная тема для ng-zorro компонент === */
+.ant-table,
+.ant-table-thead > tr > th,
+.ant-table-tbody > tr > td,
+.ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+.ant-table-thead > tr > th {
+  background: var(--bg-elevated) !important;
+  color: var(--text-muted) !important;
+  font-weight: 600;
+}
+
+.ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--surface-hover) !important;
+}
+
+.ant-input-number,
+.ant-input-number-input {
+  background: var(--bg-elevated) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+.ant-switch {
+  background: var(--surface-hover);
+}
+.ant-switch.ant-switch-checked {
+  background: var(--accent) !important;
+}
+
+.ant-select-arrow,
+.ant-select-selection-item {
+  color: var(--text) !important;
+}
+
+.ant-select-dropdown {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.ant-select-item {
+  color: var(--text-muted) !important;
+}
+.ant-select-item-option-active:not(.ant-select-item-option-disabled),
+.ant-select-item-option-selected {
+  background: var(--surface-hover) !important;
+  color: var(--text) !important;
+}
+
+.ant-popover-inner {
+  background: var(--surface) !important;
+  border: 1px solid var(--border);
+}
+.ant-popover-inner-content,
+.ant-popover-message-title,
+.ant-popover-message {
+  color: var(--text) !important;
+}
+.ant-popover-arrow::before,
+.ant-popover-arrow::after {
+  background: var(--surface) !important;
+}
+
+.ant-empty-description {
+  color: var(--text-muted) !important;
+}
+
+.ant-spin-dot-item {
+  background: var(--accent) !important;
+}
+
+.ant-message-notice-content {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border);
+}
+
+/* Прогресс-бар */
+.ant-progress-text {
+  color: var(--text-muted) !important;
+}
+.ant-progress-inner {
+  background: var(--surface-hover) !important;
+}
+
 /* Глобально: на экранах <960px навигация только через бургер (все страницы). */
 @media (max-width: 959px) {
   app-header {

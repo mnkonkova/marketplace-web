@@ -11,7 +11,7 @@ h1 {
 
 .col {
   flex: 0 0 280px;
-  background: #f9fafb;
+  background: var(--bg-elevated);
   border-radius: 8px;
   padding: 12px;
 
@@ -28,8 +28,8 @@ h1 {
     }
 
     .count {
-      background: #e5e7eb;
-      color: #374151;
+      background: var(--surface-hover);
+      color: var(--text);
       padding: 2px 8px;
       border-radius: 10px;
       font-size: 12px;
@@ -45,8 +45,8 @@ h1 {
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px;
   cursor: pointer;
@@ -59,11 +59,11 @@ h1 {
   }
 
   small {
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 12px;
   }
 
   .assigned {
-    color: #9ca3af;
+    color: var(--text-dim);
   }
 }

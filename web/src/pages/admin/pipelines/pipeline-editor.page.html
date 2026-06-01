@@ -3,19 +3,62 @@
     <nz-spin nzSize="large"></nz-spin>
   } @else if (pipeline()) { @let p = pipeline()!;
     <header class="head">
-      <h1>{{ p.name }}</h1>
-      <button nz-button nzType="primary" (click)="addStage()">+ Стадия</button>
+      <div>
+        <h1>{{ p.name }}</h1>
+        <p class="hint">
+          Воронка — шаблон шагов проекта. Изменения <strong>не затрагивают активные проекты</strong>
+          (у них собственный снимок).
+        </p>
+      </div>
+      <div class="head-actions">
+        <button nz-button (click)="addStage()">+ Стадия</button>
+        <button
+          nz-button
+          nzDanger
+          nz-popconfirm
+          [nzPopconfirmTitle]="'Удалить воронку «' + p.name + '» полностью из БД? Это нельзя отменить.'"
+          (nzOnConfirm)="deletePipeline(true)"
+        >
+          Удалить
+        </button>
+      </div>
     </header>
+
+    <section class="legend">
+      <h3>Что значат поля шага</h3>
+      <dl>
+        <dt>Название</dt>
+        <dd>Что увидит клиент / менеджер в списке шагов</dd>
+        <dt>Кто делает</dt>
+        <dd>
+          <strong>Клиент</strong> — мяч у клиента (бриф, оплата, апрув).
+          <strong>Команда</strong> — менеджер/специалист делает.
+          <strong>Система</strong> — автоматический шаг.
+        </dd>
+        <dt>Дней</dt>
+        <dd>Оценка длительности — нужна для расчёта ETA проекта</dd>
+        <dt>Вес</dt>
+        <dd>Вклад шага в процент выполнения (бóльший вес = бóльше двигает прогресс-бар)</dd>
+        <dt>👁 клиенту</dt>
+        <dd>Если выключено — шаг есть, но в кабинете клиента не показывается</dd>
+        <dt>★ Отзыв</dt>
+        <dd>
+          Помечает финальный шаг отзыва. Когда наступает — клиенту даётся 7 дней,
+          потом авто-skip и проект закрывается.
+        </dd>
+      </dl>
+    </section>
 
     <div cdkDropList (cdkDropListDropped)="reorderStages($event)" class="stages">
       @for (stage of p.stages; track stage.id) {
         <article class="stage" cdkDrag>
-          <header>
-            <span cdkDragHandle class="grab">⋮⋮</span>
+          <header class="stage-head">
+            <span cdkDragHandle class="grab" title="Перетащить стадию">⋮⋮</span>
             <input
               nz-input
               [(ngModel)]="stage.name"
               (blur)="saveStage(stage)"
+              placeholder="Название стадии"
             />
             <button nz-button nzSize="small" (click)="addStep(stage)">+ Шаг</button>
             <button
@@ -23,21 +66,40 @@
               nzSize="small"
               nzDanger
               nz-popconfirm
-              nzPopconfirmTitle="Удалить стадию?"
+              nzPopconfirmTitle="Удалить стадию вместе со всеми шагами?"
               (nzOnConfirm)="deleteStage(stage)"
             >
-              Удалить
+              Удалить стадию
             </button>
           </header>
+
+          @if (stage.steps.length > 0) {
+            <div class="step-head-row">
+              <span></span>
+              <span class="col-label">Название</span>
+              <span class="col-label">Кто</span>
+              <span class="col-label">Дней</span>
+              <span class="col-label">Вес</span>
+              <span class="col-label">Видно клиенту</span>
+              <span class="col-label">Финальный отзыв</span>
+              <span></span>
+            </div>
+          }
+
           <div cdkDropList (cdkDropListDropped)="reorderSteps($event, stage)" class="steps">
             @for (step of stage.steps; track step.id) {
               <div class="step" cdkDrag>
-                <span cdkDragHandle class="grab">⋮⋮</span>
-                <input nz-input [(ngModel)]="step.name" (blur)="saveStep(step)" />
+                <span cdkDragHandle class="grab" title="Перетащить шаг">⋮⋮</span>
+                <input
+                  nz-input
+                  [(ngModel)]="step.name"
+                  (blur)="saveStep(step)"
+                  placeholder="Название шага"
+                />
                 <nz-select
                   [(ngModel)]="step.owner"
                   (ngModelChange)="saveStep(step)"
-                  style="width: 120px"
+                  style="width: 130px"
                 >
                   <nz-option nzValue="client" nzLabel="Клиент"></nz-option>
                   <nz-option nzValue="team" nzLabel="Команда"></nz-option>
@@ -47,22 +109,24 @@
                   [(ngModel)]="step.duration_days"
                   (ngModelChange)="saveStep(step)"
                   [nzMin]="1"
-                  style="width: 100px"
+                  style="width: 80px"
+                  title="Оценка дней"
                 ></nz-input-number>
                 <nz-input-number
                   [(ngModel)]="step.weight"
                   (ngModelChange)="saveStep(step)"
                   [nzMin]="1"
                   style="width: 80px"
+                  title="Вес шага в прогрессе"
                 ></nz-input-number>
-                <label>
+                <label class="toggle" title="Показывать шаг клиенту в его кабинете">
                   <nz-switch
                     [(ngModel)]="step.visible_to_client"
                     (ngModelChange)="saveStep(step)"
                   ></nz-switch>
-                  Клиент
+                  Клиенту
                 </label>
-                <label>
+                <label class="toggle" title="Шаг сбора отзыва: 7 дней → авто-skip">
                   <nz-switch
                     [(ngModel)]="step.is_review"
                     (ngModelChange)="saveStep(step)"
@@ -76,6 +140,7 @@
                   nz-popconfirm
                   nzPopconfirmTitle="Удалить шаг?"
                   (nzOnConfirm)="deleteStep(step)"
+                  title="Удалить шаг"
                 >
                   ✕
                 </button>
@@ -83,6 +148,8 @@
             }
           </div>
         </article>
+      } @empty {
+        <p class="empty">Стадий пока нет — нажмите «+ Стадия»</p>
       }
     </div>
   }

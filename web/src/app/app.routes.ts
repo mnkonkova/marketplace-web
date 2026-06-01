@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { requireRole } from '@shared/guards/role.guard';
 
 export const routes: Routes = [
   {
@@ -24,33 +25,42 @@ export const routes: Routes = [
     path: 'me',
     loadComponent: () => import('@pages/cabinet/cabinet.page').then((m) => m.CabinetPage),
   },
+  // Клиентские страницы: проверка не по role, а просто isLoggedIn — бэк
+  // фильтрует по client_user_id, чужие проекты увидеть нельзя. Кроме того
+  // у клиентов role=client изначально и для большинства гарда хватит.
   {
     path: 'me/projects',
+    canActivate: [requireRole('client', 'specialist', 'manager', 'admin')],
     loadComponent: () =>
       import('@pages/me/projects-list/projects-list.page').then((m) => m.ProjectsListPage),
   },
   {
     path: 'me/projects/:id',
+    canActivate: [requireRole('client', 'specialist', 'manager', 'admin')],
     loadComponent: () =>
       import('@pages/me/project-detail/project-detail.page').then((m) => m.ProjectDetailPage),
   },
   {
     path: 'me/specialist',
+    canActivate: [requireRole('specialist', 'admin')],
     loadComponent: () =>
       import('@pages/me/specialist/specialist-cabinet.page').then((m) => m.SpecialistCabinetPage),
   },
   {
     path: 'manager',
+    canActivate: [requireRole('manager', 'admin')],
     loadComponent: () =>
       import('@pages/manager/inbox/inbox.page').then((m) => m.ManagerInboxPage),
   },
   {
     path: 'manager/board',
+    canActivate: [requireRole('manager', 'admin')],
     loadComponent: () =>
       import('@pages/manager/board/board.page').then((m) => m.ManagerBoardPage),
   },
   {
     path: 'manager/projects/:id',
+    canActivate: [requireRole('manager', 'admin')],
     loadComponent: () =>
       import('@pages/manager/project-detail/manager-project-detail.page').then(
         (m) => m.ManagerProjectDetailPage,
@@ -58,31 +68,37 @@ export const routes: Routes = [
   },
   {
     path: 'admin/productions',
+    canActivate: [requireRole('admin')],
     loadComponent: () =>
       import('@pages/admin/productions/productions.page').then((m) => m.AdminProductionsPage),
   },
   {
     path: 'admin/managers',
+    canActivate: [requireRole('admin')],
     loadComponent: () =>
       import('@pages/admin/managers/managers.page').then((m) => m.AdminManagersPage),
   },
   {
     path: 'admin/pipelines',
+    canActivate: [requireRole('admin')],
     loadComponent: () =>
       import('@pages/admin/pipelines/pipelines-list.page').then((m) => m.AdminPipelinesListPage),
   },
   {
     path: 'admin/pipelines/:id',
+    canActivate: [requireRole('admin')],
     loadComponent: () =>
       import('@pages/admin/pipelines/pipeline-editor.page').then((m) => m.AdminPipelineEditorPage),
   },
   {
     path: 'admin/projects',
+    canActivate: [requireRole('admin')],
     loadComponent: () =>
       import('@pages/admin/projects/projects-list.page').then((m) => m.AdminProjectsListPage),
   },
   {
     path: 'admin/board',
+    canActivate: [requireRole('admin')],
     loadComponent: () =>
       import('@pages/admin/board/board.page').then((m) => m.AdminBoardPage),
   },

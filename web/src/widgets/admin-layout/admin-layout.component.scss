@@ -5,8 +5,8 @@
 }
 
 .sidebar {
-  background: #fff;
-  border-right: 1px solid #e5e7eb;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
   padding: 24px 12px;
   display: flex;
   flex-direction: column;
@@ -18,16 +18,16 @@
     gap: 8px;
     padding: 10px 12px;
     border-radius: 6px;
-    color: #374151;
+    color: var(--text);
     text-decoration: none;
 
     &:hover {
-      background: #f3f4f6;
+      background: var(--surface-hover);
     }
 
     &.is-active {
-      background: #eff6ff;
-      color: #1d4ed8;
+      background: var(--accent-dim);
+      color: var(--accent);
     }
   }
 }

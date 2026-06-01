@@ -93,6 +93,7 @@ export interface ProjectClientView extends ProjectBase {
   current_step_owner?: StepOwner;
   current_step_status?: StepStatus;
   revisions_total: number;
+  specialist_display_name?: string;
   stages: ProjectStageView[];
 }
 

@@ -63,6 +63,12 @@ export class AppHeaderComponent implements OnInit {
     return r === 'specialist' || r === '';
   });
 
+  // logout — очищает токены и редиректит на главную. Вызывается из шапки.
+  public logout(): void {
+    this.auth.clear();
+    void this.router.navigateByUrl('/');
+  }
+
   public readonly menuOpen = signal(false);
 
   public readonly activeNav = signal<NavItem | null>(null);
