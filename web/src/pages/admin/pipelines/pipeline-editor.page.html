@@ -1,0 +1,89 @@
+<app-admin-layout>
+  @if (loading()) {
+    <nz-spin nzSize="large"></nz-spin>
+  } @else if (pipeline()) { @let p = pipeline()!;
+    <header class="head">
+      <h1>{{ p.name }}</h1>
+      <button nz-button nzType="primary" (click)="addStage()">+ Стадия</button>
+    </header>
+
+    <div cdkDropList (cdkDropListDropped)="reorderStages($event)" class="stages">
+      @for (stage of p.stages; track stage.id) {
+        <article class="stage" cdkDrag>
+          <header>
+            <span cdkDragHandle class="grab">⋮⋮</span>
+            <input
+              nz-input
+              [(ngModel)]="stage.name"
+              (blur)="saveStage(stage)"
+            />
+            <button nz-button nzSize="small" (click)="addStep(stage)">+ Шаг</button>
+            <button
+              nz-button
+              nzSize="small"
+              nzDanger
+              nz-popconfirm
+              nzPopconfirmTitle="Удалить стадию?"
+              (nzOnConfirm)="deleteStage(stage)"
+            >
+              Удалить
+            </button>
+          </header>
+          <div cdkDropList (cdkDropListDropped)="reorderSteps($event, stage)" class="steps">
+            @for (step of stage.steps; track step.id) {
+              <div class="step" cdkDrag>
+                <span cdkDragHandle class="grab">⋮⋮</span>
+                <input nz-input [(ngModel)]="step.name" (blur)="saveStep(step)" />
+                <nz-select
+                  [(ngModel)]="step.owner"
+                  (ngModelChange)="saveStep(step)"
+                  style="width: 120px"
+                >
+                  <nz-option nzValue="client" nzLabel="Клиент"></nz-option>
+                  <nz-option nzValue="team" nzLabel="Команда"></nz-option>
+                  <nz-option nzValue="system" nzLabel="Система"></nz-option>
+                </nz-select>
+                <nz-input-number
+                  [(ngModel)]="step.duration_days"
+                  (ngModelChange)="saveStep(step)"
+                  [nzMin]="1"
+                  style="width: 100px"
+                ></nz-input-number>
+                <nz-input-number
+                  [(ngModel)]="step.weight"
+                  (ngModelChange)="saveStep(step)"
+                  [nzMin]="1"
+                  style="width: 80px"
+                ></nz-input-number>
+                <label>
+                  <nz-switch
+                    [(ngModel)]="step.visible_to_client"
+                    (ngModelChange)="saveStep(step)"
+                  ></nz-switch>
+                  Клиент
+                </label>
+                <label>
+                  <nz-switch
+                    [(ngModel)]="step.is_review"
+                    (ngModelChange)="saveStep(step)"
+                  ></nz-switch>
+                  Отзыв
+                </label>
+                <button
+                  nz-button
+                  nzSize="small"
+                  nzDanger
+                  nz-popconfirm
+                  nzPopconfirmTitle="Удалить шаг?"
+                  (nzOnConfirm)="deleteStep(step)"
+                >
+                  ✕
+                </button>
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+</app-admin-layout>

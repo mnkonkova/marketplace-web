@@ -1,0 +1,24 @@
+<app-header />
+
+<div class="admin-layout">
+  <aside class="sidebar">
+    <a routerLink="/admin/productions" routerLinkActive="is-active">
+      <span nz-icon nzType="bank" nzTheme="outline"></span> Продакшены
+    </a>
+    <a routerLink="/admin/managers" routerLinkActive="is-active">
+      <span nz-icon nzType="team" nzTheme="outline"></span> Менеджеры
+    </a>
+    <a routerLink="/admin/pipelines" routerLinkActive="is-active">
+      <span nz-icon nzType="branches" nzTheme="outline"></span> Воронки
+    </a>
+    <a routerLink="/admin/projects" routerLinkActive="is-active">
+      <span nz-icon nzType="ordered-list" nzTheme="outline"></span> Проекты
+    </a>
+    <a routerLink="/admin/board" routerLinkActive="is-active">
+      <span nz-icon nzType="appstore" nzTheme="outline"></span> Канбан
+    </a>
+  </aside>
+  <main class="content">
+    <ng-content></ng-content>
+  </main>
+</div>

@@ -1,0 +1,57 @@
+<app-admin-layout>
+  <h1>Менеджеры</h1>
+
+  <nz-table [nzData]="items()" nzSize="middle">
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Имя</th>
+        <th>Аппрув</th>
+        <th>Email подтверждён</th>
+        <th>Проектов в работе</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (m of items(); track m.user_id) {
+        <tr>
+          <td>{{ m.email || '—' }}</td>
+          <td>{{ m.display_name || '—' }}</td>
+          <td>
+            @if (m.is_approved) {
+              <nz-tag nzColor="green">Аппрувлен</nz-tag>
+            } @else {
+              <nz-tag nzColor="orange">Ждёт аппрува</nz-tag>
+            }
+          </td>
+          <td>
+            @if (m.email_verified) {
+              <nz-tag nzColor="blue">Да</nz-tag>
+            } @else {
+              <nz-tag>Нет</nz-tag>
+            }
+          </td>
+          <td>{{ m.assigned_projects }}</td>
+          <td>
+            @if (!m.is_approved) {
+              <button nz-button nzType="primary" nzSize="small" (click)="approve(m)">
+                Аппрувить
+              </button>
+            } @else {
+              <button
+                nz-button
+                nzDanger
+                nzSize="small"
+                nz-popconfirm
+                nzPopconfirmTitle="Снять аппрув?"
+                (nzOnConfirm)="revoke(m)"
+              >
+                Снять аппрув
+              </button>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</app-admin-layout>

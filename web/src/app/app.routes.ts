@@ -57,6 +57,41 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'admin/productions',
+    loadComponent: () =>
+      import('@pages/admin/productions/productions.page').then((m) => m.AdminProductionsPage),
+  },
+  {
+    path: 'admin/managers',
+    loadComponent: () =>
+      import('@pages/admin/managers/managers.page').then((m) => m.AdminManagersPage),
+  },
+  {
+    path: 'admin/pipelines',
+    loadComponent: () =>
+      import('@pages/admin/pipelines/pipelines-list.page').then((m) => m.AdminPipelinesListPage),
+  },
+  {
+    path: 'admin/pipelines/:id',
+    loadComponent: () =>
+      import('@pages/admin/pipelines/pipeline-editor.page').then((m) => m.AdminPipelineEditorPage),
+  },
+  {
+    path: 'admin/projects',
+    loadComponent: () =>
+      import('@pages/admin/projects/projects-list.page').then((m) => m.AdminProjectsListPage),
+  },
+  {
+    path: 'admin/board',
+    loadComponent: () =>
+      import('@pages/admin/board/board.page').then((m) => m.AdminBoardPage),
+  },
+  {
+    path: 'auth/invite',
+    loadComponent: () =>
+      import('@pages/auth-invite/auth-invite.page').then((m) => m.AuthInvitePage),
+  },
+  {
     path: 'verify',
     loadComponent: () => import('@pages/verify/verify.page').then((m) => m.VerifyPage),
   },

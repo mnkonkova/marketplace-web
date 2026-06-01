@@ -1,0 +1,48 @@
+<app-admin-layout>
+  <header class="head">
+    <h1>Воронки</h1>
+    <button nz-button nzType="primary" (click)="openCreate(createTpl)">+ Создать</button>
+  </header>
+
+  <nz-table [nzData]="items()" nzSize="middle">
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th>Версия</th>
+        <th>Правки</th>
+        <th>Статус</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of items(); track p.id) {
+        <tr (click)="open(p)" style="cursor: pointer">
+          <td>{{ p.name }}</td>
+          <td>v{{ p.version }}</td>
+          <td>{{ p.revisions_included }}</td>
+          <td>
+            @if (p.is_active) {
+              <nz-tag nzColor="green">Активна</nz-tag>
+            } @else {
+              <nz-tag>Деактивирована</nz-tag>
+            }
+          </td>
+          <td>
+            <button nz-button nzSize="small" (click)="open(p); $event.stopPropagation()">
+              Открыть
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</app-admin-layout>
+
+<ng-template #createTpl>
+  <label>Название</label>
+  <input nz-input [(ngModel)]="name" />
+  <label style="margin-top: 12px; display: block">Описание</label>
+  <textarea nz-input rows="2" [(ngModel)]="description"></textarea>
+  <label style="margin-top: 12px; display: block">Включено правок</label>
+  <nz-input-number [(ngModel)]="revisions" [nzMin]="0" [nzMax]="50"></nz-input-number>
+</ng-template>

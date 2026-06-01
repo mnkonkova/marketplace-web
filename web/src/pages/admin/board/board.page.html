@@ -1,0 +1,41 @@
+<app-admin-layout>
+  <h1>Канбан · все проекты</h1>
+
+  @if (loading()) {
+    <nz-spin nzSize="large"></nz-spin>
+  } @else if (columns().length === 0) {
+    <nz-empty nzNotFoundContent="Проектов пока нет"></nz-empty>
+  } @else {
+    <div class="board" cdkDropListGroup>
+      @for (col of columns(); track col.id) {
+        <section class="col">
+          <header>
+            <h3>{{ col.name }}</h3>
+            <span class="count">{{ col.items.length }}</span>
+          </header>
+          <div
+            class="col-body"
+            cdkDropList
+            [cdkDropListData]="col.items"
+            (cdkDropListDropped)="onDrop($event, col)"
+          >
+            @for (p of col.items; track p.id) {
+              <article class="card" cdkDrag [cdkDragData]="p" (click)="open(p)">
+                <strong>{{ p.title }}</strong>
+                @if (p.client_display_name) {
+                  <small>Клиент: {{ p.client_display_name }}</small>
+                }
+                <small class="assigned">
+                  Менеджер: {{ p.assigned_to_user_id ? '✓ есть' : '—' }}
+                </small>
+                <nz-tag [nzColor]="statusColor(p.display_status)">
+                  {{ statusLabel(p.display_status) }}
+                </nz-tag>
+              </article>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
+</app-admin-layout>

@@ -1,0 +1,36 @@
+<app-admin-layout>
+  <h1>Все проекты</h1>
+
+  <nz-table [nzData]="items()" nzSize="middle">
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th>Клиент</th>
+        <th>Статус</th>
+        <th>Прогресс</th>
+        <th>Стадия</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of items(); track p.id) {
+        <tr (click)="open(p)" style="cursor: pointer">
+          <td>{{ p.title }}</td>
+          <td>{{ p.client_display_name || '—' }}</td>
+          <td>
+            <nz-tag [nzColor]="statusColor(p.display_status)">
+              {{ statusLabel(p.display_status) }}
+            </nz-tag>
+          </td>
+          <td style="min-width: 120px">
+            <nz-progress
+              [nzPercent]="p.progress"
+              nzSize="small"
+              [nzShowInfo]="false"
+            ></nz-progress>
+          </td>
+          <td>{{ p.current_stage_name || '—' }}</td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</app-admin-layout>

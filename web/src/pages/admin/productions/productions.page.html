@@ -1,0 +1,55 @@
+<app-admin-layout>
+  <header class="head">
+    <h1>Продакшены</h1>
+    <button nz-button nzType="primary" (click)="openCreate(createTpl)">+ Создать</button>
+  </header>
+
+  <nz-table [nzData]="items()" nzSize="middle">
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th>Описание</th>
+        <th>Статус</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of items(); track p.id) {
+        <tr>
+          <td>{{ p.name }}</td>
+          <td>{{ p.description }}</td>
+          <td>
+            @if (p.is_active) {
+              <nz-tag nzColor="green">Активен</nz-tag>
+            } @else {
+              <nz-tag>Деактивирован</nz-tag>
+            }
+          </td>
+          <td>
+            @if (p.is_active) {
+              <button
+                nz-button
+                nzDanger
+                nzSize="small"
+                nz-popconfirm
+                nzPopconfirmTitle="Деактивировать?"
+                (nzOnConfirm)="deactivate(p)"
+              >
+                Деактивировать
+              </button>
+            } @else {
+              <button nz-button nzSize="small" (click)="activate(p)">Активировать</button>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</app-admin-layout>
+
+<ng-template #createTpl>
+  <label>Название</label>
+  <input nz-input [(ngModel)]="name" />
+  <label style="margin-top: 12px; display: block">Описание</label>
+  <textarea nz-input rows="3" [(ngModel)]="description"></textarea>
+</ng-template>
