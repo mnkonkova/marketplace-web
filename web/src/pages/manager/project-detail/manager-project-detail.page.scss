@@ -113,6 +113,35 @@
   }
 }
 
+.pending {
+  color: #f59e0b;
+}
+
+.badge-pending {
+  margin-left: 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.14);
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.hint-proposed {
+  margin: 8px 0 10px 98px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.propose-actions {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 0 98px;
+}
+
 .contacts-panel {
   .party {
     padding: 10px 0;

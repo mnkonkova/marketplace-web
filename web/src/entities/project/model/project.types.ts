@@ -115,6 +115,7 @@ export interface ProjectManagerView extends ProjectBase {
 export interface ProjectFullView extends ProjectBase {
   client?: PartyContact;
   specialist?: PartyContact;
+  proposed_specialist?: PartyContact;
   display_status: ProjectDisplayStatus;
   progress: number;
   current_step_id?: string;

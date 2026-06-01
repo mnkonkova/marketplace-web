@@ -95,7 +95,16 @@
           <div class="party">
             <div class="party-head">
               <span class="role">Исполнитель</span>
-              <strong>{{ p.specialist?.display_name || '— не назначен —' }}</strong>
+              <strong>
+                @if (p.specialist) {
+                  {{ p.specialist.display_name }}
+                } @else if (p.proposed_specialist) {
+                  <span class="pending">{{ p.proposed_specialist.display_name }}</span>
+                  <span class="badge-pending">ждёт подтверждения</span>
+                } @else {
+                  — не назначен —
+                }
+              </strong>
             </div>
             @if (p.specialist?.email || p.specialist?.phone) {
               <ul class="links">
@@ -106,6 +115,29 @@
                   <li><a [href]="'tel:' + p.specialist!.phone">{{ p.specialist!.phone }}</a></li>
                 }
               </ul>
+            } @else if (p.proposed_specialist) {
+              <p class="hint-proposed">
+                Клиент выбрал этого исполнителя в брифе. Подтвердите — он получит
+                доступ к проекту, или отклоните и подберите другого.
+              </p>
+              <div class="propose-actions">
+                <button
+                  nz-button
+                  nzType="primary"
+                  [nzLoading]="proposingBusy()"
+                  (click)="approveProposed()"
+                >
+                  ✓ Подтвердить
+                </button>
+                <button
+                  nz-button
+                  nzDanger
+                  [nzLoading]="proposingBusy()"
+                  (click)="rejectProposed()"
+                >
+                  Отклонить
+                </button>
+              </div>
             }
           </div>
         </section>

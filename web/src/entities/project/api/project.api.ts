@@ -139,6 +139,20 @@ export class ProjectApi {
     );
   }
 
+  public managerApproveSpecialist(projectId: string): Observable<{ specialist_user_id: string }> {
+    return this.http.post<{ specialist_user_id: string }>(
+      `${this.api}/manager/projects/${projectId}/approve_specialist`,
+      {},
+    );
+  }
+
+  public managerRejectSpecialist(projectId: string, reason: string): Observable<void> {
+    return this.http.post<void>(
+      `${this.api}/manager/projects/${projectId}/reject_specialist`,
+      { reason },
+    );
+  }
+
   public managerCreateComment(
     projectId: string,
     body: string,

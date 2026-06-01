@@ -106,6 +106,43 @@ export class ManagerProjectDetailPage implements OnInit {
 
   public readonly commentInternal = signal(false);
 
+  public readonly proposingBusy = signal(false);
+
+  public approveProposed(): void {
+    const p = this.project();
+    if (!p) return;
+    this.proposingBusy.set(true);
+    this.api.managerApproveSpecialist(p.id).subscribe({
+      next: () => {
+        this.proposingBusy.set(false);
+        this.msg.success('Исполнитель подтверждён');
+        this.fetch(p.id, true);
+      },
+      error: (e: { error?: { error?: string; message?: string } }) => {
+        this.proposingBusy.set(false);
+        this.msg.error(e?.error?.message || 'Не удалось подтвердить');
+      },
+    });
+  }
+
+  public rejectProposed(): void {
+    const p = this.project();
+    if (!p) return;
+    const reason = window.prompt('Причина отклонения (необязательно):') ?? '';
+    this.proposingBusy.set(true);
+    this.api.managerRejectSpecialist(p.id, reason).subscribe({
+      next: () => {
+        this.proposingBusy.set(false);
+        this.msg.success('Предложение отклонено');
+        this.fetch(p.id, true);
+      },
+      error: (e: { error?: { error?: string; message?: string } }) => {
+        this.proposingBusy.set(false);
+        this.msg.error(e?.error?.message || 'Не удалось отклонить');
+      },
+    });
+  }
+
   public readonly skipComment = signal('');
 
   public readonly busy = signal<string | null>(null);
