@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -61,6 +61,8 @@ export class ManagerProjectDetailPage implements OnInit {
 
   private readonly route = inject(ActivatedRoute);
 
+  private readonly router = inject(Router);
+
   private readonly msg = inject(NzMessageService);
 
   private readonly modal = inject(NzModalService);
@@ -107,6 +109,31 @@ export class ManagerProjectDetailPage implements OnInit {
   public readonly commentInternal = signal(false);
 
   public readonly proposingBusy = signal(false);
+
+  public readonly cancelBusy = signal(false);
+
+  public cancelProject(): void {
+    const p = this.project();
+    if (!p) return;
+    const ok = window.confirm(
+      `Удалить проект «${p.title}»?\n\nОн исчезнет из списков и канбана сразу. ` +
+        `Физически удалится из БД через 30 дней (данные ещё можно восстановить SQL-ом).`,
+    );
+    if (!ok) return;
+    const reason = window.prompt('Причина (для лога активности, можно пропустить):') ?? '';
+    this.cancelBusy.set(true);
+    this.api.adminCancelProject(p.id, reason).subscribe({
+      next: () => {
+        this.cancelBusy.set(false);
+        this.msg.success('Проект удалён');
+        void this.router.navigate(['/admin/projects']);
+      },
+      error: (e: { error?: { message?: string } }) => {
+        this.cancelBusy.set(false);
+        this.msg.error(e?.error?.message || 'Не удалось удалить');
+      },
+    });
+  }
 
   public approveProposed(): void {
     const p = this.project();

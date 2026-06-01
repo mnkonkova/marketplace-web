@@ -231,6 +231,15 @@ export class ProjectApi {
     );
   }
 
+  // Soft-delete: status=cancelled, физически чистится через 30 дней.
+  public adminCancelProject(projectId: string, reason: string): Observable<void> {
+    return this.http.request<void>(
+      'delete',
+      `${this.api}/admin/projects/${projectId}`,
+      { body: { reason } },
+    );
+  }
+
   public adminListEvents(projectId: string): Observable<ListResp<ProjectEvent>> {
     return this.http.get<ListResp<ProjectEvent>>(`${this.api}/admin/projects/${projectId}/events`);
   }

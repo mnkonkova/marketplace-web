@@ -36,6 +36,18 @@
             }
           </nz-select>
           <button nz-button (click)="assignManager()">Применить</button>
+
+          <div class="danger-zone">
+            <button
+              nz-button
+              nzDanger
+              [nzLoading]="cancelBusy()"
+              (click)="cancelProject()"
+            >
+              🗑 Удалить проект
+            </button>
+            <small>Скроется сразу, физически удалится через 30 дней</small>
+          </div>
         </div>
       }
     </header>
