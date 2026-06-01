@@ -1,3 +1,21 @@
+.section-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+
+.hint {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+
+  strong {
+    color: var(--text);
+  }
+}
+
 .hero {
   background: var(--surface);
   border: 1px solid var(--border);

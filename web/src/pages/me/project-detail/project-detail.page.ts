@@ -16,6 +16,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { ProjectApi } from '@entities/project/api/project.api';
 import {
   ProjectClientView,
+  ProjectComment,
   ProjectStepView,
 } from '@entities/project/model/project.types';
 import {
@@ -67,6 +68,31 @@ export class ProjectDetailPage implements OnDestroy {
   public readonly busy = signal<string | null>(null);
 
   public readonly revisionComment = signal('');
+
+  public readonly comments = signal<ProjectComment[]>([]);
+
+  public readonly newComment = signal('');
+
+  public get newCommentValue(): string {
+    return this.newComment();
+  }
+
+  public set newCommentValue(v: string) {
+    this.newComment.set(v);
+  }
+
+  public sendComment(): void {
+    const p = this.project();
+    const body = this.newComment().trim();
+    if (!p || !body) return;
+    this.api.clientCreateComment(p.id, body).subscribe({
+      next: () => {
+        this.newComment.set('');
+        this.api.clientListComments(p.id).subscribe((r) => this.comments.set(r.items));
+      },
+      error: () => this.msg.error('Не удалось отправить'),
+    });
+  }
 
   public projectStatusLabel(s: ProjectClientView['display_status']): string {
     return PROJECT_STATUS_LABEL[s];
@@ -189,6 +215,9 @@ export class ProjectDetailPage implements OnDestroy {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+    this.api.clientListComments(id).subscribe({
+      next: (r) => this.comments.set(r.items),
     });
   }
 }

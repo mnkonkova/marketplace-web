@@ -10,7 +10,7 @@
         @for (b of boards(); track b.pipeline.id) {
           <nz-option
             [nzValue]="b.pipeline.id"
-            [nzLabel]="b.pipeline.name + ' · ' + b.columns.length + ' стадий'"
+            [nzLabel]="b.pipeline.name"
           ></nz-option>
         }
       </nz-select>
@@ -23,15 +23,21 @@
     <nz-empty nzNotFoundContent="Пока нет проектов в работе"></nz-empty>
   } @else if (currentBoard()) { @let board = currentBoard()!;
     <p class="hint">
-      Перетащите карточку на любую стадию. Внутри стадии показываются
-      подсекции по шагам, чтобы видно где сейчас стоит проект.
+      Колонки = шаги воронки. Перетащите карточку на любой шаг.
+      🤖 — шаг автоматизации (n8n).
     </p>
 
     <div class="board" cdkDropListGroup>
-      @for (col of board.columns; track col.stage_id) {
-        <section class="col">
+      @for (col of board.columns; track col.step_id) {
+        <section class="col" [class.col-system]="col.step_owner === 'system'">
           <header>
-            <h3>{{ col.name }}</h3>
+            <div class="col-title">
+              <span class="owner-icon" [title]="ownerLabel(col.step_owner)">
+                {{ ownerIcon(col.step_owner) }}
+              </span>
+              <h3>{{ col.step_name }}</h3>
+            </div>
+            <span class="stage-name">{{ col.stage_name }}</span>
             <span class="count">{{ col.items.length }}</span>
           </header>
           <div
@@ -40,43 +46,18 @@
             [cdkDropListData]="col.items"
             (cdkDropListDropped)="onDrop($event, col)"
           >
-            @if (col.stepGroups.length > 1) {
-              @for (group of col.stepGroups; track group.name) {
-                <div class="step-group">
-                  <div class="step-group-head">
-                    <span>{{ group.name }}</span>
-                    <span class="dim">{{ group.items.length }}</span>
-                  </div>
-                  @for (p of group.items; track p.id) {
-                    <article class="card" cdkDrag [cdkDragData]="p" (click)="open(p)">
-                      <strong>{{ p.title }}</strong>
-                      @if (p.client_display_name) {
-                        <small>Клиент: {{ p.client_display_name }}</small>
-                      }
-                      <nz-tag [nzColor]="statusColor(p.display_status)">
-                        {{ statusLabel(p.display_status) }}
-                      </nz-tag>
-                    </article>
-                  }
-                </div>
-              }
-            } @else {
-              @for (p of col.items; track p.id) {
-                <article class="card" cdkDrag [cdkDragData]="p" (click)="open(p)">
-                  <strong>{{ p.title }}</strong>
-                  @if (p.client_display_name) {
-                    <small>Клиент: {{ p.client_display_name }}</small>
-                  }
-                  @if (p.current_step_title) {
-                    <small class="step">↳ {{ p.current_step_title }}</small>
-                  }
-                  <nz-tag [nzColor]="statusColor(p.display_status)">
-                    {{ statusLabel(p.display_status) }}
-                  </nz-tag>
-                </article>
-              } @empty {
-                <p class="empty-col">—</p>
-              }
+            @for (p of col.items; track p.id) {
+              <article class="card" cdkDrag [cdkDragData]="p" (click)="open(p)">
+                <strong>{{ p.title }}</strong>
+                @if (p.client_display_name) {
+                  <small>Клиент: {{ p.client_display_name }}</small>
+                }
+                <nz-tag [nzColor]="statusColor(p.display_status)">
+                  {{ statusLabel(p.display_status) }}
+                </nz-tag>
+              </article>
+            } @empty {
+              <p class="empty-col">—</p>
             }
           </div>
         </section>

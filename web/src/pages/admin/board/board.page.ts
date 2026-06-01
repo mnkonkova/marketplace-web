@@ -12,7 +12,6 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { ManagerBoardPage } from '@pages/manager/board/board.page';
-import { ProjectManagerView } from '@entities/project/model/project.types';
 import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 
 // Админский канбан — всё то же что у менеджера, но без assigned-фильтра
@@ -41,7 +40,7 @@ export class AdminBoardPage extends ManagerBoardPage {
     return this.projectApi.adminListProjects();
   }
 
-  protected override moveStage(projectId: string, targetStageId: string, updatedAt?: string) {
-    return this.projectApi.adminMoveStage(projectId, targetStageId, updatedAt);
+  protected override moveStep(projectId: string, targetStepId: string, updatedAt?: string) {
+    return this.projectApi.adminMoveStep(projectId, targetStepId, updatedAt);
   }
 }

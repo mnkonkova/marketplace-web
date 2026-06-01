@@ -18,20 +18,21 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { ProjectApi } from '@entities/project/api/project.api';
 import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
-import { ProjectManagerView } from '@entities/project/model/project.types';
+import { ProjectManagerView, StepOwner } from '@entities/project/model/project.types';
 import { PipelineFull } from '@entities/pipeline/model/pipeline.types';
 import { PROJECT_STATUS_COLOR, PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
 import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.component';
 
+// Колонка = ШАГ воронки (плоский список, в порядке stage.sort_order →
+// step.sort_order). Это новая модель канбана: «единственное место правды».
 interface BoardColumn {
-  stage_id: string;
-  name: string;
-  sort_order: number;
+  step_id: string;
+  step_name: string;
+  step_owner: StepOwner;
+  stage_name: string;
+  stage_order: number;
+  step_order: number;
   items: ProjectManagerView[];
-  // Группировка карточек по шагам внутри стадии: name шага → массив проектов
-  // у которых current_step_title == name. Используется в шаблоне для
-  // подсекций. Если у стадии один шаг — секции схлопываются в основной список.
-  stepGroups: { name: string; items: ProjectManagerView[] }[];
 }
 
 interface BoardForPipeline {
@@ -89,13 +90,29 @@ export class ManagerBoardPage implements OnInit {
     return PROJECT_STATUS_COLOR[s];
   }
 
+  public ownerIcon(o: StepOwner): string {
+    switch (o) {
+      case 'client': return '👤';
+      case 'team':   return '👥';
+      case 'system': return '🤖';
+    }
+  }
+
+  public ownerLabel(o: StepOwner): string {
+    switch (o) {
+      case 'client': return 'клиент';
+      case 'team':   return 'команда';
+      case 'system': return 'авто (n8n)';
+    }
+  }
+
   public open(p: ProjectManagerView): void {
     void this.router.navigate(['/manager/projects', p.id]);
   }
 
-  // onDrop — переносим проект на любую колонку выбранной воронки.
-  // Бэк сам разруливает: вперёд с проверкой client-шагов, назад с
-  // ресетом стадий. При 409 stage_blocked — откатываем перенос.
+  // onDrop — переносим проект на конкретный ШАГ через MoveProjectToStep.
+  // Бэк сам отрулит промежуточные team/system шаги, заблокирует пропуск
+  // незавершённого client-шага.
   public onDrop(event: CdkDragDrop<ProjectManagerView[]>, targetCol: BoardColumn): void {
     if (event.previousContainer === event.container) return;
     const project = event.item.data as ProjectManagerView;
@@ -108,31 +125,20 @@ export class ManagerBoardPage implements OnInit {
     );
     this.boards.set([...this.boards()]);
 
-    // На бэк уходит pipeline_stage_id (из шаблона). Бэк сам разруливает
-    // через MoveProjectToStage: находит соответствующий project_stage по
-    // sort_order или по прямому маппингу. Подождём пока бэк не будет
-    // принимать pipeline_stage_id — сейчас используем project_stage_id из
-    // снапшота, который мы НЕ знаем. Решение: бэк должен принимать
-    // pipeline_stage_id — а в MoveProjectToStage по sort_order находить
-    // соответствующий project_stage.
-    // updated_at прокидываем для optimistic-lock — если другой менеджер
-    // успел сдвинуть проект между нашим load и drop, бэк вернёт 409
-    // stale_updated_at, мы покажем тост и откатим.
-    this.moveStage(project.id, targetCol.stage_id, project.updated_at).subscribe({
+    this.moveStep(project.id, targetCol.step_id, project.updated_at).subscribe({
       next: (updated) => {
         Object.assign(project, {
-          current_stage_order: targetCol.sort_order,
-          current_stage_name: targetCol.name,
           current_step_id: updated.current_step_id,
           current_step_title: updated.current_step_title,
+          current_step_owner: updated.current_step_owner,
           current_step_status: updated.current_step_status,
+          current_stage_name: targetCol.stage_name,
           display_status: updated.display_status,
           updated_at: updated.updated_at,
         });
-        this.msg.success('Стадия обновлена');
+        this.msg.success('Шаг обновлён');
       },
       error: (e) => {
-        // откат
         transferArrayItem(
           event.container.data,
           event.previousContainer.data,
@@ -142,12 +148,12 @@ export class ManagerBoardPage implements OnInit {
         this.boards.set([...this.boards()]);
         const code = e?.error?.error as string | undefined;
         if (code === 'stage_blocked') {
-          this.msg.warning('Нельзя двигать вперёд — ожидается действие клиента');
+          this.msg.warning('Нельзя пропустить шаг клиента');
         } else if (code === 'stale_updated_at') {
-          this.msg.warning('Проект уже обновили — перезагрузите страницу');
+          this.msg.warning('Проект уже обновили — перезагружаю...');
           this.fetch();
         } else if (code === 'not_found') {
-          this.msg.error('Стадия не найдена');
+          this.msg.error('Шаг не найден');
         } else {
           this.msg.error('Не удалось перенести');
         }
@@ -155,16 +161,15 @@ export class ManagerBoardPage implements OnInit {
     });
   }
 
-  // Перегружаемое — admin board использует adminMoveStage.
-  protected moveStage(projectId: string, targetStageId: string, updatedAt?: string) {
-    return this.projectApi.managerMoveStage(projectId, targetStageId, updatedAt);
+  // Перегружаемое — admin board использует adminMoveStep.
+  protected moveStep(projectId: string, targetStepId: string, updatedAt?: string) {
+    return this.projectApi.managerMoveStep(projectId, targetStepId, updatedAt);
   }
 
   protected loadProjects() {
     return this.projectApi.managerAssigned();
   }
 
-  // Двусторонняя привязка nz-select.
   public get selected(): string {
     return this.selectedPipelineId();
   }
@@ -196,38 +201,29 @@ export class ManagerBoardPage implements OnInit {
           next: (pipelines) => {
             const boards: BoardForPipeline[] = pipelines.map((pl) => {
               const projects = byPipeline.get(pl.id) ?? [];
-              // Группируем по sort_order: project.current_stage_id —
-              // это snapshot из project_stages, в pipeline.stages — шаблонные id.
-              // Сравниваем по порядковому номеру стадии в воронке.
-              const cols: BoardColumn[] = pl.stages
+              const cols: BoardColumn[] = [];
+              const stagesSorted = pl.stages
                 .slice()
-                .sort((a, b) => a.sort_order - b.sort_order)
-                .map((st) => {
-                  const items = projects.filter(
-                    (p) => p.current_stage_order === st.sort_order,
-                  );
-                  // Группировка по current_step_title внутри стадии.
-                  // Pipeline.stages[].steps уже отсортированы по sort_order
-                  // (бэк гарантирует). Берём шаги стадии — каждый = подсекция.
-                  const stepsSorted = (st.steps ?? [])
-                    .slice()
-                    .sort((a, b) => a.sort_order - b.sort_order);
-                  const stepGroups = stepsSorted.map((s) => ({
-                    name: s.name,
-                    items: items.filter((p) => p.current_step_title === s.name),
-                  }));
-                  return {
-                    stage_id: st.id,
-                    name: st.name,
-                    sort_order: st.sort_order,
-                    items,
-                    stepGroups,
-                  };
-                });
+                .sort((a, b) => a.sort_order - b.sort_order);
+              for (const st of stagesSorted) {
+                const stepsSorted = (st.steps ?? [])
+                  .slice()
+                  .sort((a, b) => a.sort_order - b.sort_order);
+                for (const sp of stepsSorted) {
+                  cols.push({
+                    step_id: sp.id,
+                    step_name: sp.name,
+                    step_owner: sp.owner,
+                    stage_name: st.name,
+                    stage_order: st.sort_order,
+                    step_order: sp.sort_order,
+                    items: projects.filter((p) => p.current_step_title === sp.name),
+                  });
+                }
+              }
               return { pipeline: pl, columns: cols };
             });
             this.boards.set(boards);
-            // Сохраняем выбор если он есть в новых данных, иначе первая
             if (!boards.some((b) => b.pipeline.id === this.selectedPipelineId())) {
               this.selectedPipelineId.set(boards[0]?.pipeline.id ?? '');
             }

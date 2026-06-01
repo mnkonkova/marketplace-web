@@ -60,6 +60,13 @@ export class ProjectApi {
     return this.http.get<ListResp<ProjectComment>>(`${this.api}/me/projects/${projectId}/comments`);
   }
 
+  public clientCreateComment(projectId: string, body: string): Observable<ProjectComment> {
+    return this.http.post<ProjectComment>(
+      `${this.api}/me/projects/${projectId}/comments`,
+      { body },
+    );
+  }
+
   // ---- Manager ----
   public managerInbox(): Observable<ListResp<ProjectManagerView>> {
     return this.http.get<ListResp<ProjectManagerView>>(`${this.api}/manager/projects/inbox`);
@@ -97,6 +104,19 @@ export class ProjectApi {
       updatedAt
         ? { target_stage_id: targetStageId, updated_at: updatedAt }
         : { target_stage_id: targetStageId },
+    );
+  }
+
+  public managerMoveStep(
+    projectId: string,
+    targetStepId: string,
+    updatedAt?: string,
+  ): Observable<ProjectFullView> {
+    return this.http.post<ProjectFullView>(
+      `${this.api}/manager/projects/${projectId}/move_step`,
+      updatedAt
+        ? { target_step_id: targetStepId, updated_at: updatedAt }
+        : { target_step_id: targetStepId },
     );
   }
 
@@ -184,6 +204,19 @@ export class ProjectApi {
       updatedAt
         ? { target_stage_id: targetStageId, updated_at: updatedAt }
         : { target_stage_id: targetStageId },
+    );
+  }
+
+  public adminMoveStep(
+    projectId: string,
+    targetStepId: string,
+    updatedAt?: string,
+  ): Observable<ProjectFullView> {
+    return this.http.post<ProjectFullView>(
+      `${this.api}/admin/projects/${projectId}/move_step`,
+      updatedAt
+        ? { target_step_id: targetStepId, updated_at: updatedAt }
+        : { target_step_id: targetStepId },
     );
   }
 

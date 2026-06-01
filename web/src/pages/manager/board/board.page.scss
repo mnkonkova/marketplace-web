@@ -31,27 +31,49 @@
   color: var(--accent);
 }
 
-.step-group {
+.col-title {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 6px;
-  margin-bottom: 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
 }
 
-.step-group-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 6px 2px;
-  font-size: 11px;
+.owner-icon {
+  font-size: 13px;
+}
+
+.stage-name {
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--text-dim);
-  border-bottom: 1px dashed var(--border);
+  margin-left: 22px; /* выравнивание под emoji */
+}
 
-  .dim {
-    color: var(--text-dim);
+.col-system {
+  border: 1px dashed rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.col header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+
+  .count {
+    position: absolute;
+    top: 12px;
+    right: 12px;
   }
+}
+
+.col {
+  position: relative;
 }
 
 .board {

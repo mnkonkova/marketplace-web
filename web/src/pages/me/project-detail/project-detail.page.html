@@ -161,6 +161,28 @@
         </article>
       }
     </section>
+
+    <section class="comments-block">
+      <h2>Комментарии</h2>
+      <div class="comments">
+        @for (c of comments(); track c.id) {
+          <article class="comment">
+            <strong>{{ c.author_name || 'Без имени' }}</strong>
+            <p>{{ c.body }}</p>
+            <small>{{ c.created_at | date: 'd MMM, HH:mm' }}</small>
+          </article>
+        } @empty {
+          <p class="empty">Пока без комментариев — задайте вопрос команде.</p>
+        }
+      </div>
+      <textarea
+        nz-input
+        rows="3"
+        placeholder="Написать команде..."
+        [(ngModel)]="newCommentValue"
+      ></textarea>
+      <button nz-button nzType="primary" (click)="sendComment()">Отправить</button>
+    </section>
   } @else {
     <p class="not-found">Проект не найден.</p>
   }

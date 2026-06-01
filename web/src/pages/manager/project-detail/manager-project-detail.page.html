@@ -14,14 +14,19 @@
         nzSize="small"
         [nzShowInfo]="false"
       ></nz-progress>
+      <p class="hint">
+        Движение по шагам — только через <strong>канбан</strong>.
+        Эта страница — для комментариев и активности.
+      </p>
     </header>
 
     <div class="cols">
       <section class="funnel">
+        <h2 class="section-title">Воронка</h2>
         @for (stage of p.stages; track stage.id) {
           <article class="stage">
             <header>
-              <h2>{{ stage.name }}</h2>
+              <h3>{{ stage.name }}</h3>
               <nz-tag [nzColor]="stageStatusColor(stage.display_status)">
                 {{ stageStatusLabel(stage.display_status) }} · {{ stage.steps_done }}/{{
                   stage.steps_total
@@ -36,38 +41,6 @@
                   <small>{{ step.owner }}</small>
                 </div>
                 <nz-tag [nzColor]="badge.color">{{ badge.label }}</nz-tag>
-                <div class="actions">
-                  @if (canStart(step)) {
-                    <button
-                      nz-button
-                      nzSize="small"
-                      [nzLoading]="busy() === step.id"
-                      (click)="start(step)"
-                    >
-                      Старт
-                    </button>
-                  }
-                  @if (canComplete(step)) {
-                    <button
-                      nz-button
-                      nzSize="small"
-                      nzType="primary"
-                      [nzLoading]="busy() === step.id"
-                      (click)="complete(step)"
-                    >
-                      Завершить
-                    </button>
-                  }
-                  <button
-                    nz-button
-                    nzSize="small"
-                    nzDanger
-                    [nzLoading]="busy() === step.id"
-                    (click)="skip(step, skipTpl)"
-                  >
-                    Пропустить
-                  </button>
-                </div>
               </div>
             }
           </article>
@@ -94,7 +67,6 @@
             placeholder="Написать..."
             [(ngModel)]="commentBodyValue"
           ></textarea>
-          <!-- TODO: заменить textarea на TipTap (ngx-tiptap) когда понадобится rich-text -->
           <button nz-button nzType="primary" (click)="sendComment()">Отправить</button>
         </section>
 
@@ -120,12 +92,3 @@
     </div>
   }
 </app-manager-layout>
-
-<ng-template #skipTpl>
-  <p>Причина пропуска:</p>
-  <textarea
-    nz-input
-    rows="3"
-    [(ngModel)]="skipCommentValue"
-  ></textarea>
-</ng-template>
