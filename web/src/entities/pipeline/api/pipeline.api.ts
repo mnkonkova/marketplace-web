@@ -20,6 +20,12 @@ export class PipelineApi {
     return this.http.get<{ items: Pipeline[] }>(`${this.api}/admin/pipelines`);
   }
 
+  // Чтение структуры воронки для всех залогиненных (нужно менеджеру для
+  // канбана). На бэке — /api/v1/pipelines/{id} под общим auth.Middleware.
+  public getFull(id: string): Observable<PipelineFull> {
+    return this.http.get<PipelineFull>(`${this.api}/pipelines/${id}`);
+  }
+
   public get(id: string): Observable<PipelineFull> {
     return this.http.get<PipelineFull>(`${this.api}/admin/pipelines/${id}`);
   }

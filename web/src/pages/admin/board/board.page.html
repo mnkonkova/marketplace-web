@@ -1,13 +1,33 @@
 <app-admin-layout>
-  <h1>Канбан · все проекты</h1>
+  <header class="head">
+    <h1>Канбан · все проекты</h1>
+    @if (boards().length > 1) {
+      <nz-select
+        [(ngModel)]="selected"
+        style="min-width: 240px"
+        nzPlaceHolder="Выберите воронку"
+      >
+        @for (b of boards(); track b.pipeline.id) {
+          <nz-option
+            [nzValue]="b.pipeline.id"
+            [nzLabel]="b.pipeline.name + ' · ' + b.columns.length + ' стадий'"
+          ></nz-option>
+        }
+      </nz-select>
+    }
+  </header>
 
   @if (loading()) {
     <nz-spin nzSize="large"></nz-spin>
-  } @else if (columns().length === 0) {
-    <nz-empty nzNotFoundContent="Проектов пока нет"></nz-empty>
-  } @else {
+  } @else if (boards().length === 0) {
+    <nz-empty nzNotFoundContent="Проектов нет"></nz-empty>
+  } @else if (currentBoard()) { @let board = currentBoard()!;
+    <p class="hint">
+      Перетащите карточку на любую стадию. Подсекции внутри стадии — это шаги.
+    </p>
+
     <div class="board" cdkDropListGroup>
-      @for (col of columns(); track col.id) {
+      @for (col of board.columns; track col.stage_id) {
         <section class="col">
           <header>
             <h3>{{ col.name }}</h3>
@@ -19,19 +39,49 @@
             [cdkDropListData]="col.items"
             (cdkDropListDropped)="onDrop($event, col)"
           >
-            @for (p of col.items; track p.id) {
-              <article class="card" cdkDrag [cdkDragData]="p" (click)="open(p)">
-                <strong>{{ p.title }}</strong>
-                @if (p.client_display_name) {
-                  <small>Клиент: {{ p.client_display_name }}</small>
-                }
-                <small class="assigned">
-                  Менеджер: {{ p.assigned_to_user_id ? '✓ есть' : '—' }}
-                </small>
-                <nz-tag [nzColor]="statusColor(p.display_status)">
-                  {{ statusLabel(p.display_status) }}
-                </nz-tag>
-              </article>
+            @if (col.stepGroups.length > 1) {
+              @for (group of col.stepGroups; track group.name) {
+                <div class="step-group">
+                  <div class="step-group-head">
+                    <span>{{ group.name }}</span>
+                    <span class="dim">{{ group.items.length }}</span>
+                  </div>
+                  @for (p of group.items; track p.id) {
+                    <article class="card" cdkDrag [cdkDragData]="p" (click)="open(p)">
+                      <strong>{{ p.title }}</strong>
+                      @if (p.client_display_name) {
+                        <small>Клиент: {{ p.client_display_name }}</small>
+                      }
+                      <small class="assigned">
+                        Менеджер: {{ p.assigned_to_user_id ? '✓ есть' : '—' }}
+                      </small>
+                      <nz-tag [nzColor]="statusColor(p.display_status)">
+                        {{ statusLabel(p.display_status) }}
+                      </nz-tag>
+                    </article>
+                  }
+                </div>
+              }
+            } @else {
+              @for (p of col.items; track p.id) {
+                <article class="card" cdkDrag [cdkDragData]="p" (click)="open(p)">
+                  <strong>{{ p.title }}</strong>
+                  @if (p.client_display_name) {
+                    <small>Клиент: {{ p.client_display_name }}</small>
+                  }
+                  <small class="assigned">
+                    Менеджер: {{ p.assigned_to_user_id ? '✓ есть' : '—' }}
+                  </small>
+                  @if (p.current_step_title) {
+                    <small class="step">↳ {{ p.current_step_title }}</small>
+                  }
+                  <nz-tag [nzColor]="statusColor(p.display_status)">
+                    {{ statusLabel(p.display_status) }}
+                  </nz-tag>
+                </article>
+              } @empty {
+                <p class="empty-col">—</p>
+              }
             }
           </div>
         </section>

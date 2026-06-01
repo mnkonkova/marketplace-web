@@ -77,10 +77,26 @@ export class ProjectApi {
     return this.http.get<ProjectFullView>(`${this.api}/manager/projects/${projectId}`);
   }
 
-  public managerAdvanceStage(projectId: string): Observable<ProjectFullView> {
+  public managerAdvanceStage(
+    projectId: string,
+    updatedAt?: string,
+  ): Observable<ProjectFullView> {
     return this.http.post<ProjectFullView>(
       `${this.api}/manager/projects/${projectId}/advance_stage`,
-      {},
+      updatedAt ? { updated_at: updatedAt } : {},
+    );
+  }
+
+  public managerMoveStage(
+    projectId: string,
+    targetStageId: string,
+    updatedAt?: string,
+  ): Observable<ProjectFullView> {
+    return this.http.post<ProjectFullView>(
+      `${this.api}/manager/projects/${projectId}/move_stage`,
+      updatedAt
+        ? { target_stage_id: targetStageId, updated_at: updatedAt }
+        : { target_stage_id: targetStageId },
     );
   }
 
@@ -148,10 +164,26 @@ export class ProjectApi {
     return this.http.post<ProjectClientView>(`${this.api}/admin/projects`, body);
   }
 
-  public adminAdvanceStage(projectId: string): Observable<ProjectFullView> {
+  public adminAdvanceStage(
+    projectId: string,
+    updatedAt?: string,
+  ): Observable<ProjectFullView> {
     return this.http.post<ProjectFullView>(
       `${this.api}/admin/projects/${projectId}/advance_stage`,
-      {},
+      updatedAt ? { updated_at: updatedAt } : {},
+    );
+  }
+
+  public adminMoveStage(
+    projectId: string,
+    targetStageId: string,
+    updatedAt?: string,
+  ): Observable<ProjectFullView> {
+    return this.http.post<ProjectFullView>(
+      `${this.api}/admin/projects/${projectId}/move_stage`,
+      updatedAt
+        ? { target_stage_id: targetStageId, updated_at: updatedAt }
+        : { target_stage_id: targetStageId },
     );
   }
 

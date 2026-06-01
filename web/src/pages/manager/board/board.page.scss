@@ -1,5 +1,57 @@
-h1 {
-  margin: 0 0 24px;
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 12px;
+
+  h1 {
+    margin: 0;
+  }
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0 0 16px;
+
+  strong {
+    color: var(--text);
+  }
+}
+
+.empty-col {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 24px 0;
+  margin: 0;
+}
+
+.card .step {
+  color: var(--accent);
+}
+
+.step-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.step-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+  border-bottom: 1px dashed var(--border);
+
+  .dim {
+    color: var(--text-dim);
+  }
 }
 
 .board {
