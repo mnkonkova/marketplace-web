@@ -21,10 +21,21 @@ export class AuthSessionStore {
 
   public readonly kind = computed(() => this.session()?.kind ?? '');
 
-  // CRM v5: роль определяет какие кабинеты доступны и куда редиректить
-  // после логина. Подтягивается из /me, поэтому может быть пустой если
-  // юзер ещё не открыл страницу с подгрузкой /me.
-  public readonly role = computed(() => this.session()?.role ?? '');
+  public readonly isManager = computed(() => this.session()?.is_manager ?? false);
+
+  public readonly isAdmin = computed(() => this.session()?.is_admin ?? false);
+
+  // CRM-роль для UI — derived. Приоритет: admin > manager > специалист по kind
+  // > клиент. Пустая строка пока сессия пустая (до fetchMe). Guard'ы и шапка
+  // дальше работают со строкой как раньше — это единственный нюанс контракта.
+  public readonly role = computed(() => {
+    const s = this.session();
+    if (!s) return '';
+    if (s.is_admin) return 'admin';
+    if (s.is_manager) return 'manager';
+    if (s.kind === 'specialist' || s.kind === 'both') return 'specialist';
+    return 'client';
+  });
 
   public readonly isApproved = computed(() => this.session()?.is_approved ?? true);
 
@@ -42,15 +53,17 @@ export class AuthSessionStore {
       access_token: pair.access_token,
       refresh_token: pair.refresh_token,
       kind: kind ?? prev?.kind,
-      role: prev?.role,
+      is_manager: prev?.is_manager,
+      is_admin: prev?.is_admin,
       is_approved: prev?.is_approved,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     this.session.set(next);
   }
 
-  // fetchMe — подгрузить /me и сохранить role/is_approved/kind в сессию.
-  // Зовётся из guard/layout-ов после логина, чтобы знать куда направить юзера.
+  // fetchMe — подгрузить /me и сохранить флаги CRM + kind в сессию.
+  // Зовётся из guard/layout-ов после логина, чтобы шапка/гарды знали,
+  // куда пускать юзера.
   public fetchMe(): Observable<MeUser> {
     return this.http.get<MeUser>(`${this.api}/me`).pipe(
       tap((u) => {
@@ -59,7 +72,8 @@ export class AuthSessionStore {
         const next: AuthSession = {
           ...prev,
           kind: u.kind || prev.kind,
-          role: u.role,
+          is_manager: u.is_manager,
+          is_admin: u.is_admin,
           is_approved: u.is_approved,
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));

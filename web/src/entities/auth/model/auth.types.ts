@@ -7,7 +7,8 @@ export interface AuthSession {
   access_token: string;
   refresh_token: string;
   kind?: string;
-  role?: string;
+  is_manager?: boolean;
+  is_admin?: boolean;
   is_approved?: boolean;
 }
 
@@ -17,9 +18,6 @@ export interface RegisterPayload {
   password: string;
   kind: 'client' | 'specialist' | 'both';
   display_name: string;
-  // CRM v5: опциональная роль. Пусто/опущено → client. admin через
-  // register нельзя (backend отвергает).
-  role?: 'client' | 'specialist' | 'manager';
 }
 
 export interface LoginPayload {
@@ -32,7 +30,10 @@ export interface MeUser {
   email?: string | null;
   phone?: string | null;
   kind: string;
-  role: string;
+  // CRM-флаги. Роль для UI выводится на стороне фронта в auth-session.store
+  // (admin > manager > специалист по kind > клиент).
+  is_manager: boolean;
+  is_admin: boolean;
   is_approved: boolean;
   email_verified: boolean;
 }
