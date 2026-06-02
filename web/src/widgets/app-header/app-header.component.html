@@ -76,15 +76,6 @@
             Кабинет
           </a>
         }
-        @if (showSpecialistCabinet()) {
-          <a
-            routerLink="/me/specialist"
-            class="link"
-            [class.is-active]="activeNav() === 'specialist'"
-          >
-            Продакшен
-          </a>
-        }
       } @else {
         <button type="button" class="link" (click)="openAuth()">Войти</button>
         <button nz-button nzType="default" class="cta cta-secondary" (click)="openAuth(1)">

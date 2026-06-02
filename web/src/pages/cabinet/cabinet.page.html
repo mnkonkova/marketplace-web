@@ -139,6 +139,27 @@
   <section class="panel">
     <div class="panel-head">
       <div>
+        <h2>Где вы работаете</h2>
+        <p>Фрилансер или один из продакшенов. Сохранится вместе с профилем.</p>
+      </div>
+    </div>
+    <nz-select
+      style="min-width: 320px"
+      [(ngModel)]="productionSelectedValue"
+      name="production"
+      nzPlaceHolder="Выберите вариант"
+    >
+      <nz-option nzValue="" nzLabel="— не выбрано —"></nz-option>
+      <nz-option nzValue="freelance" nzLabel="Фрилансер"></nz-option>
+      @for (pr of productions(); track pr.id) {
+        <nz-option [nzValue]="pr.id" [nzLabel]="pr.name"></nz-option>
+      }
+    </nz-select>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
         <h2>Категории</h2>
         <p>Выберите одну или несколько. Звёздочка задаёт основную категорию.</p>
       </div>

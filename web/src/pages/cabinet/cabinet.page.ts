@@ -13,6 +13,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { EMPTY, Observable, firstValueFrom, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -28,6 +29,8 @@ import {
 } from '@entities/me/model/me.types';
 import { CategoryApi } from '@entities/category/api/category.api';
 import { Category, Skill } from '@entities/category/model/category.types';
+import { ProductionApi } from '@entities/production/api/production.api';
+import { Production } from '@entities/production/model/production.types';
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import { ApiErrorBody, apiErrorMessage } from '@shared/api/api-error';
 import { groupCategoriesByType } from '@shared/lib/category-groups';
@@ -68,6 +71,7 @@ interface PortfolioForm {
     NzInputModule,
     NzTagModule,
     NzAlertModule,
+    NzSelectModule,
     AppHeaderComponent,
   ],
   templateUrl: './cabinet.page.html',
@@ -82,6 +86,8 @@ export class CabinetPage implements OnInit {
   private readonly router = inject(Router);
 
   private readonly categoryApi = inject(CategoryApi);
+
+  private readonly productionApi = inject(ProductionApi);
 
   private readonly msg = inject(NzMessageService);
 
@@ -129,6 +135,21 @@ export class CabinetPage implements OnInit {
   public readonly primaryCategory = signal('');
 
   public readonly selectedSkills = signal<Set<string>>(new Set());
+
+  // Список активных продакшенов для селектора «Где вы работаете».
+  public readonly productions = signal<Production[]>([]);
+
+  // Выбор: '' — не выбрано, 'freelance' — фриланс, иначе UUID продакшена.
+  // Двусторонняя ngModel-привязка идёт через productionSelectedValue ниже.
+  public readonly productionSelected = signal<string>('');
+
+  public get productionSelectedValue(): string {
+    return this.productionSelected();
+  }
+
+  public set productionSelectedValue(v: string) {
+    this.productionSelected.set(v);
+  }
 
   public form: ProfileForm = {
     display_name: '',
@@ -247,6 +268,18 @@ export class CabinetPage implements OnInit {
     };
     if (codes.length) {
       payload.categories = { codes, primary: this.primaryCategory() || codes[0] };
+    }
+    // Где работает: 'freelance' → is_freelance=true; UUID → production_id=UUID;
+    // '' → снять оба (production_id='', is_freelance=false). Бэк сам разруливает
+    // XOR-инвариант: при включении одного снимет другой.
+    const ps = this.productionSelected();
+    if (ps === 'freelance') {
+      payload.is_freelance = true;
+    } else if (ps === '') {
+      payload.production_id = '';
+      payload.is_freelance = false;
+    } else {
+      payload.production_id = ps;
     }
 
     this.meRepo
@@ -446,6 +479,7 @@ export class CabinetPage implements OnInit {
         this.user.set(u);
       });
     this.categoryApi.list().subscribe((items) => this.categories.set(items));
+    this.productionApi.listActive().subscribe((r) => this.productions.set(r.items));
     // Платформы (reels/tiktok/...) — отдельный фасет, общий для всех категорий,
     // подгружаем один раз. Остальные навыки — динамически на refreshRecommendedSkills().
     this.categoryApi.skills({ kind: 'platform' }).subscribe((items) => {
@@ -501,6 +535,7 @@ export class CabinetPage implements OnInit {
     this.selectedCategories.set(new Set(p.categories ?? []));
     this.primaryCategory.set(p.primary_category || p.categories?.[0] || '');
     this.selectedSkills.set(new Set(p.skill_ids ?? []));
+    this.productionSelected.set(p.is_freelance ? 'freelance' : (p.production_id ?? ''));
     this.refreshRecommendedSkills();
   }
 
