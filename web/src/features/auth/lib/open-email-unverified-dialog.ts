@@ -15,5 +15,6 @@ export function openEmailUnverifiedDialog(modal: NzModalService): void {
     nzWidth: 480,
     nzCentered: true,
     nzMaskClosable: true,
+    nzClassName: 'email-unverified-modal',
   });
 }
