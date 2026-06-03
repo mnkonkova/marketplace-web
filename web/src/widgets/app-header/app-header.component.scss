@@ -191,7 +191,12 @@
   }
 }
 
-@media (max-width: 959px) {
+// Breakpoint 1099px (а не 959), потому что на ~980px перестают
+// помещаться brand + .nav (4 пункта) + .header-actions (Кабинет + CTA
+// «Я специалист» + CTA «Создать проект») — кнопки наезжают друг на
+// друга. Выше 1100 — нормальный desktop с горизонтальной навигацией;
+// ниже — бургер и шторка как на тачах.
+@media (max-width: 1099px) {
   .header {
     gap: 10px;
     padding: max(10px, env(safe-area-inset-top)) 12px 10px;
