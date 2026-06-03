@@ -261,18 +261,11 @@
     display: none;
   }
 
+  // На тачах header-actions целиком прячется: все пункты (Кабинет,
+  // Менеджер, Админ, Войти, Создать проект) переезжают в шторку
+  // (.mobile-nav). В верхнем ряду остаются только бургер и плейсхолдер
+  // под бренд — это и есть «всё прячется в сайдбар».
   .header-actions {
-    gap: 8px;
-    margin-left: auto;
-  }
-
-  .link {
-    font-size: 12px;
-  }
-
-  .cta {
-    min-width: auto;
-    padding-inline: 10px;
-    font-size: 12px;
+    display: none;
   }
 }

@@ -148,6 +148,13 @@
         >
           Кабинет
         </a>
+      } @else {
+        <button type="button" class="mobile-nav-item" (click)="openAuthFromMenu()">
+          Войти
+        </button>
+        <button type="button" class="mobile-nav-item" (click)="openAuthFromMenu(1)">
+          Я специалист
+        </button>
       }
       @if (showCreateProjectCTA()) {
         <button

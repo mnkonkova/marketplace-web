@@ -139,6 +139,11 @@ export class AppHeaderComponent implements OnInit {
     this.openProject();
   }
 
+  public openAuthFromMenu(initialTab: 0 | 1 = 0): void {
+    this.closeMenu();
+    this.openAuth(initialTab);
+  }
+
   public openProduction(): void {
     this.closeMenu();
     void this.openHomeSection('production');
