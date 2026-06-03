@@ -16,7 +16,7 @@ export interface RegisterPayload {
   email?: string;
   phone?: string;
   password: string;
-  kind: 'client' | 'specialist' | 'both';
+  kind: 'client' | 'specialist';
   display_name: string;
 }
 

@@ -33,7 +33,7 @@ export class AuthSessionStore {
     if (!s) return '';
     if (s.is_admin) return 'admin';
     if (s.is_manager) return 'manager';
-    if (s.kind === 'specialist' || s.kind === 'both') return 'specialist';
+    if (s.kind === 'specialist') return 'specialist';
     return 'client';
   });
 

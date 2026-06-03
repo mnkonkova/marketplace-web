@@ -133,7 +133,7 @@ export class AuthDialogComponent {
         email: v.email!,
         password: v.password!,
         display_name: v.display_name!,
-        kind: v.kind! as 'client' | 'specialist' | 'both',
+        kind: v.kind! as 'client' | 'specialist',
       })
       .pipe(
         catchError((e) => {
