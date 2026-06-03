@@ -195,11 +195,26 @@ export class ProjectDetailPage implements OnDestroy {
         },
         error: (e) => {
           this.busy.set(null);
+          // Бек возвращает {error: code, message: ...}. Сначала message
+          // (если есть), иначе мап по code, иначе generic. Раньше всегда
+          // был generic — UX страдал: «не могу понять, что не так».
+          const status = e?.status as number | undefined;
+          const msg = e?.error?.message as string | undefined;
           const code = e?.error?.error as string | undefined;
-          if (code === 'lead_does_not_authorize') {
+          if (status === 429) {
+            this.msg.error('Слишком часто. Подождите минуту и попробуйте снова.');
+          } else if (msg) {
+            this.msg.error(msg);
+          } else if (code === 'lead_does_not_authorize') {
             this.msg.error('Отзыв запрещён — лид не подтверждает право.');
+          } else if (code === 'invalid_input') {
+            this.msg.error('Не вышло сохранить — проверьте оценку и текст.');
+          } else if (status === 401) {
+            this.msg.error('Сессия истекла — войдите заново.');
+          } else if (status === 500) {
+            this.msg.error('Внутренняя ошибка сервера. Попробуйте позже.');
           } else {
-            this.msg.error('Не удалось отправить отзыв.');
+            this.msg.error(`Не удалось отправить отзыв (код ${status ?? '?'}).`);
           }
         },
       });
