@@ -10,14 +10,23 @@ import { provideNzIcons } from 'ng-zorro-antd/icon';
 import {
   AppstoreOutline,
   ArrowRightOutline,
+  BankOutline,
+  BranchesOutline,
   CalendarOutline,
+  CheckOutline,
   CloseOutline,
+  ContactsOutline,
   DeleteOutline,
+  DollarOutline,
+  DownOutline,
   EyeInvisibleOutline,
   EyeOutline,
   HeartOutline,
+  InboxOutline,
+  LogoutOutline,
   MenuOutline,
   MessageOutline,
+  OrderedListOutline,
   ProjectOutline,
   SearchOutline,
   TeamOutline,
@@ -29,20 +38,32 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
 
 registerLocaleData(ru);
 
+// Все иконки регистрируем статически. NgZorro без provideNzIcons() тянет
+// SVG с alicdn — оно нестабильно из РФ и шумит 404'ками в DevTools.
+// Если добавляешь nzType="..." — добавь и сюда соответствующий *Outline.
 const icons = [
-  SearchOutline,
-  ArrowRightOutline,
   AppstoreOutline,
-  ProjectOutline,
-  TeamOutline,
-  HeartOutline,
-  MessageOutline,
+  ArrowRightOutline,
+  BankOutline,
+  BranchesOutline,
+  CalendarOutline,
+  CheckOutline,
+  CloseOutline,
+  ContactsOutline,
+  DeleteOutline,
+  DollarOutline,
+  DownOutline,
   EyeInvisibleOutline,
   EyeOutline,
-  CalendarOutline,
-  CloseOutline,
-  DeleteOutline,
+  HeartOutline,
+  InboxOutline,
+  LogoutOutline,
   MenuOutline,
+  MessageOutline,
+  OrderedListOutline,
+  ProjectOutline,
+  SearchOutline,
+  TeamOutline,
 ];
 
 export const appConfig: ApplicationConfig = {
