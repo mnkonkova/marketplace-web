@@ -11,6 +11,12 @@ export interface SpecialistLite {
   currency?: string;
   rating_avg?: number;
   reviews_count?: number;
+  // Где работает спец. production_name заполнен, если выбрана студия;
+  // is_freelance=true, если фрилансер. Оба пусты — статус не выбран
+  // (но publish валит publish_incomplete, так что для опубликованных
+  // что-то одно гарантированно есть).
+  production_name?: string;
+  is_freelance?: boolean;
 }
 
 export interface CategoryRef {

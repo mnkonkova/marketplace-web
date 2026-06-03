@@ -51,6 +51,11 @@
                   </span>
                 }
               </div>
+              @if (it.specialist.production_name) {
+                <div class="feed-spec-production">{{ it.specialist.production_name }}</div>
+              } @else if (it.specialist.is_freelance) {
+                <div class="feed-spec-production feed-spec-production--freelance">Фриланс</div>
+              }
               <div class="feed-spec-meta">
                 {{ it.specialist.city || 'удалённо' }} ·
                 @if (it.specialist.reviews_count) {

@@ -16,6 +16,11 @@
           <div class="hero-text">
             <h1>{{ p.display_name }}</h1>
             <p class="role">{{ primaryRole(p) }}</p>
+            @if (p.production_name) {
+              <p class="production">{{ p.production_name }}</p>
+            } @else if (p.is_freelance) {
+              <p class="production production--freelance">Фриланс</p>
+            }
             <p class="meta">
               {{ p.city || 'Удалённо' }} · @if (p.reviews_count) {
               <app-rate-stars [rating]="p.rating_avg!" [reviewsCount]="p.reviews_count" />
