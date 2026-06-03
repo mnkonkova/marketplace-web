@@ -168,34 +168,6 @@
     }
   }
 
-  // CTA в шторке выделяем visually, чтобы не сливалась с nav-пунктами.
-  // Цвет/фон фирменный, бейдж справа — счётчик из корзины (project-cart).
-  .mobile-nav-item--cta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 4px;
-    background: var(--accent);
-    color: #fff;
-    font-weight: 600;
-
-    &:hover {
-      background: var(--accent);
-      color: #fff;
-      filter: brightness(1.05);
-    }
-  }
-
-  .mobile-nav-badge {
-    min-width: 22px;
-    padding: 0 6px;
-    border-radius: 11px;
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
-    font-size: 12px;
-    line-height: 22px;
-    text-align: center;
-  }
 }
 
 .mobile-nav-backdrop {
@@ -261,11 +233,22 @@
     display: none;
   }
 
-  // На тачах header-actions целиком прячется: все пункты (Кабинет,
-  // Менеджер, Админ, Войти, Создать проект) переезжают в шторку
-  // (.mobile-nav). В верхнем ряду остаются только бургер и плейсхолдер
-  // под бренд — это и есть «всё прячется в сайдбар».
+  // На тачах в header-actions остаются только CTA-кнопки («Создать проект»
+  // и «Я специалист» — они .cta), прижатые вправо через margin-left:auto.
+  // Текстовые ссылки (.link — Кабинет/Менеджер/Админ/Войти) переезжают
+  // в шторку, чтобы освободить место и не толкаться возле бургера.
   .header-actions {
-    display: none;
+    gap: 8px;
+    margin-left: auto;
+
+    .link {
+      display: none;
+    }
+  }
+
+  .cta {
+    min-width: auto;
+    padding-inline: 10px;
+    font-size: 12px;
   }
 }

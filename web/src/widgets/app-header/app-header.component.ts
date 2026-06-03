@@ -61,7 +61,9 @@ export class AppHeaderComponent implements OnInit {
 
   // CTA «Создать проект» прячем только у специалиста — он сам себе клиент
   // в этой кнопке не нуждается, путает интерфейс. Для гостя/клиента/менеджера/
-  // админа кнопка остаётся (последние двое могут собирать брифы за клиента).
+  // админа кнопка остаётся в шапке и на десктопе, и на мобайле (см. CSS:
+  // на мобайле прячутся только .link-текстовые пункты, кнопки .cta —
+  // и «Создать проект», и «Я специалист» — остаются справа от бургера).
   public readonly showCreateProjectCTA = computed(() => this.auth.role() !== 'specialist');
 
   // Куда ведёт «Кабинет» в зависимости от роли. Клиент попадает сразу
@@ -134,11 +136,6 @@ export class AppHeaderComponent implements OnInit {
 
   // Из шторки: сначала закрываем меню, потом открываем модалку. Иначе
   // backdrop меню остаётся, перекрывая модалку (видно как «не нажимается»).
-  public openProjectFromMenu(): void {
-    this.closeMenu();
-    this.openProject();
-  }
-
   public openAuthFromMenu(initialTab: 0 | 1 = 0): void {
     this.closeMenu();
     this.openAuth(initialTab);

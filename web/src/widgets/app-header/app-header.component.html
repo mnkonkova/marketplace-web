@@ -152,21 +152,6 @@
         <button type="button" class="mobile-nav-item" (click)="openAuthFromMenu()">
           Войти
         </button>
-        <button type="button" class="mobile-nav-item" (click)="openAuthFromMenu(1)">
-          Я специалист
-        </button>
-      }
-      @if (showCreateProjectCTA()) {
-        <button
-          type="button"
-          class="mobile-nav-item mobile-nav-item--cta"
-          (click)="openProjectFromMenu()"
-        >
-          Создать проект
-          @if (cartCount() > 0) {
-            <span class="mobile-nav-badge">{{ cartCount() }}</span>
-          }
-        </button>
       }
     </nav>
   }
