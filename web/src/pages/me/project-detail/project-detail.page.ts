@@ -10,6 +10,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzRateModule } from 'ng-zorro-antd/rate';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { ProjectApi } from '@entities/project/api/project.api';
@@ -41,6 +42,7 @@ import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
     NzButtonModule,
     NzInputModule,
     NzIconModule,
+    NzRateModule,
     RouterLink,
     AppHeaderComponent,
   ],
@@ -130,6 +132,82 @@ export class ProjectDetailPage implements OnDestroy {
     );
   }
 
+  // ID review-шага, по которому открыта inline-форма (rating + text).
+  // null = форма закрыта. Открыть может только один шаг одновременно.
+  public readonly openReviewStepID = signal<string | null>(null);
+
+  // Локальный state формы. Сбрасывается при открытии/закрытии.
+  public reviewRating = 5;
+  public reviewText = '';
+
+  public openReviewForm(step: ProjectStepView): void {
+    this.openReviewStepID.set(step.id);
+    this.reviewRating = 5;
+    this.reviewText = '';
+  }
+
+  public cancelReviewForm(): void {
+    this.openReviewStepID.set(null);
+  }
+
+  // Сабмит отзыва: создаём reviews-запись (rating + text) → дёргаем
+  // submit_review чтобы закрыть шаг. Если первый шаг упал — второй
+  // тоже не дёргаем (иначе шаг закроется без отзыва, а это инвалид).
+  public confirmReview(step: ProjectStepView): void {
+    const p = this.project();
+    if (!p || !p.specialist_user_id) {
+      this.msg.error('Исполнитель ещё не назначен — отзыв оставить нельзя.');
+      return;
+    }
+    const text = (this.reviewText || '').trim();
+    if (text.length < 3) {
+      this.msg.error('Напишите хотя бы пару слов отзыва.');
+      return;
+    }
+    if (this.reviewRating < 1 || this.reviewRating > 5) {
+      this.msg.error('Выберите оценку от 1 до 5.');
+      return;
+    }
+    this.busy.set(step.id);
+    this.api
+      .createReview({
+        lead_id: p.lead_id,
+        target_user_id: p.specialist_user_id,
+        rating: this.reviewRating,
+        text,
+      })
+      .subscribe({
+        next: () => {
+          this.api.clientSubmitReview(p.id, step.id).subscribe({
+            next: () => {
+              this.busy.set(null);
+              this.openReviewStepID.set(null);
+              this.msg.success('Отзыв отправлен');
+              this.fetch(p.id, true);
+            },
+            error: () => {
+              this.busy.set(null);
+              this.msg.error(
+                'Отзыв сохранён, но шаг не закрылся — обновите страницу.',
+              );
+            },
+          });
+        },
+        error: (e) => {
+          this.busy.set(null);
+          const code = e?.error?.error as string | undefined;
+          if (code === 'lead_does_not_authorize') {
+            this.msg.error('Отзыв запрещён — лид не подтверждает право.');
+          } else {
+            this.msg.error('Не удалось отправить отзыв.');
+          }
+        },
+      });
+  }
+
+  // Старый метод оставляем для совместимости — закрывает шаг без отзыва.
+  // Сейчас из template'а не вызывается (заменён на confirmReview через
+  // openReviewForm), но если где-то остался — продолжит работать.
   public submitReview(step: ProjectStepView): void {
     const p = this.project();
     if (!p) return;

@@ -38,6 +38,19 @@ export class ProjectApi {
     );
   }
 
+  // Создаёт запись в reviews (rating + text). Клиент дёрнет после неё
+  // clientSubmitReview, чтобы закрыть review-шаг проекта одной кнопкой
+  // на UI. Бек проверит через lead_id, что клиент был автором лида,
+  // а target — принятым получателем.
+  public createReview(payload: {
+    lead_id?: string;
+    target_user_id: string;
+    rating: number;
+    text: string;
+  }): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${this.api}/reviews`, payload);
+  }
+
   public clientListComments(projectId: string): Observable<ListResp<ProjectComment>> {
     return this.http.get<ListResp<ProjectComment>>(`${this.api}/me/projects/${projectId}/comments`);
   }

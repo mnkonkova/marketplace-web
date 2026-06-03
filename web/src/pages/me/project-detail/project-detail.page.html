@@ -123,16 +123,43 @@
                   <nz-tag [nzColor]="badge.color">{{ badge.label }}</nz-tag>
 
                   @if (canSubmitReview(step)) {
-                    <div class="actions">
-                      <button
-                        nz-button
-                        nzType="primary"
-                        [nzLoading]="busy() === step.id"
-                        (click)="submitReview(step)"
-                      >
-                        ★ Оставить отзыв
-                      </button>
-                    </div>
+                    @if (openReviewStepID() === step.id) {
+                      <div class="review-form">
+                        <label class="review-label">Ваша оценка</label>
+                        <nz-rate [(ngModel)]="reviewRating" [nzAllowClear]="false"></nz-rate>
+                        <label class="review-label">Что хотите сказать</label>
+                        <textarea
+                          nz-input
+                          rows="3"
+                          placeholder="Кратко: что понравилось, где можно лучше"
+                          [(ngModel)]="reviewText"
+                        ></textarea>
+                        <div class="actions">
+                          <button
+                            nz-button
+                            nzType="primary"
+                            [nzLoading]="busy() === step.id"
+                            (click)="confirmReview(step)"
+                          >
+                            Отправить
+                          </button>
+                          <button nz-button type="button" (click)="cancelReviewForm()">
+                            Отмена
+                          </button>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="actions">
+                        <button
+                          nz-button
+                          nzType="primary"
+                          [nzLoading]="busy() === step.id"
+                          (click)="openReviewForm(step)"
+                        >
+                          ★ Оставить отзыв
+                        </button>
+                      </div>
+                    }
                   }
                 </li>
               }
