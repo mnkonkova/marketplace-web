@@ -167,6 +167,35 @@
       background: rgba(32, 161, 148, 0.12);
     }
   }
+
+  // CTA в шторке выделяем visually, чтобы не сливалась с nav-пунктами.
+  // Цвет/фон фирменный, бейдж справа — счётчик из корзины (project-cart).
+  .mobile-nav-item--cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+
+    &:hover {
+      background: var(--accent);
+      color: #fff;
+      filter: brightness(1.05);
+    }
+  }
+
+  .mobile-nav-badge {
+    min-width: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 12px;
+    line-height: 22px;
+    text-align: center;
+  }
 }
 
 .mobile-nav-backdrop {

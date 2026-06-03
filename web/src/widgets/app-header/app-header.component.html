@@ -44,15 +44,6 @@
 
     <div class="header-actions">
       @if (isLoggedIn()) {
-        @if (showClientProjects()) {
-          <a
-            routerLink="/me/projects"
-            class="link"
-            [class.is-active]="activeNav() === 'projects'"
-          >
-            Мои проекты
-          </a>
-        }
         @if (showManagerCabinet()) {
           <a
             routerLink="/manager/board"
@@ -71,22 +62,26 @@
             Админ
           </a>
         }
-        @if (showSpecialistCabinet()) {
-          <a routerLink="/me" class="link" [class.is-active]="activeNav() === 'cabinet'">
-            Кабинет
-          </a>
-        }
+        <a
+          [routerLink]="cabinetLink()"
+          class="link"
+          [class.is-active]="activeNav() === 'cabinet'"
+        >
+          Кабинет
+        </a>
       } @else {
         <button type="button" class="link" (click)="openAuth()">Войти</button>
         <button nz-button nzType="default" class="cta cta-secondary" (click)="openAuth(1)">
           Я специалист
         </button>
       }
-      <nz-badge [nzCount]="cartCount()" [nzShowZero]="false">
-        <button nz-button nzType="primary" class="cta" (click)="openProject()">
-          Создать проект
-        </button>
-      </nz-badge>
+      @if (showCreateProjectCTA()) {
+        <nz-badge [nzCount]="cartCount()" [nzShowZero]="false">
+          <button nz-button nzType="primary" class="cta" (click)="openProject()">
+            Создать проект
+          </button>
+        </nz-badge>
+      }
     </div>
   </header>
 
@@ -125,14 +120,46 @@
         Все специалисты
       </a>
       @if (isLoggedIn()) {
+        @if (showManagerCabinet()) {
+          <a
+            routerLink="/manager/board"
+            class="mobile-nav-item"
+            [class.is-active]="activeNav() === 'manager'"
+            (click)="closeMenu()"
+          >
+            Менеджер
+          </a>
+        }
+        @if (showAdminCabinet()) {
+          <a
+            routerLink="/admin/projects"
+            class="mobile-nav-item"
+            [class.is-active]="activeNav() === 'admin'"
+            (click)="closeMenu()"
+          >
+            Админ
+          </a>
+        }
         <a
-          routerLink="/me"
+          [routerLink]="cabinetLink()"
           class="mobile-nav-item"
           [class.is-active]="activeNav() === 'cabinet'"
           (click)="closeMenu()"
         >
           Кабинет
         </a>
+      }
+      @if (showCreateProjectCTA()) {
+        <button
+          type="button"
+          class="mobile-nav-item mobile-nav-item--cta"
+          (click)="openProjectFromMenu()"
+        >
+          Создать проект
+          @if (cartCount() > 0) {
+            <span class="mobile-nav-badge">{{ cartCount() }}</span>
+          }
+        </button>
       }
     </nav>
   }

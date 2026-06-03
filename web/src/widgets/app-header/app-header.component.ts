@@ -23,10 +23,8 @@ type NavItem =
   | 'promotion'
   | 'search'
   | 'cabinet'
-  | 'projects'
   | 'manager'
-  | 'admin'
-  | 'specialist';
+  | 'admin';
 type HomeSection = 'production' | 'promotion';
 
 @Component({
@@ -52,8 +50,6 @@ export class AppHeaderComponent implements OnInit {
 
   // CRM v5: показываем разные пункты по role. Пока role не подгружена,
   // считаем что это базовый юзер (показываем «Кабинет» как раньше).
-  public readonly showClientProjects = computed(() => this.auth.role() === 'client');
-
   public readonly showManagerCabinet = computed(() => this.auth.role() === 'manager');
 
   public readonly showAdminCabinet = computed(() => this.auth.role() === 'admin');
@@ -62,6 +58,18 @@ export class AppHeaderComponent implements OnInit {
     const r = this.auth.role();
     return r === 'specialist' || r === '';
   });
+
+  // CTA «Создать проект» прячем только у специалиста — он сам себе клиент
+  // в этой кнопке не нуждается, путает интерфейс. Для гостя/клиента/менеджера/
+  // админа кнопка остаётся (последние двое могут собирать брифы за клиента).
+  public readonly showCreateProjectCTA = computed(() => this.auth.role() !== 'specialist');
+
+  // Куда ведёт «Кабинет» в зависимости от роли. Клиент попадает сразу
+  // в свой список проектов (там 99% его активности), специалист — на свой
+  // профиль /me (там и кошелёк, и портфолио, и заявки).
+  public readonly cabinetLink = computed(() =>
+    this.auth.role() === 'client' ? '/me/projects' : '/me',
+  );
 
   // logout — очищает токены и редиректит на главную. Вызывается из шапки.
   public logout(): void {
@@ -124,6 +132,13 @@ export class AppHeaderComponent implements OnInit {
     });
   }
 
+  // Из шторки: сначала закрываем меню, потом открываем модалку. Иначе
+  // backdrop меню остаётся, перекрывая модалку (видно как «не нажимается»).
+  public openProjectFromMenu(): void {
+    this.closeMenu();
+    this.openProject();
+  }
+
   public openProduction(): void {
     this.closeMenu();
     void this.openHomeSection('production');
@@ -147,7 +162,9 @@ export class AppHeaderComponent implements OnInit {
     const path = this.currentPath();
     const hash = this.currentHash();
 
-    if (path === '/me') return 'cabinet';
+    // /me и /me/projects подсвечиваем одним пунктом «Кабинет» — фронт
+    // подбирает URL по роли, но визуально это всегда один таб в шапке.
+    if (path === '/me' || path.startsWith('/me/projects')) return 'cabinet';
     if (path === '/search' || path === '/clarify') return 'search';
     if (path === '/') {
       if (hash === 'production') return 'production';
