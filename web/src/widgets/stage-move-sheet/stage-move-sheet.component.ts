@@ -39,11 +39,15 @@ export class StageMoveSheetComponent {
   public readonly pipeline = input<PipelineFull | null>(null);
   public readonly currentStepId = input<string>('');
   public readonly projectTitle = input<string>('');
+  /** Показывать кнопку «Сменить воронку» (только в admin board). */
+  public readonly enableChangeFunnel = input<boolean>(false);
 
   public readonly close = output<void>();
   public readonly selectStep = output<string>();
   /** Открыть проект — отдельное действие из того же sheet. */
   public readonly openProject = output<void>();
+  /** Открыть диалог смены воронки. */
+  public readonly changeFunnel = output<void>();
 
   public readonly rows = computed<StageRow[]>(() => {
     const pl = this.pipeline();
@@ -88,5 +92,9 @@ export class StageMoveSheetComponent {
 
   public onOpenProject(): void {
     this.openProject.emit();
+  }
+
+  public onChangeFunnel(): void {
+    this.changeFunnel.emit();
   }
 }

@@ -78,9 +78,11 @@
       [pipeline]="board.pipeline"
       [currentStepId]="moveTargetCurrentStepId()"
       [projectTitle]="moveTarget()?.title ?? ''"
+      [enableChangeFunnel]="true"
       (close)="closeMoveSheet()"
       (selectStep)="onSelectMoveStep($event)"
       (openProject)="openMoveTargetProject()"
+      (changeFunnel)="openChangeFunnel()"
     />
   }
 </app-admin-layout>

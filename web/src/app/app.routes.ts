@@ -103,6 +103,12 @@ export const routes: Routes = [
       import('@pages/admin/board/board.page').then((m) => m.AdminBoardPage),
   },
   {
+    path: 'admin/dashboard',
+    canActivate: [requireRole('admin')],
+    loadComponent: () =>
+      import('@pages/admin/dashboard/dashboard.page').then((m) => m.AdminDashboardPage),
+  },
+  {
     path: 'auth/invite',
     loadComponent: () =>
       import('@pages/auth-invite/auth-invite.page').then((m) => m.AuthInvitePage),

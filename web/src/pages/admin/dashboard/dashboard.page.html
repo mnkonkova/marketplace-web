@@ -1,0 +1,117 @@
+<app-admin-layout>
+  <header class="head">
+    <div>
+      <h1>Дашборд воронок</h1>
+      <p class="subtitle">Сводка по всем проектам в системе.</p>
+    </div>
+    <a [routerLink]="['/admin/board']" class="head-link">Открыть канбан →</a>
+  </header>
+
+  @if (loading()) {
+    <nz-spin nzSize="large"></nz-spin>
+  } @else if (stats().length === 0) {
+    <nz-empty nzNotFoundContent="Воронок ещё нет"></nz-empty>
+  } @else {
+    @let t = totals();
+    <section class="totals">
+      <div class="t-card t-total">
+        <span class="t-icon">📊</span>
+        <span class="t-label">Всего проектов</span>
+        <strong class="t-value">{{ t.total }}</strong>
+      </div>
+      <div class="t-card t-active">
+        <span class="t-icon">⚡</span>
+        <span class="t-label">В работе</span>
+        <strong class="t-value">{{ t.active + t.waiting }}</strong>
+        @if (t.waiting) {
+          <span class="t-sub">из них {{ t.waiting }} ждут клиента</span>
+        }
+      </div>
+      <div class="t-card t-done">
+        <span class="t-icon">✓</span>
+        <span class="t-label">Завершено</span>
+        <strong class="t-value">{{ t.completed }}</strong>
+      </div>
+      <div class="t-card t-cancel">
+        <span class="t-icon">⊘</span>
+        <span class="t-label">Отменено</span>
+        <strong class="t-value">{{ t.cancelled }}</strong>
+      </div>
+    </section>
+
+    <section class="funnels">
+      @for (s of stats(); track s.pipeline.id) {
+        <article class="funnel" [class.inactive]="!s.pipeline.is_active">
+          <header class="funnel-head">
+            <div class="funnel-title">
+              <h2>{{ s.pipeline.name }}</h2>
+              @if (s.pipeline.is_default) {
+                <span class="badge default">по умолчанию</span>
+              }
+              @if (!s.pipeline.is_active) {
+                <span class="badge inactive">неактивна</span>
+              }
+            </div>
+            <span class="total-pill">{{ s.total }}</span>
+          </header>
+
+          @if (s.total === 0) {
+            <p class="empty">— проектов нет</p>
+          } @else {
+            <div
+              class="distribution"
+              [attr.role]="'img'"
+              [attr.aria-label]="'Распределение по статусам'"
+            >
+              @if (s.new) {
+                <span class="seg seg-new" [style.flex-grow]="s.new"
+                      [attr.title]="'Новые: ' + s.new"></span>
+              }
+              @if (s.active) {
+                <span class="seg seg-active" [style.flex-grow]="s.active"
+                      [attr.title]="'В работе: ' + s.active"></span>
+              }
+              @if (s.waiting) {
+                <span class="seg seg-waiting" [style.flex-grow]="s.waiting"
+                      [attr.title]="'Ждут клиента: ' + s.waiting"></span>
+              }
+              @if (s.onHold) {
+                <span class="seg seg-hold" [style.flex-grow]="s.onHold"
+                      [attr.title]="'На паузе: ' + s.onHold"></span>
+              }
+              @if (s.completed) {
+                <span class="seg seg-done" [style.flex-grow]="s.completed"
+                      [attr.title]="'Завершены: ' + s.completed"></span>
+              }
+              @if (s.cancelled) {
+                <span class="seg seg-cancel" [style.flex-grow]="s.cancelled"
+                      [attr.title]="'Отменены: ' + s.cancelled"></span>
+              }
+            </div>
+
+            <ul class="legend">
+              @if (s.new) {
+                <li><span class="dot dot-new"></span> Новые<strong>{{ s.new }}</strong></li>
+              }
+              @if (s.active) {
+                <li><span class="dot dot-active"></span> В работе<strong>{{ s.active }}</strong></li>
+              }
+              @if (s.waiting) {
+                <li><span class="dot dot-waiting"></span> Ждут клиента<strong>{{ s.waiting }}</strong></li>
+              }
+              @if (s.onHold) {
+                <li><span class="dot dot-hold"></span> На паузе<strong>{{ s.onHold }}</strong></li>
+              }
+              @if (s.completed) {
+                <li><span class="dot dot-done"></span> Завершены<strong>{{ s.completed }}</strong></li>
+              }
+              @if (s.cancelled) {
+                <li><span class="dot dot-cancel"></span> Отменены<strong>{{ s.cancelled }}</strong></li>
+              }
+            </ul>
+          }
+        </article>
+      }
+    </section>
+  }
+</app-admin-layout>

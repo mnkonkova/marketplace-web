@@ -22,6 +22,12 @@
         Открыть проект →
       </button>
 
+      @if (enableChangeFunnel()) {
+        <button type="button" class="change-funnel-btn" (click)="onChangeFunnel()">
+          Сменить воронку…
+        </button>
+      }
+
       <div class="rows-label">Переместить на шаг</div>
 
       <div class="rows">

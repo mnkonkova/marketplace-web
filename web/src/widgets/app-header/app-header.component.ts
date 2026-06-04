@@ -66,12 +66,16 @@ export class AppHeaderComponent implements OnInit {
   // и «Создать проект», и «Я специалист» — остаются справа от бургера).
   public readonly showCreateProjectCTA = computed(() => this.auth.role() !== 'specialist');
 
-  // Куда ведёт «Кабинет» в зависимости от роли. Клиент попадает сразу
-  // в свой список проектов (там 99% его активности), специалист — на свой
-  // профиль /me (там и кошелёк, и портфолио, и заявки).
-  public readonly cabinetLink = computed(() =>
-    this.auth.role() === 'client' ? '/me/projects' : '/me',
-  );
+  // Куда ведёт «Кабинет» в зависимости от роли:
+  // - specialist     → /me (портфолио, ставки, контакты — рабочее место);
+  // - client         → /me/projects (его проекты — 99% активности);
+  // - manager, admin → /me/projects (контакты заполняются в карточках проектов,
+  //                    специалистский /me им не нужен).
+  public readonly cabinetLink = computed(() => {
+    const role = this.auth.role();
+    if (role === 'client' || role === 'manager' || role === 'admin') return '/me/projects';
+    return '/me'; // specialist (и '' пока сессия грузится — fallback на cabinet)
+  });
 
   // logout — очищает токены и редиректит на главную. Вызывается из шапки.
   public logout(): void {

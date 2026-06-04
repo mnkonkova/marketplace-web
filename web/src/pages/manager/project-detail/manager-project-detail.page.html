@@ -62,6 +62,9 @@
           <button nz-button (click)="assignManager()">Применить</button>
 
           <div class="danger-zone">
+            <button nz-button type="button" (click)="openChangeFunnel()">
+              Сменить воронку…
+            </button>
             <button
               nz-button
               nzDanger
@@ -70,7 +73,7 @@
             >
               🗑 Удалить проект
             </button>
-            <small>Скроется сразу, физически удалится через 30 дней</small>
+            <small>Удаление: скроется сразу, физически — через 30 дней</small>
           </div>
         </div>
       }

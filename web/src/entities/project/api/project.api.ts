@@ -267,6 +267,17 @@ export class ProjectApi {
     );
   }
 
+  // Сменить воронку проекта (прогресс сбрасывается, project_steps пересоздаются).
+  public adminChangeFunnel(
+    projectId: string,
+    pipelineId: string,
+  ): Observable<ProjectFullView> {
+    return this.http.post<ProjectFullView>(
+      `${this.api}/admin/projects/${projectId}/change_funnel`,
+      { pipeline_id: pipelineId },
+    );
+  }
+
   // Назначить/снять менеджера на проекте. managerUserId=null → unassign.
   public adminAssignManager(
     projectId: string,

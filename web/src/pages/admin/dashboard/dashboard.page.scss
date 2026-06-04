@@ -1,0 +1,257 @@
+@use 'breakpoints' as bp;
+
+/* Цвета бакетов — один источник правды для прогресс-баров и легенды. */
+$c-new: #94a3b8;
+$c-active: #20a194; // var(--accent)
+$c-waiting: #f5c542;
+$c-hold: #6b7280;
+$c-done: #6ee7b7;
+$c-cancel: #ff7a7a;
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+
+  h1 {
+    margin: 0 0 4px;
+    font-size: clamp(22px, 4vw, 28px);
+  }
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.head-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+  white-space: nowrap;
+  padding-top: 6px;
+
+  &:hover { text-decoration: underline; }
+}
+
+/* === KPI tiles === */
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+
+  @media (max-width: bp.$tablet) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.t-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+  isolation: isolate;
+
+  /* Декоративная подсветка снизу. */
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    z-index: -1;
+  }
+
+  &.t-total::after  { background: $c-new; opacity: 0.5; }
+  &.t-active::after { background: $c-active; }
+  &.t-done::after   { background: $c-done; }
+  &.t-cancel::after { background: $c-cancel; opacity: 0.7; }
+}
+
+.t-icon {
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+
+.t-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.t-value {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.t-active .t-value { color: $c-active; }
+.t-done   .t-value { color: $c-done; }
+.t-cancel .t-value { color: $c-cancel; }
+
+.t-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* === Funnel cards === */
+
+.funnels {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.funnel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: rgba(32, 161, 148, 0.4);
+  }
+
+  &.inactive {
+    opacity: 0.55;
+  }
+}
+
+.funnel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.funnel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+
+  h2 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+  }
+}
+
+.badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &.default {
+    background: rgba(32, 161, 148, 0.16);
+    color: $c-active;
+  }
+
+  &.inactive {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-dim);
+  }
+}
+
+.total-pill {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* Стэкнутый прогресс-бар по бакетам. */
+.distribution {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface);
+  margin-bottom: 14px;
+
+  .seg {
+    height: 100%;
+    transition: filter 0.15s ease;
+
+    &:hover {
+      filter: brightness(1.15);
+    }
+  }
+}
+
+.seg-new     { background: $c-new; }
+.seg-active  { background: $c-active; }
+.seg-waiting { background: $c-waiting; }
+.seg-hold    { background: $c-hold; }
+.seg-done    { background: $c-done; }
+.seg-cancel  { background: $c-cancel; }
+
+.legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px 14px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+
+    strong {
+      margin-left: auto;
+      color: var(--text);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-new     { background: $c-new; }
+.dot-active  { background: $c-active; }
+.dot-waiting { background: $c-waiting; }
+.dot-hold    { background: $c-hold; }
+.dot-done    { background: $c-done; }
+.dot-cancel  { background: $c-cancel; }

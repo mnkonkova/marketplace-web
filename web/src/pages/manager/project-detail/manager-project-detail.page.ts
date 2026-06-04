@@ -16,7 +16,13 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { AdminApi, ManagerInfo } from '@entities/admin/api/admin.api';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
+import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
 import { ProjectApi } from '@entities/project/api/project.api';
+import {
+  ChangeFunnelDialog,
+  ChangeFunnelDialogData,
+  ChangeFunnelDialogResult,
+} from '@features/change-funnel/change-funnel.dialog';
 import { AssignSpecialistDialogComponent } from '@features/assign-specialist/assign-specialist.dialog';
 import {
   ProjectComment,
@@ -57,6 +63,8 @@ export class ManagerProjectDetailPage implements OnInit {
   private readonly api = inject(ProjectApi);
 
   private readonly adminApi = inject(AdminApi);
+
+  private readonly pipelineApi = inject(PipelineApi);
 
   private readonly auth = inject(AuthSessionStore);
 
@@ -112,6 +120,36 @@ export class ManagerProjectDetailPage implements OnInit {
   public readonly proposingBusy = signal(false);
 
   public readonly cancelBusy = signal(false);
+
+  public openChangeFunnel(): void {
+    const p = this.project();
+    if (!p) return;
+    this.pipelineApi.list().subscribe({
+      next: (r) => {
+        const ref = this.modal.create<
+          ChangeFunnelDialog,
+          ChangeFunnelDialogData,
+          ChangeFunnelDialogResult | null
+        >({
+          nzTitle: 'Сменить воронку',
+          nzContent: ChangeFunnelDialog,
+          nzFooter: null,
+          nzWidth: 520,
+          nzClassName: 'change-funnel-modal',
+          nzData: {
+            projectId: p.id,
+            projectTitle: p.title,
+            currentPipelineId: p.pipeline_id,
+            pipelines: r.items,
+          },
+        });
+        ref.afterClose.subscribe((res: ChangeFunnelDialogResult | null | undefined) => {
+          if (res?.pipelineId) this.fetch(p.id);
+        });
+      },
+      error: () => this.msg.error('Не удалось загрузить список воронок'),
+    });
+  }
 
   public cancelProject(): void {
     const p = this.project();
