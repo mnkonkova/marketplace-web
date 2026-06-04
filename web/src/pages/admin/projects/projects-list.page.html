@@ -1,5 +1,8 @@
 <app-admin-layout>
-  <h1>Все проекты</h1>
+  <header class="head">
+    <h1>Все проекты</h1>
+    <button nz-button nzType="primary" type="button" (click)="openCreate()">+ Создать проект</button>
+  </header>
 
   <nz-table [nzData]="items()" nzSize="middle">
     <thead>

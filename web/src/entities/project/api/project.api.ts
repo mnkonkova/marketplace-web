@@ -16,6 +16,18 @@ interface ListResp<T> {
   items: T[];
 }
 
+export interface CreateProjectPayload {
+  pipeline_id: string;
+  title: string;
+  notes?: string;
+  budget?: number;
+  // Один из двух обязателен.
+  client_user_id?: string;
+  client_name?: string;
+  client_contact?: string;
+  specialist_user_id?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProjectApi {
   private readonly http = inject(HttpClient);
@@ -65,6 +77,22 @@ export class ProjectApi {
   // ---- Manager ----
   public managerInbox(): Observable<ListResp<ProjectManagerView>> {
     return this.http.get<ListResp<ProjectManagerView>>(`${this.api}/manager/projects/inbox`);
+  }
+
+  // Создать проект менеджером. Клиент задаётся одним из двух способов:
+  // 1) client_user_id (зарегистрированный);
+  // 2) client_name + client_contact (no-account, контакт пришёл по телефону).
+  // Менеджер автоматически становится assigned_to — отдельный claim не нужен.
+  public managerCreateProject(payload: CreateProjectPayload): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${this.api}/manager/projects`, payload);
+  }
+
+  // Тот же DTO, но через admin-роут: assigned_to_user_id передаётся явно
+  // (админ может назначить любого менеджера).
+  public adminCreateProject(
+    payload: CreateProjectPayload & { assigned_to_user_id?: string },
+  ): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${this.api}/admin/projects`, payload);
   }
 
   public managerAssigned(): Observable<ListResp<ProjectManagerView>> {
@@ -185,16 +213,6 @@ export class ProjectApi {
 
   public adminGetProject(projectId: string): Observable<ProjectFullView> {
     return this.http.get<ProjectFullView>(`${this.api}/admin/projects/${projectId}`);
-  }
-
-  public adminCreateProject(body: {
-    client_user_id: string;
-    pipeline_id: string;
-    title: string;
-    budget?: number;
-    notes?: string;
-  }): Observable<ProjectClientView> {
-    return this.http.post<ProjectClientView>(`${this.api}/admin/projects`, body);
   }
 
   public adminAdvanceStage(

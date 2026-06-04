@@ -14,10 +14,13 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { ProjectApi } from '@entities/project/api/project.api';
 import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
+import { CreateProjectDialogComponent } from '@features/create-project/create-project.dialog';
 import { ProjectManagerView, StepOwner } from '@entities/project/model/project.types';
 import { PipelineFull } from '@entities/pipeline/model/pipeline.types';
 import { PROJECT_STATUS_COLOR, PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
@@ -53,6 +56,7 @@ interface BoardForPipeline {
     NzTagModule,
     NzEmptyModule,
     NzSelectModule,
+    NzButtonModule,
     ManagerLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -67,6 +71,8 @@ export class ManagerBoardPage implements OnInit {
   protected readonly router = inject(Router);
 
   protected readonly msg = inject(NzMessageService);
+
+  protected readonly modal = inject(NzModalService);
 
   public readonly loading = signal(true);
 
@@ -231,6 +237,21 @@ export class ManagerBoardPage implements OnInit {
         });
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  public openCreate(): void {
+    const ref = this.modal.create({
+      nzTitle: 'Создать проект',
+      nzContent: CreateProjectDialogComponent,
+      nzFooter: null,
+      nzWidth: 520,
+      nzData: { mode: 'manager' },
+    });
+    ref.afterClose.subscribe((created) => {
+      if (created) {
+        // refresh не нужен — диалог уже перебрасывает на /manager/projects/{id}
+      }
     });
   }
 }
