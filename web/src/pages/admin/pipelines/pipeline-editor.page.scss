@@ -1,3 +1,5 @@
+@use '../../../shared/scss/breakpoints' as bp;
+
 .head {
   display: flex;
   justify-content: space-between;
@@ -120,6 +122,21 @@
   font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+// Pipeline editor имеет 8-колонный grid у каждого шага (24+1fr+130+80+80+110+110+40 ≈ 574px).
+// На узких экранах это не помещается. Даём горизонтальный скролл всему
+// блоку с stages: дизайн сохраняется, можно тапнуть и проскроллить.
+@media (max-width: bp.$touch) {
+  // .stages — top-level контейнер всех стадий, оборачиваем в scroll.
+  // Минимальная ширина = ширина строки шага + padding stage.
+  ::ng-deep .stages {
+    overflow-x: auto;
+
+    .stage {
+      min-width: 620px;
+    }
+  }
 }
 
 .grab {

@@ -1,3 +1,5 @@
+@use '../../../shared/scss/breakpoints' as bp;
+
 .section-title {
   margin: 0 0 12px;
   font-size: 13px;
@@ -339,6 +341,119 @@
 .empty {
   color: var(--text-dim);
   margin: 0;
+}
+
+// Touch / narrow: всё в одну колонку, фиксированные отступы убираются,
+// чтобы блоки не вылезали за viewport, кнопки удобно тапались.
+@media (max-width: bp.$touch) {
+  .hero {
+    padding: 12px;
+
+    .title-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+
+      h1 {
+        font-size: 18px;
+        word-break: break-word;
+      }
+    }
+  }
+
+  .meta-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 12px;
+
+    dd {
+      font-size: 14px;
+    }
+  }
+
+  // assign-row у админа на mobile — вертикальный stack, select на всю
+  // ширину, danger-zone отдельным блоком без декоративного border-left.
+  .hero ::ng-deep .assign-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .hero ::ng-deep .assign-label {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .hero ::ng-deep nz-select {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .danger-zone {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+
+    small {
+      max-width: none;
+    }
+  }
+
+  .cols {
+    grid-template-columns: 1fr;
+  }
+
+  .stage {
+    padding: 12px;
+  }
+  .step {
+    grid-template-columns: 1fr;
+
+    .step-main {
+      gap: 4px;
+    }
+
+    .actions {
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  // Контакты: убираем фиксированный 98px отступ, role и имя в столбик.
+  .contacts-panel .party-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+
+    .role {
+      min-width: 0;
+    }
+  }
+  .contacts-panel .links,
+  .contacts-panel .empty {
+    padding-left: 0;
+  }
+
+  .hint-proposed,
+  .propose-actions {
+    margin-left: 0;
+  }
+  .propose-actions {
+    flex-wrap: wrap;
+  }
+
+  // Лента событий / комментарии — увеличиваем высоту, чтобы touch-скролл
+  // имел больше места и не упирался в края.
+  .comments,
+  .feed {
+    max-height: 480px;
+  }
 }
 
 .feed {

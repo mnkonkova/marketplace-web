@@ -1,3 +1,5 @@
+@use '../../../shared/scss/breakpoints' as bp;
+
 .head {
   display: flex;
   justify-content: space-between;
@@ -6,5 +8,29 @@
 
   h1 {
     margin: 0;
+  }
+}
+
+@media (max-width: bp.$touch) {
+  .head {
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 16px;
+
+    h1 {
+      font-size: 20px;
+    }
+
+    button {
+      width: 100%;
+    }
+  }
+
+  ::ng-deep nz-table {
+    overflow-x: auto;
+
+    .ant-table {
+      min-width: 600px;
+    }
   }
 }

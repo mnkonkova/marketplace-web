@@ -1,3 +1,5 @@
+@use '../../../shared/scss/breakpoints' as bp;
+
 h1 {
   margin: 0 0 16px;
 }
@@ -52,4 +54,54 @@ h1 {
 .row-actions {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: bp.$touch) {
+  h1 {
+    font-size: 20px;
+  }
+
+  .promote {
+    padding: 12px;
+
+    h3 {
+      font-size: 14px;
+    }
+
+    .promote-row {
+      flex-direction: column;
+      align-items: stretch;
+
+      ::ng-deep nz-select,
+      ::ng-deep button {
+        width: 100%;
+        min-width: 0 !important;
+      }
+    }
+
+    .invite-url {
+      font-size: 11px;
+    }
+  }
+
+  // NzTable не умеет в truly-responsive — даём горизонтальный скролл
+  // и компактные ячейки. nzScroll'ом увеличиваем минимум ширины.
+  ::ng-deep nz-table {
+    overflow-x: auto;
+
+    .ant-table {
+      min-width: 560px;
+    }
+  }
+
+  .row-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+
+    button {
+      width: 100%;
+    }
+  }
 }
