@@ -7,6 +7,12 @@ import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import {
   MeProfile,
   MeProfileFullPatch,
+  MultipartAbortInput,
+  MultipartCompleteInput,
+  MultipartPartURLInput,
+  MultipartPartURLResponse,
+  MultipartStartInput,
+  MultipartStartResponse,
   PortfolioCreateInput,
   ProfileCheckResult,
   UploadURLResponse,
@@ -53,6 +59,32 @@ export class MeRepository {
 
   public presignPortfolioUpload(file: File): Observable<UploadURLResponse> {
     return this.presignUpload('/me/portfolio/upload-url', file);
+  }
+
+  // === S3 multipart upload — для файлов > 5 МБ (до 200 МБ) ===
+
+  public multipartStart(file: File): Observable<MultipartStartResponse> {
+    const body: MultipartStartInput = {
+      filename: file.name,
+      content_type: file.type,
+      size_bytes: file.size,
+    };
+    return this.http.post<MultipartStartResponse>(`${this.api}/me/portfolio/multipart/start`, body);
+  }
+
+  public multipartPartURL(input: MultipartPartURLInput): Observable<MultipartPartURLResponse> {
+    return this.http.post<MultipartPartURLResponse>(
+      `${this.api}/me/portfolio/multipart/part-url`,
+      input,
+    );
+  }
+
+  public multipartComplete(input: MultipartCompleteInput): Observable<void> {
+    return this.http.post<void>(`${this.api}/me/portfolio/multipart/complete`, input);
+  }
+
+  public multipartAbort(input: MultipartAbortInput): Observable<void> {
+    return this.http.post<void>(`${this.api}/me/portfolio/multipart/abort`, input);
   }
 
   public listPortfolio(): Observable<PortfolioItem[]> {

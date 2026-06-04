@@ -63,6 +63,49 @@ export interface UploadURLResponse {
   expires_in: number;
 }
 
+// === Multipart upload (для крупного видео > 5 МБ) ===
+
+export interface MultipartStartInput {
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+}
+
+export interface MultipartStartResponse {
+  upload_id: string;
+  key: string;
+  public_url: string;
+  /** размер каждого чанка кроме последнего, в байтах */
+  part_size: number;
+}
+
+export interface MultipartPartURLInput {
+  key: string;
+  upload_id: string;
+  part_number: number;
+}
+
+export interface MultipartPartURLResponse {
+  upload_url: string;
+  expires_in: number;
+}
+
+export interface MultipartPart {
+  part_number: number;
+  etag: string;
+}
+
+export interface MultipartCompleteInput {
+  key: string;
+  upload_id: string;
+  parts: MultipartPart[];
+}
+
+export interface MultipartAbortInput {
+  key: string;
+  upload_id: string;
+}
+
 export interface PortfolioCreateInput {
   title: string;
   description: string;

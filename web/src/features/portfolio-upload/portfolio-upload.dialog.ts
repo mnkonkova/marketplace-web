@@ -19,12 +19,15 @@ import { firstValueFrom } from 'rxjs';
 import { MeRepository } from '@entities/me/repository/me.repository';
 import {
   putFileToPresignedUrl,
+  uploadMultipart,
   UploadProgress,
 } from '@entities/me/repository/me-upload';
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import { Category } from '@entities/category/model/category.types';
 
-const MAX_BYTES = 50 * 1024 * 1024;
+const MAX_BYTES = 200 * 1024 * 1024;
+/** Файлы крупнее этого лимита грузим через S3 multipart (бэк: > 5 МБ). */
+const MULTIPART_THRESHOLD = 5 * 1024 * 1024;
 const ALLOWED_TYPES = /^video\/(mp4|quicktime)$/;
 const THUMB_SECOND = 1.5;
 const ETA_WINDOW = 5;
@@ -150,7 +153,7 @@ export class PortfolioUploadDialog implements OnDestroy {
       return;
     }
     if (f.size > MAX_BYTES) {
-      this.errorText.set('Видео больше 50 МБ.');
+      this.errorText.set('Видео больше 200 МБ.');
       return;
     }
 
@@ -250,6 +253,51 @@ export class PortfolioUploadDialog implements OnDestroy {
   }
 
   private async uploadVideo(file: File, signal: AbortSignal): Promise<string> {
+    if (file.size > MULTIPART_THRESHOLD) {
+      // S3 multipart: бэк выдаёт upload_id и presigned PUT для каждой части.
+      return uploadMultipart(
+        file,
+        {
+          start: async (f) => {
+            const r = await firstValueFrom(this.meRepo.multipartStart(f));
+            return {
+              uploadID: r.upload_id,
+              key: r.key,
+              publicURL: r.public_url,
+              partSize: r.part_size,
+            };
+          },
+          partURL: async ({ key, uploadID, partNumber }) => {
+            const r = await firstValueFrom(
+              this.meRepo.multipartPartURL({ key, upload_id: uploadID, part_number: partNumber }),
+            );
+            return r.upload_url;
+          },
+          complete: async ({ key, uploadID, parts }) => {
+            await firstValueFrom(
+              this.meRepo.multipartComplete({
+                key,
+                upload_id: uploadID,
+                parts: parts.map((p) => ({ part_number: p.partNumber, etag: p.etag })),
+              }),
+            );
+          },
+          abort: async ({ key, uploadID }) => {
+            await firstValueFrom(
+              this.meRepo.multipartAbort({ key, upload_id: uploadID }),
+            );
+          },
+        },
+        {
+          signal,
+          // Параллелизм 2: компромисс между скоростью на стабильной сети
+          // и устойчивостью на мобильной (1 сделает retry проще, но медленнее).
+          concurrency: 2,
+          onProgress: (p) => this.applyVideoProgress(p),
+        },
+      );
+    }
+    // Single-PUT путь для файлов ≤ 5 МБ — multipart нельзя (min part size).
     const presign = await firstValueFrom(this.meRepo.presignPortfolioUpload(file));
     await putFileToPresignedUrl(presign.upload_url, file, {
       signal,
