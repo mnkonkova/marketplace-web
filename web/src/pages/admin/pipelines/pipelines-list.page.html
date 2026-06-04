@@ -38,6 +38,8 @@
                 nzSize="small"
                 nzType="dashed"
                 style="margin-left: 6px"
+                [nzLoading]="busyId() === p.id"
+                [disabled]="!!busyId()"
                 (click)="makeDefault(p)"
               >
                 Сделать default

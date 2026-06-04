@@ -53,13 +53,25 @@ export class AdminPipelinesListPage implements OnInit {
     void this.router.navigate(['/admin/pipelines', p.id]);
   }
 
+  // busyId — id pipeline, для которого сейчас в полёте makeDefault.
+  // Защищает от двойного клика: пока запрос идёт, кнопка скрыта.
+  // Без неё двойной клик пускал две concurrent транзакции, которые в
+  // некоторых случаях оставляли is_default=false у обеих.
+  public readonly busyId = signal<string | null>(null);
+
   public makeDefault(p: Pipeline): void {
+    if (this.busyId()) return;
+    this.busyId.set(p.id);
     this.api.makeDefault(p.id).subscribe({
       next: () => {
+        this.busyId.set(null);
         this.msg.success(`«${p.name}» — теперь default`);
         this.fetch();
       },
-      error: () => this.msg.error('Не удалось'),
+      error: () => {
+        this.busyId.set(null);
+        this.msg.error('Не удалось');
+      },
     });
   }
 
