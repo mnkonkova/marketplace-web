@@ -360,7 +360,42 @@ export class CabinetPage implements OnInit {
     this.msg.info('Аватар будет очищен после сохранения профиля.');
   }
 
-  public openUploadDialog(): void {
+  public readonly portfolioDragOver = signal(false);
+
+  public onPortfolioDragEnter(ev: DragEvent): void {
+    if (!ev.dataTransfer?.types.includes('Files')) return;
+    ev.preventDefault();
+    this.portfolioDragOver.set(true);
+  }
+
+  public onPortfolioDragOver(ev: DragEvent): void {
+    if (!ev.dataTransfer?.types.includes('Files')) return;
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = 'copy';
+  }
+
+  public onPortfolioDragLeave(ev: DragEvent): void {
+    // dragleave срабатывает и на детях — игнорим если ушли на ребёнка
+    const related = ev.relatedTarget as Node | null;
+    if (related && (ev.currentTarget as HTMLElement).contains(related)) return;
+    this.portfolioDragOver.set(false);
+  }
+
+  public onPortfolioDrop(ev: DragEvent): void {
+    ev.preventDefault();
+    this.portfolioDragOver.set(false);
+    const f = ev.dataTransfer?.files?.[0];
+    if (f) this.openUploadDialog(f);
+  }
+
+  public onPortfolioPicked(ev: Event): void {
+    const input = ev.target as HTMLInputElement;
+    const f = input.files?.[0];
+    input.value = '';
+    if (f) this.openUploadDialog(f);
+  }
+
+  public openUploadDialog(initialFile?: File): void {
     const ref = this.modalService.create<
       PortfolioUploadDialog,
       PortfolioUploadDialogData,
@@ -376,6 +411,7 @@ export class CabinetPage implements OnInit {
         categories: this.categories(),
         primaryCategory: this.primaryCategory(),
         selectedCategoryCodes: [...this.selectedCategories()],
+        initialFile,
       },
     });
     ref.afterClose.subscribe((res: PortfolioUploadDialogResult | null | undefined) => {

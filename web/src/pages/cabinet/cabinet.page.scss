@@ -276,14 +276,59 @@ label {
 
 .portfolio-cta {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
   margin-bottom: 18px;
+}
 
-  .hint {
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 32px 20px;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--accent);
+    outline: none;
+  }
+
+  &.is-drag {
+    border-color: var(--accent);
+    background: rgba(32, 161, 148, 0.08);
+  }
+
+  strong {
+    font-size: 15px;
+  }
+
+  p {
     margin: 0;
     color: var(--text-muted);
     font-size: 13px;
+  }
+}
+
+.dz-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.camera-btn {
+  display: none;
+  align-self: flex-start;
+}
+
+@media (pointer: coarse) {
+  .camera-btn {
+    display: inline-flex;
   }
 }
 

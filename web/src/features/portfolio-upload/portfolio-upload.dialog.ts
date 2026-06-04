@@ -34,6 +34,8 @@ export interface PortfolioUploadDialogData {
   categories: Category[];
   primaryCategory: string;
   selectedCategoryCodes: string[];
+  /** Файл, переданный извне (drop/capture в кабинете) — автостарт upload. */
+  initialFile?: File;
 }
 
 export interface PortfolioUploadDialogResult {
@@ -121,6 +123,11 @@ export class PortfolioUploadDialog implements OnDestroy {
       !this.saving(),
   );
 
+  constructor() {
+    const init = this.data.initialFile;
+    if (init) queueMicrotask(() => this.applyFile(init));
+  }
+
   public ngOnDestroy(): void {
     this.cleanup();
   }
@@ -133,8 +140,11 @@ export class PortfolioUploadDialog implements OnDestroy {
     const input = ev.target as HTMLInputElement;
     const f = input.files?.[0];
     input.value = '';
-    if (!f) return;
+    if (f) this.applyFile(f);
+  }
 
+  /** Приватный единый путь: и file-input, и initialFile из вне — оба сюда. */
+  private applyFile(f: File): void {
     if (!ALLOWED_TYPES.test(f.type)) {
       this.errorText.set('Видео: поддерживаем mp4 и mov.');
       return;
