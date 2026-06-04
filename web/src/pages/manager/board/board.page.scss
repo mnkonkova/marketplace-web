@@ -13,9 +13,13 @@
 }
 
 .board {
-  /* На узком экране даём канбану «уехать» за правый край с горизонтальным
-     скроллом, а не заворачиваться. Также включает scroll-snap по колонкам. */
-  scroll-snap-type: x mandatory;
+  /* proximity, не mandatory: иначе CDK auto-scroll во время drag дёргается. */
+  scroll-snap-type: x proximity;
+}
+
+/* На время drag вообще отключаем snap, чтобы CDK мог плавно auto-scroll к краям. */
+.board:has(.cdk-drag-dragging) {
+  scroll-snap-type: none;
 }
 
 .board > .col {

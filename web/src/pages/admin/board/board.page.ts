@@ -6,6 +6,7 @@ import {
   CdkDrag,
   CdkDropListGroup,
 } from '@angular/cdk/drag-drop';
+import { CdkScrollable } from '@angular/cdk/scrolling';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
@@ -26,6 +27,7 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
     CdkDropListGroup,
     CdkDropList,
     CdkDrag,
+    CdkScrollable,
     NzSpinModule,
     NzTagModule,
     NzEmptyModule,

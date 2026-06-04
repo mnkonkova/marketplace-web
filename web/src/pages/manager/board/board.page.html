@@ -28,7 +28,7 @@
       🤖 — шаг автоматизации (n8n).
     </p>
 
-    <div class="board" cdkDropListGroup>
+    <div class="board" cdkDropListGroup cdkScrollable>
       @for (col of board.columns; track col.step_id) {
         <section class="col" [class.col-system]="col.step_owner === 'system'">
           <header>
