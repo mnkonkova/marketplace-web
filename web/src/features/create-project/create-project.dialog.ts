@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
@@ -9,10 +10,19 @@ import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NZ_MODAL_DATA, NzModalRef } from 'ng-zorro-antd/modal';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, EMPTY, of, Subject, switchMap } from 'rxjs';
 
+import { API_URL } from '@shared/api/api-url.token';
 import { ProjectApi, CreateProjectPayload } from '@entities/project/api/project.api';
 import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
+
+interface UserSearchItem {
+  user_id: string;
+  email?: string;
+  phone?: string;
+  display_name?: string;
+  kind: string;
+}
 
 type Mode = 'manager' | 'admin';
 
@@ -47,13 +57,23 @@ interface DialogData {
         <label>Контакт (телефон, telegram, email)</label>
         <input nz-input [(ngModel)]="clientContact" name="cc" placeholder="+79991234567" />
       } @else {
-        <label>UUID клиента</label>
-        <input
-          nz-input
+        <label>Найти клиента (email / телефон / имя)</label>
+        <nz-select
           [(ngModel)]="clientUserID"
           name="cu"
-          placeholder="00000000-0000-0000-0000-000000000000"
-        />
+          nzPlaceHolder="Введите email, имя или телефон"
+          nzShowSearch
+          nzServerSearch
+          [nzShowArrow]="false"
+          [nzFilterOption]="dontFilter"
+          (nzOnSearch)="onClientSearch($event)"
+          [nzLoading]="clientSearchLoading()"
+          [nzNotFoundContent]="clientCandidates().length ? 'Нет совпадений' : 'Начните печатать (мин 2 символа)'"
+        >
+          @for (u of clientCandidates(); track u.user_id) {
+            <nz-option [nzValue]="u.user_id" [nzLabel]="formatUserLabel(u)"></nz-option>
+          }
+        </nz-select>
       }
 
       <label>Название проекта</label>
@@ -112,6 +132,10 @@ export class CreateProjectDialogComponent {
 
   private readonly pipelineApi = inject(PipelineApi);
 
+  private readonly http = inject(HttpClient);
+
+  private readonly apiBase = inject(API_URL);
+
   private readonly msg = inject(NzMessageService);
 
   private readonly router = inject(Router);
@@ -122,6 +146,10 @@ export class CreateProjectDialogComponent {
 
   public readonly saving = signal(false);
 
+  public readonly clientCandidates = signal<UserSearchItem[]>([]);
+
+  public readonly clientSearchLoading = signal(false);
+
   public clientMode: 'no_account' | 'registered' = 'no_account';
   public clientUserID = '';
   public clientName = '';
@@ -131,12 +159,52 @@ export class CreateProjectDialogComponent {
   public notes = '';
   public budget: number | null = null;
 
+  // NzSelect фильтрует своими силами по nzLabel — это плохо для server-search.
+  // Выключаем: возвращаем все результаты как есть, бек уже отфильтровал.
+  public readonly dontFilter = () => true;
+
+  private readonly clientQ$ = new Subject<string>();
+
   public constructor() {
     this.pipelineApi.list().subscribe((r) => {
       this.pipelines.set(r.items.map((p) => ({ id: p.id, name: p.name, is_default: p.is_default })));
       const def = r.items.find((p) => p.is_default);
       if (def) this.pipelineID = def.id;
     });
+    // Live-search клиентов: 250ms debounce, отбрасываем повторы. Сервер
+    // лимитирует 20 results — больше не загружаем.
+    this.clientQ$
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged(),
+        switchMap((q) => {
+          if (q.trim().length < 2) return of<UserSearchItem[]>([]);
+          this.clientSearchLoading.set(true);
+          return this.http
+            .get<{ items: UserSearchItem[] }>(
+              `${this.apiBase}/manager/users/search`,
+              { params: { q, kind: 'client' } },
+            )
+            .pipe(catchError(() => of({ items: [] as UserSearchItem[] })));
+        }),
+      )
+      .subscribe((r) => {
+        this.clientSearchLoading.set(false);
+        const items = Array.isArray(r) ? r : r.items;
+        this.clientCandidates.set(items);
+      });
+  }
+
+  public onClientSearch(q: string): void {
+    this.clientQ$.next(q);
+  }
+
+  public formatUserLabel(u: UserSearchItem): string {
+    const parts: string[] = [];
+    if (u.display_name) parts.push(u.display_name);
+    if (u.email) parts.push(u.email);
+    if (u.phone) parts.push(u.phone);
+    return parts.join(' · ');
   }
 
   public cancel(): void {
