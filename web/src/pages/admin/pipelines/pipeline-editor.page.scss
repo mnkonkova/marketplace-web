@@ -125,16 +125,53 @@
 }
 
 // Pipeline editor имеет 8-колонный grid у каждого шага (24+1fr+130+80+80+110+110+40 ≈ 574px).
-// На узких экранах это не помещается. Даём горизонтальный скролл всему
-// блоку с stages: дизайн сохраняется, можно тапнуть и проскроллить.
+// На узких экранах — переключаем grid → flex-column, каждое поле шага
+// со своим лейблом. step-head-row (общие заголовки колонок) прячем,
+// потому что каждый шаг теперь стак с inline-лейблами.
 @media (max-width: bp.$touch) {
-  // .stages — top-level контейнер всех стадий, оборачиваем в scroll.
-  // Минимальная ширина = ширина строки шага + padding stage.
-  ::ng-deep .stages {
-    overflow-x: auto;
+  .head {
+    flex-direction: column;
+    align-items: stretch;
 
-    .stage {
-      min-width: 620px;
+    .head-actions {
+      flex-wrap: wrap;
+    }
+  }
+
+  .stage {
+    padding: 12px;
+  }
+
+  .stage-head {
+    flex-wrap: wrap;
+
+    input {
+      width: 100% !important;
+      min-width: 0 !important;
+    }
+  }
+
+  .step-head-row {
+    display: none;
+  }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    border-top: 1px solid var(--border);
+
+    ::ng-deep nz-input-number,
+    ::ng-deep nz-select,
+    input,
+    .toggle {
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
     }
   }
 }

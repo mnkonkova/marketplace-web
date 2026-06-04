@@ -85,13 +85,32 @@ h1 {
     }
   }
 
-  // NzTable не умеет в truly-responsive — даём горизонтальный скролл
-  // и компактные ячейки. nzScroll'ом увеличиваем минимум ширины.
-  ::ng-deep nz-table {
-    overflow-x: auto;
+  // NzTable → card-layout: каждая строка становится карточкой с
+  // вертикально сложенными полями. thead прячем (заголовки колонок
+  // в карточном виде не нужны — поля визуально различимы по тегам/
+  // тексту). Без min-width = ничего не вылезает за viewport.
+  ::ng-deep .ant-table {
+    min-width: 0 !important;
 
-    .ant-table {
-      min-width: 560px;
+    .ant-table-thead {
+      display: none;
+    }
+
+    .ant-table-tbody {
+      tr {
+        display: block;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        background: var(--surface);
+      }
+
+      td {
+        display: block;
+        padding: 4px 0 !important;
+        border: none !important;
+      }
     }
   }
 

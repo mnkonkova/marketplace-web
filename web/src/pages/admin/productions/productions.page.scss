@@ -26,11 +26,28 @@
     }
   }
 
-  ::ng-deep nz-table {
-    overflow-x: auto;
+  ::ng-deep .ant-table {
+    min-width: 0 !important;
 
-    .ant-table {
-      min-width: 600px;
+    .ant-table-thead {
+      display: none;
+    }
+
+    .ant-table-tbody {
+      tr {
+        display: block;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        background: var(--surface);
+      }
+
+      td {
+        display: block;
+        padding: 4px 0 !important;
+        border: none !important;
+      }
     }
   }
 }
