@@ -194,6 +194,22 @@ export class ProjectApi {
     );
   }
 
+  // Назначить спеца напрямую (минуя proposed). Используется когда проект
+  // создан вручную или предложенный спец был отклонён.
+  public managerAssignSpecialist(projectId: string, specialistID: string): Observable<void> {
+    return this.http.post<void>(
+      `${this.api}/manager/projects/${projectId}/assign_specialist`,
+      { specialist_user_id: specialistID },
+    );
+  }
+
+  public adminAssignSpecialist(projectId: string, specialistID: string): Observable<void> {
+    return this.http.post<void>(
+      `${this.api}/admin/projects/${projectId}/assign_specialist`,
+      { specialist_user_id: specialistID },
+    );
+  }
+
   public managerCreateComment(
     projectId: string,
     body: string,

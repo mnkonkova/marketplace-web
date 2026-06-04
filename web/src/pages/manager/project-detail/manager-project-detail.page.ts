@@ -17,6 +17,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { AdminApi, ManagerInfo } from '@entities/admin/api/admin.api';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { ProjectApi } from '@entities/project/api/project.api';
+import { AssignSpecialistDialogComponent } from '@features/assign-specialist/assign-specialist.dialog';
 import {
   ProjectComment,
   ProjectEvent,
@@ -167,6 +168,21 @@ export class ManagerProjectDetailPage implements OnInit {
         this.proposingBusy.set(false);
         this.msg.error(e?.error?.message || 'Не удалось отклонить');
       },
+    });
+  }
+
+  public openAssignSpecialist(): void {
+    const p = this.project();
+    if (!p) return;
+    const ref = this.modal.create({
+      nzTitle: 'Назначить специалиста',
+      nzContent: AssignSpecialistDialogComponent,
+      nzFooter: null,
+      nzWidth: 480,
+      nzData: { mode: 'manager', projectID: p.id },
+    });
+    ref.afterClose.subscribe((assigned) => {
+      if (assigned) this.fetch(p.id, true);
     });
   }
 
