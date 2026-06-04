@@ -13,6 +13,7 @@
     <nz-empty nzNotFoundContent="Воронок ещё нет"></nz-empty>
   } @else {
     @let t = totals();
+    @let h = health();
     <section class="totals">
       <div class="t-card t-total">
         <span class="t-icon">📊</span>
@@ -31,11 +32,40 @@
         <span class="t-icon">✓</span>
         <span class="t-label">Завершено</span>
         <strong class="t-value">{{ t.completed }}</strong>
+        @if (h.avgLead != null) {
+          <span class="t-sub">средний лид-тайм {{ h.avgLead }} дн.</span>
+        }
       </div>
       <div class="t-card t-cancel">
         <span class="t-icon">⊘</span>
         <span class="t-label">Отменено</span>
         <strong class="t-value">{{ t.cancelled }}</strong>
+      </div>
+    </section>
+
+    <section class="health" [class.has-issues]="h.orphans + h.stuck + h.overRevisions > 0">
+      <h2 class="section-title">Требуют внимания</h2>
+      <div class="health-grid">
+        <a
+          class="h-chip"
+          [class.is-warn]="h.orphans > 0"
+          [routerLink]="['/admin/projects']"
+          [queryParams]="{ unassigned: '1' }"
+        >
+          <span class="h-emoji">👤</span>
+          <span class="h-label">Без менеджера</span>
+          <strong class="h-value">{{ h.orphans }}</strong>
+        </a>
+        <div class="h-chip" [class.is-warn]="h.stuck > 0">
+          <span class="h-emoji">⏱</span>
+          <span class="h-label">Без активности 7+ дней</span>
+          <strong class="h-value">{{ h.stuck }}</strong>
+        </div>
+        <div class="h-chip" [class.is-warn]="h.overRevisions > 0">
+          <span class="h-emoji">↻</span>
+          <span class="h-label">Превышен лимит правок</span>
+          <strong class="h-value">{{ h.overRevisions }}</strong>
+        </div>
       </div>
     </section>
 
@@ -109,6 +139,23 @@
                 <li><span class="dot dot-cancel"></span> Отменены<strong>{{ s.cancelled }}</strong></li>
               }
             </ul>
+
+            @if (s.conversionPct != null || s.avgLeadDays != null) {
+              <footer class="funnel-foot">
+                @if (s.conversionPct != null) {
+                  <span class="f-stat">
+                    <span class="f-label">Конверсия</span>
+                    <strong class="f-value">{{ s.conversionPct }}%</strong>
+                  </span>
+                }
+                @if (s.avgLeadDays != null) {
+                  <span class="f-stat">
+                    <span class="f-label">Средний лид-тайм</span>
+                    <strong class="f-value">{{ s.avgLeadDays }} дн.</strong>
+                  </span>
+                }
+              </footer>
+            }
           }
         </article>
       }

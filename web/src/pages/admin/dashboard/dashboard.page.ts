@@ -20,7 +20,14 @@ interface FunnelStats {
   onHold: number;
   completed: number;
   cancelled: number;
+  /** % завершения = completed / (completed + cancelled). null если не из чего считать. */
+  conversionPct: number | null;
+  /** Средний лид-тайм по завершённым в днях. null если завершённых нет. */
+  avgLeadDays: number | null;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const STUCK_THRESHOLD_DAYS = 7;
 
 const BUCKETS: Record<ProjectDisplayStatus, keyof Omit<FunnelStats, 'pipeline' | 'total'>> = {
   not_started: 'new',
@@ -48,6 +55,9 @@ export class AdminDashboardPage implements OnInit {
   public readonly projects = signal<ProjectManagerView[]>([]);
 
   public readonly stats = computed<FunnelStats[]>(() => {
+    // Накопители для среднего лид-тайма (sum/count, считаем сразу).
+    const leadSumByPipeline = new Map<string, { sum: number; count: number }>();
+
     const byID = new Map<string, FunnelStats>();
     for (const pl of this.pipelines()) {
       byID.set(pl.id, {
@@ -59,7 +69,10 @@ export class AdminDashboardPage implements OnInit {
         onHold: 0,
         completed: 0,
         cancelled: 0,
+        conversionPct: null,
+        avgLeadDays: null,
       });
+      leadSumByPipeline.set(pl.id, { sum: 0, count: 0 });
     }
     for (const p of this.projects()) {
       const s = byID.get(p.pipeline_id);
@@ -67,7 +80,26 @@ export class AdminDashboardPage implements OnInit {
       s.total++;
       const bucket = BUCKETS[p.display_status];
       if (bucket) s[bucket]++;
+
+      // Лид-тайм: считаем только для завершённых, где есть оба таймстампа.
+      if (p.display_status === 'completed' && p.started_at && p.completed_at) {
+        const days = (Date.parse(p.completed_at) - Date.parse(p.started_at)) / DAY_MS;
+        if (Number.isFinite(days) && days >= 0) {
+          const acc = leadSumByPipeline.get(p.pipeline_id)!;
+          acc.sum += days;
+          acc.count++;
+        }
+      }
     }
+
+    // Финализируем conversion + avg lead.
+    for (const s of byID.values()) {
+      const closed = s.completed + s.cancelled;
+      s.conversionPct = closed > 0 ? Math.round((s.completed / closed) * 100) : null;
+      const lead = leadSumByPipeline.get(s.pipeline.id)!;
+      s.avgLeadDays = lead.count > 0 ? Math.round(lead.sum / lead.count) : null;
+    }
+
     return [...byID.values()].sort((a, b) => b.total - a.total);
   });
 
@@ -83,6 +115,45 @@ export class AdminDashboardPage implements OnInit {
       acc.cancelled += s.cancelled;
     }
     return acc;
+  });
+
+  /** Вторичные операционные метрики — выявляют проблемы, требующие
+   *  внимания админа. Считаются по сырому projects(), не зависят от pipeline. */
+  public readonly health = computed(() => {
+    const now = Date.now();
+    let orphans = 0;       // активные проекты без менеджера
+    let stuck = 0;         // активные, updated_at старше STUCK_THRESHOLD_DAYS
+    let overRevisions = 0; // revisions_used > revisions_included
+
+    for (const p of this.projects()) {
+      const isOpen = p.display_status !== 'completed' && p.display_status !== 'cancelled';
+      if (isOpen) {
+        if (!p.assigned_to_user_id) orphans++;
+        if (p.updated_at) {
+          const idleDays = (now - Date.parse(p.updated_at)) / DAY_MS;
+          if (idleDays >= STUCK_THRESHOLD_DAYS) stuck++;
+        }
+      }
+      if (p.revisions_included > 0 && p.revisions_used > p.revisions_included) {
+        overRevisions++;
+      }
+    }
+
+    // Общий лид-тайм по всем завершённым (агрегат поверх воронок).
+    let leadSum = 0;
+    let leadCount = 0;
+    for (const p of this.projects()) {
+      if (p.display_status === 'completed' && p.started_at && p.completed_at) {
+        const days = (Date.parse(p.completed_at) - Date.parse(p.started_at)) / DAY_MS;
+        if (Number.isFinite(days) && days >= 0) {
+          leadSum += days;
+          leadCount++;
+        }
+      }
+    }
+    const avgLead = leadCount > 0 ? Math.round(leadSum / leadCount) : null;
+
+    return { orphans, stuck, overRevisions, avgLead };
   });
 
   public ngOnInit(): void {
