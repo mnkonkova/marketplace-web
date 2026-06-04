@@ -56,8 +56,14 @@ export function getStepBadge(status: StepStatus, owner: StepOwner): StepBadge {
   switch (status) {
     case 'done':
       return { label: 'Готово', color: 'green' };
+    // skipped появляется когда менеджер двигает проект через client-шаг
+    // (action за клиентом, но менеджер уже завершил вручную) и при
+    // авто-skip review-шага по таймауту. Для пользователя визуально это
+    // тоже «Готово» — внутренне сохраняем skipped (для аналитики), но
+    // показываем как done. Позже, когда появится отдельная семантика
+    // (например, «закрыт без отзыва»), вернём отдельный лейбл.
     case 'skipped':
-      return { label: 'Пропущено', color: 'default' };
+      return { label: 'Готово', color: 'green' };
     case 'in_progress':
       return { label: 'В работе', color: 'blue' };
     case 'waiting_client':
