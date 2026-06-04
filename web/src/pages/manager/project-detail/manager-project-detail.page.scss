@@ -16,6 +16,39 @@
   }
 }
 
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 24px;
+  margin: 12px 0 0;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  dt {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 500;
+
+    .muted {
+      color: var(--text-muted);
+      font-weight: 400;
+      font-style: italic;
+    }
+  }
+}
+
 .hero {
   background: var(--surface);
   border: 1px solid var(--border);

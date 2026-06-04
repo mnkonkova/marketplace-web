@@ -19,6 +19,27 @@
         Эта страница — для комментариев и активности.
       </p>
 
+      <dl class="meta-grid">
+        <div>
+          <dt>Бюджет</dt>
+          <dd>
+            @if (p.budget != null) {
+              {{ p.budget | number }} ₽
+            } @else {
+              <span class="muted">не указан</span>
+            }
+          </dd>
+        </div>
+        <div>
+          <dt>Правки</dt>
+          <dd>{{ p.revisions_used }} из {{ p.revisions_included }}</dd>
+        </div>
+        <div>
+          <dt>Старт</dt>
+          <dd>{{ p.started_at ? (p.started_at | date: 'd MMM y') : '—' }}</dd>
+        </div>
+      </dl>
+
       @if (isAdmin() === 'admin') {
         <div class="assign-row">
           <span class="assign-label">Ответственный менеджер:</span>
