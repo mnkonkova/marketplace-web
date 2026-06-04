@@ -84,6 +84,8 @@ export class ManagerProjectDetailPage implements OnInit {
 
   public readonly assignedManagerId = signal<string | null>(null);
 
+  public readonly claimBusy = signal(false);
+
   public get assignedManagerValue(): string {
     return this.assignedManagerId() ?? '';
   }
@@ -120,6 +122,28 @@ export class ManagerProjectDetailPage implements OnInit {
   public readonly proposingBusy = signal(false);
 
   public readonly cancelBusy = signal(false);
+
+  public claimProject(): void {
+    const p = this.project();
+    if (!p) return;
+    this.claimBusy.set(true);
+    this.api.managerClaim(p.id).subscribe({
+      next: () => {
+        this.claimBusy.set(false);
+        this.msg.success('Проект взят');
+        this.fetch(p.id);
+      },
+      error: (e: { error?: { error?: string } }) => {
+        this.claimBusy.set(false);
+        if (e?.error?.error === 'already_claimed') {
+          this.msg.warning('Уже взят другим менеджером');
+          this.fetch(p.id);
+        } else {
+          this.msg.error('Не удалось взять проект');
+        }
+      },
+    });
+  }
 
   public openChangeFunnel(): void {
     const p = this.project();

@@ -43,6 +43,24 @@
         </div>
       </dl>
 
+      @if (!p.assigned_to_user_id && isAdmin() !== 'admin') {
+        <div class="claim-banner">
+          <div>
+            <strong>Проект ждёт менеджера.</strong>
+            <span>Возьмите на себя — будет вашим в канбане.</span>
+          </div>
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            [nzLoading]="claimBusy()"
+            (click)="claimProject()"
+          >
+            Взять на себя
+          </button>
+        </div>
+      }
+
       @if (isAdmin() === 'admin') {
         <div class="assign-row">
           <span class="assign-label">Ответственный менеджер:</span>
