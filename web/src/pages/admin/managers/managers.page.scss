@@ -1,3 +1,55 @@
 h1 {
+  margin: 0 0 16px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.promote {
+  padding: 16px;
   margin: 0 0 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+
+  h3 {
+    margin: 0 0 4px;
+  }
+
+  .hint {
+    color: var(--text-muted);
+    margin: 0 0 12px;
+  }
+
+  .promote-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .invite-url {
+    margin: 12px 0 0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--surface-hover);
+    font-size: 12px;
+    word-break: break-all;
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+  }
+}
+
+.list-title {
+  margin: 0 0 12px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
 }

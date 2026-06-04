@@ -70,6 +70,19 @@ export class AdminApi {
     );
   }
 
+  // Делает существующего юзера менеджером + (если sendInvite=true) сразу
+  // выдаёт magic-link. Идемпотентно: повторный вызов на уже-менеджере
+  // просто перегенерит invite. is_approved=TRUE ставится одновременно.
+  public promoteToManager(
+    userId: string,
+    sendInvite: boolean,
+  ): Observable<InviteGenerateResult> {
+    return this.http.post<InviteGenerateResult>(
+      `${this.api}/admin/managers/promote`,
+      { user_id: userId, send_invite: sendInvite },
+    );
+  }
+
   public redeemInvite(token: string): Observable<RedeemResp> {
     return this.http.post<RedeemResp>(`${this.api}/auth/redeem_invite/${token}`, {});
   }
