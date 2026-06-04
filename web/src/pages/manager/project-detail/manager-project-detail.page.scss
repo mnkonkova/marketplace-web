@@ -34,6 +34,20 @@
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .beta-tag {
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(255, 184, 0, 0.18);
+    color: #b88200;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: help;
   }
 
   dd {
