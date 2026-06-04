@@ -266,22 +266,40 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     if (!item) return null;
     video = document.createElement('video');
     video.className = 'feed-video';
-    video.src = item.video.url;
-    if (item.video.thumb) video.poster = item.video.thumb;
     video.playsInline = true;
     video.loop = true;
     video.preload = 'auto';
     video.muted = this.muted();
-    video.addEventListener('loadedmetadata', () => {
-      this.applyVideoOrientation(article, video);
-    });
-    video.addEventListener('loadeddata', () => {
+
+    // Спиннер на время сетевой подгрузки. Снимаем на loadeddata (или error).
+    article.classList.add('is-video-loading');
+
+    const onReady = (): void => {
+      article.classList.remove('is-video-loading');
       article.querySelector('.feed-poster')?.classList.add('is-hidden');
       if (this.activeArticle === article) this.playVideo(article, video);
-    });
-    video.addEventListener('error', () => {
+    };
+    const onFail = (): void => {
+      article.classList.remove('is-video-loading');
       article.querySelector('.feed-poster')?.classList.remove('is-hidden');
-    });
+    };
+
+    // Listeners ВСЕГДА вешаем ДО присвоения src — иначе для закешированных
+    // или быстрых ответов loadeddata срабатывает между src= и addEventListener,
+    // мы его пропускаем и спиннер висит бесконечно.
+    video.addEventListener('loadedmetadata', () => this.applyVideoOrientation(article, video));
+    video.addEventListener('loadeddata', onReady);
+    video.addEventListener('error', onFail);
+
+    if (item.video.thumb) video.poster = item.video.thumb;
+    video.src = item.video.url;
+
+    // Подстраховка: если src уже отдал данные синхронно (memory-cache),
+    // readyState ≥ 2 ещё ДО первого тика event loop — снимем спиннер сразу.
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      onReady();
+    }
+
     const media = article.querySelector('.feed-media');
     if (media) media.appendChild(video);
     return video;

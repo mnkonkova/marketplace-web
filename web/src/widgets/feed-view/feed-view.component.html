@@ -24,6 +24,11 @@
             } @else {
               <div class="feed-poster feed-poster-fallback"></div>
             }
+            <!-- Виден пока ensureVideo не получил loadeddata: класс
+                 .is-video-loading навешивается на .feed-item в TS. -->
+            <div class="feed-video-loading" aria-hidden="true">
+              <span class="feed-spinner"></span>
+            </div>
           </div>
 
           <div class="feed-overlay">
