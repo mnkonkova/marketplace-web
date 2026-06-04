@@ -133,6 +133,19 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     this.cart.toggle(spec);
   }
 
+  // Tap по статье = play/pause. iOS Safari не выдаёт click на <video playsinline>
+  // без controls стабильно, поэтому слушаем на родительском <article>.
+  // Тапы по кнопкам overlay не должны паузить — отсекаем по closest('button, a').
+  public togglePlayback(ev: Event): void {
+    const target = ev.target as HTMLElement | null;
+    if (target?.closest('button, a')) return;
+    const article = ev.currentTarget as HTMLElement;
+    const video = article.querySelector<HTMLVideoElement>('video.feed-video');
+    if (!video) return;
+    if (video.paused) this.playVideo(article, video);
+    else video.pause();
+  }
+
   /** Горизонтальное видео (16:9 и т.п.) — letterbox по центру, как Shorts/Reels. */
   public isLandscape(it: FeedItem): boolean {
     const ratio = this.parseAspectRatio(it.video.aspect);
@@ -259,10 +272,6 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     video.loop = true;
     video.preload = 'auto';
     video.muted = this.muted();
-    video.addEventListener('click', () => {
-      if (video!.paused) this.playVideo(article, video!);
-      else video!.pause();
-    });
     video.addEventListener('loadedmetadata', () => {
       this.applyVideoOrientation(article, video);
     });

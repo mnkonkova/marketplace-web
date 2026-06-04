@@ -16,6 +16,7 @@
           [class.is-landscape]="isLandscape(it)"
           [class.is-portrait]="!isLandscape(it)"
           [attr.data-index]="i"
+          (click)="togglePlayback($event)"
         >
           <div class="feed-media">
             @if (it.video.thumb || it.specialist.avatar_url) {
