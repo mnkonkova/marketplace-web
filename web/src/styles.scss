@@ -64,6 +64,31 @@ h6 {
   color: #fff !important;
 }
 
+/* nz-drawer (bottom-sheet) — приводим к тёмной теме. По дефолту ng-zorro
+   рисует белым на белом, на нашей теме контента не видно. */
+.ant-drawer-content {
+  background: var(--bg-elevated) !important;
+  color: var(--text) !important;
+}
+
+.ant-drawer-header {
+  background: var(--bg-elevated) !important;
+  border-bottom-color: var(--border) !important;
+
+  .ant-drawer-title {
+    color: var(--text) !important;
+  }
+}
+
+.ant-drawer-close {
+  color: var(--text-muted) !important;
+}
+
+.ant-drawer-body {
+  background: var(--bg-elevated) !important;
+  color: var(--text) !important;
+}
+
 /* Full-screen модалка загрузки видео на узких экранах — стандартный
    паттерн для тач-устройств, иначе скролл колесом + клавиатурой ломает UX. */
 @media (max-width: 600px) {

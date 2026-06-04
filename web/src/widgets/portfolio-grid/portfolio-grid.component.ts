@@ -1,6 +1,17 @@
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import { formatDuration } from '@shared/lib/format';
+
+/** Соответствует $touch в shared/scss/_breakpoints.scss. */
+const TOUCH_QUERY = '(pointer: coarse), (max-width: 720px)';
 
 @Component({
   selector: 'app-portfolio-grid',
@@ -20,11 +31,18 @@ export class PortfolioGridComponent {
 
   public readonly playingIds = signal<ReadonlySet<string>>(new Set());
 
-  /** Тачи определяем по pointer-метрике. На десктоп-тачскринах (Surface)
-   *  попадёт в touch — для них тоже удобнее overlay-режим. */
-  public readonly isTouch = signal(
-    typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
-  );
+  /** Touch-режим: тачскрин ИЛИ узкий вьюпорт (resize-окно на десктопе).
+   *  Реактивно реагирует на изменение matchMedia (поворот / resize). */
+  public readonly isTouch = signal(false);
+
+  constructor() {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia(TOUCH_QUERY);
+    this.isTouch.set(mql.matches);
+    const handler = (e: MediaQueryListEvent): void => this.isTouch.set(e.matches);
+    mql.addEventListener('change', handler);
+    inject(DestroyRef).onDestroy(() => mql.removeEventListener('change', handler));
+  }
 
   public startPlayback(v: HTMLVideoElement): void {
     v.play().catch(() => {});

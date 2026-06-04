@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -26,23 +26,13 @@ import { ProjectManagerView, StepOwner } from '@entities/project/model/project.t
 import { PipelineFull } from '@entities/pipeline/model/pipeline.types';
 import { PROJECT_STATUS_COLOR, PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
 import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.component';
+import { BoardListViewComponent } from '@widgets/board-list-view/board-list-view.component';
+import { StageMoveSheetComponent } from '@widgets/stage-move-sheet/stage-move-sheet.component';
 
-// Колонка = ШАГ воронки (плоский список, в порядке stage.sort_order →
-// step.sort_order). Это новая модель канбана: «единственное место правды».
-interface BoardColumn {
-  step_id: string;
-  step_name: string;
-  step_owner: StepOwner;
-  stage_name: string;
-  stage_order: number;
-  step_order: number;
-  items: ProjectManagerView[];
-}
+import { BoardColumn, BoardForPipeline as GenericBoard } from '@entities/project/model/board.types';
 
-interface BoardForPipeline {
-  pipeline: PipelineFull;
-  columns: BoardColumn[];
-}
+// Локальный alias — затягиваем конкретный pipeline-тип.
+type BoardForPipeline = GenericBoard<PipelineFull>;
 
 @Component({
   selector: 'app-manager-board',
@@ -60,6 +50,8 @@ interface BoardForPipeline {
     NzSelectModule,
     NzButtonModule,
     ManagerLayoutComponent,
+    BoardListViewComponent,
+    StageMoveSheetComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './board.page.html',
@@ -85,6 +77,37 @@ export class ManagerBoardPage implements OnInit {
   public readonly currentBoard = computed(
     () => this.boards().find((b) => b.pipeline.id === this.selectedPipelineId()) ?? null,
   );
+
+  /** Список (accordion) вместо канбана: тач-устройство ИЛИ узкое окно
+   *  (≤ bp.$touch = 720px). Реактивно реагирует на resize. */
+  public readonly isListMode = signal(false);
+
+  /** Состояние bottom-sheet «Переместить в…». */
+  public readonly moveSheetOpen = signal(false);
+  public readonly moveTarget = signal<ProjectManagerView | null>(null);
+
+  public readonly moveTargetCurrentStepId = computed<string>(() => {
+    const p = this.moveTarget();
+    if (!p) return '';
+    const cb = this.currentBoard();
+    if (!cb) return '';
+    // current_step_title — текстовое поле проекта; находим step по name внутри pipeline.
+    for (const st of cb.pipeline.stages) {
+      for (const sp of st.steps ?? []) {
+        if (sp.name === p.current_step_title) return sp.id;
+      }
+    }
+    return '';
+  });
+
+  constructor() {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(pointer: coarse), (max-width: 720px)');
+    this.isListMode.set(mql.matches);
+    const handler = (e: MediaQueryListEvent): void => this.isListMode.set(e.matches);
+    mql.addEventListener('change', handler);
+    inject(DestroyRef).onDestroy(() => mql.removeEventListener('change', handler));
+  }
 
   public ngOnInit(): void {
     this.fetch();
@@ -116,6 +139,80 @@ export class ManagerBoardPage implements OnInit {
 
   public open(p: ProjectManagerView): void {
     void this.router.navigate(['/manager/projects', p.id]);
+  }
+
+  // === Bottom-sheet «Переместить» (тач-режим) ===
+
+  public onLongPress(p: ProjectManagerView): void {
+    this.moveTarget.set(p);
+    this.moveSheetOpen.set(true);
+  }
+
+  public closeMoveSheet(): void {
+    this.moveSheetOpen.set(false);
+  }
+
+  public openMoveTargetProject(): void {
+    const p = this.moveTarget();
+    if (!p) return;
+    this.moveSheetOpen.set(false);
+    this.open(p);
+  }
+
+  public onSelectMoveStep(stepId: string): void {
+    const target = this.moveTarget();
+    if (!target) return;
+    this.moveSheetOpen.set(false);
+    const cb = this.currentBoard();
+    if (!cb) return;
+    const fromCol = cb.columns.find((c) => c.items.some((i) => i.id === target.id));
+    const toCol = cb.columns.find((c) => c.step_id === stepId);
+    if (!fromCol || !toCol || fromCol === toCol) return;
+
+    // Optimistic. Иммутабельно: BoardListView получает board через input
+    // signal, который реагирует на смену reference. Мутация in-place у
+    // канбана работала через @for inline, у списка — нет.
+    const prevBoards = this.boards();
+    const newColumns = cb.columns.map((c) => {
+      if (c === fromCol) return { ...c, items: c.items.filter((i) => i.id !== target.id) };
+      if (c === toCol) return { ...c, items: [...c.items, target] };
+      return c;
+    });
+    this.boards.set(
+      prevBoards.map((b) =>
+        b.pipeline.id === cb.pipeline.id ? { ...b, columns: newColumns } : b,
+      ),
+    );
+
+    this.moveStep(target.id, stepId, target.updated_at).subscribe({
+      next: (updated) => {
+        // target — это ссылка на объект, который теперь в newColumns[toCol].items.
+        // Мутируем поля проекта (id трекается, перерисовка не нужна).
+        Object.assign(target, {
+          current_step_id: updated.current_step_id,
+          current_step_title: updated.current_step_title,
+          current_step_owner: updated.current_step_owner,
+          current_step_status: updated.current_step_status,
+          current_stage_name: toCol.stage_name,
+          display_status: updated.display_status,
+          updated_at: updated.updated_at,
+        });
+        this.msg.success('Шаг обновлён');
+      },
+      error: (e) => {
+        // Откат: вернуть прежний snapshot.
+        this.boards.set(prevBoards);
+        const code = e?.error?.error as string | undefined;
+        if (code === 'stale_updated_at') {
+          this.msg.warning('Проект уже обновили — перезагружаю...');
+          this.fetch();
+        } else if (code === 'not_found') {
+          this.msg.error('Шаг не найден');
+        } else {
+          this.msg.error('Не удалось перенести');
+        }
+      },
+    });
   }
 
   // onDrop — переносим проект на конкретный ШАГ через MoveProjectToStep.

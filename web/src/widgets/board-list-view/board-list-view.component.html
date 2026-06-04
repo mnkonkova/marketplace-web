@@ -1,0 +1,52 @@
+<p class="hint">Тап по карточке — меню действий (переместить или открыть проект).</p>
+
+<div class="list">
+  @for (g of groups(); track g.stage_name) {
+    <section class="stage" [class.is-collapsed]="isCollapsed(g.stage_name)">
+      <button
+        type="button"
+        class="stage-head"
+        (click)="toggleStage(g.stage_name)"
+      >
+        <span class="chev" [class.rotated]="!isCollapsed(g.stage_name)">▸</span>
+        <strong>{{ g.stage_name }}</strong>
+        <span class="count">{{ g.items.length }}</span>
+      </button>
+
+      @if (!isCollapsed(g.stage_name)) {
+        @if (g.items.length === 0) {
+          <p class="empty">— пусто</p>
+        } @else {
+          <div class="cards">
+            @for (it of g.items; track it.project.id) {
+              <article
+                class="card"
+                role="button"
+                tabindex="0"
+                (click)="onCardTap(it.project)"
+                (keydown.enter)="onCardTap(it.project)"
+              >
+                <div class="card-main">
+                  <div class="card-head">
+                    <strong>{{ it.project.title }}</strong>
+                    <nz-tag [nzColor]="statusColor(it.project.display_status)">
+                      {{ statusLabel(it.project.display_status) }}
+                    </nz-tag>
+                  </div>
+                  <div class="card-step">
+                    <span class="owner" [attr.title]="it.step_owner">{{ ownerIcon(it.step_owner) }}</span>
+                    <span>{{ it.step_name }}</span>
+                  </div>
+                  @if (it.project.client_display_name) {
+                    <div class="card-client">Клиент: {{ it.project.client_display_name }}</div>
+                  }
+                </div>
+                <span class="card-chev" aria-hidden="true">›</span>
+              </article>
+            }
+          </div>
+        }
+      }
+    </section>
+  }
+</div>

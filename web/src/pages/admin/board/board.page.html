@@ -22,6 +22,12 @@
   } @else if (boards().length === 0) {
     <nz-empty nzNotFoundContent="Проектов нет"></nz-empty>
   } @else if (currentBoard()) { @let board = currentBoard()!;
+    @if (isListMode()) {
+      <app-board-list-view
+        [board]="board"
+        (cardTap)="onLongPress($event)"
+      />
+    } @else {
     <p class="hint">
       Колонки = шаги воронки. 🤖 — авто-шаг (n8n).
     </p>
@@ -65,5 +71,16 @@
         </section>
       }
     </div>
+    }
+
+    <app-stage-move-sheet
+      [visible]="moveSheetOpen()"
+      [pipeline]="board.pipeline"
+      [currentStepId]="moveTargetCurrentStepId()"
+      [projectTitle]="moveTarget()?.title ?? ''"
+      (close)="closeMoveSheet()"
+      (selectStep)="onSelectMoveStep($event)"
+      (openProject)="openMoveTargetProject()"
+    />
   }
 </app-admin-layout>

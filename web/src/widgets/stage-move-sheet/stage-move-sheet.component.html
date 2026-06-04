@@ -1,0 +1,49 @@
+<nz-drawer
+  [nzVisible]="visible()"
+  [nzPlacement]="'bottom'"
+  [nzClosable]="false"
+  [nzHeight]="'auto'"
+  [nzMaskClosable]="true"
+  [nzWrapClassName]="'stage-move-drawer'"
+  (nzOnClose)="onClose()"
+>
+  <ng-container *nzDrawerContent>
+    <div class="sheet">
+      <div class="grip"></div>
+      <header class="sheet-head">
+        <strong>Действия</strong>
+        @if (projectTitle()) {
+          <span class="title">{{ projectTitle() }}</span>
+        }
+        <button type="button" class="close-btn" (click)="onClose()" aria-label="Закрыть">×</button>
+      </header>
+
+      <button type="button" class="open-project-btn" (click)="onOpenProject()">
+        Открыть проект →
+      </button>
+
+      <div class="rows-label">Переместить на шаг</div>
+
+      <div class="rows">
+        @for (r of rows(); track r.step_id) {
+          @if (r.is_first_in_stage) {
+            <div class="stage-divider">{{ r.stage_name }}</div>
+          }
+          <button
+            type="button"
+            class="row"
+            [class.is-current]="r.is_current"
+            [disabled]="r.is_current"
+            (click)="onTap(r)"
+          >
+            <span class="owner">{{ ownerIcon(r.step_owner) }}</span>
+            <span class="step">{{ r.step_name }}</span>
+            @if (r.is_current) {
+              <span class="badge">текущий</span>
+            }
+          </button>
+        }
+      </div>
+    </div>
+  </ng-container>
+</nz-drawer>

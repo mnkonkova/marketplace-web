@@ -15,6 +15,8 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { ManagerBoardPage } from '@pages/manager/board/board.page';
 import { ProjectManagerView } from '@entities/project/model/project.types';
 import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
+import { BoardListViewComponent } from '@widgets/board-list-view/board-list-view.component';
+import { StageMoveSheetComponent } from '@widgets/stage-move-sheet/stage-move-sheet.component';
 
 // Админский канбан — всё то же что у менеджера, но без assigned-фильтра
 // и через admin endpoints (moveStage без assert-проверки).
@@ -33,6 +35,8 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
     NzEmptyModule,
     NzSelectModule,
     AdminLayoutComponent,
+    BoardListViewComponent,
+    StageMoveSheetComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './board.page.html',
