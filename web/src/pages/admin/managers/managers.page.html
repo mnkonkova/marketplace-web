@@ -67,16 +67,16 @@
     <tbody>
       @for (m of items(); track m.user_id) {
         <tr>
-          <td>{{ m.email || '—' }}</td>
-          <td>{{ m.display_name || '—' }}</td>
-          <td>
+          <td data-label="Email">{{ m.email || '—' }}</td>
+          <td data-label="Имя">{{ m.display_name || '—' }}</td>
+          <td data-label="Email подтверждён">
             @if (m.email_verified) {
               <nz-tag nzColor="blue">Да</nz-tag>
             } @else {
               <nz-tag>Нет</nz-tag>
             }
           </td>
-          <td>{{ m.assigned_projects }}</td>
+          <td data-label="Проектов в работе">{{ m.assigned_projects }}</td>
           <td class="row-actions">
             <button nz-button nzSize="small" (click)="sendInvite(m)">
               ✉ Выслать invite

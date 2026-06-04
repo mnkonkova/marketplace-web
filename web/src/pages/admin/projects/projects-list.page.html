@@ -17,21 +17,21 @@
     <tbody>
       @for (p of items(); track p.id) {
         <tr (click)="open(p)" style="cursor: pointer">
-          <td>{{ p.title }}</td>
-          <td>{{ p.client_display_name || '—' }}</td>
-          <td>
+          <td data-label="Название">{{ p.title }}</td>
+          <td data-label="Клиент">{{ p.client_display_name || '—' }}</td>
+          <td data-label="Статус">
             <nz-tag [nzColor]="statusColor(p.display_status)">
               {{ statusLabel(p.display_status) }}
             </nz-tag>
           </td>
-          <td style="min-width: 120px">
+          <td data-label="Прогресс" style="min-width: 120px">
             <nz-progress
               [nzPercent]="p.progress"
               nzSize="small"
               [nzShowInfo]="false"
             ></nz-progress>
           </td>
-          <td>{{ p.current_stage_name || '—' }}</td>
+          <td data-label="Стадия">{{ p.current_stage_name || '—' }}</td>
         </tr>
       }
     </tbody>

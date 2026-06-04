@@ -85,10 +85,10 @@ h1 {
     }
   }
 
-  // NzTable → card-layout: каждая строка становится карточкой с
-  // вертикально сложенными полями. thead прячем (заголовки колонок
-  // в карточном виде не нужны — поля визуально различимы по тегам/
-  // тексту). Без min-width = ничего не вылезает за viewport.
+  // NzTable → card-layout с inline-лейблами. thead скрыт; вместо него
+  // каждая ячейка имеет attr data-label, который CSS::before выводит как
+  // префикс «Email: foo@…», «Имя: —». .row-actions без data-label —
+  // там кнопки, лейбл не нужен.
   ::ng-deep .ant-table {
     min-width: 0 !important;
 
@@ -107,9 +107,21 @@ h1 {
       }
 
       td {
-        display: block;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
         padding: 4px 0 !important;
         border: none !important;
+
+        &[data-label]::before {
+          content: attr(data-label);
+          flex-shrink: 0;
+          min-width: 110px;
+          color: var(--text-muted);
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
       }
     }
   }

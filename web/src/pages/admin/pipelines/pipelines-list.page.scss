@@ -44,9 +44,21 @@
       }
 
       td {
-        display: block;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
         padding: 4px 0 !important;
         border: none !important;
+
+        &[data-label]::before {
+          content: attr(data-label);
+          flex-shrink: 0;
+          min-width: 100px;
+          color: var(--text-muted);
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
       }
     }
   }

@@ -16,9 +16,9 @@
     <tbody>
       @for (p of items(); track p.id) {
         <tr>
-          <td>{{ p.name }}</td>
-          <td>{{ p.description }}</td>
-          <td>
+          <td data-label="Название">{{ p.name }}</td>
+          <td data-label="Описание">{{ p.description }}</td>
+          <td data-label="Статус">
             @if (p.is_active) {
               <nz-tag nzColor="green">Активен</nz-tag>
             } @else {

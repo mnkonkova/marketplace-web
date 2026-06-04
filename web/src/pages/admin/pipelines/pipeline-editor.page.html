@@ -90,12 +90,14 @@
             @for (step of stage.steps; track step.id) {
               <div class="step" cdkDrag>
                 <span cdkDragHandle class="grab" title="Перетащить шаг">⋮⋮</span>
+                <span class="mobile-label">Название</span>
                 <input
                   nz-input
                   [(ngModel)]="step.name"
                   (blur)="saveStep(step)"
                   placeholder="Название шага"
                 />
+                <span class="mobile-label">Кто делает</span>
                 <nz-select
                   [(ngModel)]="step.owner"
                   (ngModelChange)="saveStep(step)"
@@ -105,6 +107,7 @@
                   <nz-option nzValue="team" nzLabel="Команда"></nz-option>
                   <nz-option nzValue="system" nzLabel="Система"></nz-option>
                 </nz-select>
+                <span class="mobile-label">Дней</span>
                 <nz-input-number
                   [(ngModel)]="step.duration_days"
                   (ngModelChange)="saveStep(step)"
@@ -112,6 +115,7 @@
                   style="width: 80px"
                   title="Оценка дней"
                 ></nz-input-number>
+                <span class="mobile-label">Вес</span>
                 <nz-input-number
                   [(ngModel)]="step.weight"
                   (ngModelChange)="saveStep(step)"

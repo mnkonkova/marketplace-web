@@ -124,6 +124,12 @@
   white-space: nowrap;
 }
 
+// .mobile-label видно только при touch (см. @media ниже). На desktop —
+// display:none, не ломает grid.
+.mobile-label {
+  display: none;
+}
+
 // Pipeline editor имеет 8-колонный grid у каждого шага (24+1fr+130+80+80+110+110+40 ≈ 574px).
 // На узких экранах — переключаем grid → flex-column, каждое поле шага
 // со своим лейблом. step-head-row (общие заголовки колонок) прячем,
@@ -172,6 +178,15 @@
       width: 100% !important;
       max-width: none !important;
       min-width: 0 !important;
+    }
+
+    .mobile-label {
+      display: block;
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 4px 0 -4px;
     }
   }
 }

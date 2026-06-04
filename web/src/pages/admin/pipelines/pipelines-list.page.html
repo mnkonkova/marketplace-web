@@ -17,10 +17,10 @@
     <tbody>
       @for (p of items(); track p.id) {
         <tr (click)="open(p)" style="cursor: pointer">
-          <td>{{ p.name }}</td>
-          <td>v{{ p.version }}</td>
-          <td>{{ p.revisions_included }}</td>
-          <td>
+          <td data-label="Название">{{ p.name }}</td>
+          <td data-label="Версия">v{{ p.version }}</td>
+          <td data-label="Правки">{{ p.revisions_included }}</td>
+          <td data-label="Статус">
             @if (p.is_active) {
               <nz-tag nzColor="green">Активна</nz-tag>
             } @else {
