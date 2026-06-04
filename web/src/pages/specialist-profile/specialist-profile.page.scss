@@ -120,6 +120,104 @@
   color: var(--text-muted);
 }
 
+.bio-toggle {
+  display: none; /* по умолчанию только на тачах */
+  margin-top: 6px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sticky-cta {
+  display: none; /* по умолчанию только на тачах */
+}
+
+@media (max-width: 760px) {
+  /* Компактный hero на тачах. */
+  .profile-hero {
+    gap: 14px;
+    margin-bottom: 20px;
+
+    .avatar {
+      font-size: 32px;
+      width: 64px !important;
+      height: 64px !important;
+      line-height: 64px !important;
+    }
+
+    h1 {
+      font-size: 20px;
+    }
+  }
+
+  .meta {
+    font-size: 13px;
+  }
+
+  .role {
+    font-size: 14px;
+  }
+
+  /* CTA внутри hero прячем — заменяет sticky bottom bar. */
+  .hero-actions {
+    display: none;
+  }
+
+  .bio.is-clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .bio-toggle {
+    display: inline-block;
+  }
+
+  /* Sticky bottom CTA. */
+  .sticky-cta {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .sticky-cta-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sticky-cta-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sticky-cta-btn {
+    flex-shrink: 0;
+  }
+
+  /* Pad-bottom основного контента, чтобы sticky bar не закрывал последний блок. */
+  .profile-main {
+    padding-bottom: 90px;
+  }
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;

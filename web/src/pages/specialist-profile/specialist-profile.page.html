@@ -44,7 +44,10 @@
         @if (p.bio) {
         <section class="block">
           <h2>О себе</h2>
-          <p class="bio">{{ p.bio }}</p>
+          <p class="bio" [class.is-clamped]="!bioExpanded()">{{ p.bio }}</p>
+          <button type="button" class="bio-toggle" (click)="toggleBio()">
+            {{ bioExpanded() ? 'свернуть' : 'показать полностью' }}
+          </button>
         </section>
         } @if (p.skills.length) {
         <section class="block">
@@ -61,7 +64,7 @@
             <h2>Портфолио</h2>
             <span class="muted">{{ p.portfolio.length }} работ</span>
           </div>
-          <app-portfolio-grid [items]="p.portfolio" />
+          <app-portfolio-grid [items]="p.portfolio" (openOverlay)="openPlayer()" />
         </section>
         } @if (p.reviews.length) {
         <section class="block">
@@ -91,8 +94,40 @@
         (discuss)="toggleProject()"
       />
     </div>
+
+    <!-- Sticky bottom CTA только на тачах: на длинном scroll'е кнопка
+         «Пригласить» иначе уезжает в hero и теряется. -->
+    <div class="sticky-cta">
+      <div class="sticky-cta-info">
+        <nz-avatar [nzSize]="32" [nzSrc]="p.avatar_url || undefined">
+          {{ p.display_name.slice(0, 1) }}
+        </nz-avatar>
+        <span class="sticky-cta-name">{{ p.display_name }}</span>
+      </div>
+      <button
+        nz-button
+        nzType="primary"
+        type="button"
+        class="sticky-cta-btn"
+        [class.in-project]="inCart()"
+        (click)="toggleProject()"
+      >
+        {{ inCart() ? 'В проекте' : 'Пригласить' }}
+      </button>
+    </div>
     } @else {
     <p class="empty">Профиль не найден</p>
     }
   </main>
 </div>
+
+@if (playerOpen()) {
+  @let p = profile();
+  @if (p) {
+    <app-portfolio-player-overlay
+      [specialistId]="p.user_id"
+      [title]="p.display_name"
+      (close)="closePlayer()"
+    />
+  }
+}

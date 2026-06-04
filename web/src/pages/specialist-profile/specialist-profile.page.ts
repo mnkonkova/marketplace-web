@@ -12,6 +12,7 @@ import { Category } from '@entities/category/model/category.types';
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { PortfolioGridComponent } from '@widgets/portfolio-grid/portfolio-grid.component';
+import { PortfolioPlayerOverlayComponent } from '@widgets/portfolio-player-overlay/portfolio-player-overlay.component';
 import { ProfileAsideComponent } from '@widgets/profile-aside/profile-aside.component';
 import { formatRate } from '@shared/lib/format';
 import { RateStarsComponent } from '@widgets/rate-stars/rate-stars.component';
@@ -30,6 +31,7 @@ import { catchError, finalize } from 'rxjs/operators';
     NzSpinModule,
     AppHeaderComponent,
     PortfolioGridComponent,
+    PortfolioPlayerOverlayComponent,
     ProfileAsideComponent,
     RateStarsComponent,
   ],
@@ -48,6 +50,12 @@ export class SpecialistProfilePage implements OnInit {
   public readonly loading = signal(true);
 
   public readonly categories = signal<Category[]>([]);
+
+  /** Открыт ли fullscreen-плеер портфолио (на тачах после тапа по тайлу). */
+  public readonly playerOpen = signal(false);
+
+  /** Развёрнут ли полный bio (по умолчанию clamp до 3 строк на тачах). */
+  public readonly bioExpanded = signal(false);
 
   public readonly formatRate = formatRate;
 
@@ -90,5 +98,17 @@ export class SpecialistProfilePage implements OnInit {
       currency: p.currency,
       categories: p.categories?.map((c) => c.code),
     });
+  }
+
+  public openPlayer(): void {
+    this.playerOpen.set(true);
+  }
+
+  public closePlayer(): void {
+    this.playerOpen.set(false);
+  }
+
+  public toggleBio(): void {
+    this.bioExpanded.update((v) => !v);
   }
 }

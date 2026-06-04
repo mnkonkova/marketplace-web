@@ -1,0 +1,50 @@
+:host {
+  display: contents;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100; /* выше app-header (sticky) и nz-modal по умолчанию */
+  background: #000;
+  overflow: hidden;
+}
+
+/* feed-view :host имеет height: 100%, поэтому он должен занять всю overlay. */
+.overlay > app-feed-view {
+  display: block;
+  height: 100%;
+}
+
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1200;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: 0;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.75);
+  }
+}
+
+/* feed-view внутри использует sticky-шапку под app-header. В overlay нет
+   app-header — обнуляем offset. И прячем feed-top (там mute + title),
+   close-btn даёт основное действие, mute auto-восстанавливается из localStorage. */
+:host ::ng-deep .feed-shell {
+  --app-header-height: 0;
+}
+
+:host ::ng-deep .feed-top {
+  display: none;
+}

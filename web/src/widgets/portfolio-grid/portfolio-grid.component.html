@@ -1,33 +1,51 @@
-<div class="portfolio-grid">
-  @for (p of items().slice(0, 6); track p.id) {
+<div class="portfolio-grid" [class.is-touch]="isTouch()">
+  @for (p of items().slice(0, 6); track p.id; let i = $index) {
     @if (p.video_url) {
-      <div class="portfolio-card has-video">
-        <video
-          #video
-          [src]="p.video_url"
-          [poster]="p.thumbnail_url || ''"
-          playsinline
-          preload="metadata"
-          controls
-          class="portfolio-video"
-          (play)="onPlay(p.id)"
-          (pause)="onPause(p.id)"
-          (ended)="onPause(p.id)"
-        ></video>
-        @if (!playingIds().has(p.id)) {
-          <button
-            type="button"
-            class="play-overlay"
-            (click)="startPlayback(video)"
-            aria-label="Воспроизвести"
-          >
-            <svg viewBox="0 0 24 24" width="64" height="64" aria-hidden="true">
-              <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.55)" />
-              <path d="M9.5 7.5v9l7-4.5z" fill="#fff" />
-            </svg>
-          </button>
-        }
-      </div>
+      @if (isTouch()) {
+        <button
+          type="button"
+          class="portfolio-card has-video tap-tile"
+          [style.background-image]="p.thumbnail_url ? 'url(' + p.thumbnail_url + ')' : null"
+          (click)="requestOverlay(i)"
+          [attr.aria-label]="p.title || 'Открыть видео'"
+        >
+          @if (!p.thumbnail_url) {
+            <span class="fallback">▶</span>
+          }
+          <svg class="play-icon" viewBox="0 0 24 24" width="48" height="48" aria-hidden="true">
+            <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.55)" />
+            <path d="M9.5 7.5v9l7-4.5z" fill="#fff" />
+          </svg>
+        </button>
+      } @else {
+        <div class="portfolio-card has-video">
+          <video
+            #video
+            [src]="p.video_url"
+            [poster]="p.thumbnail_url || ''"
+            playsinline
+            preload="metadata"
+            controls
+            class="portfolio-video"
+            (play)="onPlay(p.id)"
+            (pause)="onPause(p.id)"
+            (ended)="onPause(p.id)"
+          ></video>
+          @if (!playingIds().has(p.id)) {
+            <button
+              type="button"
+              class="play-overlay"
+              (click)="startPlayback(video)"
+              aria-label="Воспроизвести"
+            >
+              <svg viewBox="0 0 24 24" width="64" height="64" aria-hidden="true">
+                <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.55)" />
+                <path d="M9.5 7.5v9l7-4.5z" fill="#fff" />
+              </svg>
+            </button>
+          }
+        </div>
+      }
     } @else {
       <a
         class="portfolio-card thumb-only"

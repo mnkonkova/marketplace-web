@@ -1,0 +1,4 @@
+<div class="overlay" role="dialog" aria-modal="true" [attr.aria-label]="title()">
+  <button type="button" class="close-btn" (click)="onClose()" aria-label="Закрыть">×</button>
+  <app-feed-view [params]="feedParams()" [title]="title()" />
+</div>
