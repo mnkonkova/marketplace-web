@@ -166,7 +166,11 @@ export class CreateProjectDialogComponent {
   private readonly clientQ$ = new Subject<string>();
 
   public constructor() {
-    this.pipelineApi.list().subscribe((r) => {
+    // Admin тянет /admin/pipelines (полные права), manager — /manager/pipelines
+    // (read-only). Без mode-разделения у менеджера был 403 на admin-роуте.
+    const data = inject<DialogData>(NZ_MODAL_DATA, { optional: true }) ?? { mode: 'manager' as Mode };
+    const pipelines$ = data.mode === 'admin' ? this.pipelineApi.list() : this.pipelineApi.listForManager();
+    pipelines$.subscribe((r) => {
       this.pipelines.set(r.items.map((p) => ({ id: p.id, name: p.name, is_default: p.is_default })));
       const def = r.items.find((p) => p.is_default);
       if (def) this.pipelineID = def.id;

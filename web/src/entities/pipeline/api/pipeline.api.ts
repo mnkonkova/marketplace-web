@@ -20,6 +20,12 @@ export class PipelineApi {
     return this.http.get<{ items: Pipeline[] }>(`${this.api}/admin/pipelines`);
   }
 
+  // Read-only список для менеджера (для селекта в форме «создать проект»
+  // и других CRM-местах, где админ-доступ к /admin/pipelines дал бы 403).
+  public listForManager(): Observable<{ items: Pipeline[] }> {
+    return this.http.get<{ items: Pipeline[] }>(`${this.api}/manager/pipelines`);
+  }
+
   // Чтение структуры воронки для всех залогиненных (нужно менеджеру для
   // канбана). На бэке — /api/v1/pipelines/{id} под общим auth.Middleware.
   public getFull(id: string): Observable<PipelineFull> {
