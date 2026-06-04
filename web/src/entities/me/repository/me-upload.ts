@@ -20,6 +20,8 @@ export interface MultipartUploadOptions {
   signal?: AbortSignal;
   /** Параллелизм upload'а частей. 1 = строго последовательно (надёжнее на 4G), 2-3 = быстрее на стабильной сети. */
   concurrency?: number;
+  /** PUT-функция для тестов: мокаем без XHR. По умолчанию — putFileToPresignedUrl. */
+  put?: (url: string, blob: Blob, opts: PutFileOptions) => Promise<string>;
 }
 
 export interface MultipartContext {
@@ -45,6 +47,7 @@ export async function uploadMultipart(
 ): Promise<string> {
   const { uploadID, key, publicURL, partSize } = await ctx.start(file);
   const concurrency = Math.max(1, Math.min(opts.concurrency ?? 1, 6));
+  const put = opts.put ?? putFileToPresignedUrl;
 
   const partCount = Math.ceil(file.size / partSize);
   // Прогресс по агрегированным байтам. Каждая часть бьёт по loadedPerPart[i],
@@ -79,7 +82,7 @@ export async function uploadMultipart(
       const partNumber = i + 1; // S3: 1-based
       try {
         const url = await ctx.partURL({ key, uploadID, partNumber });
-        const etag = await putFileToPresignedUrl(url, blob, {
+        const etag = await put(url, blob, {
           signal: opts.signal,
           onProgress: (p) => {
             loadedPerPart[i] = p.loaded;
