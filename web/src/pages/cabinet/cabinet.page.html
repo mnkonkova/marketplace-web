@@ -227,42 +227,11 @@
       <span class="muted">{{ portfolio().length }} видео</span>
     </div>
 
-    <div class="portfolio-form">
-      <input
-        nz-input
-        [(ngModel)]="portfolioForm.title"
-        name="pf_title"
-        placeholder="Название видео"
-      />
-      <textarea
-        nz-input
-        rows="3"
-        [(ngModel)]="portfolioForm.description"
-        name="pf_desc"
-        placeholder="Описание"
-      ></textarea>
-      <input
-        #videoFile
-        type="file"
-        class="hidden-file"
-        accept="video/mp4,video/quicktime"
-        (change)="uploadPortfolioFile($event)"
-      />
-      <button nz-button nzType="default" [nzLoading]="videoUploading()" (click)="videoFile.click()">
-        Загрузить видео с устройства
+    <div class="portfolio-cta">
+      <button nz-button nzType="primary" type="button" (click)="openUploadDialog()">
+        + Добавить видео
       </button>
-      @if (videoUploadProgress()) {
-      <div class="upload-progress">Загрузка: {{ videoUploadProgress() }}</div>
-      }
-      <button
-        nz-button
-        nzType="primary"
-        type="button"
-        [nzLoading]="portfolioSaving()"
-        (click)="addPortfolio()"
-      >
-        Добавить видео
-      </button>
+      <p class="hint">MP4 или MOV до 50 МБ. Превью соберётся автоматически.</p>
     </div>
 
     <div class="portfolio-list">

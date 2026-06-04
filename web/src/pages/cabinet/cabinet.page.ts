@@ -14,6 +14,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { EMPTY, Observable, firstValueFrom, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -40,6 +41,11 @@ import {
   isEmailUnverifiedError,
   openEmailUnverifiedDialog,
 } from '@features/auth/lib/open-email-unverified-dialog';
+import {
+  PortfolioUploadDialog,
+  PortfolioUploadDialogData,
+  PortfolioUploadDialogResult,
+} from '@features/portfolio-upload/portfolio-upload.dialog';
 
 interface ProfileForm {
   display_name: string;
@@ -54,13 +60,6 @@ interface ProfileForm {
   updated_at?: string;
 }
 
-interface PortfolioForm {
-  title: string;
-  description: string;
-  video_url: string;
-  thumbnail_url: string;
-}
-
 @Component({
   selector: 'app-cabinet-page',
   standalone: true,
@@ -72,6 +71,7 @@ interface PortfolioForm {
     NzTagModule,
     NzAlertModule,
     NzSelectModule,
+    NzIconModule,
     AppHeaderComponent,
   ],
   templateUrl: './cabinet.page.html',
@@ -118,13 +118,7 @@ export class CabinetPage implements OnInit {
 
   public readonly saving = signal(false);
 
-  public readonly portfolioSaving = signal(false);
-
   public readonly avatarUploading = signal(false);
-
-  public readonly videoUploading = signal(false);
-
-  public readonly videoUploadProgress = signal('');
 
   public readonly error = signal('');
 
@@ -160,13 +154,6 @@ export class CabinetPage implements OnInit {
     currency: 'RUB',
     contact_email: '',
     contact_phone: '',
-  };
-
-  public portfolioForm: PortfolioForm = {
-    title: '',
-    description: '',
-    video_url: '',
-    thumbnail_url: '',
   };
 
   public readonly tools = computed(() => this.recommendedSkills());
@@ -373,63 +360,37 @@ export class CabinetPage implements OnInit {
     this.msg.info('Аватар будет очищен после сохранения профиля.');
   }
 
-  public uploadPortfolioFile(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-    if (!/^video\/(mp4|quicktime)$/.test(file.type)) {
-      this.error.set('Видео: поддерживаем mp4 и mov.');
-      return;
-    }
-    if (file.size > 50 * 1024 * 1024) {
-      this.error.set('Видео больше 50 МБ.');
-      return;
-    }
-    const derivedTitle = file.name.replace(/\.(mp4|mov)$/i, '');
-    this.portfolioForm.title = this.portfolioForm.title.trim() || derivedTitle;
-    this.videoUploading.set(true);
-    this.videoUploadProgress.set('0%');
-    this.uploadViaPresign(
-      () => this.meRepo.presignPortfolioUpload(file),
-      file,
-      (pct) => this.videoUploadProgress.set(`${pct}%`),
-    )
-      .then((publicURL) => {
-        this.portfolioForm.video_url = publicURL;
-        this.msg.success('Видео загружено. Проверьте заголовок и добавьте его в портфолио.');
-      })
-      .catch((err: Error) => this.error.set(`Не удалось загрузить видео: ${err.message}`))
-      .finally(() => {
-        this.videoUploading.set(false);
-        setTimeout(() => this.videoUploadProgress.set(''), 1200);
-      });
-  }
-
-  public addPortfolio(): void {
-    if (!this.portfolioForm.video_url.trim() || !this.portfolioForm.title.trim()) {
-      this.error.set('Для видео нужны ссылка и заголовок.');
-      return;
-    }
-    this.portfolioSaving.set(true);
-    this.meRepo
-      .addPortfolio({
-        ...this.portfolioForm,
-        category_codes: this.primaryCategory() ? [this.primaryCategory()] : [],
-      })
-      .pipe(
-        catchError((err) => {
-          this.portfolioSaving.set(false);
-          this.error.set(apiErrorMessage(err.error, 'Не удалось добавить видео'));
-          return EMPTY;
-        }),
-      )
-      .subscribe(() => {
-        this.portfolioForm = { title: '', description: '', video_url: '', thumbnail_url: '' };
+  public openUploadDialog(): void {
+    const ref = this.modalService.create<
+      PortfolioUploadDialog,
+      PortfolioUploadDialogData,
+      PortfolioUploadDialogResult | null
+    >({
+      nzTitle: 'Новое видео в портфолио',
+      nzContent: PortfolioUploadDialog,
+      nzFooter: null,
+      nzWidth: 560,
+      nzClassName: 'portfolio-upload-modal',
+      nzMaskClosable: false,
+      nzData: {
+        categories: this.categories(),
+        primaryCategory: this.primaryCategory(),
+        selectedCategoryCodes: [...this.selectedCategories()],
+      },
+    });
+    ref.afterClose.subscribe((res: PortfolioUploadDialogResult | null | undefined) => {
+      if (res?.created) {
         this.loadPortfolio();
-        this.portfolioSaving.set(false);
+        // Бэк бампит specialist_profiles.updated_at внутри AddPortfolioVideo
+        // (через LockProfileForUpdateInTx — лок на лимит 20 видео).
+        // Без обновления sessionStorage следующий main-save получит 409.
+        this.meRepo.getProfile().subscribe({
+          next: (p) => this.setUpdatedAt(p.updated_at),
+          error: () => {},
+        });
         this.msg.success('Видео добавлено');
-      });
+      }
+    });
   }
 
   public deletePortfolio(id: string): void {

@@ -1,0 +1,112 @@
+@if (!file()) {
+  <div class="picker" (click)="pickFile()">
+    <input
+      #fileInput
+      type="file"
+      class="hidden-file"
+      accept="video/mp4,video/quicktime"
+      (change)="onFilePicked($event)"
+    />
+    <div class="picker-icon">📹</div>
+    <strong>Выберите видео</strong>
+    <p>MP4 или MOV до 50 МБ</p>
+  </div>
+} @else {
+  <div class="body">
+    <div class="preview">
+      @if (previewUrl()) {
+        <video
+          [src]="previewUrl()!"
+          [poster]="thumbnailPreviewUrl() || ''"
+          playsinline
+          muted
+          preload="metadata"
+        ></video>
+      }
+      <div class="preview-meta">
+        <strong class="filename">{{ file()!.name }}</strong>
+        <span class="size">{{ formatSize(file()!.size) }}</span>
+      </div>
+    </div>
+
+    <div class="form">
+      <label>
+        Название*
+        <input
+          nz-input
+          [ngModel]="title()"
+          (ngModelChange)="title.set($event)"
+          name="t"
+          [placeholder]="titlePlaceholder()"
+          maxlength="120"
+        />
+      </label>
+      <label>
+        Описание
+        <textarea
+          nz-input
+          rows="3"
+          [ngModel]="description()"
+          (ngModelChange)="description.set($event)"
+          name="d"
+          placeholder="Что это за работа, что вы делали"
+        ></textarea>
+      </label>
+      @if (availableCategories().length > 0) {
+        <div class="cats">
+          <label class="cats-label">Категории</label>
+          <div class="chips">
+            @for (cat of availableCategories(); track cat.code) {
+              <button
+                type="button"
+                class="chip"
+                [class.is-on]="selectedCategoryCodes().has(cat.code)"
+                (click)="toggleCategory(cat.code)"
+              >
+                {{ cat.title }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (uploading() || progressPercent() > 0) {
+      <div class="progress">
+        <nz-progress
+          [nzPercent]="progressPercent()"
+          [nzStatus]="progressStatus()"
+          [nzShowInfo]="true"
+        ></nz-progress>
+        <div class="progress-meta">
+          @if (etaText(); as eta) {
+            <span>{{ eta }}</span>
+          }
+          @if (speedText(); as spd) {
+            <span>· {{ spd }}</span>
+          }
+        </div>
+      </div>
+    }
+
+    @if (errorText()) {
+      <div class="error">{{ errorText() }}</div>
+    }
+  </div>
+}
+
+<div class="footer">
+  <button nz-button type="button" (click)="cancel()">
+    {{ uploading() ? 'Отменить загрузку' : 'Отмена' }}
+  </button>
+  <button
+    nz-button
+    nzType="primary"
+    type="button"
+    [disabled]="!canSave()"
+    [nzLoading]="saving()"
+    (click)="save()"
+  >
+    Сохранить
+  </button>
+</div>

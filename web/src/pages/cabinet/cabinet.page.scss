@@ -274,25 +274,17 @@ label {
   color: var(--text-muted);
 }
 
-.portfolio-form {
-  display: grid;
-  gap: 10px;
+.portfolio-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 18px;
 
-  textarea,
-  button,
-  .upload-progress {
-    grid-column: 1 / -1;
+  .hint {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 13px;
   }
-}
-
-.upload-progress {
-  padding: 10px 12px;
-  border: 1px solid rgba(32, 161, 148, 0.28);
-  border-radius: 12px;
-  background: rgba(32, 161, 148, 0.1);
-  color: var(--accent);
-  font-size: 13px;
 }
 
 .portfolio-list {
@@ -363,7 +355,6 @@ label {
   .profile-grid,
   .inline-fields,
   .inline-fields.two,
-  .portfolio-form,
   .portfolio-row {
     grid-template-columns: 1fr;
   }
