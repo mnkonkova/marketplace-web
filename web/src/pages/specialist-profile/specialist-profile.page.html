@@ -2,7 +2,8 @@
 
 <div class="profile-layout">
   <main class="profile-main">
-    <a class="back" [routerLink]="['/search']">← Назад к каталогу</a>
+    <app-back-link defaultUrl="/search" defaultLabel="К каталогу" excludePrefix="/specialist/" />
+
 
     @if (loading()) {
     <div class="loading"><nz-spin nzSize="large"></nz-spin></div>

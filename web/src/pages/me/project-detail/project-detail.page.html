@@ -4,7 +4,8 @@
   @if (loading()) {
     <div class="center"><nz-spin nzSize="large"></nz-spin></div>
   } @else if (project()) { @let p = project()!;
-    <a routerLink="/me/projects" class="back-link">← Все мои проекты</a>
+    <app-back-link defaultUrl="/me/projects" defaultLabel="К моим проектам" excludePrefix="/me/projects/" />
+
 
     <header class="hero" [class.waiting]="p.display_status === 'waiting_action'">
       <div class="hero-row">

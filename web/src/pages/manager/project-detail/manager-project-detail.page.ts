@@ -38,6 +38,7 @@ import {
   getStepBadge,
 } from '@shared/lib/project-status';
 import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.component';
+import { BackLinkComponent } from '@shared/nav/back-link.component';
 
 @Component({
   selector: 'app-manager-project-detail',
@@ -54,6 +55,7 @@ import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.c
     NzSelectModule,
     NzSwitchModule,
     ManagerLayoutComponent,
+    BackLinkComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './manager-project-detail.page.html',

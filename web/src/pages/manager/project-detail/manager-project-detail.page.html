@@ -2,6 +2,8 @@
   @if (loading()) {
     <nz-spin nzSize="large"></nz-spin>
   } @else if (project()) { @let p = project()!;
+    <app-back-link defaultUrl="/manager/board" defaultLabel="К канбану" excludePrefix="/manager/projects/" />
+
     <header class="hero">
       <div class="title-row">
         <h1>{{ p.title }}</h1>

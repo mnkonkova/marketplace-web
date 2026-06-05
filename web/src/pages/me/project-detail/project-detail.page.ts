@@ -28,6 +28,7 @@ import {
   getStepBadge,
 } from '@shared/lib/project-status';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import { BackLinkComponent } from '@shared/nav/back-link.component';
 
 @Component({
   selector: 'app-project-detail-page',
@@ -45,6 +46,7 @@ import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
     NzRateModule,
     RouterLink,
     AppHeaderComponent,
+    BackLinkComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-detail.page.html',

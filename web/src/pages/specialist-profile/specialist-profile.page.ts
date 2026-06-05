@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { DatePipe } from '@angular/common';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -23,6 +24,7 @@ import { catchError, finalize } from 'rxjs/operators';
   selector: 'app-specialist-profile-page',
   standalone: true,
   imports: [
+    BackLinkComponent,
     RouterLink,
     DatePipe,
     NzAvatarModule,
