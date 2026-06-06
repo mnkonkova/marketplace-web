@@ -134,6 +134,17 @@ export class FeedPage implements OnInit {
     this.runListSearch(this.currentSearch, 'Все совпадения по запросу');
   }
 
+  /** Категория для кнопки «Смотреть всех в категории «X»». Берём из
+   *  clarify-параметров, иначе — primary_category первого пика. */
+  public targetCategoryCode(): string {
+    if (this.currentSearch.categories?.length) return this.currentSearch.categories[0];
+    return this.picks()[0]?.profile?.primary_category ?? '';
+  }
+
+  public showAllInCategory(code: string): void {
+    this.router.navigate(['/search'], { queryParams: { category: code } });
+  }
+
   public viewWorks(): void {
     const ids = this.picks()
       .map((p) => p.user_id)

@@ -18,9 +18,15 @@
         <button nz-button nzType="primary" type="button" (click)="viewWorks()">
           Смотреть работы
         </button>
-        <button nz-button nzType="default" type="button" (click)="showAllMatches()">
-          Посмотреть все совпадения
-        </button>
+        @if (targetCategoryCode(); as code) {
+          <button nz-button nzType="default" type="button" (click)="showAllInCategory(code)">
+            Смотреть всех в категории «{{ categoryTitle(code) }}»
+          </button>
+        } @else {
+          <button nz-button nzType="default" type="button" (click)="showAllMatches()">
+            Посмотреть все совпадения
+          </button>
+        }
       </div>
       }
     </header>
