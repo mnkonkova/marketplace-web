@@ -2,20 +2,24 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
-import { NavHistoryService } from './nav-history.service';
+import { NavHistoryService, labelForUrl } from './nav-history.service';
 
 /**
  * `<app-back-link>` — кнопка «← {label}», которая знает откуда пришёл
  * пользователь. Если NavHistoryService видит предыдущую страницу с
  * известным URL-паттерном — берёт label оттуда. Иначе использует
- * `[defaultUrl]` + `[defaultLabel]` (хардкод как fallback на прямой заход).
+ * `[defaultUrl]` (как fallback на прямой заход / реферал извне).
+ *
+ * Label НИКОГДА не хардкодится в шаблоне — резолвится из URL по карте
+ * LABEL_MAP в nav-history.service. Чтобы добавить новый — одна правка
+ * в карте.
  *
  * Пример:
  * ```html
- * <app-back-link defaultUrl="/search" defaultLabel="К каталогу" />
+ * <app-back-link defaultUrl="/search" />
  * ```
- * Зашёл с `/feed` → кнопка покажет «К ленте» и ведёт на /feed.
- * Зашёл напрямую → «К каталогу» и ведёт на /search.
+ * Зашёл с `/feed` → «К ленте». Зашёл напрямую → «К каталогу» (LABEL_MAP
+ * для /search). Зашёл из /admin/projects → «Ко всем проектам».
  */
 @Component({
   selector: 'app-back-link',
@@ -40,7 +44,6 @@ import { NavHistoryService } from './nav-history.service';
 })
 export class BackLinkComponent {
   public readonly defaultUrl = input.required<string>();
-  public readonly defaultLabel = input<string>('Назад');
   /** URL текущей страницы (или паттерн), который НЕ должен попадать в «back-цель».
    *  Полезно для деталей: вернуться к самому себе бессмысленно. */
   public readonly excludePrefix = input<string | null>(null);
@@ -53,7 +56,13 @@ export class BackLinkComponent {
     const back = this.history.resolveBack(
       exclude ? (u) => u.startsWith(exclude) : undefined,
     );
-    return back ?? { url: null, label: this.defaultLabel() };
+    if (back) return back;
+    // Прямой заход / реферал извне → fallback. Label берём из той же карты
+    // что и для истории, чтобы не плодить хардкоды в шаблонах.
+    return {
+      url: null as string | null,
+      label: labelForUrl(this.defaultUrl()) ?? 'Назад',
+    };
   });
 
   public go(ev: MouseEvent): void {

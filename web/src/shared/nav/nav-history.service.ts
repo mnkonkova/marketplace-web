@@ -31,7 +31,7 @@ const LABEL_MAP: { test: (url: string) => boolean; label: string }[] = [
   { test: (u) => u.startsWith('/specialist/'),                    label: 'К специалисту' },
 ];
 
-function labelForUrl(url: string): string | null {
+export function labelForUrl(url: string): string | null {
   for (const m of LABEL_MAP) if (m.test(url)) return m.label;
   return null;
 }
