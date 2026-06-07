@@ -48,3 +48,23 @@
 		file_server
 	}
 }
+
+# www.<DOMAIN> → 301 редирект на apex. DNS должен указывать www на тот же IP,
+# Caddy выпишет отдельный сертификат и редиректнет.
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}
+
+# n8n.<DOMAIN> → n8n-контейнер. Поднимается отдельно от compose'а:
+#   docker run -d --name marketplace-api-n8n-1 --restart unless-stopped \
+#     --network marketplace-api_default -p 5678:5678 \
+#     -v marketplace-api_n8n-data:/home/node/.n8n \
+#     -e N8N_HOST=n8n.<домен> -e WEBHOOK_URL=https://n8n.<домен>/ \
+#     n8nio/n8n
+# DNS: A-запись n8n.<DOMAIN> → IP VDS. Если поддомен не нужен — закомментируй
+# весь блок (Let's Encrypt всё равно попробует, упрётся в DNS и засрёт логи).
+n8n.{$DOMAIN} {
+	reverse_proxy marketplace-api-n8n-1:5678 {
+		flush_interval -1
+	}
+}
