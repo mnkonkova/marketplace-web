@@ -37,6 +37,14 @@ export interface PortfolioItem {
   title: string;
   description: string;
   video_url?: string;
+  /**
+   * Облегчённая версия видео (480p ~500KB) для autoplay в фиде/featured.
+   * Заполняется async воркером (backend docs/VIDEO_TRANSCODING.md).
+   * Для полного просмотра внутри портфолио используется `video_url` —
+   * там controls + спец сам жмёт play, гонять preview не нужно.
+   */
+  preview_url?: string;
+  preview_status?: 'pending' | 'processing' | 'ready' | 'failed';
   thumbnail_url?: string;
   external_url?: string;
   category_codes: string[];

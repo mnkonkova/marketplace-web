@@ -5,7 +5,7 @@
     <div class="hero-mosaic" aria-hidden="true">
       @for (item of heroVideos(); track item.video.id) {
         <video
-          [src]="item.video.url"
+          [src]="previewSrc(item.video)"
           [poster]="item.video.thumb || null"
           autoplay
           muted
@@ -61,12 +61,11 @@
             class="work-tile"
             href="/specialist/{{ item.specialist.user_id }}"
             (click)="openSpecialist(item.specialist.user_id, $event)"
-            (mouseenter)="playPreview($event)"
-            (mouseleave)="resetPreview($event)"
           >
             <video
-              [src]="item.video.url"
+              [src]="previewSrc(item.video)"
               [poster]="item.video.thumb || null"
+              autoplay
               muted
               loop
               playsinline
@@ -141,4 +140,5 @@
       />
     }
   </section>
+  <app-support-footer />
 </main>

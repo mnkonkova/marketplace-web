@@ -17,6 +17,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { FeedApi } from '@entities/feed/api/feed.api';
 import { FeedItem, FeedParams, FeedResponse } from '@entities/feed/model/feed.types';
+import { feedVideoPreviewSrc } from '@entities/feed/lib/preview';
 import { CategoryApi } from '@entities/category/api/category.api';
 import { formatDuration, formatRate } from '@shared/lib/format';
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
@@ -292,7 +293,10 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     video.addEventListener('error', onFail);
 
     if (item.video.thumb) video.poster = item.video.thumb;
-    video.src = item.video.url;
+    // preview_url — облегчённое 480p ~500KB видео для autoplay в карточке;
+    // фолбэк на оригинал когда транскод ещё не отработал. См.
+    // entities/feed/lib/preview.ts (backend docs/VIDEO_TRANSCODING.md).
+    video.src = feedVideoPreviewSrc(item.video);
 
     // Подстраховка: если src уже отдал данные синхронно (memory-cache),
     // readyState ≥ 2 ещё ДО первого тика event loop — снимем спиннер сразу.

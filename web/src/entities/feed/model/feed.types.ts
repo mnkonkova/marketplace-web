@@ -3,6 +3,14 @@ import { SpecialistLite } from '@entities/specialist/model/specialist.types';
 export interface FeedVideo {
   id: string;
   url: string;
+  /**
+   * Облегчённое 480p ~500KB видео для autoplay в карточке (loop, muted).
+   * Бэкенд возвращает только когда оно успешно сгенерилось воркером
+   * (см. backend docs/VIDEO_TRANSCODING.md). Иначе поле отсутствует —
+   * фронт должен фолбэчить на `url` (оригинал, до 30 МБ).
+   * Хелпер: `feedVideoPreviewSrc(video)` из ../lib/preview.ts.
+   */
+  preview_url?: string;
   thumb?: string;
   title?: string;
   description?: string;

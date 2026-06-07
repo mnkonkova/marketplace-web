@@ -8,9 +8,11 @@ import { CategoryApi } from '@entities/category/api/category.api';
 import { Category } from '@entities/category/model/category.types';
 import { FeedApi } from '@entities/feed/api/feed.api';
 import { FeedItem } from '@entities/feed/model/feed.types';
+import { feedVideoPreviewSrc } from '@entities/feed/lib/preview';
 import { groupCategoriesByType, HERO_QUICK_TAGS } from '@shared/lib/category-groups';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { CategoryGridComponent } from '@widgets/category-grid/category-grid.component';
+import { SupportFooterComponent } from '@widgets/support-footer/support-footer.component';
 import { pluralSpecialists } from '@shared/lib/format';
 import { isHomeSectionAnchor, scrollToAnchorWhenReady } from '@shared/lib/scroll-to-anchor';
 import { withFromPage } from '@shared/nav/from-page';
@@ -25,6 +27,7 @@ import { withFromPage } from '@shared/nav/from-page';
     NzIconModule,
     AppHeaderComponent,
     CategoryGridComponent,
+    SupportFooterComponent,
   ],
   templateUrl: './main.page.html',
   styleUrl: './main.page.scss',
@@ -71,8 +74,15 @@ export class MainPage implements OnInit {
   /** 3-4 видео из общей ленты — фон hero. Auto-play, muted, loop. */
   public readonly heroVideos = signal<FeedItem[]>([]);
 
-  /** 8 работ для секции «Смотрите, что снимают» — играют только по hover. */
+  /** 8 работ для секции «Смотрите, что снимают» — autoplay muted на всех. */
   public readonly featuredWorks = signal<FeedItem[]>([]);
+
+  /**
+   * Источник src для autoplay-карточек hero и featured. preview_url если
+   * воркер уже сгенерил облегчённое видео, иначе — полный url
+   * (см. backend docs/VIDEO_TRANSCODING.md). Используется из шаблона.
+   */
+  public readonly previewSrc = feedVideoPreviewSrc;
 
   public ngOnInit(): void {
     this.route.fragment.subscribe((fragment) => {
@@ -106,23 +116,6 @@ export class MainPage implements OnInit {
   public openSpecialist(id: string, ev: MouseEvent): void {
     ev.preventDefault();
     void this.router.navigate(['/specialist', id], withFromPage(this.router));
-  }
-
-  /** На hover превью-видео заводим тихо — на mouseleave сбрасываем
-   *  на первый кадр, чтобы оно не «болталось» в середине ролика. */
-  public playPreview(ev: Event): void {
-    const v = (ev.currentTarget as HTMLElement).querySelector('video');
-    v?.play().catch(() => {
-      /* autoplay-policy / network — без шума */
-    });
-  }
-
-  public resetPreview(ev: Event): void {
-    const v = (ev.currentTarget as HTMLElement).querySelector('video');
-    if (v) {
-      v.pause();
-      v.currentTime = 0;
-    }
   }
 
   public search(): void {
