@@ -2,27 +2,122 @@
 
 <main class="main">
   <section class="hero">
-    <div class="hero-bg"></div>
+    <div class="hero-mosaic" aria-hidden="true">
+      @for (item of heroVideos(); track item.video.id) {
+        <video
+          [src]="item.video.url"
+          [poster]="item.video.thumb || null"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="metadata"
+        ></video>
+      }
+    </div>
+    <div class="hero-overlay" aria-hidden="true"></div>
+
     <div class="hero-inner">
-      <div class="hero-content-wrap">
-        <div class="hero-content">Опишите задачу</div>
-        <div class="hero-content-subtitle">Соберём команду</div>
-      </div>
+      <h1 class="hero-title">
+        Создаём контент,<br />
+        который смотрят.
+      </h1>
+      <p class="hero-subtitle">Подбираем тех, кто его снимет.</p>
+
       <form class="hero-search" (submit)="$event.preventDefault(); search()">
         <span nz-icon nzType="search" class="search-icon"></span>
         <input
           nz-input
           [(ngModel)]="query"
           name="q"
-          placeholder="Монтажёр для Reels, SMM… или имя"
+          placeholder="Опишите задачу — найдём команду"
         />
-        <button nz-button nzType="primary" type="submit">Подобрать специалистов</button>
+        <button nz-button nzType="primary" type="submit">Подобрать</button>
       </form>
+
       <div class="quick-tags">
         @for (tag of quickTags; track tag) {
-        <button type="button" class="tag" (click)="openQuick(tag)">{{ tag }}</button>
+          <button type="button" class="tag" (click)="openQuick(tag)">{{ tag }}</button>
         }
       </div>
+    </div>
+
+    <a class="scroll-hint" href="#categories">
+      <span>прокрутите</span>
+      <span class="arrow" aria-hidden="true">↓</span>
+    </a>
+  </section>
+
+  @if (featuredWorks().length) {
+    <section class="featured">
+      <header class="featured-head">
+        <span class="kicker">Портфолио</span>
+        <h2>Смотрите, что снимают</h2>
+        <p>Реальные работы наших специалистов. Кликните на карточку — попадёте в портфолио автора.</p>
+      </header>
+      <div class="featured-grid">
+        @for (item of featuredWorks(); track item.video.id) {
+          <a
+            class="work-tile"
+            href="/specialist/{{ item.specialist.user_id }}"
+            (click)="openSpecialist(item.specialist.user_id, $event)"
+            (mouseenter)="playPreview($event)"
+            (mouseleave)="resetPreview($event)"
+          >
+            <video
+              [src]="item.video.url"
+              [poster]="item.video.thumb || null"
+              muted
+              loop
+              playsinline
+              preload="metadata"
+            ></video>
+            <div class="work-overlay">
+              <div class="work-name">{{ item.specialist.display_name }}</div>
+              @if (item.specialist.primary_category) {
+                <div class="work-cat">{{ categoryTitle(item.specialist.primary_category) }}</div>
+              }
+            </div>
+          </a>
+        }
+      </div>
+      <div class="featured-cta">
+        <button type="button" class="see-all-btn" (click)="seeAll()">
+          Смотреть всех специалистов
+          <span nz-icon nzType="arrow-right" nzTheme="outline"></span>
+        </button>
+      </div>
+    </section>
+  }
+
+  <section class="how">
+    <header class="featured-head">
+      <span class="kicker">Как это работает</span>
+      <h2>3 шага до команды</h2>
+    </header>
+    <div class="how-steps">
+      @for (step of howSteps; track step.n) {
+        <article class="step">
+          <span class="step-num">0{{ step.n }}</span>
+          <h3>{{ step.title }}</h3>
+          <p>{{ step.text }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="stats">
+    <div class="stat">
+      <div class="stat-num">{{ totalCount() || '—' }}</div>
+      <div class="stat-label">специалистов в каталоге</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">{{ categories().length || '—' }}</div>
+      <div class="stat-label">направлений</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">24<span class="stat-num-sm">ч</span></div>
+      <div class="stat-label">от запроса до подборки</div>
     </div>
   </section>
 
@@ -36,14 +131,14 @@
 
   <section class="categories-section">
     @for (group of categoryGroups(); track group.type) {
-    <app-category-grid
-      [sectionId]="group.sectionId"
-      [title]="group.type"
-      [kicker]="group.kicker ?? ''"
-      [categories]="group.categories"
-      [counts]="counts()"
-      (categoryClick)="openCategory($event)"
-    />
+      <app-category-grid
+        [sectionId]="group.sectionId"
+        [title]="group.type"
+        [kicker]="group.kicker ?? ''"
+        [categories]="group.categories"
+        [counts]="counts()"
+        (categoryClick)="openCategory($event)"
+      />
     }
   </section>
 </main>

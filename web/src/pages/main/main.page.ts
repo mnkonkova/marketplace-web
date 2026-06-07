@@ -6,6 +6,8 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { CategoryApi } from '@entities/category/api/category.api';
 import { Category } from '@entities/category/model/category.types';
+import { FeedApi } from '@entities/feed/api/feed.api';
+import { FeedItem } from '@entities/feed/model/feed.types';
 import { groupCategoriesByType, HERO_QUICK_TAGS } from '@shared/lib/category-groups';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { CategoryGridComponent } from '@widgets/category-grid/category-grid.component';
@@ -30,11 +32,31 @@ import { withFromPage } from '@shared/nav/from-page';
 export class MainPage implements OnInit {
   private readonly categoryApi = inject(CategoryApi);
 
+  private readonly feedApi = inject(FeedApi);
+
   private readonly router = inject(Router);
 
   private readonly route = inject(ActivatedRoute);
 
   public readonly quickTags = HERO_QUICK_TAGS;
+
+  public readonly howSteps = [
+    {
+      n: 1,
+      title: 'Опишите задачу',
+      text: 'ИИ уточнит детали — стиль, бюджет, сроки. Без брифа на пять страниц.',
+    },
+    {
+      n: 2,
+      title: 'Получите подборку',
+      text: 'Список верифицированных специалистов под ваш контекст — за минуту.',
+    },
+    {
+      n: 3,
+      title: 'Запустите проект',
+      text: 'Связь напрямую, общий канбан, прозрачные правки — без потерянных задач.',
+    },
+  ];
 
   public query = '';
 
@@ -45,6 +67,12 @@ export class MainPage implements OnInit {
   public readonly counts = signal<Record<string, number>>({});
 
   public readonly totalCount = signal(0);
+
+  /** 3-4 видео из общей ленты — фон hero. Auto-play, muted, loop. */
+  public readonly heroVideos = signal<FeedItem[]>([]);
+
+  /** 8 работ для секции «Смотрите, что снимают» — играют только по hover. */
+  public readonly featuredWorks = signal<FeedItem[]>([]);
 
   public ngOnInit(): void {
     this.route.fragment.subscribe((fragment) => {
@@ -64,6 +92,37 @@ export class MainPage implements OnInit {
       this.counts.set(stats);
       this.totalCount.set(Object.values(stats).reduce((a, b) => a + b, 0));
     });
+    this.feedApi.load({}).subscribe((res) => {
+      const items = res.items ?? [];
+      this.heroVideos.set(items.slice(0, 4));
+      this.featuredWorks.set(items.slice(4, 12));
+    });
+  }
+
+  public categoryTitle(code: string): string {
+    return this.categories().find((c) => c.code === code)?.title ?? code;
+  }
+
+  public openSpecialist(id: string, ev: MouseEvent): void {
+    ev.preventDefault();
+    void this.router.navigate(['/specialist', id], withFromPage(this.router));
+  }
+
+  /** На hover превью-видео заводим тихо — на mouseleave сбрасываем
+   *  на первый кадр, чтобы оно не «болталось» в середине ролика. */
+  public playPreview(ev: Event): void {
+    const v = (ev.currentTarget as HTMLElement).querySelector('video');
+    v?.play().catch(() => {
+      /* autoplay-policy / network — без шума */
+    });
+  }
+
+  public resetPreview(ev: Event): void {
+    const v = (ev.currentTarget as HTMLElement).querySelector('video');
+    if (v) {
+      v.pause();
+      v.currentTime = 0;
+    }
   }
 
   public search(): void {
