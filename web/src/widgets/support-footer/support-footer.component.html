@@ -11,7 +11,6 @@
   nzTitle="Написать в поддержку"
   [nzOkText]="busy() ? 'Отправляем…' : 'Отправить'"
   nzCancelText="Отмена"
-  [nzOkDisabled]="!canSend()"
   [nzOkLoading]="busy()"
   (nzOnCancel)="open.set(false)"
   (nzOnOk)="submit()"

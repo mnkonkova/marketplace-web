@@ -82,7 +82,10 @@ export class SupportFooterComponent {
   }
 
   public submit(): void {
-    if (!this.canSend()) return;
+    if (!this.canSend()) {
+      this.msg.warning('Заполните email (от 4 символов) и сообщение (от 10 символов)');
+      return;
+    }
     this.busy.set(true);
     const payload: SupportMessagePayload = {
       from_email: this.email.trim(),
