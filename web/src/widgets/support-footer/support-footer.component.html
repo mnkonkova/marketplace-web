@@ -1,0 +1,48 @@
+<footer class="footer">
+  <span class="muted">© {{ year() }} wayprmarket</span>
+  <span class="sep">·</span>
+  <button type="button" class="link" (click)="openModal()">
+    Написать в поддержку
+  </button>
+</footer>
+
+<nz-modal
+  [nzVisible]="open()"
+  nzTitle="Написать в поддержку"
+  [nzOkText]="busy() ? 'Отправляем…' : 'Отправить'"
+  nzCancelText="Отмена"
+  [nzOkDisabled]="!canSend()"
+  [nzOkLoading]="busy()"
+  (nzOnCancel)="open.set(false)"
+  (nzOnOk)="submit()"
+>
+  <ng-container *nzModalContent>
+    <div class="row">
+      <label>Ваш email *</label>
+      <input nz-input [(ngModel)]="email" type="email" placeholder="you@example.com" />
+    </div>
+    <div class="row">
+      <label>Имя</label>
+      <input nz-input [(ngModel)]="name" placeholder="как к вам обращаться" />
+    </div>
+    <div class="row">
+      <label>Тема</label>
+      <nz-select [(ngModel)]="topic" style="width: 100%">
+        <nz-option nzValue="payment" nzLabel="💸 Оплата"></nz-option>
+        <nz-option nzValue="bug" nzLabel="🐛 Баг"></nz-option>
+        <nz-option nzValue="feature" nzLabel="✨ Идея/предложение"></nz-option>
+        <nz-option nzValue="other" nzLabel="❓ Другое"></nz-option>
+      </nz-select>
+    </div>
+    <div class="row">
+      <label>Сообщение * <small>(10–2000 символов)</small></label>
+      <textarea
+        nz-input
+        [(ngModel)]="message"
+        rows="5"
+        placeholder="Опишите вопрос или проблему"
+        maxlength="2000"
+      ></textarea>
+    </div>
+  </ng-container>
+</nz-modal>
