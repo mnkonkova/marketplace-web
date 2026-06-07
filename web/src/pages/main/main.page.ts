@@ -84,6 +84,24 @@ export class MainPage implements OnInit {
    */
   public readonly previewSrc = feedVideoPreviewSrc;
 
+  /**
+   * Гарантированный старт после canplay — autoplay-атрибут не всегда
+   * триггерится когда src задаётся через Angular signal (особенно для
+   * .mov / video/quicktime). Стреляет столько раз, сколько надо.
+   */
+  public forcePlay(ev: Event): void {
+    const v = ev.target as HTMLVideoElement;
+    // Принудительно муем даже если атрибут muted уже стоит — Chrome
+    // иногда теряет muted-state при пересоздании элемента / смене src.
+    v.muted = true;
+    v.volume = 0;
+    if (v.paused) {
+      v.play().catch(() => {
+        /* autoplay-policy / network — без шума */
+      });
+    }
+  }
+
   public ngOnInit(): void {
     this.route.fragment.subscribe((fragment) => {
       if (fragment && isHomeSectionAnchor(fragment)) {
