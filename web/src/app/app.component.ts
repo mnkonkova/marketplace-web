@@ -2,7 +2,6 @@ import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { NavHistoryService } from '@shared/nav/nav-history.service';
-
 @Component({
   selector: 'app-root',
   standalone: true,
