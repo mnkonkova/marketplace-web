@@ -9,7 +9,6 @@ import { Category } from '@entities/category/model/category.types';
 import { SpecialistApi } from '@entities/specialist/api/specialist.api';
 import { ClarifyMessage, ClarifySearchParams } from '@entities/specialist/model/specialist.types';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { withFromPage } from '@shared/nav/from-page';
 import { EMPTY } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 
@@ -50,9 +49,17 @@ export class ClarifyPage implements OnInit {
     this.route.queryParamMap.subscribe((qp) => {
       this.categoryCode = qp.get('category') ?? '';
       const initialText = (qp.get('q') ?? '').trim();
+      const restored = this.decodeState(qp.get('state'));
       this.resolveCategory();
       if (!this.autoSent) {
         this.autoSent = true;
+        // Возврат из подбора → восстанавливаем переписку и pending-search,
+        // чтобы пользователь продолжил с того же места, а не начинал заново.
+        if (restored) {
+          this.messages.set(restored.msgs);
+          if (restored.search) this.pendingSearch.set(restored.search);
+          return;
+        }
         if (initialText) {
           this.send(initialText);
         } else {
@@ -75,10 +82,54 @@ export class ClarifyPage implements OnInit {
   public runSearch(): void {
     const p = this.pendingSearch();
     if (!p) return;
-    this.router.navigate(
-      ['/search'],
-      withFromPage(this.router, { queryParams: this.toQueryParams(p) }),
-    );
+    // from_page = текущий URL + state с историей чата и pending-search,
+    // чтобы при возврате восстановить диалог как было. Старый state
+    // выкидываем — иначе при повторном возврате будет дубликат и
+    // queryParamMap.get('state') вернёт устаревший первый.
+    const state = this.encodeState({ msgs: this.messages(), search: p });
+    const base = this.stripQueryParam(this.router.url, 'state');
+    const sep = base.includes('?') ? '&' : '?';
+    const fromPage = `${base}${sep}state=${encodeURIComponent(state)}`;
+    this.router.navigate(['/search'], {
+      queryParams: { ...this.toQueryParams(p), from_page: fromPage },
+    });
+  }
+
+  private stripQueryParam(url: string, key: string): string {
+    const i = url.indexOf('?');
+    if (i < 0) return url;
+    const path = url.slice(0, i);
+    const filtered = url
+      .slice(i + 1)
+      .split('&')
+      .filter((kv) => kv !== key && !kv.startsWith(`${key}=`));
+    return filtered.length ? `${path}?${filtered.join('&')}` : path;
+  }
+
+  /** URL-safe base64(JSON({msgs, search})). */
+  private encodeState(state: { msgs: ClarifyMessage[]; search: ClarifySearchParams }): string {
+    const bytes = new TextEncoder().encode(JSON.stringify(state));
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  private decodeState(
+    value: string | null,
+  ): { msgs: ClarifyMessage[]; search: ClarifySearchParams | null } | null {
+    if (!value) return null;
+    try {
+      const b64 = value.replace(/-/g, '+').replace(/_/g, '/');
+      const bin = atob(b64);
+      const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+      const obj = JSON.parse(new TextDecoder().decode(bytes));
+      if (obj && Array.isArray(obj.msgs)) {
+        return { msgs: obj.msgs, search: obj.search ?? null };
+      }
+    } catch {
+      // битый state в URL — игнорируем, показываем приветствие
+    }
+    return null;
   }
 
   private send(text: string): void {
