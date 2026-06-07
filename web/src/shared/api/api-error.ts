@@ -20,6 +20,15 @@ export function apiErrorMessage(body: ApiErrorBody | null, fallback = 'Ошиб�
     not_found: 'Не найдено',
     search_unavailable: 'Поиск временно недоступен',
     feed_failed: 'Не удалось загрузить ленту',
+    // 401 — токен отсутствует/протух/невалидный/отозван.
+    missing_bearer: 'Сессия истекла — войдите снова',
+    invalid_token: 'Сессия истекла — войдите снова',
+    no_user: 'Сессия истекла — войдите снова',
+    // 403 — auth прошёл, но не хватает чего-то на стороне профиля.
+    email_unverified: 'Подтвердите email, чтобы продолжить (ссылка на ящик)',
+    forbidden_unapproved: 'Аккаунт ожидает одобрения админом',
+    forbidden_role: 'Недостаточно прав',
+    inactive: 'Аккаунт деактивирован',
   };
 
   const head = body.message?.trim() || (code && map[code]) || code || fallback;
