@@ -15,7 +15,7 @@
     @for (group of categoryGroups(); track group.type) {
       <div class="sidebar-type">{{ group.type }}</div>
       @for (c of group.categories; track c.code) {
-        <a class="cat-link" [routerLink]="['/search']" [queryParams]="{ category: c.code }">
+        <a class="cat-link" href="/search?category={{ c.code }}" (click)="goCategory(c.code, $event)">
           {{ c.title }}
         </a>
       }

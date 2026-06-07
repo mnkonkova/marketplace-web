@@ -24,6 +24,7 @@ import {
   PROJECT_STATUS_LABEL,
 } from '@shared/lib/project-status';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import { withFromPage } from '@shared/nav/from-page';
 
 @Component({
   selector: 'app-projects-list-page',
@@ -141,7 +142,7 @@ export class ProjectsListPage {
   }
 
   public open(p: ProjectClientView): void {
-    void this.router.navigate(['/me/projects', p.id]);
+    void this.router.navigate(['/me/projects', p.id], withFromPage(this.router));
   }
 
   public logout(): void {

@@ -13,6 +13,12 @@ app-header {
   flex-shrink: 0;
 }
 
+app-back-link.feed-back {
+  flex-shrink: 0;
+  display: block;
+  padding: 8px 20px 4px;
+}
+
 .feed-page {
   position: relative;
   display: flex;
@@ -20,27 +26,6 @@ app-header {
   flex: 1;
   min-height: 0;
   background: var(--bg);
-
-  .back {
-    position: absolute;
-    top: 12px;
-    left: 20px;
-    z-index: 30;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 13px;
-    cursor: pointer;
-
-    &:hover {
-      color: var(--accent);
-    }
-  }
 
   app-feed-view {
     display: block;

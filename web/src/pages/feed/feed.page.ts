@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { ActivatedRoute, Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { FeedViewComponent } from '@widgets/feed-view/feed-view.component';
 import { FeedParams } from '@entities/feed/model/feed.types';
 import { CategoryApi } from '@entities/category/api/category.api';
@@ -15,6 +16,7 @@ import {
 } from '@entities/specialist/model/specialist.types';
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
 import { formatRate } from '@shared/lib/format';
+import { withFromPage } from '@shared/nav/from-page';
 import { RateStarsComponent } from '@widgets/rate-stars/rate-stars.component';
 import { EMPTY } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
@@ -25,6 +27,7 @@ import { catchError, finalize } from 'rxjs/operators';
   imports: [
     NzButtonModule,
     AppHeaderComponent,
+    BackLinkComponent,
     FeedViewComponent,
     RateStarsComponent,
   ],
@@ -108,7 +111,7 @@ export class FeedPage implements OnInit {
   }
 
   public goProfile(spec: SpecialistLite): void {
-    this.router.navigate(['/specialist', spec.user_id]);
+    this.router.navigate(['/specialist', spec.user_id], withFromPage(this.router));
   }
 
   public readonly formatRate = formatRate;
@@ -126,10 +129,6 @@ export class FeedPage implements OnInit {
     this.cart.toggle(spec);
   }
 
-  public backToClarify(): void {
-    this.router.navigate(['/clarify'], { queryParams: this.toQueryParams(this.currentSearch) });
-  }
-
   public showAllMatches(): void {
     this.runListSearch(this.currentSearch, 'Все совпадения по запросу');
   }
@@ -142,7 +141,10 @@ export class FeedPage implements OnInit {
   }
 
   public showAllInCategory(code: string): void {
-    this.router.navigate(['/search'], { queryParams: { category: code } });
+    this.router.navigate(
+      ['/search'],
+      withFromPage(this.router, { queryParams: { category: code } }),
+    );
   }
 
   public viewWorks(): void {
@@ -150,7 +152,10 @@ export class FeedPage implements OnInit {
       .map((p) => p.user_id)
       .filter(Boolean);
     if (!ids.length) return;
-    this.router.navigate(['/search'], { queryParams: { ids: ids.join(',') } });
+    this.router.navigate(
+      ['/search'],
+      withFromPage(this.router, { queryParams: { ids: ids.join(',') } }),
+    );
   }
 
   private runAiSearch(params: ClarifySearchParams): void {
@@ -212,17 +217,6 @@ export class FeedPage implements OnInit {
             : 'Никого не нашлось. Попробуйте смягчить запрос.',
         );
       });
-  }
-
-  private toQueryParams(search: ClarifySearchParams): Record<string, string | string[] | number> {
-    const out: Record<string, string | string[] | number> = {};
-    if (search.q) out['q'] = search.q;
-    if (search.categories?.length) out['category'] = search.categories;
-    if (search.skills?.length) out['skill'] = search.skills;
-    if (search.city) out['city'] = search.city;
-    if (search.rate_min != null) out['rate_min'] = search.rate_min;
-    if (search.rate_max != null) out['rate_max'] = search.rate_max;
-    return out;
   }
 
   private resolveTitle(categories: string[], q?: string, hasIds = false): void {

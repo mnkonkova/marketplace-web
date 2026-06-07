@@ -9,6 +9,7 @@ import { Category } from '@entities/category/model/category.types';
 import { SpecialistApi } from '@entities/specialist/api/specialist.api';
 import { ClarifyMessage, ClarifySearchParams } from '@entities/specialist/model/specialist.types';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import { withFromPage } from '@shared/nav/from-page';
 import { EMPTY } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 
@@ -74,7 +75,10 @@ export class ClarifyPage implements OnInit {
   public runSearch(): void {
     const p = this.pendingSearch();
     if (!p) return;
-    this.router.navigate(['/search'], { queryParams: this.toQueryParams(p) });
+    this.router.navigate(
+      ['/search'],
+      withFromPage(this.router, { queryParams: this.toQueryParams(p) }),
+    );
   }
 
   private send(text: string): void {

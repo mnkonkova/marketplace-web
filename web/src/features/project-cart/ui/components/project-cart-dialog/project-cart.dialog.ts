@@ -9,6 +9,7 @@ import { formatRate } from '@shared/lib/format';
 import { computeCartTotal } from '../../../lib/cart-total';
 import { ProjectCartStore } from '../../../model/project-cart.store';
 import { LeadSubmitDialogComponent } from '../lead-submit/lead-submit.dialog';
+import { withFromPage } from '@shared/nav/from-page';
 
 @Component({
   selector: 'app-project-cart-dialog',
@@ -76,6 +77,6 @@ export class ProjectCartDialogComponent {
 
   public openProfile(spec: SpecialistLite): void {
     this.cartModal.destroy();
-    void this.router.navigate(['/specialist', spec.user_id]);
+    void this.router.navigate(['/specialist', spec.user_id], withFromPage(this.router));
   }
 }

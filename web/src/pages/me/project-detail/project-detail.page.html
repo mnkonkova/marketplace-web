@@ -44,7 +44,8 @@
         <div class="meta-grid">
           @if (p.specialist_user_id) {
             <a
-              [routerLink]="['/specialist', p.specialist_user_id]"
+              href="/specialist/{{ p.specialist_user_id }}"
+              (click)="goSpecialist(p.specialist_user_id, $event)"
               class="meta-link"
               title="Открыть профиль исполнителя"
             >

@@ -11,6 +11,7 @@ import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { CategoryGridComponent } from '@widgets/category-grid/category-grid.component';
 import { pluralSpecialists } from '@shared/lib/format';
 import { isHomeSectionAnchor, scrollToAnchorWhenReady } from '@shared/lib/scroll-to-anchor';
+import { withFromPage } from '@shared/nav/from-page';
 
 @Component({
   selector: 'app-main-page',
@@ -69,15 +70,18 @@ export class MainPage implements OnInit {
     const q = this.query.trim();
     if (!q) return;
     this.query = '';
-    this.router.navigate(['/clarify'], { queryParams: { q } });
+    this.router.navigate(['/clarify'], withFromPage(this.router, { queryParams: { q } }));
   }
 
   public openCategory(cat: Category): void {
-    this.router.navigate(['/search'], { queryParams: { category: cat.code } });
+    this.router.navigate(
+      ['/search'],
+      withFromPage(this.router, { queryParams: { category: cat.code } }),
+    );
   }
 
   public seeAll(): void {
-    this.router.navigate(['/search']);
+    this.router.navigate(['/search'], withFromPage(this.router));
   }
 
   public openQuick(tag: string): void {

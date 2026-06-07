@@ -30,6 +30,7 @@ import { BoardListViewComponent } from '@widgets/board-list-view/board-list-view
 import { StageMoveSheetComponent } from '@widgets/stage-move-sheet/stage-move-sheet.component';
 
 import { BoardColumn, BoardForPipeline as GenericBoard } from '@entities/project/model/board.types';
+import { withFromPage } from '@shared/nav/from-page';
 
 // Локальный alias — затягиваем конкретный pipeline-тип.
 type BoardForPipeline = GenericBoard<PipelineFull>;
@@ -138,7 +139,7 @@ export class ManagerBoardPage implements OnInit {
   }
 
   public open(p: ProjectManagerView): void {
-    void this.router.navigate(['/manager/projects', p.id]);
+    void this.router.navigate(['/manager/projects', p.id], withFromPage(this.router));
   }
 
   // === Bottom-sheet «Переместить» (тач-режим) ===

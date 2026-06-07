@@ -1,13 +1,14 @@
 <app-header />
+<app-back-link
+  class="feed-back"
+  defaultUrl="/clarify"
+  [excludePrefix]="['/search', '/specialist/']"
+/>
 <div class="feed-page">
   @if (mode() === 'feed') { @for (k of [feedKey()]; track k) {
   <app-feed-view [params]="params()" [title]="title()" (specialistClick)="goProfile($event)" />
   } } @else {
   <main class="results-page">
-    <div class="results-nav">
-      <button type="button" class="back" (click)="backToClarify()">← Уточнить запрос</button>
-    </div>
-
     <header class="results-head">
       <div>
         <div class="eyebrow">Подбор специалистов</div>

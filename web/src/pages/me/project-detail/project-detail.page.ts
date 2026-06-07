@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { interval, Subscription } from 'rxjs';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -29,6 +29,7 @@ import {
 } from '@shared/lib/project-status';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { BackLinkComponent } from '@shared/nav/back-link.component';
+import { withFromPage } from '@shared/nav/from-page';
 
 @Component({
   selector: 'app-project-detail-page',
@@ -44,7 +45,6 @@ import { BackLinkComponent } from '@shared/nav/back-link.component';
     NzInputModule,
     NzIconModule,
     NzRateModule,
-    RouterLink,
     AppHeaderComponent,
     BackLinkComponent,
   ],
@@ -57,7 +57,14 @@ export class ProjectDetailPage implements OnDestroy {
 
   private readonly route = inject(ActivatedRoute);
 
+  private readonly router = inject(Router);
+
   private readonly msg = inject(NzMessageService);
+
+  public goSpecialist(id: string, ev: MouseEvent): void {
+    ev.preventDefault();
+    void this.router.navigate(['/specialist', id], withFromPage(this.router));
+  }
 
   private pollSub?: Subscription;
 

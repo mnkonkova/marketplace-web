@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { map } from 'rxjs/operators';
 
 import { NavHistoryService, labelForUrl } from './nav-history.service';
 
@@ -44,21 +46,38 @@ import { NavHistoryService, labelForUrl } from './nav-history.service';
 })
 export class BackLinkComponent {
   public readonly defaultUrl = input.required<string>();
-  /** URL текущей страницы (или паттерн), который НЕ должен попадать в «back-цель».
-   *  Полезно для деталей: вернуться к самому себе бессмысленно. */
-  public readonly excludePrefix = input<string | null>(null);
+  /** URL-паттерны, которые НЕ должны попадать в «back-цель» — сама страница
+   *  и/или соседи, к которым возврат бессмыслен/зациклен. Принимает строку
+   *  или массив (любой match скрывает запись из истории). */
+  public readonly excludePrefix = input<string | string[] | null>(null);
 
   private readonly history = inject(NavHistoryService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  /** `?from_page=` из URL текущей страницы — самый надёжный источник
+   *  «откуда пришёл»: переживает refresh и открытие в новой вкладке. */
+  private readonly fromPage = toSignal(
+    this.route.queryParamMap.pipe(map((p) => p.get('from_page') || null)),
+    { initialValue: null as string | null },
+  );
 
   public readonly target = computed(() => {
+    // 1. Явный from_page в URL — приоритет (производитель навигации сказал
+    //    куда возвращать).
+    const fromPage = this.fromPage();
+    if (fromPage) {
+      return { url: fromPage, label: labelForUrl(fromPage) ?? 'Назад' };
+    }
+    // 2. История навигации — fallback для случаев, где producer ещё не
+    //    обновлён под from_page.
     const exclude = this.excludePrefix();
+    const prefixes = exclude == null ? [] : Array.isArray(exclude) ? exclude : [exclude];
     const back = this.history.resolveBack(
-      exclude ? (u) => u.startsWith(exclude) : undefined,
+      prefixes.length ? (u) => prefixes.some((p) => u.startsWith(p)) : undefined,
     );
     if (back) return back;
-    // Прямой заход / реферал извне → fallback. Label берём из той же карты
-    // что и для истории, чтобы не плодить хардкоды в шаблонах.
+    // 3. Дефолт — прямой заход / реферал извне.
     return {
       url: null as string | null,
       label: labelForUrl(this.defaultUrl()) ?? 'Назад',
