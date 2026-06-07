@@ -64,15 +64,6 @@ www.{$DOMAIN} {
 # DNS: A-запись n8n.<DOMAIN> → IP VDS. Если поддомен не нужен — закомментируй
 # весь блок (Let's Encrypt всё равно попробует, упрётся в DNS и засрёт логи).
 n8n.{$DOMAIN} {
-	# Двухслойная защита: Basic Auth перед n8n + сам n8n owner-login.
-	# Хэш bcrypt в N8N_BASIC_AUTH_HASH (из .env.prod). Сгенерировать:
-	#   docker exec marketplace-api-web-1 caddy hash-password
-	# Если переменная пустая — Caddy не запустит блок (ошибка),
-	# поэтому держим placeholder с {$N8N_BASIC_AUTH_HASH:-disabled}.
-	# Чтобы временно выключить Basic Auth — закомментируй basic_auth.
-	basic_auth {
-		admin {$N8N_BASIC_AUTH_HASH}
-	}
 	reverse_proxy marketplace-api-n8n-1:5678 {
 		flush_interval -1
 	}
