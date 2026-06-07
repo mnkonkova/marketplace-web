@@ -49,63 +49,101 @@ app-back-link.feed-back {
 }
 
 .results-page {
-  max-width: 1120px;
+  max-width: 1040px;
   width: 100%;
   margin: 0 auto;
-  padding: 24px clamp(16px, 5vw, 64px) 72px;
+  padding: 24px clamp(16px, 5vw, 64px) 96px;
   height: 100%;
   overflow-y: auto;
 }
 
-.results-nav,
-.results-head,
-.spec-card,
-.spec-row {
-  display: flex;
-}
-
-.head-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.results-nav {
-  justify-content: space-between;
-  margin-bottom: 28px;
-}
-
 .results-head {
+  display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
 
-  h1 {
+  h2 {
     margin: 6px 0 0;
-    font-size: clamp(30px, 5vw, 52px);
-    line-height: 0.95;
+    font-size: clamp(28px, 4.4vw, 44px);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
   }
 }
 
 .eyebrow {
   color: var(--accent);
   font-size: 11px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  font-weight: 600;
 }
 
-.results-note {
-  margin-bottom: 12px;
-  padding: 14px 16px;
-  border-radius: $default-radius;
+/* «AI-рекрутер сказал» — hero-блок поверх результатов. Чат-визуал
+   делает страницу не сухим списком, а ответом конкретного агента. */
+.ai-card {
+  position: relative;
+  margin: 0 0 32px;
+  padding: 24px 28px 22px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(32, 161, 148, 0.22) 0%, transparent 55%),
+    var(--surface);
   border: 1px solid rgba(32, 161, 148, 0.28);
-  background: rgba(32, 161, 148, 0.1);
 }
 
-.results-summary {
-  margin: 0 0 24px;
-  color: var(--text-muted);
+.ai-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ai-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--accent), #0e7a70);
+  color: white;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px -8px rgba(32, 161, 148, 0.6);
+}
+
+.ai-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+
+  .ai-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .ai-status {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}
+
+.ai-summary {
+  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.ai-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .results-loading,
@@ -115,99 +153,184 @@ app-back-link.feed-back {
   color: var(--text-muted);
 }
 
-.results-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+/* === AI-picks === */
+
+.picks {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.spec-card,
-.spec-row {
-  border: 1px solid var(--border);
+.pick-card {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 18px;
+  padding: 22px 24px;
+  border-radius: 18px;
   background: var(--surface);
+  border: 1px solid var(--border);
   cursor: pointer;
-  transition:
-    transform 0.15s,
-    border-color 0.15s,
-    background 0.15s;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
 
   &:hover {
-    transform: translateY(-2px);
-    border-color: rgba(32, 161, 148, 0.38);
+    border-color: rgba(32, 161, 148, 0.4);
     background: var(--surface-hover);
+    transform: translateY(-2px);
   }
 }
 
-.spec-card {
-  min-height: 320px;
+.pick-rank {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  color: rgba(238, 246, 248, 0.18);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+
+  &.is-top {
+    color: var(--accent);
+    text-shadow: 0 6px 30px rgba(32, 161, 148, 0.35);
+  }
+
+  .pick-rank-hash {
+    font-size: 0.45em;
+    margin-right: 2px;
+    align-self: flex-start;
+    opacity: 0.7;
+  }
+}
+
+.pick-body {
+  display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 22px;
-  border-radius: $default-radius;
+  gap: 12px;
+  min-width: 0;
 }
 
-.spec-rank {
+.pick-head {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.pick-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: rgba(32, 161, 148, 0.18);
   color: var(--accent);
-  font-size: 12px;
   font-weight: 700;
+  font-size: 22px;
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
-.spec-main {
+.pick-id {
   min-width: 0;
 
-  h2 {
-    margin: 8px 0 8px;
-    font-size: 22px;
-    line-height: 1.05;
+  h3 {
+    margin: 0 0 4px;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--text);
   }
 }
 
-.spec-meta {
+.pick-meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+
+  .pick-cat {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .pick-dot {
+    color: var(--text-dim);
+  }
+
+  .pick-new {
+    color: var(--text-dim);
+  }
+}
+
+.pick-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
+}
+
+.pick-rate {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* Reason — главный «продающий» текст: почему ИИ выбрал именно этого.
+   Делаем его акцентом, а не примечанием. */
+.pick-reason {
+  margin: 4px 0 0;
+  padding: 14px 16px 14px 18px;
+  border-left: 3px solid var(--accent);
+  background: rgba(32, 161, 148, 0.06);
+  border-radius: 0 12px 12px 0;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  font-style: normal;
+  quotes: '«' '»';
+
+  &::before { content: open-quote; opacity: 0.55; margin-right: 2px; }
+  &::after { content: close-quote; opacity: 0.55; margin-left: 2px; }
+}
+
+.pick-bio {
+  margin: 0;
   color: var(--text-muted);
   font-size: 13px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.pick-reason {
-  margin: 18px 0 12px;
-  padding-left: 12px;
-  border-left: 2px solid var(--accent);
-  color: var(--text);
-  line-height: 1.45;
-}
-
-.bio {
-  color: var(--text-muted);
-  line-height: 1.45;
-}
-
-.chips {
+.pick-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: 2px;
 
   span {
-    padding: 4px 8px;
+    padding: 4px 10px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.06);
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
   }
-}
-
-.spec-side {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.rate {
-  color: var(--accent);
-  font-weight: 700;
 }
 
 .project-cart-btn.in-project {
@@ -296,12 +419,56 @@ app-back-link.feed-back {
     min-width: 0;
   }
 
-  .head-actions {
-    flex-direction: column;
-    align-items: stretch;
+  .ai-card {
+    padding: 18px 18px 16px;
+    border-radius: 16px;
+  }
 
-    button {
-      width: 100%;
-    }
+  .ai-summary {
+    font-size: 15px;
+  }
+
+  .ai-actions {
+    button { flex: 1; min-width: 0; }
+  }
+
+  .pick-card {
+    grid-template-columns: 1fr;
+    padding: 18px;
+    gap: 12px;
+  }
+
+  .pick-rank {
+    font-size: 32px;
+    justify-content: flex-start;
+    align-items: baseline;
+    line-height: 1;
+  }
+
+  .pick-head {
+    grid-template-columns: 48px 1fr;
+    gap: 12px;
+  }
+
+  .pick-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 18px;
+  }
+
+  .pick-id h3 {
+    font-size: 18px;
+  }
+
+  .pick-side {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .pick-reason {
+    font-size: 14px;
+    padding: 12px 14px 12px 14px;
   }
 }

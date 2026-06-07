@@ -120,6 +120,14 @@ export class FeedPage implements OnInit {
     return this.categoryTitles.get(code) ?? code;
   }
 
+  /** Слово «специалист*» в винительном для «подобрал N {word}». */
+  public picksWord(n: number): string {
+    const m10 = n % 10;
+    const m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'специалиста';
+    return 'специалистов';
+  }
+
   public inCart(id: string): boolean {
     return this.cart.has(id);
   }

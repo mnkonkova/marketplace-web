@@ -14,59 +14,100 @@
         <div class="eyebrow">Подбор специалистов</div>
         <h2>{{ title() }}</h2>
       </div>
-      @if (mode() === 'ai' && picks().length) {
-      <div class="head-actions">
-        <button nz-button nzType="primary" type="button" (click)="viewWorks()">
-          Смотреть работы
-        </button>
-        @if (targetCategoryCode(); as code) {
-          <button nz-button nzType="default" type="button" (click)="showAllInCategory(code)">
-            Смотреть всех в категории «{{ categoryTitle(code) }}»
-          </button>
-        } @else {
-          <button nz-button nzType="default" type="button" (click)="showAllMatches()">
-            Посмотреть все совпадения
-          </button>
-        }
-      </div>
-      }
     </header>
-    @if (summary()) {
-    <p class="results-summary">{{ summary() }}</p>
-    } @if (mode() === 'ai') {
-    <div class="results-grid">
-      @for (pick of picks(); track pick.user_id) { @let spec = pick.profile;
-      <article class="spec-card pick" (click)="goProfile(spec)" tabindex="0">
-        <div class="spec-main">
-          <div class="spec-rank">#{{ pick.rank || $index + 1 }}</div>
-          <h2>{{ spec.display_name }}</h2>
-          <div class="spec-meta">
-            {{ spec.city || 'удалённо' }} · @if (spec.reviews_count) {
-            <app-rate-stars [rating]="spec.rating_avg!" [reviewsCount]="spec.reviews_count" />
-            } @else { новый специалист }
+
+    @if (mode() === 'ai' && (summary() || picks().length)) {
+      <section class="ai-card">
+        <div class="ai-card-head">
+          <div class="ai-avatar" aria-hidden="true">
+            <span nz-icon nzType="thunderbolt" nzTheme="fill"></span>
           </div>
-          <p class="pick-reason">{{ pick.reason }}</p>
-          @if (spec.bio) {
-          <p class="bio">{{ spec.bio }}</p>
-          }
-          <div class="chips">
-            @for (cat of (spec.categories ?? []).slice(0, 3); track cat) {
-            <span>{{ categoryTitle(cat) }}</span>
-            }
+          <div class="ai-meta">
+            <div class="ai-name">AI-рекрутер</div>
+            <div class="ai-status">подобрал {{ picks().length }} {{ picksWord(picks().length) }}</div>
           </div>
         </div>
-        <div class="spec-side">
-          <div class="rate">{{ formatRate(spec.rate_min, spec.rate_max, spec.currency) }}</div>
-          <button
-            nz-button
-            nzType="primary"
-            type="button"
-            class="project-cart-btn"
-            [class.in-project]="inCart(spec.user_id)"
-            (click)="toggleCart(spec, $event)"
-          >
-            {{ inCart(spec.user_id) ? 'В проекте' : 'В проект' }}
-          </button>
+        @if (summary()) {
+          <p class="ai-summary">{{ summary() }}</p>
+        }
+        @if (picks().length) {
+          <div class="ai-actions">
+            <button nz-button nzType="primary" type="button" (click)="viewWorks()">
+              Смотреть работы
+            </button>
+            @if (targetCategoryCode(); as code) {
+              <button nz-button nzType="default" type="button" (click)="showAllInCategory(code)">
+                Все в категории «{{ categoryTitle(code) }}»
+              </button>
+            } @else {
+              <button nz-button nzType="default" type="button" (click)="showAllMatches()">
+                Все совпадения
+              </button>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    @if (mode() === 'ai') {
+    <div class="picks">
+      @for (pick of picks(); track pick.user_id; let i = $index) { @let spec = pick.profile;
+      <article class="pick-card" (click)="goProfile(spec)" tabindex="0">
+        <div class="pick-rank" [class.is-top]="i === 0">
+          <span class="pick-rank-hash">#</span>{{ pick.rank || i + 1 }}
+        </div>
+        <div class="pick-body">
+          <div class="pick-head">
+            <div class="pick-avatar">
+              @if (spec.avatar_url) {
+                <img [src]="spec.avatar_url" [alt]="spec.display_name" />
+              } @else {
+                <span>{{ spec.display_name.slice(0, 1) }}</span>
+              }
+            </div>
+            <div class="pick-id">
+              <h3>{{ spec.display_name }}</h3>
+              <div class="pick-meta">
+                @if (spec.primary_category) {
+                  <span class="pick-cat">{{ categoryTitle(spec.primary_category) }}</span>
+                  <span class="pick-dot" aria-hidden="true">·</span>
+                }
+                <span>{{ spec.city || 'удалённо' }}</span>
+                <span class="pick-dot" aria-hidden="true">·</span>
+                @if (spec.reviews_count) {
+                  <app-rate-stars [rating]="spec.rating_avg!" [reviewsCount]="spec.reviews_count" />
+                } @else {
+                  <span class="pick-new">новый</span>
+                }
+              </div>
+            </div>
+            <div class="pick-side">
+              <div class="pick-rate">{{ formatRate(spec.rate_min, spec.rate_max, spec.currency) }}</div>
+              <button
+                nz-button
+                nzType="primary"
+                type="button"
+                class="project-cart-btn"
+                [class.in-project]="inCart(spec.user_id)"
+                (click)="toggleCart(spec, $event)"
+              >
+                {{ inCart(spec.user_id) ? 'В проекте' : 'В проект' }}
+              </button>
+            </div>
+          </div>
+
+          <blockquote class="pick-reason">{{ pick.reason }}</blockquote>
+
+          @if (spec.bio) {
+            <p class="pick-bio">{{ spec.bio }}</p>
+          }
+          @if ((spec.categories ?? []).length > 1) {
+            <div class="pick-chips">
+              @for (cat of (spec.categories ?? []).slice(0, 4); track cat) {
+                <span>{{ categoryTitle(cat) }}</span>
+              }
+            </div>
+          }
         </div>
       </article>
       }
