@@ -61,15 +61,6 @@
   text-transform: uppercase;
 }
 
-.brand-beta {
-  margin-left: 2px;
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
 .nav {
   display: flex;
   gap: 24px;
@@ -233,7 +224,6 @@
     }
   }
 
-  .brand-beta,
   .nav {
     display: none;
   }
