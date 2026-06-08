@@ -172,16 +172,23 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     this.muted.set(next);
     localStorage.setItem('marketpclce.feed_muted.v1', next ? 'on' : 'off');
     // user gesture от tap по кнопке — безопасный момент изменить muted
-    // даже на iOS Safari (предыдущая позиция: muted ставился ТОЛЬКО в
-    // ensureVideo как true, и здесь меняется только по тапу — autoplay
-    // уже отработал, ограничения сняты).
+    // даже на iOS Safari (autoplay-ограничения сняты).
+    //
+    // muted-флаг ставим ВСЕМ видео в фиде — когда юзер скроллит на
+    // следующую карточку, она должна сразу быть в нужном состоянии.
     document.querySelectorAll<HTMLVideoElement>('.feed-video').forEach((v) => {
       v.muted = next;
-      if (!next && v.paused) {
-        // Если был muted и автостопнут (что редко) — поднимем заново.
-        v.play().catch(() => {});
-      }
     });
+    // А вот play()'ить — ТОЛЬКО активную карточку. Иначе после unmute
+    // все приостановленные preview/full стартуют со звуком одновременно
+    // и получается каша.
+    if (!next && this.activeArticle) {
+      this.activeArticle
+        .querySelectorAll<HTMLVideoElement>('video')
+        .forEach((v) => {
+          if (v.paused) v.play().catch(() => {});
+        });
+    }
   }
 
   private resetFeed(): void {
