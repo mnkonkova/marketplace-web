@@ -8,11 +8,13 @@
           [src]="previewSrc(item.video)"
           [poster]="item.video.thumb || null"
           autoplay
-          [muted]="true"
+          muted
           loop
           playsinline
-          preload="metadata"
+          webkit-playsinline
+          preload="auto"
           (canplay)="forcePlay($event)"
+          (loadeddata)="forcePlay($event)"
         ></video>
       }
     </div>
@@ -71,11 +73,13 @@
               [src]="previewSrc(item.video)"
               [poster]="item.video.thumb || null"
               autoplay
-              [muted]="true"
+              muted
               loop
               playsinline
-              preload="metadata"
+              webkit-playsinline
+              preload="auto"
               (canplay)="forcePlay($event)"
+              (loadeddata)="forcePlay($event)"
             ></video>
             <div class="work-overlay">
               <div class="work-name">{{ item.specialist.display_name }}</div>
