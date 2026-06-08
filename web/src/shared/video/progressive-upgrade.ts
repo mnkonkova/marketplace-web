@@ -17,6 +17,24 @@ export interface ProgressiveUpgradeOptions {
   upgradeService: ProgressiveUpgradeService;
   /** Триггер (см. UpgradeTrigger). По дефолту 'onPlay-2s'. */
   trigger?: UpgradeTrigger;
+  /**
+   * Что делать с preview-элементом после успешного swap'a:
+   * - 'replace' (default): полностью удаляем preview из DOM, full
+   *   занимает его место с тем же className/data-атрибутами. Так
+   *   все querySelector'ы родителя видят ОДНО видео — full. Подходит
+   *   для случаев когда preview создан через document.createElement
+   *   (как в widgets/feed-view).
+   * - 'hide': оставляем preview в DOM (display:none, src снят),
+   *   full добавлен как абсолютный sibling. Используется в Angular-
+   *   директиве [appProgressiveVideo], где host-элемент управляется
+   *   Angular'ом и удалять его руками нельзя.
+   *
+   * Баг которое лечит 'replace': без него pause/play/mute-логика
+   * через querySelector('video') в фид-вью находит preview (первый
+   * в DOM), full остаётся живым и продолжает играть со звуком при
+   * скролле ленты.
+   */
+  cleanupStrategy?: 'replace' | 'hide';
   /** Callback после успешного swap'a (для аналитики). */
   onUpgraded?: () => void;
 }
@@ -54,7 +72,14 @@ export interface ProgressiveUpgradeController {
 export function enableProgressiveUpgrade(
   opts: ProgressiveUpgradeOptions,
 ): ProgressiveUpgradeController {
-  const { preview, fullSrc, upgradeService, trigger = 'onPlay-2s', onUpgraded } = opts;
+  const {
+    preview,
+    fullSrc,
+    upgradeService,
+    trigger = 'onPlay-2s',
+    cleanupStrategy = 'replace',
+    onUpgraded,
+  } = opts;
 
   let fullEl: HTMLVideoElement | null = null;
   let upgraded = false;
@@ -191,15 +216,8 @@ export function enableProgressiveUpgrade(
         if (!fullEl) return;
         fullEl.style.opacity = '1';
         setTimeout(() => {
-          if (!preview.isConnected) return;
-          try {
-            preview.pause();
-            preview.removeAttribute('src');
-            preview.load();
-            preview.style.display = 'none';
-          } catch {
-            /* swallow */
-          }
+          if (!fullEl) return;
+          finalizeSwap();
         }, 320);
         upgraded = true;
         onUpgraded?.();
@@ -211,6 +229,58 @@ export function enableProgressiveUpgrade(
         }
       })
       .catch(() => cleanup());
+  };
+
+  /**
+   * Финальный шаг swap'a: либо подменяем preview на full в DOM (replace),
+   * либо просто скрываем preview (hide). В replace-режиме full получает
+   * className/data-атрибуты preview'a и становится единственным video-
+   * элементом в родителе. Это критично для родительских селекторов вида
+   * querySelector('video') — иначе они находят preview (первого), full
+   * остаётся неуправляемым (играет звук при скролле и т.п.).
+   */
+  const finalizeSwap = (): void => {
+    if (!fullEl) return;
+    const parent = preview.parentElement;
+
+    if (cleanupStrategy === 'replace' && parent) {
+      // Копируем className и data-* атрибуты preview'a на full, чтобы
+      // селекторы родителя (.feed-video, [data-index] и т.п.) продолжали
+      // находить видео после замены.
+      fullEl.className = preview.className;
+      for (const attr of Array.from(preview.attributes)) {
+        if (attr.name.startsWith('data-') && !fullEl.hasAttribute(attr.name)) {
+          fullEl.setAttribute(attr.name, attr.value);
+        }
+      }
+      // Снимаем абсолютное позиционирование — full теперь занимает место
+      // preview'a в нормальном потоке (или согласно собственным CSS-классам).
+      fullEl.style.position = '';
+      fullEl.style.top = '';
+      fullEl.style.left = '';
+      fullEl.style.width = '';
+      fullEl.style.height = '';
+      fullEl.style.opacity = '';
+      fullEl.style.pointerEvents = '';
+      try {
+        parent.replaceChild(fullEl, preview);
+      } catch {
+        // Если preview уже удалён — full остаётся как абсолютный sibling.
+      }
+      return;
+    }
+
+    // 'hide' — preview остаётся в DOM (как host директивы), просто
+    // выключаем его и оставляем full абсолютным sibling'ом.
+    if (!preview.isConnected) return;
+    try {
+      preview.pause();
+      preview.removeAttribute('src');
+      preview.load();
+      preview.style.display = 'none';
+    } catch {
+      /* swallow */
+    }
   };
 
   // Setup trigger

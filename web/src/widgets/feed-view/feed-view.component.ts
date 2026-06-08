@@ -276,8 +276,11 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
 
   private activate(article: HTMLElement): void {
     if (this.activeArticle && this.activeArticle !== article) {
-      const v = this.activeArticle.querySelector('video');
-      v?.pause();
+      // querySelectorAll, не querySelector — после progressive-upgrade
+      // в article может быть несколько <video> в переходном моменте
+      // (preview перед удалением + full только что замененный).
+      // Пауза всех — единственно надёжно, иначе звук «каши» при скролле.
+      this.activeArticle.querySelectorAll('video').forEach((v) => v.pause());
     }
     this.activeArticle = article;
     const video = this.ensureVideo(article);
