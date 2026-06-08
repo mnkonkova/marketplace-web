@@ -30,18 +30,49 @@ import { NavHistoryService, labelForUrl } from './nav-history.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="back-link" [href]="target().url || defaultUrl()" (click)="go($event)">
-      ← {{ target().label }}
+      <span class="back-link__arrow" aria-hidden="true">←</span>
+      <span class="back-link__label">{{ target().label }}</span>
     </a>
   `,
   styles: [`
     .back-link {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      margin: 4px 0;
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      border-radius: 999px;
+      background: var(--surface, #fff);
       color: var(--text-muted);
       text-decoration: none;
-      font-size: 13px;
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1;
       cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
     }
-    .back-link:hover { color: var(--accent); }
+    .back-link__arrow {
+      display: inline-flex;
+      font-size: 18px;
+      line-height: 1;
+      transition: transform 0.15s ease;
+    }
+    .back-link:hover {
+      color: var(--text);
+      border-color: var(--accent);
+      background: var(--surface-hover, rgba(0, 0, 0, 0.03));
+    }
+    .back-link:hover .back-link__arrow {
+      transform: translateX(-3px);
+    }
+    .back-link:active {
+      transform: translateY(1px);
+    }
+    .back-link:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
   `],
 })
 export class BackLinkComponent {
