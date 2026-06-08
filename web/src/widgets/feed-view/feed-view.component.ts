@@ -171,8 +171,16 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     const next = !this.muted();
     this.muted.set(next);
     localStorage.setItem('marketpclce.feed_muted.v1', next ? 'on' : 'off');
+    // user gesture от tap по кнопке — безопасный момент изменить muted
+    // даже на iOS Safari (предыдущая позиция: muted ставился ТОЛЬКО в
+    // ensureVideo как true, и здесь меняется только по тапу — autoplay
+    // уже отработал, ограничения сняты).
     document.querySelectorAll<HTMLVideoElement>('.feed-video').forEach((v) => {
       v.muted = next;
+      if (!next && v.paused) {
+        // Если был muted и автостопнут (что редко) — поднимем заново.
+        v.play().catch(() => {});
+      }
     });
   }
 
@@ -302,7 +310,16 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     video.playsInline = true;
     video.loop = true;
     video.preload = 'auto';
-    video.muted = this.muted();
+    // iOS Safari: autoplay работает ТОЛЬКО для muted-видео + только если
+    // muted установлен ДО play() и без посторонних активаций. Стартуем
+    // всегда muted=true (HTML-attribute через setAttribute — Safari иногда
+    // игнорит .muted property без attribute), независимо от localStorage.
+    // После toggleMute() (user gesture от кнопки) можно безопасно unmute —
+    // это уже доверенный контекст. Иначе на iPhone видео висит на постере
+    // пока не тапнут.
+    video.muted = true;
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
 
     // Спиннер на время сетевой подгрузки. Снимаем на loadeddata (или error).
     article.classList.add('is-video-loading');
@@ -367,8 +384,12 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
 
   private playVideo(article: HTMLElement, video: HTMLVideoElement): void {
     const start = (): void => {
-      video.muted = this.muted();
+      // НЕ применяем user-mute preference при автоматическом старте — iOS
+      // Safari отклонит play() если muted=false без user gesture. Текущий
+      // mute state синхронизируется в toggleMute() (там user gesture есть).
       video.play().catch(() => {
+        // Подстраховка: если по какой-то причине muted сбился — вернуть и
+        // повторить (не должно случаться при правильной инициализации).
         if (!video.muted) {
           video.muted = true;
           video.play().catch(() => {});
