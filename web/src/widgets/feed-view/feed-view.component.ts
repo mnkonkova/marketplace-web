@@ -317,11 +317,15 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     // После toggleMute() (user gesture от кнопки) можно безопасно unmute —
     // это уже доверенный контекст. Иначе на iPhone видео висит на постере
     // пока не тапнут.
-    video.muted = true;
-    video.setAttribute('muted', '');
+    video.muted = this.muted();
+    if (this.muted()) {
+      // HTML-атрибут muted нужен iOS Safari для autoplay-policy
+      // (property недостаточно). Ставим только если префер юзера = muted —
+      // иначе autoplay тоже не сработает на iOS, и нас выручит catch
+      // в playVideo (он пробует muted=true фолбэком).
+      video.setAttribute('muted', '');
+    }
     video.setAttribute('playsinline', '');
-    video.setAttribute('webkit-playsinline', '');  // legacy iOS Safari
-    video.setAttribute('autoplay', '');             // подсказка браузеру
 
     // Спиннер на время сетевой подгрузки. Снимаем на loadeddata (или error).
     article.classList.add('is-video-loading');
@@ -331,21 +335,9 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
       article.querySelector('.feed-poster')?.classList.add('is-hidden');
       if (this.activeArticle === article) this.playVideo(article, video);
     };
-    const onFail = (e: Event): void => {
+    const onFail = (): void => {
       article.classList.remove('is-video-loading');
       article.querySelector('.feed-poster')?.classList.remove('is-hidden');
-      const v = e.target as HTMLVideoElement;
-      // Диагностика для iOS Safari — без Remote Debug на Mac консоль
-      // не видна, поэтому шлём через navigator.sendBeacon если позже
-      // подключим. Пока — console + alert в URL ?debug=video.
-      const err = v.error;
-      console.warn('[feed-video] error', {
-        src: v.currentSrc,
-        code: err?.code,
-        message: err?.message,
-        networkState: v.networkState,
-        readyState: v.readyState,
-      });
     };
 
     // Listeners ВСЕГДА вешаем ДО присвоения src — иначе для закешированных
@@ -354,21 +346,6 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     video.addEventListener('loadedmetadata', () => this.applyVideoOrientation(article, video));
     video.addEventListener('loadeddata', onReady);
     video.addEventListener('error', onFail);
-    // iOS Safari иногда не выдаёт 'error', а молча уходит в stalled.
-    // Подстрахуемся: если за 10 сек ни loadeddata, ни error — снимаем
-    // спиннер и логгируем диагностику.
-    const stallTimer = window.setTimeout(() => {
-      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-        console.warn('[feed-video] stalled 10s', {
-          src: video.currentSrc,
-          networkState: video.networkState,
-          readyState: video.readyState,
-        });
-        article.classList.remove('is-video-loading');
-      }
-    }, 10000);
-    video.addEventListener('loadeddata', () => clearTimeout(stallTimer), { once: true });
-    video.addEventListener('error', () => clearTimeout(stallTimer), { once: true });
 
     if (item.video.thumb) video.poster = item.video.thumb;
     // preview_url — облегчённое 480p ~500KB видео для autoplay в карточке;
@@ -413,12 +390,10 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
 
   private playVideo(article: HTMLElement, video: HTMLVideoElement): void {
     const start = (): void => {
-      // НЕ применяем user-mute preference при автоматическом старте — iOS
-      // Safari отклонит play() если muted=false без user gesture. Текущий
-      // mute state синхронизируется в toggleMute() (там user gesture есть).
+      video.muted = this.muted();
       video.play().catch(() => {
-        // Подстраховка: если по какой-то причине muted сбился — вернуть и
-        // повторить (не должно случаться при правильной инициализации).
+        // iOS Safari: если muted=false и autoplay-policy блочит — фолбэк
+        // на muted=true (молчаливо). Юзер потом тапнет unmute сам.
         if (!video.muted) {
           video.muted = true;
           video.play().catch(() => {});
