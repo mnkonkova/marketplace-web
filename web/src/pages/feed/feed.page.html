@@ -183,6 +183,27 @@
       } }
     </div>
     }
+
+    @if (!loading() && isEmpty()) {
+      <section class="empty-state">
+        <div class="empty-state__icon" aria-hidden="true">
+          <span nz-icon nzType="search" nzTheme="outline"></span>
+        </div>
+        <h3 class="empty-state__title">Ничего не нашлось</h3>
+        <p class="empty-state__hint">
+          По текущим фильтрам никого не подобрали. Попробуйте смягчить запрос,
+          убрать категорию или посмотреть всех специалистов в каталоге.
+        </p>
+        <div class="empty-state__actions">
+          <button nz-button nzType="primary" type="button" (click)="showAllSpecialists()">
+            Смотреть всех специалистов
+          </button>
+          <button nz-button nzType="default" type="button" (click)="backToClarify()">
+            Уточнить задачу
+          </button>
+        </div>
+      </section>
+    }
   </main>
   }
 </div>

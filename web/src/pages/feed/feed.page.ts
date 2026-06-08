@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
@@ -139,6 +139,29 @@ export class FeedPage implements OnInit {
 
   public showAllMatches(): void {
     this.runListSearch(this.currentSearch, 'Все совпадения по запросу');
+  }
+
+  /**
+   * Empty state срабатывает когда finished loading и ни в одном из
+   * режимов нет результатов. Для AI: ни summary, ни picks; для list:
+   * ни основного списка, ни похожих. mode='feed' — пустой fallback
+   * показывает сам app-feed-view, поэтому исключаем.
+   */
+  public readonly isEmpty = computed(() => {
+    const m = this.mode();
+    if (m === 'feed') return false;
+    if (m === 'ai') {
+      return !this.summary() && this.picks().length === 0;
+    }
+    return this.list().length === 0 && this.similar().length === 0;
+  });
+
+  public showAllSpecialists(): void {
+    this.router.navigate(['/search'], withFromPage(this.router));
+  }
+
+  public backToClarify(): void {
+    this.router.navigate(['/clarify'], withFromPage(this.router));
   }
 
   /** Категория для кнопки «Смотреть всех в категории «X»». Берём из
