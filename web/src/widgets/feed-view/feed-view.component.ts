@@ -320,6 +320,8 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     video.muted = true;
     video.setAttribute('muted', '');
     video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');  // legacy iOS Safari
+    video.setAttribute('autoplay', '');             // подсказка браузеру
 
     // Спиннер на время сетевой подгрузки. Снимаем на loadeddata (или error).
     article.classList.add('is-video-loading');
@@ -329,9 +331,21 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
       article.querySelector('.feed-poster')?.classList.add('is-hidden');
       if (this.activeArticle === article) this.playVideo(article, video);
     };
-    const onFail = (): void => {
+    const onFail = (e: Event): void => {
       article.classList.remove('is-video-loading');
       article.querySelector('.feed-poster')?.classList.remove('is-hidden');
+      const v = e.target as HTMLVideoElement;
+      // Диагностика для iOS Safari — без Remote Debug на Mac консоль
+      // не видна, поэтому шлём через navigator.sendBeacon если позже
+      // подключим. Пока — console + alert в URL ?debug=video.
+      const err = v.error;
+      console.warn('[feed-video] error', {
+        src: v.currentSrc,
+        code: err?.code,
+        message: err?.message,
+        networkState: v.networkState,
+        readyState: v.readyState,
+      });
     };
 
     // Listeners ВСЕГДА вешаем ДО присвоения src — иначе для закешированных
@@ -340,6 +354,21 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     video.addEventListener('loadedmetadata', () => this.applyVideoOrientation(article, video));
     video.addEventListener('loadeddata', onReady);
     video.addEventListener('error', onFail);
+    // iOS Safari иногда не выдаёт 'error', а молча уходит в stalled.
+    // Подстрахуемся: если за 10 сек ни loadeddata, ни error — снимаем
+    // спиннер и логгируем диагностику.
+    const stallTimer = window.setTimeout(() => {
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        console.warn('[feed-video] stalled 10s', {
+          src: video.currentSrc,
+          networkState: video.networkState,
+          readyState: video.readyState,
+        });
+        article.classList.remove('is-video-loading');
+      }
+    }, 10000);
+    video.addEventListener('loadeddata', () => clearTimeout(stallTimer), { once: true });
+    video.addEventListener('error', () => clearTimeout(stallTimer), { once: true });
 
     if (item.video.thumb) video.poster = item.video.thumb;
     // preview_url — облегчённое 480p ~500KB видео для autoplay в карточке;
