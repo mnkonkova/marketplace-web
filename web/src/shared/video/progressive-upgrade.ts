@@ -154,6 +154,15 @@ export function enableProgressiveUpgrade(
     full.playsInline = preview.playsInline;
     full.loop = preview.loop;
     full.preload = 'auto';
+    // Копируем className СРАЗУ (а не только при finalizeSwap) — иначе
+    // родительские глобальные селекторы вроде
+    // document.querySelectorAll('.feed-video') пропускают full на время
+    // между append и replaceChild. Конкретно: toggleMute() в feed-view
+    // ищет .feed-video — без раннего копирования mute не доходит до
+    // full и звук остаётся включённым у вновь созданного оригинала.
+    if (cleanupStrategy === 'replace') {
+      full.className = preview.className;
+    }
     full.style.position = 'absolute';
     full.style.top = '0';
     full.style.left = '0';
@@ -291,14 +300,30 @@ export function enableProgressiveUpgrade(
         return;
 
       case 'onPlay-2s': {
-        const onLoaded = (): void => {
+        // Слушаем РЕАЛЬНЫЙ `play` event preview'a, не loadeddata.
+        // preload="auto" грузит данные у всех карточек фида, и если бы
+        // мы триггерили по loadeddata — full.play() в performSwap
+        // запускал бы звук на невидимых карточках тоже. С `play`
+        // upgrade срабатывает только когда юзер реально смотрит карточку
+        // (feed-view сам зовёт .play() для активной article'и).
+        //
+        // Таймер сбрасывается на `pause`, чтобы быстрый скролл-пик
+        // (preview играл <2 сек) не триггерил загрузку 30МБ full зря.
+        const onPlay = (): void => {
+          if (upgradeTimer) clearTimeout(upgradeTimer);
           upgradeTimer = setTimeout(() => void startUpgrade(), 2000);
         };
-        if (preview.readyState >= 2) {
-          onLoaded();
-        } else {
-          addListener(preview, 'loadeddata', () => onLoaded(), { once: true });
-        }
+        const onPause = (): void => {
+          if (upgradeTimer) {
+            clearTimeout(upgradeTimer);
+            upgradeTimer = null;
+          }
+        };
+        addListener(preview, 'play', () => onPlay());
+        addListener(preview, 'pause', () => onPause());
+        // Если preview уже играет к моменту вызова (редко, но бывает
+        // при autoplay + memory-cached source) — запускаем отсчёт сразу.
+        if (!preview.paused) onPlay();
         return;
       }
 
