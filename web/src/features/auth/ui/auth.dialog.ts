@@ -66,7 +66,11 @@ export class AuthDialogComponent {
   public readonly registerForm = this.fb.group({
     display_name: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
+    // minLength умышленно не ставим — backend знает актуальный минимум
+    // (auth/service.go:127) и возвращает понятное `message` через
+    // apiErrorMessage. Дублировать правило тут = риск рассинхрона:
+    // backend бампнули до 10, фронт пускает 9 → юзер тыкается в 400.
+    password: ['', Validators.required],
     kind: ['', Validators.required],
   });
 

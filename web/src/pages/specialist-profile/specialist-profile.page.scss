@@ -8,7 +8,14 @@
 .profile-main {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 24px 64px;
+  padding: 24px 24px 64px;
+
+  // Back-link pill: дышит от хедера сверху и отделяется
+  // воздухом от анкеты снизу.
+  app-back-link {
+    display: inline-block;
+    margin-bottom: 32px;
+  }
 }
 
 .back {
