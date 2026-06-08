@@ -18,6 +18,11 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { FeedApi } from '@entities/feed/api/feed.api';
 import { FeedItem, FeedParams, FeedResponse } from '@entities/feed/model/feed.types';
 import { feedVideoPreviewSrc } from '@entities/feed/lib/preview';
+import {
+  ProgressiveUpgradeController,
+  enableProgressiveUpgrade,
+} from '@shared/video/progressive-upgrade';
+import { ProgressiveUpgradeService } from '@shared/video/progressive-upgrade.service';
 import { CategoryApi } from '@entities/category/api/category.api';
 import { formatDuration, formatRate } from '@shared/lib/format';
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
@@ -46,7 +51,15 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
 
   private readonly cart = inject(ProjectCartStore);
 
+  private readonly upgradeService = inject(ProgressiveUpgradeService);
+
   public readonly cartSpecialists = this.cart.specialists;
+
+  /**
+   * Активные progressive-upgrade controllers — по одному на каждую
+   * карточку с видео. Чистим при resetFeed/destroy чтобы не утекало.
+   */
+  private readonly videoUpgrades = new Map<HTMLElement, ProgressiveUpgradeController>();
 
   private readonly injector = inject(Injector);
 
@@ -96,6 +109,7 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     this.observer?.disconnect();
     this.paginationObserver?.disconnect();
     this.pauseAll();
+    this.disposeAllUpgrades();
   }
 
   /** Высота sticky app-header — чтобы лента не уезжала под viewport. */
@@ -171,6 +185,24 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     this.activeArticle = null;
     this.paginationTriggeredAt = -1;
     this.detachPaginationSentinel();
+    this.disposeAllUpgrades();
+  }
+
+  /**
+   * Дёргает dispose() на всех progressive-upgrade controllers — отменяет
+   * запланированные/идущие загрузки full-варианта, освобождает rate-slot'ы
+   * глобального ProgressiveUpgradeService. Вызывается при reset feed'a
+   * и при ngOnDestroy.
+   */
+  private disposeAllUpgrades(): void {
+    for (const ctrl of this.videoUpgrades.values()) {
+      try {
+        ctrl.dispose();
+      } catch {
+        /* swallow */
+      }
+    }
+    this.videoUpgrades.clear();
   }
 
   public loadNext(): void {
@@ -296,7 +328,8 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     // preview_url — облегчённое 480p ~500KB видео для autoplay в карточке;
     // фолбэк на оригинал когда транскод ещё не отработал. См.
     // entities/feed/lib/preview.ts (backend docs/VIDEO_TRANSCODING.md).
-    video.src = feedVideoPreviewSrc(item.video);
+    const previewUrl = feedVideoPreviewSrc(item.video);
+    video.src = previewUrl;
 
     // Подстраховка: если src уже отдал данные синхронно (memory-cache),
     // readyState ≥ 2 ещё ДО первого тика event loop — снимем спиннер сразу.
@@ -306,6 +339,22 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
 
     const media = article.querySelector('.feed-media');
     if (media) media.appendChild(video);
+
+    // Прогрессивное улучшение: если есть отдельный preview_url И отдельный
+    // оригинал — через 2 сек после loadeddata подтягиваем оригинал в
+    // фоне и бесшовно подменяем (cross-fade). Подробности — в
+    // docs/PROGRESSIVE_VIDEO_PLAYBACK.md. Если preview_url == video.url
+    // (транскод ещё не отработал) — апгрейдить нечего, скипаем.
+    if (item.video.preview_url && item.video.url && item.video.preview_url !== item.video.url) {
+      const ctrl = enableProgressiveUpgrade({
+        preview: video,
+        fullSrc: item.video.url,
+        upgradeService: this.upgradeService,
+        trigger: 'onPlay-2s',
+      });
+      this.videoUpgrades.set(article, ctrl);
+    }
+
     return video;
   }
 

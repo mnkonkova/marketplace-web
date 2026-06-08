@@ -9,6 +9,7 @@ import { Category } from '@entities/category/model/category.types';
 import { FeedApi } from '@entities/feed/api/feed.api';
 import { FeedItem } from '@entities/feed/model/feed.types';
 import { feedVideoPreviewSrc } from '@entities/feed/lib/preview';
+import { ProgressiveVideoDirective } from '@shared/video/progressive-video.directive';
 import { groupCategoriesByType, HERO_QUICK_TAGS } from '@shared/lib/category-groups';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { CategoryGridComponent } from '@widgets/category-grid/category-grid.component';
@@ -28,6 +29,7 @@ import { withFromPage } from '@shared/nav/from-page';
     AppHeaderComponent,
     CategoryGridComponent,
     SupportFooterComponent,
+    ProgressiveVideoDirective,
   ],
   templateUrl: './main.page.html',
   styleUrl: './main.page.scss',
