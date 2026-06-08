@@ -130,10 +130,17 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.28);
   pointer-events: none;
+  /* Появляется не мгновенно — задержка 400мс. Это убирает «вспышку
+     спиннера» на быстрых сетях/cache (видео успевает loadeddata
+     раньше), и одновременно даёт быстрый visible feedback на медленных. */
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  transition-delay: 0.4s;
 }
 
 .feed-item.is-video-loading .feed-video-loading {
   display: flex;
+  opacity: 1;
 }
 
 .feed-spinner {
@@ -150,20 +157,10 @@
   to { transform: rotate(360deg); }
 }
 
-/* Вертикальное — на весь экран, cover (Reels / Shorts) */
-.feed-item.is-portrait {
-  .feed-poster,
-  .feed-video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-  }
-}
-
-/* Горизонтальное — по центру, contain + letterbox */
+/* На десктопе и для портретного, и для ландшафтного — contain, чтобы
+   видео было видно ПОЛНОСТЬЮ. cover уместен только в мобильном Reels-UI,
+   где экран сам узкий 9:16 и обрезки сильно не страдают. */
+.feed-item.is-portrait,
 .feed-item.is-landscape {
   .feed-poster,
   .feed-video {
@@ -173,6 +170,17 @@
     height: 100%;
     object-fit: contain;
     object-position: center;
+  }
+}
+
+/* Mobile / touch — вертикальные видео cover'ом (Reels / Shorts).
+   Перекрывает универсальное contain выше. */
+@media (max-width: 720px) {
+  .feed-item.is-portrait {
+    .feed-poster,
+    .feed-video {
+      object-fit: cover;
+    }
   }
 }
 
