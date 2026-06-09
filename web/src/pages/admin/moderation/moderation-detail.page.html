@@ -1,0 +1,147 @@
+<app-admin-layout>
+  <div class="moderation-detail">
+    @if (loading()) {
+      <nz-spin nzSize="large"></nz-spin>
+    } @else if (profile()) {
+      @let p = profile()!;
+
+      <header class="head">
+        <a routerLink="/admin/moderation" class="back">
+          <span nz-icon nzType="arrow-left"></span> К очереди
+        </a>
+      </header>
+
+      <section class="card">
+        <div class="hero">
+          <nz-avatar
+            [nzSrc]="p.avatar_url || null"
+            [nzText]="(p.display_name || '?').slice(0, 1)"
+            nzSize="large"
+          ></nz-avatar>
+          <div class="hero-text">
+            <h1>{{ p.display_name || '(без имени)' }}</h1>
+            <div class="meta">
+              @if (primaryCategoryTitle()) {
+                <nz-tag nzColor="blue">{{ primaryCategoryTitle() }}</nz-tag>
+              }
+              @if (p.production_name) {
+                <nz-tag>{{ p.production_name }}</nz-tag>
+              } @else if (p.is_freelance) {
+                <nz-tag>Фриланс</nz-tag>
+              }
+              @if (p.city) {
+                <span class="city">· {{ p.city }}</span>
+              }
+              @if (p.rate_min || p.rate_max) {
+                <span class="rate">
+                  · {{ p.rate_min || '?' }}–{{ p.rate_max || '?' }} {{ p.currency }}
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+
+        @if (p.bio) {
+          <section class="block">
+            <h3>О себе</h3>
+            <p class="bio">{{ p.bio }}</p>
+          </section>
+        }
+
+        @if (p.categories.length > 0) {
+          <section class="block">
+            <h3>Категории</h3>
+            <div class="chips">
+              @for (c of p.categories; track c.code) {
+                <span class="chip" [class.is-primary]="c.is_primary">{{ c.title }}</span>
+              }
+            </div>
+          </section>
+        }
+
+        @if (p.skills.length > 0) {
+          <section class="block">
+            <h3>Навыки</h3>
+            <div class="chips">
+              @for (s of p.skills; track s.id) {
+                <span class="chip">{{ s.title }}</span>
+              }
+            </div>
+          </section>
+        }
+
+        @if (p.portfolio.length > 0) {
+          <section class="block">
+            <h3>Портфолио ({{ p.portfolio.length }})</h3>
+            <div class="portfolio-grid">
+              @for (item of p.portfolio; track item.id) {
+                <article class="port-item">
+                  @if (item.preview_url || item.video_url) {
+                    <video
+                      [src]="item.preview_url || item.video_url"
+                      [poster]="item.thumbnail_url || null"
+                      muted
+                      loop
+                      playsinline
+                      preload="metadata"
+                      controls
+                    ></video>
+                  } @else if (item.thumbnail_url) {
+                    <img [src]="item.thumbnail_url" alt="" />
+                  }
+                  <div class="port-text">
+                    <strong>{{ item.title || '(без названия)' }}</strong>
+                    @if (item.description) {
+                      <p>{{ item.description }}</p>
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          </section>
+        } @else {
+          <nz-alert
+            nzType="warning"
+            nzMessage="У спеца нет ни одного видео в портфолио"
+            nzShowIcon
+          />
+        }
+      </section>
+
+      <footer class="decision">
+        <button
+          nz-button
+          nzType="primary"
+          nzSize="large"
+          [nzLoading]="busy()"
+          (click)="approve()"
+        >
+          <span nz-icon nzType="check"></span> Одобрить и опубликовать
+        </button>
+        <button
+          nz-button
+          nzDanger
+          nzSize="large"
+          [disabled]="busy()"
+          (click)="openReject(rejectTpl)"
+        >
+          <span nz-icon nzType="close"></span> Отклонить с причиной
+        </button>
+      </footer>
+
+      <ng-template #rejectTpl>
+        <p>Опишите, что должен исправить специалист, чтобы пройти модерацию:</p>
+        <textarea
+          nz-input
+          rows="4"
+          [(ngModel)]="rejectReason"
+          maxlength="500"
+          placeholder="Например: фото не соответствует политике, в bio реклама стороннего сервиса"
+        ></textarea>
+        <p class="hint">{{ rejectReason.length }} / 500</p>
+      </ng-template>
+    } @else {
+      <nz-alert nzType="error" nzMessage="Профиль не найден" nzShowIcon />
+    }
+  </div>
+</app-admin-layout>

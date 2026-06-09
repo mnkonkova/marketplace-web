@@ -31,6 +31,13 @@
     <a routerLink="/admin/board" routerLinkActive="is-active">
       <span nz-icon nzType="appstore" nzTheme="outline"></span> Канбан
     </a>
+    <a routerLink="/admin/moderation" routerLinkActive="is-active" class="with-badge">
+      <span nz-icon nzType="safety-certificate" nzTheme="outline"></span>
+      Модерация
+      @if (pendingModeration() > 0) {
+        <span class="badge">{{ pendingModeration() }}</span>
+      }
+    </a>
     <a routerLink="/admin/dashboard" routerLinkActive="is-active">
       <span nz-icon nzType="dashboard" nzTheme="outline"></span> Дашборд
     </a>

@@ -109,6 +109,20 @@ export const routes: Routes = [
       import('@pages/admin/dashboard/dashboard.page').then((m) => m.AdminDashboardPage),
   },
   {
+    path: 'admin/moderation',
+    canActivate: [requireRole('admin')],
+    loadComponent: () =>
+      import('@pages/admin/moderation/moderation.page').then((m) => m.AdminModerationPage),
+  },
+  {
+    path: 'admin/moderation/:id',
+    canActivate: [requireRole('admin')],
+    loadComponent: () =>
+      import('@pages/admin/moderation/moderation-detail.page').then(
+        (m) => m.AdminModerationDetailPage,
+      ),
+  },
+  {
     path: 'auth/invite',
     loadComponent: () =>
       import('@pages/auth-invite/auth-invite.page').then((m) => m.AuthInvitePage),

@@ -5,6 +5,30 @@
   <nz-spin nzSize="large"></nz-spin>
   } @else if (profile()) { @let p = profile()!;
 
+  @if (p.is_published && p.moderation_status === 'pending_review') {
+  <nz-alert
+    class="moderation-banner"
+    nzType="info"
+    nzShowIcon
+    nzMessage="Профиль на проверке у админа"
+    nzDescription="Обычно занимает до 24 часов. После одобрения вы появитесь в каталоге и ленте. Если внесёте правки, проверка начнётся заново."
+  />
+  } @if (p.moderation_status === 'rejected') {
+  <nz-alert
+    class="moderation-banner"
+    nzType="error"
+    nzShowIcon
+    nzMessage="Профиль отклонён модератором"
+    [nzDescription]="rejectReasonTpl"
+  />
+  <ng-template #rejectReasonTpl>
+    @if (p.moderation_reason) {
+    <p class="reject-reason">{{ p.moderation_reason }}</p>
+    }
+    <p>Внесите правки и нажмите «Опубликовать» заново — заявка снова уйдёт админу.</p>
+  </ng-template>
+  }
+
   <section class="panel profile-panel">
     <div class="panel-head">
       <h2>Профиль</h2>
@@ -329,7 +353,7 @@
     </button>
     } @else {
     <button nz-button nzType="primary" type="button" [nzLoading]="saving()" (click)="save(true)">
-      Опубликовать
+      {{ p.moderation_status === 'rejected' ? 'Отправить на повторную проверку' : 'Опубликовать' }}
     </button>
     }
   </div>

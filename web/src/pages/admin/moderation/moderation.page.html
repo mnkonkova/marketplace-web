@@ -1,0 +1,82 @@
+<app-admin-layout>
+  <div class="moderation-page">
+    <header class="head">
+      <div>
+        <h1>Модерация специалистов</h1>
+        <p class="hint">
+          Заявки на публикацию профиля. Одобрите — спец появится в каталоге и
+          ленте. Отклоните — попросите внести правки.
+        </p>
+      </div>
+      <div class="filter">
+        <nz-select
+          [(ngModel)]="statusFilter"
+          (ngModelChange)="onStatusChange()"
+          style="min-width: 180px"
+        >
+          @for (o of statusOptions; track o.value) {
+            <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+          }
+        </nz-select>
+      </div>
+    </header>
+
+    @if (statusFilter === 'pending_review' && total() > 0) {
+      <div class="counter">
+        В очереди: <strong>{{ total() }}</strong>
+      </div>
+    }
+
+    @if (loading()) {
+      <p class="hint">Загрузка...</p>
+    } @else if (items().length === 0) {
+      <nz-empty [nzNotFoundContent]="emptyMessage()"></nz-empty>
+    } @else {
+      <ul class="queue">
+        @for (it of items(); track it.user_id) {
+          <li class="row">
+            <nz-avatar
+              [nzSrc]="it.avatar_url || null"
+              [nzText]="(it.display_name || '?').slice(0, 1)"
+              nzSize="large"
+            ></nz-avatar>
+            <div class="main">
+              <div class="line-1">
+                <strong>{{ it.display_name || '(без имени)' }}</strong>
+                <nz-tag [nzColor]="statusTagColor(it.moderation_status)">
+                  {{ statusTagLabel(it.moderation_status) }}
+                </nz-tag>
+              </div>
+              <div class="line-2">
+                @if (it.email) {
+                  <span class="email">{{ it.email }}</span>
+                }
+                @if (it.production_name) {
+                  <span class="kind">· {{ it.production_name }}</span>
+                } @else if (it.is_freelance) {
+                  <span class="kind">· Фриланс</span>
+                }
+                @if (it.city) {
+                  <span class="city">· {{ it.city }}</span>
+                }
+              </div>
+              @if (it.bio) {
+                <p class="bio">{{ it.bio }}</p>
+              }
+              @if (it.moderation_status === 'rejected' && it.moderation_reason) {
+                <p class="reason">Причина отклонения: {{ it.moderation_reason }}</p>
+              }
+            </div>
+            <div class="aside">
+              <span class="ago">{{ agoLabel(it.updated_at) }}</span>
+              <a [routerLink]="['/admin/moderation', it.user_id]" nz-button nzType="primary">
+                Открыть
+                <span nz-icon nzType="arrow-right"></span>
+              </a>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</app-admin-layout>

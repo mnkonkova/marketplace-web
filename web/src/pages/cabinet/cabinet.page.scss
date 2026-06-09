@@ -390,6 +390,19 @@ label {
   backdrop-filter: blur(16px);
 }
 
+.moderation-banner {
+  margin-bottom: 16px;
+
+  .reject-reason {
+    margin: 0 0 8px;
+    padding: 8px 12px;
+    background: rgba(255, 77, 79, 0.08);
+    border-left: 3px solid #ff4d4f;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+}
+
 @media (max-width: 760px) {
   .hero,
   .panel-head,

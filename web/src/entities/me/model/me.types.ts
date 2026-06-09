@@ -18,6 +18,12 @@ export interface MeProfile {
   // выбор не сделан.
   production_id?: string | null;
   is_freelance: boolean;
+  // Модерация публикации админом. В каталоге появляется только
+  // is_published && moderation_status === 'approved'. Подробности —
+  // marketplace-api/docs/SPECIALIST_MODERATION.md.
+  moderation_status: 'pending_review' | 'approved' | 'rejected';
+  moderation_reason?: string;
+  moderation_reviewed_at?: string;
 }
 
 // MeProfileFullPatch — payload для PATCH /me/profile.
