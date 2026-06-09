@@ -14,7 +14,7 @@
       <section class="card">
         <div class="hero">
           <nz-avatar
-            [nzSrc]="p.avatar_url || null"
+            [nzSrc]="p.avatar_url || undefined"
             [nzText]="(p.display_name || '?').slice(0, 1)"
             nzSize="large"
           ></nz-avatar>

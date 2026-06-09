@@ -36,7 +36,7 @@
         @for (it of items(); track it.user_id) {
           <li class="row">
             <nz-avatar
-              [nzSrc]="it.avatar_url || null"
+              [nzSrc]="it.avatar_url || undefined"
               [nzText]="(it.display_name || '?').slice(0, 1)"
               nzSize="large"
             ></nz-avatar>
