@@ -8,7 +8,7 @@ import { CategoryApi } from '@entities/category/api/category.api';
 import { Category } from '@entities/category/model/category.types';
 import { FeedApi } from '@entities/feed/api/feed.api';
 import { FeedItem } from '@entities/feed/model/feed.types';
-import { feedVideoPreviewSrc } from '@entities/feed/lib/preview';
+import { feedVideoAnimatedThumbSrc, feedVideoPreviewSrc } from '@entities/feed/lib/preview';
 import { ProgressiveVideoDirective } from '@shared/video/progressive-video.directive';
 import { groupCategoriesByType, HERO_QUICK_TAGS } from '@shared/lib/category-groups';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
@@ -85,6 +85,15 @@ export class MainPage implements OnInit {
    * (см. backend docs/VIDEO_TRANSCODING.md). Используется из шаблона.
    */
   public readonly previewSrc = feedVideoPreviewSrc;
+
+  /**
+   * Источник animated WebP «гифки» для главной. Возвращает '' если
+   * воркер ещё не сгенерил webp — шаблон тогда фолбэчит на <video>.
+   * <img animated webp> играет даже в iOS Low Power Mode (где <video>
+   * autoplay блокируется), и не упирается в лимит ~4 одновременных
+   * <video> на странице. См. backend docs/VIDEO_TRANSCODING.md §11.
+   */
+  public readonly animatedThumbSrc = feedVideoAnimatedThumbSrc;
 
   /**
    * Гарантированный старт после canplay — autoplay-атрибут не всегда

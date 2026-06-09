@@ -4,18 +4,24 @@
   <section class="hero">
     <div class="hero-mosaic" aria-hidden="true">
       @for (item of heroVideos(); track item.video.id) {
-        <video
-          [src]="previewSrc(item.video)"
-          [poster]="item.video.thumb || null"
-          autoplay
-          muted
-          loop
-          playsinline
-          webkit-playsinline
-          preload="auto"
-          (canplay)="forcePlay($event)"
-          (loadeddata)="forcePlay($event)"
-        ></video>
+        @if (animatedThumbSrc(item.video); as gif) {
+          <!-- Animated WebP — autoplay везде включая iOS LPM. -->
+          <img [src]="gif" [alt]="item.video.title || ''" loading="lazy" />
+        } @else {
+          <!-- Fallback: воркер ещё не сгенерил webp, играем mp4. -->
+          <video
+            [src]="previewSrc(item.video)"
+            [poster]="item.video.thumb || null"
+            autoplay
+            muted
+            loop
+            playsinline
+            webkit-playsinline
+            preload="auto"
+            (canplay)="forcePlay($event)"
+            (loadeddata)="forcePlay($event)"
+          ></video>
+        }
       }
     </div>
     <div class="hero-overlay" aria-hidden="true"></div>
@@ -65,22 +71,28 @@
             href="/specialist/{{ item.specialist.user_id }}"
             (click)="openSpecialist(item.specialist.user_id, $event)"
           >
-            <video
-              appProgressiveVideo
-              [previewSrc]="previewSrc(item.video)"
-              [fullSrc]="item.video.url"
-              upgradeTrigger="onHover"
-              [src]="previewSrc(item.video)"
-              [poster]="item.video.thumb || null"
-              autoplay
-              muted
-              loop
-              playsinline
-              webkit-playsinline
-              preload="auto"
-              (canplay)="forcePlay($event)"
-              (loadeddata)="forcePlay($event)"
-            ></video>
+            @if (animatedThumbSrc(item.video); as gif) {
+              <!-- Animated WebP — autoplay везде. -->
+              <img [src]="gif" [alt]="item.video.title || ''" loading="lazy" />
+            } @else {
+              <!-- Fallback: воркер ещё не сгенерил webp, играем mp4. -->
+              <video
+                appProgressiveVideo
+                [previewSrc]="previewSrc(item.video)"
+                [fullSrc]="item.video.url"
+                upgradeTrigger="onHover"
+                [src]="previewSrc(item.video)"
+                [poster]="item.video.thumb || null"
+                autoplay
+                muted
+                loop
+                playsinline
+                webkit-playsinline
+                preload="auto"
+                (canplay)="forcePlay($event)"
+                (loadeddata)="forcePlay($event)"
+              ></video>
+            }
             <div class="work-overlay">
               <div class="work-name">{{ item.specialist.display_name }}</div>
               @if (item.specialist.primary_category) {

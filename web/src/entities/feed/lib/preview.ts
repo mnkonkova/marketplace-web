@@ -14,3 +14,20 @@ import type { FeedVideo } from '../model/feed.types';
 export function feedVideoPreviewSrc(video: FeedVideo): string {
   return video.preview_url || video.url;
 }
+
+/**
+ * Источник для animated WebP «гифки» — autoplay через <img> без
+ * autoplay-policy ограничений (iOS Low Power Mode, soft-limit на
+ * конкурентные <video>). Используется на главной (hero + works grid).
+ *
+ *   @if (feedVideoAnimatedThumbSrc(item.video); as gif) {
+ *     <img [src]="gif" loading="lazy">
+ *   } @else {
+ *     <video autoplay muted loop>...</video>  ← fallback
+ *   }
+ *
+ * Возвращает пустую строку (falsy) если воркер ещё не сгенерил webp.
+ */
+export function feedVideoAnimatedThumbSrc(video: FeedVideo): string {
+  return video.animated_thumb_url || '';
+}

@@ -11,6 +11,14 @@ export interface FeedVideo {
    * Хелпер: `feedVideoPreviewSrc(video)` из ../lib/preview.ts.
    */
   preview_url?: string;
+  /**
+   * Animated WebP «гифка» (~50-150KB) для autoplay через <img> на главной.
+   * Решает iOS Low Power Mode + soft-limit на конкурентные <video>:
+   * <img> с animated webp играет всегда, без autoplay-policy ограничений.
+   * Если поле отсутствует — фронт фолбэчит на <video preview_url> или url.
+   * Хелпер: `feedVideoAnimatedThumbSrc(video)` из ../lib/preview.ts.
+   */
+  animated_thumb_url?: string;
   thumb?: string;
   title?: string;
   description?: string;
