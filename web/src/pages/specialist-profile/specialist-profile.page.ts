@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { DatePipe } from '@angular/common';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
@@ -25,7 +25,6 @@ import { catchError, finalize } from 'rxjs/operators';
   standalone: true,
   imports: [
     BackLinkComponent,
-    RouterLink,
     DatePipe,
     NzAvatarModule,
     NzButtonModule,

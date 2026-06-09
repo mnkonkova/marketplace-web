@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzModalRef, NzModalService } from 'ng-zorro-antd/modal';
 import { EMPTY } from 'rxjs';
@@ -23,7 +22,7 @@ import { LeadSuccessDialogComponent } from '../lead-success/lead-success.dialog'
 @Component({
   selector: 'app-lead-submit-dialog',
   standalone: true,
-  imports: [ReactiveFormsModule, NzDatePickerModule, RouterLink],
+  imports: [ReactiveFormsModule, NzDatePickerModule],
   templateUrl: './lead-submit.dialog.html',
   styleUrl: '../../project-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
