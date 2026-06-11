@@ -157,6 +157,12 @@ export class AuthDialogComponent {
   public register(): void {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
+      // nz-form-control подписан на statusChanges контрола, а markAsTouched
+      // его не эмитит → подсветка не появляется на изначально пустой форме.
+      // Принудительно дёргаем updateValueAndValidity, чтобы emit прошёл.
+      Object.values(this.registerForm.controls).forEach((c) =>
+        c.updateValueAndValidity({ emitEvent: true }),
+      );
       this.cdr.markForCheck();
       return;
     }
