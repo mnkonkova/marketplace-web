@@ -83,17 +83,21 @@
   <nz-tab nzTitle="Регистрация" (nzClick)="tab.set(1)">
     <form nz-form [formGroup]="registerForm" (ngSubmit)="register()">
       <nz-form-item>
-        <nz-form-control>
+        <nz-form-control nzErrorTip="Укажите имя">
           <input nz-input formControlName="display_name" placeholder="Имя *" />
         </nz-form-control>
       </nz-form-item>
       <nz-form-item>
-        <nz-form-control>
+        <nz-form-control [nzErrorTip]="emailErrorTpl">
           <input nz-input formControlName="email" placeholder="Email *" />
         </nz-form-control>
+        <ng-template #emailErrorTpl let-control>
+          @if (control.hasError('required')) { Укажите email }
+          @else if (control.hasError('email')) { Email указан неверно }
+        </ng-template>
       </nz-form-item>
       <nz-form-item>
-        <nz-form-control>
+        <nz-form-control nzErrorTip="Выберите тип аккаунта">
           <nz-select
             class="auth-select"
             formControlName="kind"
@@ -103,13 +107,13 @@
             <nz-option nzLabel="Клиент" nzValue="client"></nz-option>
             <nz-option nzLabel="Специалист" nzValue="specialist"></nz-option>
           </nz-select>
-          @if (!registerForm.controls.kind.value) {
+          @if (!registerForm.controls.kind.value && !registerForm.controls.kind.touched) {
           <div class="auth-field-hint">Выберите, для кого аккаунт</div>
           }
         </nz-form-control>
       </nz-form-item>
       <nz-form-item>
-        <nz-form-control>
+        <nz-form-control nzErrorTip="Укажите пароль">
           <nz-input-group [nzSuffix]="suffixTemplate">
             <input
               [type]="passwordVisible ? 'text' : 'password'"
@@ -129,13 +133,7 @@
         </nz-form-control>
       </nz-form-item>
 
-      <button
-        nz-button
-        nzType="primary"
-        nzBlock
-        [nzLoading]="loading()"
-        [disabled]="registerForm.invalid"
-      >
+      <button nz-button nzType="primary" nzBlock [nzLoading]="loading()">
         Создать аккаунт
       </button>
     </form>

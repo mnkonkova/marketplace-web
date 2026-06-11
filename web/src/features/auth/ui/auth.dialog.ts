@@ -129,7 +129,10 @@ export class AuthDialogComponent {
   }
 
   public register(): void {
-    if (this.registerForm.invalid) return;
+    if (this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
+      return;
+    }
     this.loading.set(true);
     const v = this.registerForm.getRawValue();
     this.auth
