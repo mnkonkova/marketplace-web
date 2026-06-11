@@ -84,12 +84,12 @@
     <form nz-form [formGroup]="registerForm" (ngSubmit)="register()">
       <nz-form-item>
         <nz-form-control>
-          <input nz-input formControlName="display_name" placeholder="Имя" />
+          <input nz-input formControlName="display_name" placeholder="Имя *" />
         </nz-form-control>
       </nz-form-item>
       <nz-form-item>
         <nz-form-control>
-          <input nz-input formControlName="email" placeholder="Email" />
+          <input nz-input formControlName="email" placeholder="Email *" />
         </nz-form-control>
       </nz-form-item>
       <nz-form-item>
@@ -97,12 +97,15 @@
           <nz-select
             class="auth-select"
             formControlName="kind"
-            nzPlaceHolder="Тип аккаунта"
+            nzPlaceHolder="Тип аккаунта *"
             nzDropdownClassName="auth-select-dropdown"
           >
             <nz-option nzLabel="Клиент" nzValue="client"></nz-option>
             <nz-option nzLabel="Специалист" nzValue="specialist"></nz-option>
           </nz-select>
+          @if (!registerForm.controls.kind.value) {
+          <div class="auth-field-hint">Выберите, для кого аккаунт</div>
+          }
         </nz-form-control>
       </nz-form-item>
       <nz-form-item>
@@ -111,7 +114,7 @@
             <input
               [type]="passwordVisible ? 'text' : 'password'"
               nz-input
-              placeholder="Пароль"
+              placeholder="Пароль *"
               formControlName="password"
             />
           </nz-input-group>
