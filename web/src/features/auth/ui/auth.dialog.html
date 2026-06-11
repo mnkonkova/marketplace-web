@@ -107,18 +107,11 @@
           [nzValidateStatus]="registerForm.controls.kind"
           nzErrorTip="Выберите тип аккаунта"
         >
-          <nz-select
-            class="auth-select"
-            formControlName="kind"
-            nzPlaceHolder="Тип аккаунта *"
-            nzDropdownClassName="auth-select-dropdown"
-          >
-            <nz-option nzLabel="Клиент" nzValue="client"></nz-option>
-            <nz-option nzLabel="Специалист" nzValue="specialist"></nz-option>
-          </nz-select>
-          @if (!registerForm.controls.kind.value && !registerForm.controls.kind.touched) {
-          <div class="auth-field-hint">Выберите, для кого аккаунт</div>
-          }
+          <div class="auth-field-label">Тип аккаунта *</div>
+          <nz-radio-group formControlName="kind" class="auth-kind-group">
+            <label nz-radio-button nzValue="client">Клиент</label>
+            <label nz-radio-button nzValue="specialist">Специалист</label>
+          </nz-radio-group>
         </nz-form-control>
       </nz-form-item>
       <nz-form-item>

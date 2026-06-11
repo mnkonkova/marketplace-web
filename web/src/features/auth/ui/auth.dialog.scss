@@ -102,3 +102,30 @@
   font-size: 12px;
   line-height: 1.4;
 }
+
+.auth-field-label {
+  margin-bottom: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+:host ::ng-deep .auth-kind-group {
+  display: flex;
+  width: 100%;
+
+  .ant-radio-button-wrapper {
+    flex: 1;
+    text-align: center;
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+    color: var(--text) !important;
+  }
+
+  .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    background: var(--accent-dim) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+    box-shadow: none !important;
+  }
+}

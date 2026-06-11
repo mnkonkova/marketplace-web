@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -9,6 +15,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { apiErrorMessage } from '@shared/api/api-error';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { EMPTY } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
@@ -25,6 +32,7 @@ import { catchError, finalize } from 'rxjs/operators';
     NzButtonModule,
     FormsModule,
     NzIconModule,
+    NzRadioModule,
     NzSelectModule,
   ],
   templateUrl: './auth.dialog.html',
@@ -43,6 +51,8 @@ export class AuthDialogComponent {
   private readonly msg = inject(NzMessageService);
 
   public readonly modal = inject(NzModalRef);
+
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private readonly data = inject<{ initialTab?: number } | null>(NZ_MODAL_DATA, {
     optional: true,
@@ -131,6 +141,7 @@ export class AuthDialogComponent {
   public register(): void {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
+      this.cdr.markForCheck();
       return;
     }
     this.loading.set(true);
