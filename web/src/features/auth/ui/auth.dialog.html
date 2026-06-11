@@ -83,12 +83,18 @@
   <nz-tab nzTitle="Регистрация" (nzClick)="tab.set(1)">
     <form nz-form [formGroup]="registerForm" (ngSubmit)="register()">
       <nz-form-item>
-        <nz-form-control nzErrorTip="Укажите имя">
+        <nz-form-control
+          [nzValidateStatus]="registerForm.controls.display_name"
+          nzErrorTip="Укажите имя"
+        >
           <input nz-input formControlName="display_name" placeholder="Имя *" />
         </nz-form-control>
       </nz-form-item>
       <nz-form-item>
-        <nz-form-control [nzErrorTip]="emailErrorTpl">
+        <nz-form-control
+          [nzValidateStatus]="registerForm.controls.email"
+          [nzErrorTip]="emailErrorTpl"
+        >
           <input nz-input formControlName="email" placeholder="Email *" />
         </nz-form-control>
         <ng-template #emailErrorTpl let-control>
@@ -97,7 +103,10 @@
         </ng-template>
       </nz-form-item>
       <nz-form-item>
-        <nz-form-control nzErrorTip="Выберите тип аккаунта">
+        <nz-form-control
+          [nzValidateStatus]="registerForm.controls.kind"
+          nzErrorTip="Выберите тип аккаунта"
+        >
           <nz-select
             class="auth-select"
             formControlName="kind"
@@ -113,7 +122,10 @@
         </nz-form-control>
       </nz-form-item>
       <nz-form-item>
-        <nz-form-control nzErrorTip="Укажите пароль">
+        <nz-form-control
+          [nzValidateStatus]="registerForm.controls.password"
+          nzErrorTip="Укажите пароль"
+        >
           <nz-input-group [nzSuffix]="suffixTemplate">
             <input
               [type]="passwordVisible ? 'text' : 'password'"
