@@ -118,8 +118,14 @@
     flex: 1;
     text-align: center;
     background: var(--surface) !important;
-    border-color: var(--border) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
     color: var(--text) !important;
+  }
+
+  // Разделитель между кнопками — псевдоэлемент :before, по дефолту красится
+  // через background-color в transparent на нашей теме. Делаем серым явно.
+  .ant-radio-button-wrapper:not(:first-child)::before {
+    background-color: rgba(255, 255, 255, 0.18) !important;
   }
 
   .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
