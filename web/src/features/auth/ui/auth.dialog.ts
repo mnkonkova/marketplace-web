@@ -62,6 +62,12 @@ export class AuthDialogComponent {
 
   public readonly loading = signal(false);
 
+  // Inline-ошибка от бэка над кнопкой регистрации. Показываем даже если
+  // toast перекрывается модалкой/быстро исчезает — у юзера всегда есть
+  // визуальная подсказка в форме. Сбрасывается на любое изменение
+  // registerForm (конструктор подписывает valueChanges).
+  public readonly registerBackendError = signal<string | null>(null);
+
   // forgot-режим: показываем мини-форму запроса reset вместо полей логина.
   // Toggle'ится из ссылки «Забыли пароль?» под полем пароля.
   public readonly forgotMode = signal(false);
@@ -87,6 +93,16 @@ export class AuthDialogComponent {
   public readonly forgotForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
   });
+
+  constructor() {
+    // Любое изменение полей регистрации сбрасывает бек-ошибку — иначе
+    // баннер «email занят» висит даже после правки на новый email.
+    this.registerForm.valueChanges.subscribe(() => {
+      if (this.registerBackendError() !== null) {
+        this.registerBackendError.set(null);
+      }
+    });
+  }
 
   public login(): void {
     if (this.loginForm.invalid) return;
@@ -144,6 +160,7 @@ export class AuthDialogComponent {
       this.cdr.markForCheck();
       return;
     }
+    this.registerBackendError.set(null);
     this.loading.set(true);
     const v = this.registerForm.getRawValue();
     this.auth
@@ -155,7 +172,17 @@ export class AuthDialogComponent {
       })
       .pipe(
         catchError((e) => {
-          this.msg.error(apiErrorMessage(e.error, 'Ошибка регистрации'));
+          const text = apiErrorMessage(e.error, 'Ошибка регистрации');
+          // Баннер над кнопкой — основной канал. Toast дублирует на случай
+          // если юзер в этот момент смотрит вне модалки.
+          this.registerBackendError.set(text);
+          this.msg.error(text);
+          // Email занят → дополнительно подсвечиваем поле email через
+          // setErrors, чтобы nzErrorTip показал ошибку прямо под input'ом.
+          if (/email.*зарегистрир|уже существ/i.test(text)) {
+            this.registerForm.controls.email.setErrors({ backend: text });
+          }
+          this.cdr.markForCheck();
           return EMPTY;
         }),
         finalize(() => this.loading.set(false)),

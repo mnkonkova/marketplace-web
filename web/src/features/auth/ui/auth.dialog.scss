@@ -110,6 +110,17 @@
   line-height: 1.4;
 }
 
+.auth-backend-error {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(255, 77, 79, 0.12);
+  border: 1px solid rgba(255, 77, 79, 0.32);
+  color: #ff7875;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 :host ::ng-deep .auth-kind-group {
   display: flex;
   width: 100%;
