@@ -1,0 +1,163 @@
+<app-admin-layout>
+  <header class="head">
+    <h1>Все пользователи</h1>
+    <p class="hint">
+      Полный список юзеров маркетплейса. Поиск по email/имени/телефону (минимум
+      2 символа), фильтры по типу и роли. Клик по строке специалиста — переход
+      на его публичный профиль.
+    </p>
+  </header>
+
+  <section class="filters">
+    <input
+      nz-input
+      type="text"
+      placeholder="Поиск по email, имени или телефону"
+      [(ngModel)]="q"
+      (ngModelChange)="onSearch()"
+      class="search-input"
+    />
+    <nz-select
+      [(ngModel)]="kind"
+      (ngModelChange)="onFilterChange()"
+      style="min-width: 160px"
+    >
+      @for (o of kindOptions; track o.value) {
+      <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+      }
+    </nz-select>
+    <nz-select
+      [(ngModel)]="role"
+      (ngModelChange)="onFilterChange()"
+      style="min-width: 160px"
+    >
+      @for (o of roleOptions; track o.value) {
+      <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+      }
+    </nz-select>
+  </section>
+
+  <p class="counter">
+    Найдено: <strong>{{ total() }}</strong>
+  </p>
+
+  <nz-table
+    [nzData]="items()"
+    [nzLoading]="loading()"
+    [nzFrontPagination]="false"
+    [nzShowSizeChanger]="true"
+    [nzPageSizeOptions]="[20, 50, 100]"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzTotal]="total()"
+    (nzQueryParams)="onQueryParamsChange($event)"
+    nzSize="middle"
+  >
+    <thead>
+      <tr>
+        <th>Имя</th>
+        <th>Email</th>
+        <th>Тип</th>
+        <th>Роль</th>
+        <th>Approved</th>
+        <th>Active</th>
+        <th>Email подтверждён</th>
+        <th>Создан</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (u of items(); track u.user_id) {
+      <tr
+        class="user-row"
+        [class.clickable]="u.kind === 'specialist' || u.kind === 'both'"
+        (click)="openProfile(u)"
+      >
+        <td data-label="Имя">{{ u.display_name || '—' }}</td>
+        <td data-label="Email">{{ u.email || '—' }}</td>
+        <td data-label="Тип">{{ kindLabel(u.kind) }}</td>
+        <td data-label="Роль">
+          <nz-tag [nzColor]="roleLabel(u).color">{{ roleLabel(u).text }}</nz-tag>
+        </td>
+        <td data-label="Approved">
+          @if (u.is_approved) {
+          <nz-tag nzColor="green">Да</nz-tag>
+          } @else {
+          <nz-tag nzColor="gold">Нет</nz-tag>
+          }
+        </td>
+        <td data-label="Active">
+          @if (u.is_active) {
+          <nz-tag nzColor="green">Да</nz-tag>
+          } @else {
+          <nz-tag nzColor="red">Нет</nz-tag>
+          }
+        </td>
+        <td data-label="Email подтверждён">
+          @if (u.email_verified) {
+          <nz-tag nzColor="blue">Да</nz-tag>
+          } @else {
+          <button
+            nz-button
+            nzSize="small"
+            nz-popconfirm
+            nzPopconfirmTitle="Подтвердить email вручную?"
+            nzPopconfirmPlacement="left"
+            (nzOnConfirm)="verifyEmail(u)"
+            (click)="$event.stopPropagation()"
+          >
+            <span nz-icon nzType="check"></span> Подтвердить
+          </button>
+          }
+        </td>
+        <td data-label="Создан">{{ u.created_at | date: 'dd.MM.yyyy' }}</td>
+        <td data-label="Действия" class="row-actions">
+          @if (!u.is_manager && !u.is_admin) {
+          <button
+            nz-button
+            nzSize="small"
+            nz-popconfirm
+            nzPopconfirmTitle="Сделать менеджером?"
+            nzPopconfirmPlacement="left"
+            (nzOnConfirm)="makeManager(u)"
+            (click)="$event.stopPropagation()"
+          >
+            ↑ Manager
+          </button>
+          } @else if (u.is_manager) {
+          <button
+            nz-button
+            nzSize="small"
+            nz-popconfirm
+            nzPopconfirmTitle="Снять с роли менеджера?"
+            nzPopconfirmPlacement="left"
+            (nzOnConfirm)="demoteManager(u)"
+            (click)="$event.stopPropagation()"
+          >
+            ↓ Demote
+          </button>
+          }
+          @if (!u.is_admin) {
+          <button
+            nz-button
+            nzSize="small"
+            [nzDanger]="u.is_active"
+            nz-popconfirm
+            [nzPopconfirmTitle]="u.is_active ? 'Деактивировать?' : 'Активировать?'"
+            nzPopconfirmPlacement="left"
+            (nzOnConfirm)="toggleActive(u)"
+            (click)="$event.stopPropagation()"
+          >
+            {{ u.is_active ? 'Deactivate' : 'Activate' }}
+          </button>
+          }
+        </td>
+      </tr>
+      }
+    </tbody>
+  </nz-table>
+
+  @if (!loading() && items().length === 0) {
+  <nz-empty [nzNotFoundContent]="'Никого не нашлось под текущие фильтры.'"></nz-empty>
+  }
+</app-admin-layout>

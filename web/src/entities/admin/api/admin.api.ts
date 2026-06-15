@@ -16,6 +16,36 @@ export interface ManagerInfo {
   created_at: string;
 }
 
+// Строка в полном admin-листинге /admin/users (см. /admin/users page).
+export interface UserListItem {
+  user_id: string;
+  email?: string;
+  phone?: string;
+  display_name?: string;
+  kind: 'client' | 'specialist' | 'both';
+  is_admin: boolean;
+  is_manager: boolean;
+  is_approved: boolean;
+  is_active: boolean;
+  email_verified: boolean;
+  created_at: string;
+}
+
+export interface UserListResult {
+  items: UserListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface ListAllUsersParams {
+  q?: string;
+  kind?: 'client' | 'specialist';
+  role?: 'manager' | 'admin' | 'regular';
+  limit?: number;
+  offset?: number;
+}
+
 export interface CreateClientResult {
   user_id: string;
   invite_token?: string;
@@ -100,6 +130,18 @@ export class AdminApi {
 
   private readonly api = inject(API_URL);
 
+  // Полный листинг всех юзеров для /admin/users. Backend сам валидирует
+  // kind/role и clamp'ит limit (1..100).
+  public listAllUsers(params: ListAllUsersParams = {}): Observable<UserListResult> {
+    const httpParams: Record<string, string> = {};
+    if (params.q) httpParams['q'] = params.q;
+    if (params.kind) httpParams['kind'] = params.kind;
+    if (params.role) httpParams['role'] = params.role;
+    if (params.limit !== undefined) httpParams['limit'] = String(params.limit);
+    if (params.offset !== undefined) httpParams['offset'] = String(params.offset);
+    return this.http.get<UserListResult>(`${this.api}/admin/users`, { params: httpParams });
+  }
+
   public listManagers(approved?: boolean): Observable<{ items: ManagerInfo[] }> {
     let url = `${this.api}/admin/managers`;
     if (approved !== undefined) {
@@ -122,6 +164,23 @@ export class AdminApi {
     generate_invite: boolean;
   }): Observable<CreateClientResult> {
     return this.http.post<CreateClientResult>(`${this.api}/admin/users`, body);
+  }
+
+  // Админский bypass email-верификации. Идемпотентно: повторный вызов
+  // не меняет email_verified_at. Для ручного заноса клиента (когда контакты
+  // уже сверены офлайн и не хочется гонять magic-link).
+  public verifyEmail(userId: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/admin/users/${userId}/verify_email`, {});
+  }
+
+  // Мягкое отключение юзера: is_active=false. Логин блокируется, в выдаче
+  // не светится. Админов через этот endpoint деактивировать нельзя (400).
+  public deactivateUser(userId: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/admin/users/${userId}/deactivate`, {});
+  }
+
+  public activateUser(userId: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/admin/users/${userId}/activate`, {});
   }
 
   public generateInvite(userId: string): Observable<InviteGenerateResult> {

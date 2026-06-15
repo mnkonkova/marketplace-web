@@ -79,6 +79,12 @@ export const routes: Routes = [
       import('@pages/admin/managers/managers.page').then((m) => m.AdminManagersPage),
   },
   {
+    path: 'admin/users',
+    canActivate: [requireRole('admin')],
+    loadComponent: () =>
+      import('@pages/admin/users/users.page').then((m) => m.AdminUsersPage),
+  },
+  {
     path: 'admin/pipelines',
     canActivate: [requireRole('admin')],
     loadComponent: () =>

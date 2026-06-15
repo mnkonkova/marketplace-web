@@ -1,0 +1,106 @@
+@use '../../../shared/scss/breakpoints' as bp;
+
+h1 {
+  margin: 0 0 8px;
+}
+
+.head {
+  margin-bottom: 16px;
+
+  .hint {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  align-items: center;
+
+  .search-input {
+    flex: 1;
+    min-width: 240px;
+  }
+}
+
+.counter {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.user-row {
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--surface-hover);
+    }
+  }
+}
+
+.row-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: bp.$touch) {
+  h1 {
+    font-size: 20px;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+
+    .search-input,
+    ::ng-deep nz-select {
+      width: 100%;
+      min-width: 0 !important;
+    }
+  }
+
+  // NzTable → card-layout с inline-лейблами (тот же паттерн что в managers).
+  ::ng-deep .ant-table {
+    min-width: 0 !important;
+
+    .ant-table-thead {
+      display: none;
+    }
+
+    .ant-table-tbody {
+      tr {
+        display: block;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        background: var(--surface);
+      }
+
+      td {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 4px 0 !important;
+        border: none !important;
+
+        &[data-label]::before {
+          content: attr(data-label);
+          flex-shrink: 0;
+          min-width: 130px;
+          color: var(--text-muted);
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+      }
+    }
+  }
+}
