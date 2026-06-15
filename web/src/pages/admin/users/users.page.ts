@@ -189,6 +189,31 @@ export class AdminUsersPage implements OnInit {
     });
   }
 
+  // Approve спеца прямо из списка — для очевидных случаев когда не нужно
+  // открывать карточку и читать bio/портфолио. Если хочется отказать с
+  // причиной — кнопка «На модерацию» открывает детальную страницу с
+  // textarea для reason. expected_updated_at не шлём — это «быстрый approve»
+  // без оптимистик-лока (бэк допускает nil для legacy/CLI).
+  public approveSpecialist(u: UserListItem): void {
+    this.api.approveSpecialist(u.user_id, undefined).subscribe({
+      next: () => {
+        this.msg.success('Спец одобрен');
+        this.items.update((list) =>
+          list.map((it) =>
+            it.user_id === u.user_id ? { ...it, moderation_status: 'approved' } : it,
+          ),
+        );
+      },
+      error: (e: { error?: { message?: string } }) =>
+        this.msg.error(e?.error?.message || 'Не удалось одобрить'),
+    });
+  }
+
+  public openModeration(u: UserListItem, ev: Event): void {
+    ev.stopPropagation();
+    this.router.navigate(['/admin/moderation', u.user_id]);
+  }
+
   public openProfile(u: UserListItem): void {
     // Профиль есть только для специалистов. Для клиентов клик пока no-op
     // (страницы клиентского профиля нет — будет в Wave 2).
