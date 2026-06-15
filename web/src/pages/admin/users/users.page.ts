@@ -209,6 +209,19 @@ export class AdminUsersPage implements OnInit {
     return k === 'client' ? 'Клиент' : k === 'specialist' ? 'Специалист' : 'Оба';
   }
 
+  public modStatusTag(s: UserListItem['moderation_status']): { text: string; color: string } | null {
+    switch (s) {
+      case 'pending_review':
+        return { text: 'Ждёт', color: 'gold' };
+      case 'approved':
+        return { text: 'Одобрен', color: 'green' };
+      case 'rejected':
+        return { text: 'Отклонён', color: 'red' };
+      default:
+        return null;
+    }
+  }
+
   private fetch(): void {
     this.loading.set(true);
     const params: ListAllUsersParams = {

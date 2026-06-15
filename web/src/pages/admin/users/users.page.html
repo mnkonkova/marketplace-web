@@ -61,6 +61,7 @@
         <th>Роль</th>
         <th>Approved</th>
         <th>Active</th>
+        <th>Модерация</th>
         <th>Email подтверждён</th>
         <th>Создан</th>
         <th>Действия</th>
@@ -91,6 +92,13 @@
           <nz-tag nzColor="green">Да</nz-tag>
           } @else {
           <nz-tag nzColor="red">Нет</nz-tag>
+          }
+        </td>
+        <td data-label="Модерация">
+          @if (modStatusTag(u.moderation_status); as t) {
+          <nz-tag [nzColor]="t.color">{{ t.text }}</nz-tag>
+          } @else {
+          <span class="dim">—</span>
           }
         </td>
         <td data-label="Email подтверждён">

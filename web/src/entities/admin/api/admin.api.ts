@@ -29,6 +29,9 @@ export interface UserListItem {
   is_active: boolean;
   email_verified: boolean;
   created_at: string;
+  // Только у спецов: pending_review | approved | rejected.
+  // Пустая строка/undefined у клиентов и спецов без профиля.
+  moderation_status?: 'pending_review' | 'approved' | 'rejected' | '';
 }
 
 export interface UserListResult {

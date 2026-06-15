@@ -50,6 +50,10 @@ h1 {
   flex-wrap: wrap;
 }
 
+.dim {
+  color: var(--text-dim);
+}
+
 @media (max-width: bp.$touch) {
   h1 {
     font-size: 20px;
