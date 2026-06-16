@@ -66,6 +66,34 @@ h6 {
   color: #fff !important;
 }
 
+/* NzModalService.confirm/info/warning/etc. — отдельная иерархия:
+   .ant-modal-confirm-* поверх .ant-modal-content. По дефолту ng-zorro
+   тут жёстко выставляет тёмный цвет текста, который на нашей --surface
+   читается белым по белому. Перебиваем заголовок, body и кнопки. */
+.ant-modal-confirm-title,
+.ant-modal-confirm-body > .anticon + span {
+  color: #fff !important;
+}
+
+.ant-modal-confirm-content {
+  color: var(--text) !important;
+}
+
+/* Кнопки в confirm-модалке. По дефолту default-кнопка (Cancel) на нашей
+   тёмной теме теряет текст — наш override .ant-btn-default ставит цвет
+   --text, но modal'овский «danger primary» OK-кнопке нужен явный белый,
+   иначе наследует от родителя. */
+.ant-modal-confirm-btns {
+  .ant-btn {
+    color: var(--text) !important;
+  }
+
+  .ant-btn-primary,
+  .ant-btn-dangerous.ant-btn-primary {
+    color: #fff !important;
+  }
+}
+
 /* nz-drawer (bottom-sheet) — приводим к тёмной теме. По дефолту ng-zorro
    рисует белым на белом, на нашей теме контента не видно. */
 .ant-drawer-content {
