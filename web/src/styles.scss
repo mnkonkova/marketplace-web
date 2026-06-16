@@ -79,18 +79,31 @@ h6 {
   color: var(--text) !important;
 }
 
-/* Кнопки в confirm-модалке. По дефолту default-кнопка (Cancel) на нашей
-   тёмной теме теряет текст — наш override .ant-btn-default ставит цвет
-   --text, но modal'овский «danger primary» OK-кнопке нужен явный белый,
-   иначе наследует от родителя. */
+/* Кнопки в confirm-модалке. На нашей dark-теме дефолтные стили
+   ng-zorro дают белое на белом. Перебиваем под surface-фон с акцентом
+   красным на danger (бордер + текст), чтобы визуально отличалось от
+   обычной Cancel. */
 .ant-modal-confirm-btns {
   .ant-btn {
+    background: var(--surface) !important;
     color: var(--text) !important;
+    border-color: var(--border) !important;
   }
 
   .ant-btn-primary,
+  .ant-btn-dangerous,
   .ant-btn-dangerous.ant-btn-primary {
-    color: #fff !important;
+    background: var(--surface) !important;
+    color: #ff7875 !important;
+    border-color: rgba(255, 77, 79, 0.4) !important;
+  }
+
+  .ant-btn-primary:hover,
+  .ant-btn-dangerous:hover,
+  .ant-btn-dangerous.ant-btn-primary:hover {
+    background: var(--surface-hover) !important;
+    color: #ff9c98 !important;
+    border-color: rgba(255, 77, 79, 0.6) !important;
   }
 }
 
