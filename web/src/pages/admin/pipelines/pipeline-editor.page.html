@@ -12,13 +12,7 @@
       </div>
       <div class="head-actions">
         <button nz-button (click)="addStage()">+ Стадия</button>
-        <button
-          nz-button
-          nzDanger
-          nz-popconfirm
-          [nzPopconfirmTitle]="'Удалить воронку «' + p.name + '» полностью из БД? Это нельзя отменить.'"
-          (nzOnConfirm)="deletePipeline(true)"
-        >
+        <button nz-button nzDanger (click)="confirmDeletePipeline()">
           Удалить
         </button>
       </div>
@@ -65,9 +59,7 @@
               nz-button
               nzSize="small"
               nzDanger
-              nz-popconfirm
-              nzPopconfirmTitle="Удалить стадию вместе со всеми шагами?"
-              (nzOnConfirm)="deleteStage(stage)"
+              (click)="confirmDeleteStage(stage)"
             >
               Удалить стадию
             </button>
@@ -141,9 +133,7 @@
                   nz-button
                   nzSize="small"
                   nzDanger
-                  nz-popconfirm
-                  nzPopconfirmTitle="Удалить шаг?"
-                  (nzOnConfirm)="deleteStep(step)"
+                  (click)="confirmDeleteStep(step)"
                   title="Удалить шаг"
                 >
                   ✕

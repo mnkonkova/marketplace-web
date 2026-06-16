@@ -16,7 +16,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzModalService, NzModalModule } from 'ng-zorro-antd/modal';
 
 import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
 import { API_URL } from '@shared/api/api-url.token';
@@ -41,7 +41,7 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
     NzSelectModule,
     NzSwitchModule,
     NzSpinModule,
-    NzPopconfirmModule,
+    NzModalModule,
     AdminLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -61,6 +61,8 @@ export class AdminPipelineEditorPage implements OnInit {
 
   private readonly msg = inject(NzMessageService);
 
+  private readonly modal = inject(NzModalService);
+
   public readonly loading = signal(true);
 
   public readonly pipeline = signal<PipelineFull | null>(null);
@@ -68,6 +70,32 @@ export class AdminPipelineEditorPage implements OnInit {
   public ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) this.fetch(id);
+  }
+
+  public confirmDeletePipeline(): void {
+    const p = this.pipeline();
+    if (!p) return;
+    this.modal.confirm({
+      nzTitle: 'Удалить воронку?',
+      nzContent: `«${p.name || 'Без названия'}» — будет удалена полностью из БД вместе со всеми стадиями и шагами. Действие нельзя отменить.`,
+      nzOkText: 'Удалить',
+      nzOkDanger: true,
+      nzCancelText: 'Отмена',
+      nzCentered: true,
+      nzOnOk: () => this.deletePipeline(true),
+    });
+  }
+
+  public confirmDeleteStep(step: PipelineStep): void {
+    this.modal.confirm({
+      nzTitle: 'Удалить шаг?',
+      nzContent: `«${step.name || 'Без названия'}» — шаг будет удалён. Действие нельзя отменить.`,
+      nzOkText: 'Удалить',
+      nzOkDanger: true,
+      nzCancelText: 'Отмена',
+      nzCentered: true,
+      nzOnOk: () => this.deleteStep(step),
+    });
   }
 
   public deletePipeline(hard: boolean): void {
@@ -99,6 +127,23 @@ export class AdminPipelineEditorPage implements OnInit {
     if (!p) return;
     this.api.addStage(p.id, { name: 'Новая стадия', sort_order: p.stages.length }).subscribe({
       next: () => this.fetch(p.id),
+    });
+  }
+
+  public confirmDeleteStage(s: PipelineStageFull): void {
+    // Центрированный модал вместо popconfirm — попап у кнопки терялся
+    // при длинных списках стадий и был легко промахиваем кликом.
+    const stepsCount = s.steps?.length ?? 0;
+    this.modal.confirm({
+      nzTitle: 'Удалить стадию?',
+      nzContent: stepsCount > 0
+        ? `«${s.name || 'Без названия'}» — будет удалена вместе с ${stepsCount} шаг(ами). Действие нельзя отменить.`
+        : `«${s.name || 'Без названия'}» — стадия без шагов. Действие нельзя отменить.`,
+      nzOkText: 'Удалить',
+      nzOkDanger: true,
+      nzCancelText: 'Отмена',
+      nzCentered: true,
+      nzOnOk: () => this.deleteStage(s),
     });
   }
 
