@@ -66,6 +66,23 @@ h6 {
   color: #fff !important;
 }
 
+/* Крестик закрытия — на dark-теме дефолтный чёрный сливается с фоном.
+   --text-muted на hover ярче. Был override в .project-modal — теперь
+   глобально для всех модалок (включая NzModalService.confirm). */
+.ant-modal-close {
+  color: var(--text-muted) !important;
+
+  &:hover {
+    color: var(--text) !important;
+    background: var(--surface-hover) !important;
+  }
+
+  .ant-modal-close-x,
+  .anticon {
+    color: inherit !important;
+  }
+}
+
 /* NzModalService.confirm/info/warning/etc. — отдельная иерархия:
    .ant-modal-confirm-* поверх .ant-modal-content. По дефолту ng-zorro
    тут жёстко выставляет тёмный цвет текста, который на нашей --surface
