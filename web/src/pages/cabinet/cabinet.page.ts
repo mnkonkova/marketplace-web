@@ -353,43 +353,47 @@ export class CabinetPage implements OnInit, OnDestroy {
       });
   }
 
-  public uploadAvatar(event: Event): void {
+  public async uploadAvatar(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const original = input.files?.[0];
     input.value = '';
-    if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+    if (!original) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(original.type)) {
       this.error.set('Аватар: поддерживаем jpg, png или webp.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (original.size > 5 * 1024 * 1024) {
       this.error.set('Аватар больше 5 МБ.');
       return;
     }
-    // Сразу показываем blob: локального файла — на iOS Safari
-    // рендерится мгновенно без «шторки» прогрессивной JPG.
-    const prevLocal = this.localAvatarUrl();
-    this.localAvatarUrl.set(URL.createObjectURL(file));
-    if (prevLocal) URL.revokeObjectURL(prevLocal);
 
     this.avatarUploading.set(true);
-    this.uploadViaPresign(() => this.meRepo.presignAvatarUpload(file), file)
-      .then((publicURL) => {
-        // CDN-URL уходит в form для сохранения (PATCH /me/profile его
-        // пошлёт). На UI всё равно показываем blob (приоритет в
-        // displayedAvatarUrl computed) — пока юзер не сохранит и не
-        // перезагрузит страницу, CDN-картинку не дёргаем вообще.
-        this.form.avatar_url = publicURL;
-        this.msg.success('Аватар загружен. Нажмите «Сохранить», чтобы применить.');
-      })
-      .catch((err: Error) => {
-        this.error.set(`Не удалось загрузить аватар: ${err.message}`);
-        // Откатываем blob если PUT упал
-        const local = this.localAvatarUrl();
-        if (local) URL.revokeObjectURL(local);
-        this.localAvatarUrl.set(null);
-      })
-      .finally(() => this.avatarUploading.set(false));
+    try {
+      // Resize в canvas: гарантированно baseline (не progressive) JPEG,
+      // фиксированные 512×512 — для круглого аватара 160px этого с запасом
+      // на retina. iOS Safari больше не рисует частями (canvas decodes
+      // полностью), и upload меньше в ~10×.
+      const resized = await resizeImageToBlob(original, 512, 0.9);
+
+      // blob: URL РЕСАЙЗНУТОГО canvas-вывода — отрисуется мгновенно из ОЗУ.
+      const prevLocal = this.localAvatarUrl();
+      this.localAvatarUrl.set(URL.createObjectURL(resized));
+      if (prevLocal) URL.revokeObjectURL(prevLocal);
+
+      const publicURL = await this.uploadViaPresign(
+        () => this.meRepo.presignAvatarUpload(resized),
+        resized,
+      );
+      this.form.avatar_url = publicURL;
+      this.msg.success('Аватар загружен. Нажмите «Сохранить», чтобы применить.');
+    } catch (err) {
+      this.error.set(`Не удалось загрузить аватар: ${(err as Error).message}`);
+      const local = this.localAvatarUrl();
+      if (local) URL.revokeObjectURL(local);
+      this.localAvatarUrl.set(null);
+    } finally {
+      this.avatarUploading.set(false);
+    }
   }
 
   public clearAvatar(): void {
@@ -656,4 +660,56 @@ export class CabinetPage implements OnInit, OnDestroy {
       putFileToPresignedUrl(res.upload_url, file, onProgress).then(() => res.public_url),
     );
   }
+}
+
+// resizeImageToBlob — даун-скейлит картинку в canvas и пересохраняет
+// как baseline JPEG. Решает три проблемы разом:
+//   • iOS Safari progressive-JPG «шторка» (canvas всегда выдаёт baseline);
+//   • HEIC/огромные фото с камеры — десериализуются canvas'ом в обычный JPEG;
+//   • upload в 5-10× меньше — мобильный канал тянет быстрее.
+async function resizeImageToBlob(file: File, maxSize: number, quality: number): Promise<File> {
+  const img = await fileToHtmlImage(file);
+  const { width, height } = scaleToFit(img.naturalWidth, img.naturalHeight, maxSize);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas_unsupported');
+  ctx.drawImage(img, 0, 0, width, height);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('canvas_toblob_null'));
+          return;
+        }
+        const baseName = file.name.replace(/\.\w+$/, '') || 'avatar';
+        resolve(new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' }));
+      },
+      'image/jpeg',
+      quality,
+    );
+  });
+}
+
+function fileToHtmlImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = (): void => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = (): void => {
+      URL.revokeObjectURL(url);
+      reject(new Error('image_decode'));
+    };
+    img.src = url;
+  });
+}
+
+function scaleToFit(w: number, h: number, maxSize: number): { width: number; height: number } {
+  if (w <= maxSize && h <= maxSize) return { width: w, height: h };
+  if (w >= h) return { width: maxSize, height: Math.round((h / w) * maxSize) };
+  return { width: Math.round((w / h) * maxSize), height: maxSize };
 }
