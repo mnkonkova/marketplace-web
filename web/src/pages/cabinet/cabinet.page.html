@@ -38,15 +38,15 @@
       <div class="avatar-column">
         <div
           class="avatar-preview"
-          [class.has-image]="form.avatar_url"
+          [class.has-image]="displayedAvatarUrl()"
           [class.is-uploading]="avatarBusy()"
           role="button"
           tabindex="0"
           (click)="!avatarUploading() && avatarFile.click()"
           (keydown.enter)="!avatarUploading() && avatarFile.click()"
         >
-          @if (form.avatar_url) {
-          <img [src]="form.avatar_url" alt="" decoding="async" />
+          @if (displayedAvatarUrl(); as src) {
+          <img [src]="src" alt="" decoding="async" />
           } @else {
           <span>{{ (form.display_name || '?').slice(0, 1) }}</span>
           }

@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnDestroy,
   OnInit,
   computed,
   inject,
@@ -78,7 +79,7 @@ interface ProfileForm {
   styleUrl: './cabinet.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CabinetPage implements OnInit {
+export class CabinetPage implements OnInit, OnDestroy {
   private readonly meRepo = inject(MeRepository);
 
   private readonly auth = inject(AuthSessionStore);
@@ -120,15 +121,19 @@ export class CabinetPage implements OnInit {
 
   public readonly avatarUploading = signal(false);
 
-  // avatarPropagating — между «PUT в S3 успешно» и «<img> в DOM реально
-  // отрисовал». На CDN-cold start картинка тянется ~1-3 сек, спиннер
-  // снимать нельзя — иначе превью пусто или показывает старое. Снимаем
-  // по событию (load)/(error) у <img>.
-  public readonly avatarPropagating = signal(false);
+  // localAvatarUrl — blob:URL свежевыбранного файла. На iOS Safari
+  // загрузка JPG через src= рисуется построчно («шторка»). Локальный
+  // blob: рисуется мгновенно — нет CDN, нет CORS, нет progressive draw.
+  // Очищаем после ngOnDestroy или когда form.avatar_url приходит из БД.
+  public readonly localAvatarUrl = signal<string | null>(null);
 
-  public readonly avatarBusy = computed(
-    () => this.avatarUploading() || this.avatarPropagating(),
+  // displayedAvatarUrl — что показывать в <img>. Приоритет локальному
+  // blob (свежий выбор) → потом form.avatar_url из БД/PATCH-ответа.
+  public readonly displayedAvatarUrl = computed(
+    () => this.localAvatarUrl() || this.form.avatar_url,
   );
+
+  public readonly avatarBusy = computed(() => this.avatarUploading());
 
   public readonly error = signal('');
 
@@ -178,6 +183,12 @@ export class CabinetPage implements OnInit {
       return;
     }
     this.loadAll();
+  }
+
+  public ngOnDestroy(): void {
+    // Освобождаем blob: URL свежевыбранного аватара чтобы не утекала память.
+    const local = this.localAvatarUrl();
+    if (local) URL.revokeObjectURL(local);
   }
 
   public logout(): void {
@@ -355,54 +366,37 @@ export class CabinetPage implements OnInit {
       this.error.set('Аватар больше 5 МБ.');
       return;
     }
+    // Сразу показываем blob: локального файла — на iOS Safari
+    // рендерится мгновенно без «шторки» прогрессивной JPG.
+    const prevLocal = this.localAvatarUrl();
+    this.localAvatarUrl.set(URL.createObjectURL(file));
+    if (prevLocal) URL.revokeObjectURL(prevLocal);
+
     this.avatarUploading.set(true);
     this.uploadViaPresign(() => this.meRepo.presignAvatarUpload(file), file)
-      .then(
-        (publicURL) =>
-          new Promise<void>((resolve) => {
-            this.avatarPropagating.set(true);
-            const preloader = new Image();
-            let settled = false;
-            const finish = (): void => {
-              if (settled) return;
-              settled = true;
-              this.form.avatar_url = publicURL;
-              this.avatarPropagating.set(false);
-              this.msg.success('Аватар загружен. Нажмите «Сохранить», чтобы применить.');
-              resolve();
-            };
-            // Safety: если decode/onload не успели за 5с (битый image, CORS,
-            // что угодно) — сдаёмся и всё равно показываем. Иначе спиннер
-            // висит вечно, и кнопка/preview-click заблокированы avatarBusy.
-            const timeoutId = setTimeout(finish, 5000);
-            preloader.onerror = () => {
-              clearTimeout(timeoutId);
-              finish();
-            };
-            const onSettled = (): void => {
-              clearTimeout(timeoutId);
-              finish();
-            };
-            preloader.src = publicURL;
-            // iOS Safari при биндинге src в <img> рисует прогрессивно
-            // («шторка»). Прелоадим в памяти, ждём decode() — Promise
-            // резолвится когда bitmap готов к paint без задержек.
-            if (preloader.decode) {
-              preloader.decode().then(onSettled).catch(onSettled);
-            } else {
-              preloader.onload = onSettled;
-            }
-          }),
-      )
+      .then((publicURL) => {
+        // CDN-URL уходит в form для сохранения (PATCH /me/profile его
+        // пошлёт). На UI всё равно показываем blob (приоритет в
+        // displayedAvatarUrl computed) — пока юзер не сохранит и не
+        // перезагрузит страницу, CDN-картинку не дёргаем вообще.
+        this.form.avatar_url = publicURL;
+        this.msg.success('Аватар загружен. Нажмите «Сохранить», чтобы применить.');
+      })
       .catch((err: Error) => {
         this.error.set(`Не удалось загрузить аватар: ${err.message}`);
-        this.avatarPropagating.set(false);
+        // Откатываем blob если PUT упал
+        const local = this.localAvatarUrl();
+        if (local) URL.revokeObjectURL(local);
+        this.localAvatarUrl.set(null);
       })
       .finally(() => this.avatarUploading.set(false));
   }
 
   public clearAvatar(): void {
     this.form.avatar_url = '';
+    const local = this.localAvatarUrl();
+    if (local) URL.revokeObjectURL(local);
+    this.localAvatarUrl.set(null);
     this.msg.info('Аватар будет очищен после сохранения профиля.');
   }
 
