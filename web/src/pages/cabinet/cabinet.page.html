@@ -41,7 +41,7 @@
           id="avatarFileInput"
           type="file"
           class="hidden-file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*"
           (click)="$any($event.target).value = ''"
           (change)="uploadAvatar($event)"
         />
@@ -77,7 +77,7 @@
         <button nz-button type="button" (click)="clearAvatar()">Очистить</button>
         }
         <p class="hint">
-          JPG, PNG или WEBP, <strong>не больше 5 МБ</strong>. Если фото с iPhone — заранее уменьшите размер.
+          JPG, PNG, WEBP или HEIC. Любой размер до 50 МБ — автоматически уменьшим до 512 px.
           После загрузки нажмите «Сохранить».
         </p>
       </div>

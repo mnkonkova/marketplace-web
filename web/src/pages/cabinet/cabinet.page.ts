@@ -360,15 +360,21 @@ export class CabinetPage implements OnInit, OnDestroy {
     // (см. cabinet.page.html). Не сбрасываем тут — иначе change event
     // вернёт пустой files на следующем рендере у некоторых iOS-версий.
     if (!original) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(original.type)) {
-      // Toast вместо error signal — error signal рендерится в alert
-      // внизу страницы, юзер не видит при загрузке аватарки сверху.
-      this.msg.error('Аватар: поддерживаем jpg, png или webp', { nzDuration: 6000 });
+    // Принимаем любой image/* (включая HEIC от iPhone-камеры) — canvas
+    // в resizeImageToBlob сам декодирует то что браузер умеет открыть.
+    // Если браузер не может декодить — fileToHtmlImage кинет ошибку,
+    // поймаем в catch и покажем toast.
+    if (!original.type.startsWith('image/')) {
+      this.msg.error('Аватар: ожидается картинка (jpg, png, webp, heic)', {
+        nzDuration: 6000,
+      });
       return;
     }
-    if (original.size > 5 * 1024 * 1024) {
+    // Sanity-cap 50 MB — больше браузер не вытянет decode без OOM на
+    // мобильном (Safari kills tab). С iPhone-фото 8-15 MB это запас 3×.
+    if (original.size > 50 * 1024 * 1024) {
       const sizeMB = (original.size / (1024 * 1024)).toFixed(1);
-      this.msg.error(`Файл ${sizeMB} МБ — слишком большой. Лимит 5 МБ.`, {
+      this.msg.error(`Файл ${sizeMB} МБ слишком большой даже для resize. Максимум 50 МБ.`, {
         nzDuration: 6000,
       });
       return;
