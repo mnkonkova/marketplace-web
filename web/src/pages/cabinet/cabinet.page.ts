@@ -353,39 +353,12 @@ export class CabinetPage implements OnInit, OnDestroy {
       });
   }
 
-  // openAvatarPicker — создаём fresh <input type=file> на каждый клик и
-  // программно открываем picker. iOS Safari иногда не шлёт change event
-  // если использовать один и тот же input повторно (внутренний state
-  // помнит previous selection). Свежий input = чистый state, любой выбор
-  // триггерит change.
-  public openAvatarPicker(): void {
-    if (this.avatarUploading()) return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/jpeg,image/png,image/webp';
-    input.style.position = 'fixed';
-    input.style.opacity = '0';
-    input.style.pointerEvents = 'none';
-    input.addEventListener('change', (ev) => {
-      void this.uploadAvatar(ev);
-      // Удаляем input после consumption — память не накапливается даже
-      // при сотне попыток.
-      input.remove();
-    });
-    // Если юзер закрыл picker без выбора — change не сработает, чистим
-    // на focus-back на window. Не гарантированно но лучше чем утечка.
-    const cleanup = (): void => {
-      setTimeout(() => input.remove(), 1000);
-      window.removeEventListener('focus', cleanup);
-    };
-    window.addEventListener('focus', cleanup, { once: true });
-    document.body.appendChild(input);
-    input.click();
-  }
-
   public async uploadAvatar(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const original = input.files?.[0];
+    // input.value уже сбрасывается на (click) до открытия picker'а
+    // (см. cabinet.page.html). Не сбрасываем тут — иначе change event
+    // вернёт пустой files на следующем рендере у некоторых iOS-версий.
     if (!original) return;
     if (!/^image\/(jpeg|png|webp)$/.test(original.type)) {
       this.error.set('Аватар: поддерживаем jpg, png или webp.');
