@@ -357,26 +357,43 @@ export class CabinetPage implements OnInit {
     }
     this.avatarUploading.set(true);
     this.uploadViaPresign(() => this.meRepo.presignAvatarUpload(file), file)
-      .then((publicURL) => {
-        // PUT в S3 успешно — переключаем фазу: ждём пока новый <img>
-        // реально дозагрузится через CDN (cold-start ~1-3 сек, не хотим
-        // показывать пустую плашку или старое фото).
-        this.avatarPropagating.set(true);
-        this.form.avatar_url = publicURL;
-        this.msg.success('Аватар загружен. Нажмите «Сохранить», чтобы применить.');
-      })
+      .then(
+        (publicURL) =>
+          new Promise<void>((resolve) => {
+            // PUT в S3 успешно — переключаем фазу.
+            this.avatarPropagating.set(true);
+            // iOS Safari при биндинге src в <img> рисует прогрессивно
+            // («шторка»). Прелоадим в памяти: пока new Image не decode'нет
+            // картинку, в DOM ничего не показываем. После decode браузер
+            // отдаёт уже готовый bitmap → DOM <img> рисует мгновенно.
+            const preloader = new Image();
+            const done = (): void => {
+              this.form.avatar_url = publicURL;
+              this.avatarPropagating.set(false);
+              this.msg.success('Аватар загружен. Нажмите «Сохранить», чтобы применить.');
+              resolve();
+            };
+            // decode() — современный путь, возвращает Promise когда
+            // картинка полностью разобрана и готова к paint без задержек.
+            // Fallback на onload для старых браузеров.
+            preloader.onerror = () => {
+              this.error.set('Не удалось отрисовать аватар после загрузки.');
+              this.avatarPropagating.set(false);
+              resolve();
+            };
+            preloader.src = publicURL;
+            if (preloader.decode) {
+              preloader.decode().then(done).catch(done);
+            } else {
+              preloader.onload = done;
+            }
+          }),
+      )
       .catch((err: Error) => {
         this.error.set(`Не удалось загрузить аватар: ${err.message}`);
         this.avatarPropagating.set(false);
       })
       .finally(() => this.avatarUploading.set(false));
-  }
-
-  // Хендлер для (load)/(error) на <img> — снимаем спиннер только когда
-  // картинка реально дорисовалась в DOM. Защита от iOS «шторки» работает
-  // вместе с CSS opacity-fade.
-  public onAvatarImgSettled(): void {
-    this.avatarPropagating.set(false);
   }
 
   public clearAvatar(): void {

@@ -106,16 +106,12 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    // iOS Safari при загрузке прогрессивной jpg показывает «шторку»:
-    // картинка отрисовывается сверху вниз построчно. Прячем через
-    // opacity до тех пор, пока браузер не дорисует, потом fade-in.
-    // Класс is-loading снимается в onAvatarImgSettled на (load)/(error).
-    opacity: 1;
-    transition: opacity 0.2s ease;
-
-    &.is-loading {
-      opacity: 0;
-    }
+    // iOS Safari force GPU слой — без этого progressive JPG может
+    // рисоваться построчно при re-paint. Decode выполнен прелоадом
+    // в JS (см. cabinet.page.ts::uploadAvatar), но композитинг всё
+    // равно проще на GPU-слое.
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
   }
 }
 

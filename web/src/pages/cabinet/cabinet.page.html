@@ -46,13 +46,7 @@
           (keydown.enter)="!avatarBusy() && avatarFile.click()"
         >
           @if (form.avatar_url) {
-          <img
-            [src]="form.avatar_url"
-            alt=""
-            [class.is-loading]="avatarPropagating()"
-            (load)="onAvatarImgSettled()"
-            (error)="onAvatarImgSettled()"
-          />
+          <img [src]="form.avatar_url" alt="" decoding="async" />
           } @else {
           <span>{{ (form.display_name || '?').slice(0, 1) }}</span>
           }
