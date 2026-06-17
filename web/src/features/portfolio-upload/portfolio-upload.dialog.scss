@@ -40,6 +40,20 @@
   line-height: 1;
 }
 
+// Inline-плашка ошибки в picker-view. Toast на iOS Safari в модалке
+// иногда уходит под backdrop по z-index — inline-ошибка надёжна.
+.picker-error {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(255, 77, 79, 0.12);
+  border: 1px solid rgba(255, 77, 79, 0.32);
+  color: #ff7875;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .body {
   display: flex;
   flex-direction: column;

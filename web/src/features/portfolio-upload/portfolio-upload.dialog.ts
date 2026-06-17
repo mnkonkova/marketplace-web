@@ -152,16 +152,16 @@ export class PortfolioUploadDialog implements OnDestroy {
   /** Приватный единый путь: и file-input, и initialFile из вне — оба сюда. */
   private applyFile(f: File): void {
     if (!ALLOWED_TYPES.test(f.type)) {
-      // Toast вместо errorText signal — picker-view (когда file ещё не
-      // выбран) не рендерит errorText, юзер не видит причины отказа.
-      this.msg.error('Видео: поддерживаем только mp4 и mov', { nzDuration: 6000 });
+      const msg = 'Видео: поддерживаем только mp4 и mov';
+      this.errorText.set(msg); // inline в picker-view — точно видно на iOS
+      this.msg.error(msg, { nzDuration: 6000 }); // toast — дубль когда видно
       return;
     }
     if (f.size > MAX_BYTES) {
       const sizeMB = (f.size / (1024 * 1024)).toFixed(0);
-      this.msg.error(`Видео ${sizeMB} МБ — слишком большое. Лимит 200 МБ.`, {
-        nzDuration: 6000,
-      });
+      const msg = `Видео ${sizeMB} МБ — слишком большое. Лимит 200 МБ.`;
+      this.errorText.set(msg);
+      this.msg.error(msg, { nzDuration: 6000 });
       return;
     }
 

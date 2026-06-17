@@ -11,6 +11,9 @@
     <strong>Выберите видео</strong>
     <p>MP4 или MOV до 200 МБ</p>
   </div>
+  @if (errorText()) {
+    <div class="picker-error" role="alert">{{ errorText() }}</div>
+  }
 } @else {
   <div class="body">
     <div class="preview" [class.is-uploading]="uploading()">
