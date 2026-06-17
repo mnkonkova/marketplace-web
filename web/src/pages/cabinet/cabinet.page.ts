@@ -120,6 +120,16 @@ export class CabinetPage implements OnInit {
 
   public readonly avatarUploading = signal(false);
 
+  // avatarPropagating — между «PUT в S3 успешно» и «<img> в DOM реально
+  // отрисовал». На CDN-cold start картинка тянется ~1-3 сек, спиннер
+  // снимать нельзя — иначе превью пусто или показывает старое. Снимаем
+  // по событию (load)/(error) у <img>.
+  public readonly avatarPropagating = signal(false);
+
+  public readonly avatarBusy = computed(
+    () => this.avatarUploading() || this.avatarPropagating(),
+  );
+
   public readonly error = signal('');
 
   public readonly check = signal<ProfileCheckResult | null>(null);
@@ -348,11 +358,25 @@ export class CabinetPage implements OnInit {
     this.avatarUploading.set(true);
     this.uploadViaPresign(() => this.meRepo.presignAvatarUpload(file), file)
       .then((publicURL) => {
+        // PUT в S3 успешно — переключаем фазу: ждём пока новый <img>
+        // реально дозагрузится через CDN (cold-start ~1-3 сек, не хотим
+        // показывать пустую плашку или старое фото).
+        this.avatarPropagating.set(true);
         this.form.avatar_url = publicURL;
         this.msg.success('Аватар загружен. Нажмите «Сохранить», чтобы применить.');
       })
-      .catch((err: Error) => this.error.set(`Не удалось загрузить аватар: ${err.message}`))
+      .catch((err: Error) => {
+        this.error.set(`Не удалось загрузить аватар: ${err.message}`);
+        this.avatarPropagating.set(false);
+      })
       .finally(() => this.avatarUploading.set(false));
+  }
+
+  // Хендлер для (load)/(error) на <img> — снимаем спиннер только когда
+  // картинка реально дорисовалась в DOM. Защита от iOS «шторки» работает
+  // вместе с CSS opacity-fade.
+  public onAvatarImgSettled(): void {
+    this.avatarPropagating.set(false);
   }
 
   public clearAvatar(): void {
