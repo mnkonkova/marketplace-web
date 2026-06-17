@@ -220,12 +220,11 @@ export class PortfolioUploadDialog implements OnDestroy {
     this.videoAbort = new AbortController();
     this.thumbAbort = new AbortController();
 
-    // Параллельно: апаем видео и пытаемся вытащить thumbnail из локального файла.
-    const videoP = this.uploadVideo(file, this.videoAbort.signal).then((url) => {
-      this.uploadedVideoUrl.set(url);
-    });
-
-    const thumbP = this.extractThumbnail(file)
+    // Видео — критично, ждём перед разморозкой кнопки. Thumbnail — best-effort
+    // в фоне: если PUT к S3 виснет (CORS / медленная сеть), сохранение видео
+    // всё равно возможно (бэк не требует thumbnail_url).
+    // Раньше thumbP блокировал Promise.all → uploading=true навсегда.
+    this.extractThumbnail(file)
       .then((blob) => {
         if (!blob) return;
         const previewURL = URL.createObjectURL(blob);
@@ -239,7 +238,8 @@ export class PortfolioUploadDialog implements OnDestroy {
       });
 
     try {
-      await Promise.all([videoP, thumbP]);
+      const url = await this.uploadVideo(file, this.videoAbort.signal);
+      this.uploadedVideoUrl.set(url);
       this.uploading.set(false);
     } catch (err) {
       this.uploading.set(false);
