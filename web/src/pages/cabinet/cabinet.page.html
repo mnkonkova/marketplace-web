@@ -42,8 +42,8 @@
           [class.is-uploading]="avatarBusy()"
           role="button"
           tabindex="0"
-          (click)="!avatarBusy() && avatarFile.click()"
-          (keydown.enter)="!avatarBusy() && avatarFile.click()"
+          (click)="!avatarUploading() && avatarFile.click()"
+          (keydown.enter)="!avatarUploading() && avatarFile.click()"
         >
           @if (form.avatar_url) {
           <img [src]="form.avatar_url" alt="" decoding="async" />

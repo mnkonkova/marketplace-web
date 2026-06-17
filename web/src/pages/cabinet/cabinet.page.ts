@@ -360,32 +360,37 @@ export class CabinetPage implements OnInit {
       .then(
         (publicURL) =>
           new Promise<void>((resolve) => {
-            // PUT в S3 успешно — переключаем фазу.
             this.avatarPropagating.set(true);
-            // iOS Safari при биндинге src в <img> рисует прогрессивно
-            // («шторка»). Прелоадим в памяти: пока new Image не decode'нет
-            // картинку, в DOM ничего не показываем. После decode браузер
-            // отдаёт уже готовый bitmap → DOM <img> рисует мгновенно.
             const preloader = new Image();
-            const done = (): void => {
+            let settled = false;
+            const finish = (): void => {
+              if (settled) return;
+              settled = true;
               this.form.avatar_url = publicURL;
               this.avatarPropagating.set(false);
               this.msg.success('Аватар загружен. Нажмите «Сохранить», чтобы применить.');
               resolve();
             };
-            // decode() — современный путь, возвращает Promise когда
-            // картинка полностью разобрана и готова к paint без задержек.
-            // Fallback на onload для старых браузеров.
+            // Safety: если decode/onload не успели за 5с (битый image, CORS,
+            // что угодно) — сдаёмся и всё равно показываем. Иначе спиннер
+            // висит вечно, и кнопка/preview-click заблокированы avatarBusy.
+            const timeoutId = setTimeout(finish, 5000);
             preloader.onerror = () => {
-              this.error.set('Не удалось отрисовать аватар после загрузки.');
-              this.avatarPropagating.set(false);
-              resolve();
+              clearTimeout(timeoutId);
+              finish();
+            };
+            const onSettled = (): void => {
+              clearTimeout(timeoutId);
+              finish();
             };
             preloader.src = publicURL;
+            // iOS Safari при биндинге src в <img> рисует прогрессивно
+            // («шторка»). Прелоадим в памяти, ждём decode() — Promise
+            // резолвится когда bitmap готов к paint без задержек.
             if (preloader.decode) {
-              preloader.decode().then(done).catch(done);
+              preloader.decode().then(onSettled).catch(onSettled);
             } else {
-              preloader.onload = done;
+              preloader.onload = onSettled;
             }
           }),
       )
