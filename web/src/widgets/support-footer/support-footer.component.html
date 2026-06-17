@@ -1,9 +1,15 @@
 <footer class="footer">
-  <span class="muted">© {{ year() }} wayprmarket</span>
-  <span class="sep">·</span>
-  <button type="button" class="link" (click)="openModal()">
-    Написать в поддержку
-  </button>
+  <div class="footer-row">
+    <span class="muted">© {{ year() }} wayprmarket</span>
+    <span class="sep">·</span>
+    <button type="button" class="link" (click)="openModal()">
+      Написать в поддержку
+    </button>
+  </div>
+  <p class="legal-note">
+    * Instagram и продукты Meta признаны экстремистской организацией; их
+    деятельность запрещена на территории РФ.
+  </p>
 </footer>
 
 <nz-modal

@@ -45,7 +45,7 @@
         [(ngModel)]="input"
         name="clarify"
         [disabled]="loading()"
-        placeholder="Например: Reels для фитнес-клуба, Москва, бюджет до 30 000"
+        placeholder="Например: Reels* для фитнес-клуба, Москва, бюджет до 30 000"
       />
       <button nz-button nzType="primary" type="submit" [disabled]="loading() || !input.trim()">
         Отправить

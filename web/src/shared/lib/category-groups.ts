@@ -80,7 +80,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
 
 export const HERO_QUICK_TAGS = [
   'ИИ-креатор',
-  'Монтажёр для Reels',
+  'Монтажёр для Reels*',
   'Режиссёр',
   'SMM для бренда',
   'UGC-креатор',
