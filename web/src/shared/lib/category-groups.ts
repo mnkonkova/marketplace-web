@@ -62,6 +62,7 @@ export function tileTitle(cat: { code: string; title: string }): string {
 
 export const CATEGORY_ICONS: Record<string, string> = {
   editor: '🎬',
+  director: '🎬',
   video_director: '🎞️',
   motion: '✨',
   scriptwriter: '✍️',
@@ -80,6 +81,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
 export const HERO_QUICK_TAGS = [
   'ИИ-креатор',
   'Монтажёр для Reels',
+  'Режиссёр',
   'SMM для бренда',
   'UGC-креатор',
   'Таргетолог',
