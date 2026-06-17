@@ -76,7 +76,10 @@
         @if (form.avatar_url || localAvatarUrl()) {
         <button nz-button type="button" (click)="clearAvatar()">Очистить</button>
         }
-        <p class="hint">JPG, PNG или WEBP до 5 МБ. После загрузки нажмите «Сохранить».</p>
+        <p class="hint">
+          JPG, PNG или WEBP, <strong>не больше 5 МБ</strong>. Если фото с iPhone — заранее уменьшите размер.
+          После загрузки нажмите «Сохранить».
+        </p>
       </div>
 
       <div class="fields">

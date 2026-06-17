@@ -361,11 +361,16 @@ export class CabinetPage implements OnInit, OnDestroy {
     // вернёт пустой files на следующем рендере у некоторых iOS-версий.
     if (!original) return;
     if (!/^image\/(jpeg|png|webp)$/.test(original.type)) {
-      this.error.set('Аватар: поддерживаем jpg, png или webp.');
+      // Toast вместо error signal — error signal рендерится в alert
+      // внизу страницы, юзер не видит при загрузке аватарки сверху.
+      this.msg.error('Аватар: поддерживаем jpg, png или webp', { nzDuration: 6000 });
       return;
     }
     if (original.size > 5 * 1024 * 1024) {
-      this.error.set('Аватар больше 5 МБ.');
+      const sizeMB = (original.size / (1024 * 1024)).toFixed(1);
+      this.msg.error(`Файл ${sizeMB} МБ — слишком большой. Лимит 5 МБ.`, {
+        nzDuration: 6000,
+      });
       return;
     }
 
