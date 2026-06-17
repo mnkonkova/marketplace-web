@@ -13,7 +13,7 @@
   </div>
 } @else {
   <div class="body">
-    <div class="preview">
+    <div class="preview" [class.is-uploading]="uploading()">
       @if (previewUrl()) {
         <video
           [src]="previewUrl()!"
@@ -22,6 +22,12 @@
           muted
           preload="metadata"
         ></video>
+      }
+      @if (uploading()) {
+        <div class="preview-overlay" role="status" aria-label="Загрузка видео">
+          <span nz-icon nzType="loading" nzTheme="outline"></span>
+          <span class="overlay-label">Загружаю…</span>
+        </div>
       }
       <div class="preview-meta">
         <strong class="filename">{{ file()!.name }}</strong>

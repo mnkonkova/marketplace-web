@@ -47,6 +47,7 @@
 }
 
 .preview {
+  position: relative;
   display: flex;
   gap: 14px;
   align-items: flex-start;
@@ -58,6 +59,45 @@
     background: #000;
     border-radius: 6px;
     display: block;
+    transition: filter 0.15s ease;
+  }
+
+  &.is-uploading video {
+    filter: brightness(0.5);
+  }
+}
+
+.preview-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 120px;
+  aspect-ratio: 9 / 16;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 12px;
+  pointer-events: none;
+
+  span[nz-icon] {
+    font-size: 32px;
+    display: inline-flex;
+    animation: spin 0.9s linear infinite;
+  }
+
+  .overlay-label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.85;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
