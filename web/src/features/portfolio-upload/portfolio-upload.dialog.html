@@ -14,26 +14,28 @@
 } @else {
   <div class="body">
     <div class="preview" [class.is-uploading]="uploading()">
-      @if (previewUrl()) {
-        <video
-          [src]="previewUrl()!"
-          [poster]="thumbnailPreviewUrl() || ''"
-          playsinline
-          muted
-          preload="metadata"
-        ></video>
-      }
-      @if (uploading()) {
-        <div class="preview-overlay" role="status" aria-label="Загрузка видео">
-          <span nz-icon nzType="loading" nzTheme="outline"></span>
-          <span class="overlay-label">Загружаю…</span>
-        </div>
-      } @else if (uploadedVideoUrl()) {
-        <div class="preview-overlay is-done" role="status" aria-label="Видео загружено">
-          <span nz-icon nzType="check" nzTheme="outline"></span>
-          <span class="overlay-label">Готово</span>
-        </div>
-      }
+      <div class="preview-media">
+        @if (previewUrl()) {
+          <video
+            [src]="previewUrl()!"
+            [poster]="thumbnailPreviewUrl() || ''"
+            playsinline
+            muted
+            preload="metadata"
+          ></video>
+        }
+        @if (uploading()) {
+          <div class="preview-overlay" role="status" aria-label="Загрузка видео">
+            <span nz-icon nzType="loading" nzTheme="outline"></span>
+            <span class="overlay-label">Загружаю…</span>
+          </div>
+        } @else if (uploadedVideoUrl()) {
+          <div class="preview-overlay is-done" role="status" aria-label="Видео загружено">
+            <span nz-icon nzType="check" nzTheme="outline"></span>
+            <span class="overlay-label">Готово</span>
+          </div>
+        }
+      </div>
       <div class="preview-meta">
         <strong class="filename">{{ file()!.name }}</strong>
         <span class="size">{{ formatSize(file()!.size) }}</span>

@@ -47,43 +47,49 @@
 }
 
 .preview {
-  position: relative;
   display: flex;
   gap: 14px;
   align-items: flex-start;
+}
+
+// .preview-media — обёртка вокруг video, чтобы overlay получал inset:0
+// относительно ИМЕННО video, а не всего ряда (с meta справа). Тогда
+// overlay автоматически совпадает с размером video на любом breakpoint'е.
+.preview-media {
+  position: relative;
+  flex-shrink: 0;
+  width: 120px;
+  aspect-ratio: 9 / 16;
+  border-radius: 6px;
+  overflow: hidden;
 
   video {
-    width: 120px;
-    aspect-ratio: 9 / 16;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     background: #000;
-    border-radius: 6px;
     display: block;
     transition: filter 0.15s ease;
   }
+}
 
-  &.is-uploading video {
-    filter: brightness(0.5);
-  }
+.preview.is-uploading .preview-media video {
+  filter: brightness(0.5);
 }
 
 .preview-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 120px;
-  aspect-ratio: 9 / 16;
+  inset: 0;
   display: grid;
   place-items: center;
   gap: 6px;
-  border-radius: 6px;
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
   font-size: 12px;
   pointer-events: none;
 
   span[nz-icon] {
-    font-size: 32px;
+    font-size: 28px;
     display: inline-flex;
     animation: spin 0.9s linear infinite;
   }
@@ -94,7 +100,7 @@
     opacity: 0.85;
   }
 
-  // «Готово» — зелёная галка, статичная (без анимации крутка).
+  // «Готово» — зелёная галка, статичная (без анимации крутки).
   &.is-done {
     background: rgba(0, 0, 0, 0.55);
 
@@ -217,7 +223,7 @@
 
 /* На узких экранах модалка переходит в полноэкранный режим — крутим стили вверх по дереву */
 :host-context(.portfolio-upload-modal) {
-  .preview video {
+  .preview-media {
     width: 100px;
   }
 }
@@ -227,7 +233,7 @@
     padding: 28px 16px;
   }
 
-  .preview video {
+  .preview-media {
     width: 96px;
   }
 
