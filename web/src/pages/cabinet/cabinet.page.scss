@@ -121,16 +121,47 @@
   height: 160px;
   border-radius: 34px;
   font-size: 56px;
-
-  // На iOS Safari тёмный <input type="file"> рендерится как кривая кнопка с
-  // системными стилями. Прячем input глобально (.hidden-file), а контейнер
-  // картинки делаем кликабельным «полем» — это и есть UX «нажми чтобы
-  // загрузить». Курсор pointer подсказывает.
   cursor: pointer;
   transition: filter 0.15s ease;
 
   &.is-uploading {
     filter: brightness(0.55);
+    cursor: progress;
+  }
+
+  &.is-disabled {
+    pointer-events: none;
+  }
+}
+
+// label-styled-as-nz-button. Используем label вместо <button> чтобы клик
+// нативно открывал ассоциированный input[file] на iOS Safari (там
+// программный .click() иногда отваливается после 1-го picker'а).
+.avatar-pick-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+
+  &:hover {
+    background: var(--surface-hover);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  &.is-disabled {
+    pointer-events: none;
+    opacity: 0.65;
     cursor: progress;
   }
 }

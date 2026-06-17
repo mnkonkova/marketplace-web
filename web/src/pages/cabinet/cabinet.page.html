@@ -36,14 +36,20 @@
 
     <div class="profile-grid">
       <div class="avatar-column">
-        <div
+        <input
+          #avatarFile
+          id="avatarFileInput"
+          type="file"
+          class="hidden-file"
+          accept="image/jpeg,image/png,image/webp"
+          (change)="uploadAvatar($event)"
+        />
+        <label
+          for="avatarFileInput"
           class="avatar-preview"
           [class.has-image]="displayedAvatarUrl()"
           [class.is-uploading]="avatarBusy()"
-          role="button"
-          tabindex="0"
-          (click)="!avatarUploading() && avatarFile.click()"
-          (keydown.enter)="!avatarUploading() && avatarFile.click()"
+          [class.is-disabled]="avatarUploading()"
         >
           @if (displayedAvatarUrl(); as src) {
           <img [src]="src" alt="" decoding="async" />
@@ -55,23 +61,18 @@
             <span nz-icon nzType="loading" nzTheme="outline"></span>
           </div>
           }
-        </div>
-        <input
-          #avatarFile
-          type="file"
-          class="hidden-file"
-          accept="image/jpeg,image/png,image/webp"
-          (change)="uploadAvatar($event)"
-        />
-        <button
-          nz-button
-          nzType="default"
-          [nzLoading]="avatarUploading()"
-          (click)="avatarFile.click()"
+        </label>
+        <label
+          for="avatarFileInput"
+          class="avatar-pick-btn"
+          [class.is-disabled]="avatarUploading()"
         >
+          @if (avatarUploading()) {
+          <span nz-icon nzType="loading" nzTheme="outline"></span>
+          }
           Загрузить аватар
-        </button>
-        @if (form.avatar_url) {
+        </label>
+        @if (form.avatar_url || localAvatarUrl()) {
         <button nz-button type="button" (click)="clearAvatar()">Очистить</button>
         }
         <p class="hint">JPG, PNG или WEBP до 5 МБ. После загрузки нажмите «Сохранить».</p>
