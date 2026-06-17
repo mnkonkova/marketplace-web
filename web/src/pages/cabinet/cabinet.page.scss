@@ -110,10 +110,49 @@
 }
 
 .avatar-preview {
+  position: relative;
   width: 160px;
   height: 160px;
   border-radius: 34px;
   font-size: 56px;
+
+  // На iOS Safari тёмный <input type="file"> рендерится как кривая кнопка с
+  // системными стилями. Прячем input глобально (.hidden-file), а контейнер
+  // картинки делаем кликабельным «полем» — это и есть UX «нажми чтобы
+  // загрузить». Курсор pointer подсказывает.
+  cursor: pointer;
+  transition: filter 0.15s ease;
+
+  &.is-uploading {
+    filter: brightness(0.55);
+    cursor: progress;
+  }
+}
+
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: inherit;
+  color: #fff;
+  font-size: 32px;
+
+  // Крутим иконку — ng-zorro у nzType="loading" уже даёт анимацию, но на
+  // некоторых билдах класса .anticon-spin может не быть. Явно вращаем для
+  // гарантии (особенно важно на iOS Safari где CSS animation иногда лагает
+  // на сложных слоях — задаём simple transform-rotation).
+  span[nz-icon] {
+    display: inline-flex;
+    animation: spin 0.9s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .fields {
@@ -141,7 +180,15 @@ label {
 }
 
 .hidden-file {
-  display: none;
+  // display:none на iOS Safari иногда блокирует .click() (зависит от
+  // версии). Делаем «визуально скрытым», но кликабельным программно.
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
 .hint {

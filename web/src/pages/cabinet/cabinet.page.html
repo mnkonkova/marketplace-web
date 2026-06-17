@@ -36,11 +36,24 @@
 
     <div class="profile-grid">
       <div class="avatar-column">
-        <div class="avatar-preview" [class.has-image]="form.avatar_url">
+        <div
+          class="avatar-preview"
+          [class.has-image]="form.avatar_url"
+          [class.is-uploading]="avatarUploading()"
+          role="button"
+          tabindex="0"
+          (click)="!avatarUploading() && avatarFile.click()"
+          (keydown.enter)="!avatarUploading() && avatarFile.click()"
+        >
           @if (form.avatar_url) {
           <img [src]="form.avatar_url" alt="" />
           } @else {
           <span>{{ (form.display_name || '?').slice(0, 1) }}</span>
+          }
+          @if (avatarUploading()) {
+          <div class="avatar-overlay" role="status" aria-label="Загрузка аватара">
+            <span nz-icon nzType="loading" nzTheme="outline"></span>
+          </div>
           }
         </div>
         <input
