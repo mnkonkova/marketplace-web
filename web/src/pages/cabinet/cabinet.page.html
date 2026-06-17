@@ -36,21 +36,13 @@
 
     <div class="profile-grid">
       <div class="avatar-column">
-        <input
-          #avatarFile
-          id="avatarFileInput"
-          type="file"
-          class="hidden-file"
-          accept="image/jpeg,image/png,image/webp"
-          (click)="$any($event.target).value = ''"
-          (change)="uploadAvatar($event)"
-        />
-        <label
-          for="avatarFileInput"
+        <button
+          type="button"
           class="avatar-preview"
           [class.has-image]="displayedAvatarUrl()"
           [class.is-uploading]="avatarBusy()"
-          [class.is-disabled]="avatarUploading()"
+          [disabled]="avatarUploading()"
+          (click)="openAvatarPicker()"
         >
           @if (displayedAvatarUrl(); as src) {
           <img [src]="src" alt="" decoding="async" />
@@ -62,17 +54,16 @@
             <span nz-icon nzType="loading" nzTheme="outline"></span>
           </div>
           }
-        </label>
-        <label
-          for="avatarFileInput"
-          class="avatar-pick-btn"
-          [class.is-disabled]="avatarUploading()"
+        </button>
+        <button
+          nz-button
+          type="button"
+          nzType="default"
+          [nzLoading]="avatarUploading()"
+          (click)="openAvatarPicker()"
         >
-          @if (avatarUploading()) {
-          <span nz-icon nzType="loading" nzTheme="outline"></span>
-          }
           Загрузить аватар
-        </label>
+        </button>
         @if (form.avatar_url || localAvatarUrl()) {
         <button nz-button type="button" (click)="clearAvatar()">Очистить</button>
         }
