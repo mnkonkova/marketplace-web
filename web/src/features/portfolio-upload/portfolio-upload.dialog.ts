@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NZ_MODAL_DATA, NzModalRef } from 'ng-zorro-antd/modal';
 import { firstValueFrom } from 'rxjs';
 
@@ -63,6 +64,8 @@ export class PortfolioUploadDialog implements OnDestroy {
   private readonly modalRef = inject<NzModalRef<PortfolioUploadDialog, PortfolioUploadDialogResult | null>>(NzModalRef);
   private readonly data = inject<PortfolioUploadDialogData>(NZ_MODAL_DATA);
   private readonly meRepo = inject(MeRepository);
+
+  private readonly msg = inject(NzMessageService);
 
   public readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
@@ -149,11 +152,16 @@ export class PortfolioUploadDialog implements OnDestroy {
   /** Приватный единый путь: и file-input, и initialFile из вне — оба сюда. */
   private applyFile(f: File): void {
     if (!ALLOWED_TYPES.test(f.type)) {
-      this.errorText.set('Видео: поддерживаем mp4 и mov.');
+      // Toast вместо errorText signal — picker-view (когда file ещё не
+      // выбран) не рендерит errorText, юзер не видит причины отказа.
+      this.msg.error('Видео: поддерживаем только mp4 и mov', { nzDuration: 6000 });
       return;
     }
     if (f.size > MAX_BYTES) {
-      this.errorText.set('Видео больше 200 МБ.');
+      const sizeMB = (f.size / (1024 * 1024)).toFixed(0);
+      this.msg.error(`Видео ${sizeMB} МБ — слишком большое. Лимит 200 МБ.`, {
+        nzDuration: 6000,
+      });
       return;
     }
 
