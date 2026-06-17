@@ -89,8 +89,8 @@ export class PortfolioUploadDialog implements OnDestroy {
 
   public readonly titlePlaceholder = signal('Например: Реклама для бренда X');
 
-  private readonly uploadedVideoUrl = signal('');
-  private readonly uploadedThumbnailUrl = signal('');
+  public readonly uploadedVideoUrl = signal('');
+  public readonly uploadedThumbnailUrl = signal('');
   private videoAbort?: AbortController;
   private thumbAbort?: AbortController;
 
@@ -347,25 +347,41 @@ export class PortfolioUploadDialog implements OnDestroy {
       video.muted = true;
       video.playsInline = true;
       video.preload = 'auto';
-      video.crossOrigin = 'anonymous';
+      // НЕ ставим crossOrigin='anonymous' для blob: URL — это маркирует
+      // canvas как tainted на iOS Safari и canvas.toBlob возвращает null.
       video.src = objectUrl;
 
+      // iOS Safari требует видео в DOM для metadata/seek. Off-screen но
+      // в дереве — обычно достаточно.
+      video.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;';
+      document.body.appendChild(video);
+
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
       const cleanup = (): void => {
+        if (timeoutId) clearTimeout(timeoutId);
         URL.revokeObjectURL(objectUrl);
         video.removeAttribute('src');
         video.load();
+        video.remove();
       };
 
-      const onError = (): void => {
+      const giveUp = (): void => {
         cleanup();
         resolve(null);
       };
 
-      video.addEventListener('error', onError, { once: true });
+      // 8 секунд на всё (на iOS .mov с HEVC seek может затыкать) — иначе
+      // thumbnail не блокирует флоу.
+      timeoutId = setTimeout(giveUp, 8000);
+
+      video.addEventListener('error', giveUp, { once: true });
       video.addEventListener(
         'loadedmetadata',
         () => {
           const target = Math.min(THUMB_SECOND, Math.max(0, video.duration * 0.1));
+          // iOS quirk: иногда нужен play+pause чтобы seek работал.
+          video.play().catch(() => {});
           video.currentTime = target;
         },
         { once: true },
@@ -373,14 +389,14 @@ export class PortfolioUploadDialog implements OnDestroy {
       video.addEventListener(
         'seeked',
         () => {
+          video.pause();
           try {
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth || 720;
             canvas.height = video.videoHeight || 1280;
             const ctx = canvas.getContext('2d');
             if (!ctx) {
-              cleanup();
-              resolve(null);
+              giveUp();
               return;
             }
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -393,8 +409,7 @@ export class PortfolioUploadDialog implements OnDestroy {
               0.85,
             );
           } catch {
-            cleanup();
-            resolve(null);
+            giveUp();
           }
         },
         { once: true },

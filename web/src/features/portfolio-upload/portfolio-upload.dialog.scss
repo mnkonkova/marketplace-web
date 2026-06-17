@@ -93,6 +93,26 @@
     letter-spacing: 0.05em;
     opacity: 0.85;
   }
+
+  // «Готово» — зелёная галка, статичная (без анимации крутка).
+  &.is-done {
+    background: rgba(0, 0, 0, 0.55);
+
+    span[nz-icon] {
+      animation: none;
+      color: #52c41a;
+    }
+  }
+}
+
+.upload-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  color: #52c41a;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 @keyframes spin {
