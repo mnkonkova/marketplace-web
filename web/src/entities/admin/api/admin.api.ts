@@ -32,6 +32,9 @@ export interface UserListItem {
   // Только у спецов: pending_review | approved | rejected.
   // Пустая строка/undefined у клиентов и спецов без профиля.
   moderation_status?: 'pending_review' | 'approved' | 'rejected' | '';
+  // Спец нажал «Опубликовать»? Если false и status=pending_review —
+  // это черновик, не в очереди модерации (висит до клика «Опубликовать»).
+  is_published?: boolean;
 }
 
 export interface UserListResult {

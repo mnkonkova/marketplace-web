@@ -234,8 +234,14 @@ export class AdminUsersPage implements OnInit {
     return k === 'client' ? 'Клиент' : k === 'specialist' ? 'Специалист' : 'Оба';
   }
 
-  public modStatusTag(s: UserListItem['moderation_status']): { text: string; color: string } | null {
-    switch (s) {
+  public modStatusTag(u: UserListItem): { text: string; color: string } | null {
+    // Спец не нажал «Опубликовать» — это черновик, не в очереди /admin/moderation.
+    // moderation_status у него по дефолту pending_review, но статус «Ждёт» вводит
+    // в заблуждение (никого админ не ждёт).
+    if (u.moderation_status && !u.is_published) {
+      return { text: 'Черновик', color: 'default' };
+    }
+    switch (u.moderation_status) {
       case 'pending_review':
         return { text: 'Ждёт', color: 'gold' };
       case 'approved':

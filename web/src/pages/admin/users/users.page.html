@@ -95,7 +95,7 @@
           }
         </td>
         <td data-label="Модерация">
-          @if (modStatusTag(u.moderation_status); as t) {
+          @if (modStatusTag(u); as t) {
           <nz-tag [nzColor]="t.color">{{ t.text }}</nz-tag>
           } @else {
           <span class="dim">—</span>
@@ -120,7 +120,7 @@
         </td>
         <td data-label="Создан">{{ u.created_at | date: 'dd.MM.yyyy' }}</td>
         <td data-label="Действия" class="row-actions">
-          @if (u.moderation_status === 'pending_review' || u.moderation_status === 'rejected') {
+          @if (u.is_published && (u.moderation_status === 'pending_review' || u.moderation_status === 'rejected')) {
           <button
             nz-button
             nzSize="small"
@@ -134,7 +134,7 @@
             <span nz-icon nzType="check"></span> Подтвердить
           </button>
           }
-          @if (u.moderation_status) {
+          @if (u.is_published && u.moderation_status) {
           <button
             nz-button
             nzSize="small"
