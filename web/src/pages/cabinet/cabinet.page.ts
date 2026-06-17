@@ -663,19 +663,27 @@ export class CabinetPage implements OnInit, OnDestroy {
 }
 
 // resizeImageToBlob — даун-скейлит картинку в canvas и пересохраняет
-// как baseline JPEG. Решает три проблемы разом:
+// как baseline JPEG с правильным EXIF-rotation. Решает:
 //   • iOS Safari progressive-JPG «шторка» (canvas всегда выдаёт baseline);
 //   • HEIC/огромные фото с камеры — десериализуются canvas'ом в обычный JPEG;
+//   • EXIF rotation iPhone-камеры — createImageBitmap респектит ориентацию
+//     (без этого drawImage рисует неповёрнутые байты → серые поля);
 //   • upload в 5-10× меньше — мобильный канал тянет быстрее.
 async function resizeImageToBlob(file: File, maxSize: number, quality: number): Promise<File> {
-  const img = await fileToHtmlImage(file);
-  const { width, height } = scaleToFit(img.naturalWidth, img.naturalHeight, maxSize);
+  const source = await loadImageRespectingExif(file);
+  const sourceW = 'naturalWidth' in source ? source.naturalWidth : source.width;
+  const sourceH = 'naturalHeight' in source ? source.naturalHeight : source.height;
+  const { width, height } = scaleToFit(sourceW, sourceH, maxSize);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('canvas_unsupported');
-  ctx.drawImage(img, 0, 0, width, height);
+  // Прозрачность не нужна, заполним фоном чтобы серых полей не было
+  // даже если EXIF неожиданно не учёлся.
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(source as CanvasImageSource, 0, 0, width, height);
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
@@ -690,6 +698,25 @@ async function resizeImageToBlob(file: File, maxSize: number, quality: number): 
       quality,
     );
   });
+}
+
+// createImageBitmap с imageOrientation='from-image' — это РАБОЧИЙ способ
+// учесть EXIF rotation в canvas. <img> + drawImage не учитывают EXIF в
+// canvas — рисуется raw-битмап → перевёрнутый, плюс серые поля по краям.
+async function loadImageRespectingExif(file: File): Promise<ImageBitmap | HTMLImageElement> {
+  // Path A: createImageBitmap с EXIF — Chrome 79+, Safari 15+, Firefox 113+.
+  if (typeof createImageBitmap === 'function') {
+    try {
+      return await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch {
+      // Fallthrough: некоторые мобильные Safari < 15 не поддерживают второй
+      // аргумент с опциями — переходим на HTMLImage fallback.
+    }
+  }
+  // Path B: <img> fallback. Современные Safari/Chrome автоматически
+  // применяют EXIF при отрисовке <img> в canvas через drawImage. Старые
+  // не применяют — но на них и проблемы изначально не было.
+  return fileToHtmlImage(file);
 }
 
 function fileToHtmlImage(file: File): Promise<HTMLImageElement> {

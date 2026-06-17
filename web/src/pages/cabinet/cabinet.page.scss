@@ -95,21 +95,30 @@
 
 .avatar-preview,
 .thumb {
-  display: grid;
-  place-items: center;
+  // Простое центрирование через flex — iOS Safari иногда клиппит детей
+  // в grid+overflow:hidden родителя (детали на форумах WebKit). flex
+  // ведёт себя предсказуемо.
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.06);
   color: var(--accent);
   font-weight: 800;
+  // Изолируем рендер-слой — предотвращает iOS Safari от выноса <img> за
+  // пределы border-radius при перерисовке.
+  isolation: isolate;
 
   img {
+    // Абсолютная привязка к боксу + явный inset гарантируют что iOS не
+    // оставит «серую полоску» сверху если по какой-то причине drawImage
+    // отдал не до конца заполненный bitmap.
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-    // Decode полностью гарантирован canvas-resize в JS (см. resizeImageToBlob).
-    // Без translateZ — иначе iOS Safari клиппит трансформный слой против
-    // overflow:hidden родителя, отрезая верх картинки серой полоской.
   }
 }
 
