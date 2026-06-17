@@ -356,7 +356,9 @@ export class CabinetPage implements OnInit, OnDestroy {
   public async uploadAvatar(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const original = input.files?.[0];
-    input.value = '';
+    // input.value уже сбрасывается на (click) до открытия picker'а
+    // (см. cabinet.page.html). Не сбрасываем тут — иначе change event
+    // вернёт пустой files на следующем рендере у некоторых iOS-версий.
     if (!original) return;
     if (!/^image\/(jpeg|png|webp)$/.test(original.type)) {
       this.error.set('Аватар: поддерживаем jpg, png или webp.');
