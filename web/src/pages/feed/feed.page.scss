@@ -352,7 +352,8 @@ app-back-link.feed-back {
   font-weight: 600;
   font-size: 14px !important;
   letter-spacing: 0.01em;
-  box-shadow: 0 3px 10px rgba(255, 94, 58, 0.4) !important;
+  box-shadow: 0 3px 10px rgba(255, 94, 58, 0.45) !important;
+  animation: project-cart-pulse 2.4s ease-in-out infinite;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -368,8 +369,9 @@ app-back-link.feed-back {
     transform: translateY(-1px);
     background: #e54a2a !important;
     color: #fff !important;
-    box-shadow: 0 6px 16px rgba(255, 94, 58, 0.55) !important;
+    box-shadow: 0 6px 16px rgba(255, 94, 58, 0.6) !important;
     border: 0 !important;
+    animation: none;
   }
 
   &:active {
@@ -378,10 +380,23 @@ app-back-link.feed-back {
   }
 }
 
+@keyframes project-cart-pulse {
+  0%,
+  100% {
+    box-shadow: 0 3px 10px rgba(255, 94, 58, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 3px 14px rgba(255, 94, 58, 0.75),
+      0 0 0 6px rgba(255, 94, 58, 0.18);
+  }
+}
+
 .project-cart-btn.in-project {
   background: #52c41a !important;
   color: #fff !important;
   box-shadow: 0 3px 10px rgba(82, 196, 26, 0.35) !important;
+  animation: none;
 
   &:hover,
   &:focus {
@@ -398,10 +413,22 @@ app-back-link.feed-back {
 }
 
 .spec-row {
+  display: flex;
   align-items: center;
   gap: 16px;
   padding: 14px;
   border-radius: $default-radius;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+
+  &:hover {
+    border-color: rgba(255, 94, 58, 0.45);
+    background: var(--surface-hover);
+  }
 
   .spec-main {
     flex: 1;
