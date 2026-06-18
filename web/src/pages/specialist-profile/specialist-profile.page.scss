@@ -274,3 +274,73 @@
   text-align: center;
   color: var(--text-muted);
 }
+
+// Кнопка «Пригласить в проект» — оранжевый CTA с pulse glow.
+// Идентичная feed.page.scss::project-cart-btn для визуальной
+// консистентности через все экраны.
+.project-cart-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  background: #ff5e3a !important;
+  border: 0 !important;
+  color: #fff !important;
+  font-weight: 600;
+  font-size: 14px !important;
+  letter-spacing: 0.01em;
+  box-shadow: 0 3px 10px rgba(255, 94, 58, 0.45) !important;
+  animation: project-cart-pulse 2.4s ease-in-out infinite;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.2s ease;
+
+  span[nz-icon] {
+    font-size: 14px;
+    display: inline-flex;
+  }
+
+  &:hover,
+  &:focus {
+    transform: translateY(-1px);
+    background: #e54a2a !important;
+    color: #fff !important;
+    box-shadow: 0 6px 16px rgba(255, 94, 58, 0.6) !important;
+    border: 0 !important;
+    animation: none;
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(255, 94, 58, 0.45) !important;
+  }
+}
+
+.project-cart-btn.in-project {
+  background: #52c41a !important;
+  color: #fff !important;
+  box-shadow: 0 3px 10px rgba(82, 196, 26, 0.35) !important;
+  animation: none;
+
+  &:hover,
+  &:focus {
+    background: #389e0d !important;
+    color: #fff !important;
+    box-shadow: 0 6px 16px rgba(82, 196, 26, 0.5) !important;
+  }
+}
+
+@keyframes project-cart-pulse {
+  0%,
+  100% {
+    box-shadow: 0 3px 10px rgba(255, 94, 58, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 3px 14px rgba(255, 94, 58, 0.75),
+      0 0 0 6px rgba(255, 94, 58, 0.18);
+  }
+}

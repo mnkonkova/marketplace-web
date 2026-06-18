@@ -36,6 +36,7 @@
                 [class.in-project]="inCart()"
                 (click)="toggleProject()"
               >
+                <span nz-icon [nzType]="inCart() ? 'check' : 'plus'"></span>
                 {{ inCart() ? 'В проекте' : 'Пригласить в проект' }}
               </button>
             </div>
@@ -109,10 +110,11 @@
         nz-button
         nzType="primary"
         type="button"
-        class="sticky-cta-btn"
+        class="sticky-cta-btn project-cart-btn"
         [class.in-project]="inCart()"
         (click)="toggleProject()"
       >
+        <span nz-icon [nzType]="inCart() ? 'check' : 'plus'"></span>
         {{ inCart() ? 'В проекте' : 'Пригласить' }}
       </button>
     </div>

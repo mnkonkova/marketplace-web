@@ -4,6 +4,7 @@ import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { DatePipe } from '@angular/common';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { SpecialistApi } from '@entities/specialist/api/specialist.api';
@@ -28,6 +29,7 @@ import { catchError, finalize } from 'rxjs/operators';
     DatePipe,
     NzAvatarModule,
     NzButtonModule,
+    NzIconModule,
     NzTagModule,
     NzSpinModule,
     AppHeaderComponent,
