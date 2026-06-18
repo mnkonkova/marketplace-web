@@ -214,6 +214,13 @@ export function enableProgressiveUpgrade(
 
   const performSwap = (): void => {
     if (!fullEl) return;
+    // Защита: если preview уже на паузе (юзер скролльнул дальше пока
+    // full загружался) — не запускаем full, чтобы не было «фонового
+    // звука» вне зоны видимости. Cleanup отменит upgrade.
+    if (preview.paused) {
+      cleanup();
+      return;
+    }
     try {
       fullEl.currentTime = preview.currentTime % (fullEl.duration || preview.duration || 1);
     } catch {
@@ -309,6 +316,11 @@ export function enableProgressiveUpgrade(
         //
         // Таймер сбрасывается на `pause`, чтобы быстрый скролл-пик
         // (preview играл <2 сек) не триггерил загрузку 30МБ full зря.
+        //
+        // Если upgrade уже в полёте (fullEl создан, ждёт canplaythrough) —
+        // отменяем его. Иначе после паузы preview юзер скроллит дальше,
+        // потом canplaythrough фаерится, performSwap вызывает
+        // fullEl.play() — и full начинает играть со звуком фоном.
         const onPlay = (): void => {
           if (upgradeTimer) clearTimeout(upgradeTimer);
           upgradeTimer = setTimeout(() => void startUpgrade(), 2000);
@@ -317,6 +329,12 @@ export function enableProgressiveUpgrade(
           if (upgradeTimer) {
             clearTimeout(upgradeTimer);
             upgradeTimer = null;
+          }
+          // In-flight upgrade (fullEl создан, но swap ещё не выполнен) —
+          // отменяем. После swap'a (upgraded=true) fullEl уже в DOM
+          // и им управляет feed-view.activate() напрямую.
+          if (fullEl && !upgraded) {
+            cleanup();
           }
         };
         addListener(preview, 'play', () => onPlay());
