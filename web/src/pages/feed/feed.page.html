@@ -91,6 +91,7 @@
                 [class.in-project]="inCart(spec.user_id)"
                 (click)="toggleCart(spec, $event)"
               >
+                <span nz-icon [nzType]="inCart(spec.user_id) ? 'check' : 'plus'"></span>
                 {{ inCart(spec.user_id) ? 'В проекте' : 'В проект' }}
               </button>
             </div>

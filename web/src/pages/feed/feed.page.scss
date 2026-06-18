@@ -333,16 +333,69 @@ app-back-link.feed-back {
   }
 }
 
-.project-cart-btn.in-project {
-  color: var(--accent) !important;
-  background: white !important;
-  border-color: var(--accent) !important;
+// CTA-кнопка «В проект» — главный action в feed/search. Раньше сливалась
+// с фоном (nz-button дефолтный primary без emphasis), юзеры не видели.
+// Новый дизайн:
+//   • Капсула с акцент-градиентом, белый текст + иконка plus
+//   • Лёгкое свечение (box-shadow с акцент-тоном)
+//   • Hover: чуть приподнимается + усиливается тень
+//   • State «в проекте»: успех-зелёный с иконкой check (видимый contrast
+//     к обычному состоянию — сразу понятно «добавлено»)
+.project-cart-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px !important;
+  height: 34px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #ff7a90)) !important;
+  border: 0 !important;
+  color: #fff !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow:
+    0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent) inset !important;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.2s ease;
+
+  span[nz-icon] {
+    font-size: 14px;
+    display: inline-flex;
+  }
 
   &:hover,
   &:focus {
-    color: var(--accent) !important;
-    background: white !important;
-    border-color: var(--accent) !important;
+    transform: translateY(-1px);
+    box-shadow:
+      0 6px 16px color-mix(in srgb, var(--accent) 45%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent) inset !important;
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #ff5577)) !important;
+    color: #fff !important;
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 35%, transparent) !important;
+  }
+}
+
+.project-cart-btn.in-project {
+  background: linear-gradient(135deg, #52c41a, #389e0d) !important;
+  color: #fff !important;
+  box-shadow:
+    0 2px 8px rgba(82, 196, 26, 0.35),
+    0 0 0 1px rgba(82, 196, 26, 0.15) inset !important;
+
+  &:hover,
+  &:focus {
+    background: linear-gradient(135deg, #73d13d, #52c41a) !important;
+    color: #fff !important;
+    box-shadow:
+      0 6px 16px rgba(82, 196, 26, 0.45),
+      0 0 0 1px rgba(82, 196, 26, 0.25) inset !important;
   }
 }
 

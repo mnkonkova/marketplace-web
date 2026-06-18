@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { FeedViewComponent } from '@widgets/feed-view/feed-view.component';
@@ -26,6 +27,7 @@ import { catchError, finalize } from 'rxjs/operators';
   standalone: true,
   imports: [
     NzButtonModule,
+    NzIconModule,
     AppHeaderComponent,
     BackLinkComponent,
     FeedViewComponent,
