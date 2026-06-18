@@ -215,75 +215,88 @@ export function enableProgressiveUpgrade(
 
   const performSwap = (): void => {
     if (!fullEl) return;
-    // Защита: если preview уже на паузе (юзер скролльнул дальше пока
-    // full загружался) — не запускаем full, чтобы не было «фонового
-    // звука» вне зоны видимости. Cleanup отменит upgrade.
+    // Защита: preview паузится в активной article (юзер скроллит дальше) —
+    // не запускаем full. Cleanup отменит upgrade.
     if (preview.paused) {
       cleanup();
       return;
     }
 
-    // ВАЖНО про синхронизацию таймлайна.
-    // Preview не равен оригиналу: backend делает `-ss 2 -t 8` —
-    // показывает 8 секунд начиная со 2-й секунды оригинала, лупится.
-    // Без коррекции `full.currentTime = preview.currentTime` начало
-    // full будет на 2 секунды раньше preview'а → видно резкий «прыжок»
-    // контента при swap. Добавляем offset 2с.
+    // Sync таймлайна: preview = `-ss 2 -t 8` (8 сек начиная со 2-й
+    // секунды оригинала, в лупе). Без offset full будет на 2 сек раньше.
     const PREVIEW_OFFSET_SEC = 2;
     let targetTime = 0;
     try {
       const fullDur = fullEl.duration || 0;
-      const previewT = preview.currentTime || 0;
       const previewDur = preview.duration || 8;
-      // Сколько секунд preview уже проиграл с НАЧАЛА оригинала (со 2с).
-      const previewElapsed = previewT % previewDur;
-      // Соответствует моменту original.
+      const previewElapsed = (preview.currentTime || 0) % previewDur;
       targetTime = (PREVIEW_OFFSET_SEC + previewElapsed) % (fullDur || previewDur || 1);
     } catch {
-      /* NaN duration — играем с 0 */
+      /* NaN duration */
     }
 
-    // Запускаем full на нужном моменте, но opacity:0 (невидимо).
-    // Ждём `seeked` — это значит full уже прорендерил нужный кадр.
-    // Только тогда быстрый fade-in 180мс — глаз не замечает переключения.
-    const startFadeIn = (): void => {
+    // Hard cut стратегия (вместо cross-fade):
+    //   1. Seek full на нужный момент при opacity:0
+    //   2. Ждём `seeked` — кадр готов в video buffer
+    //   3. Запускаем play()
+    //   4. На СЛЕДУЮЩЕМ animation frame делаем opacity 1 + paint full
+    //      (без transition — снап) + пауза preview под ним
+    // Глаз видит только переход «низкое → высокое разрешение»,
+    // никакого cross-fade двух видео одновременно.
+    const reveal = (): void => {
       if (!fullEl || upgraded || disposed) return;
-      fullEl.style.transition = 'opacity 180ms linear';
+      // Снап opacity без transition.
+      fullEl.style.transition = 'none';
       fullEl.style.opacity = '1';
+      // Force reflow чтобы opacity:1 применился синхронно.
+      void fullEl.offsetHeight;
+      // Preview паузим — он больше не виден и не нужен (звук, кадры).
+      // (parent replaceChild уберёт его из DOM в finalizeSwap.)
+      try {
+        preview.pause();
+      } catch {
+        /* swallow */
+      }
       upgraded = true;
       onUpgraded?.();
       if (releaseSlot) {
         releaseSlot();
         releaseSlot = null;
       }
-      // Дожидаемся конца fade перед replaceChild — иначе preview
-      // удалится пока full ещё прозрачен → чёрная вспышка.
+      // Микропауза перед replaceChild чтобы первый кадр full точно
+      // отрисовался в композитом.
       setTimeout(() => {
         if (!fullEl || disposed) return;
         finalizeSwap();
-      }, 200);
+      }, 50);
+    };
+
+    const onSeekedAndReady = (): void => {
+      if (!fullEl || upgraded || disposed) return;
+      // Play и сразу reveal в одной анимационной кадре.
+      fullEl
+        .play()
+        .then(() => {
+          requestAnimationFrame(() => reveal());
+        })
+        .catch(() => cleanup());
     };
 
     fullEl.currentTime = targetTime;
 
-    fullEl
-      .play()
-      .then(() => {
-        if (!fullEl) return;
-        // seeked не сработает если currentTime уже совпадает после play().
-        // Подстрахуемся: если readyState ≥ HAVE_CURRENT_DATA после seek —
-        // считаем что готов и стартуем fade. Иначе ждём seeked.
-        if (Math.abs(fullEl.currentTime - targetTime) < 0.05) {
-          startFadeIn();
-        } else {
-          fullEl.addEventListener('seeked', startFadeIn, { once: true });
-          // Safety timeout — на iOS Safari seeked иногда теряется.
-          setTimeout(() => {
-            if (!upgraded && fullEl) startFadeIn();
-          }, 500);
-        }
-      })
-      .catch(() => cleanup());
+    // Если уже на нужной позиции (буферизовано) — сразу.
+    if (
+      Math.abs(fullEl.currentTime - targetTime) < 0.05 &&
+      fullEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+    ) {
+      onSeekedAndReady();
+    } else {
+      fullEl.addEventListener('seeked', onSeekedAndReady, { once: true });
+      // Safety на iOS — seeked иногда теряется. Лимит 800мс.
+      setTimeout(() => {
+        if (!upgraded && fullEl) onSeekedAndReady();
+      }, 800);
+    }
   };
 
   /**
