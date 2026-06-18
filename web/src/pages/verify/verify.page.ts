@@ -62,6 +62,12 @@ export class VerifyPage implements OnInit {
   }
 
   protected goToCabinet(): void {
-    void this.router.navigate(['/me']);
+    // На случай если fetchMe из verifyEmail ещё не успел отработать
+    // (он subscribe без await) — повторно дёргаем перед навигацией и
+    // ждём резолва. Гарантирует что Cabinet увидит kind/role в session.
+    this.auth.fetchMe().subscribe({
+      next: () => void this.router.navigate(['/me']),
+      error: () => void this.router.navigate(['/me']),
+    });
   }
 }

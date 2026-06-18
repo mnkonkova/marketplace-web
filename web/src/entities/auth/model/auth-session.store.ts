@@ -124,10 +124,20 @@ export class AuthSessionStore {
   // verifyEmail — обмен raw-токена из ссылки в письме на новую пару токенов.
   // Сохраняем их в localStorage сразу: после verify юзер логинится этим же
   // действием, чтобы не просить ещё раз ввести пароль.
+  //
+  // fetchMe вызываем как в register/login — иначе session не знает kind/
+  // is_manager/is_admin/is_approved, role()='' и кабинет рендерит пустоту
+  // при переходе с verify-страницы (особенно если письмо открыли в другом
+  // браузере где localStorage пуст).
   public verifyEmail(token: string): Observable<TokenPair> {
     return this.http
       .post<TokenPair>(`${this.api}/auth/verify-email`, { token })
-      .pipe(tap((pair) => this.save(pair)));
+      .pipe(
+        tap((pair) => {
+          this.save(pair);
+          this.fetchMe().subscribe();
+        }),
+      );
   }
 
   public resendVerification(): Observable<void> {
