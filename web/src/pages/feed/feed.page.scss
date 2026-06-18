@@ -413,21 +413,27 @@ app-back-link.feed-back {
 }
 
 .spec-row {
+  // Подогнано визуально под .pick-card — чтобы fallback-режим
+  // (когда summarize вернул 429 и упали в list mode) выглядел
+  // так же как успешный AI-режим. Padding/radius/background/hover —
+  // как в pick-card. Без rank-колонки — обычный список без ранжирования.
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 14px;
-  border-radius: $default-radius;
+  gap: 18px;
+  padding: 22px 24px;
+  border-radius: 18px;
   background: var(--surface);
   border: 1px solid var(--border);
   cursor: pointer;
   transition:
     border-color 0.2s,
-    background 0.2s;
+    background 0.2s,
+    transform 0.2s;
 
   &:hover {
-    border-color: rgba(255, 94, 58, 0.45);
+    border-color: rgba(32, 161, 148, 0.4);
     background: var(--surface-hover);
+    transform: translateY(-2px);
   }
 
   .spec-main {

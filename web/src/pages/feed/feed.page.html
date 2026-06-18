@@ -16,7 +16,7 @@
       </div>
     </header>
 
-    @if (mode() === 'ai' && (summary() || picks().length)) {
+    @if (summary() || picks().length) {
       <section class="ai-card">
         <div class="ai-card-head">
           <div class="ai-avatar" aria-hidden="true">
@@ -24,7 +24,13 @@
           </div>
           <div class="ai-meta">
             <div class="ai-name">AI-рекрутер</div>
-            <div class="ai-status">подобрал {{ picks().length }} {{ picksWord(picks().length) }}</div>
+            <div class="ai-status">
+              @if (picks().length) {
+                подобрал {{ picks().length }} {{ picksWord(picks().length) }}
+              } @else {
+                показывает каталог
+              }
+            </div>
           </div>
         </div>
         @if (summary()) {
