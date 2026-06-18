@@ -245,13 +245,9 @@ export function enableProgressiveUpgrade(
     // никакого cross-fade двух видео одновременно.
     const reveal = (): void => {
       if (!fullEl || upgraded || disposed) return;
-      // Снап opacity без transition.
       fullEl.style.transition = 'none';
       fullEl.style.opacity = '1';
-      // Force reflow чтобы opacity:1 применился синхронно.
-      void fullEl.offsetHeight;
-      // Preview паузим — он больше не виден и не нужен (звук, кадры).
-      // (parent replaceChild уберёт его из DOM в finalizeSwap.)
+      void fullEl.offsetHeight; // force reflow
       try {
         preview.pause();
       } catch {
@@ -263,38 +259,76 @@ export function enableProgressiveUpgrade(
         releaseSlot();
         releaseSlot = null;
       }
-      // Микропауза перед replaceChild чтобы первый кадр full точно
-      // отрисовался в композитом.
       setTimeout(() => {
         if (!fullEl || disposed) return;
         finalizeSwap();
       }, 50);
     };
 
-    const onSeekedAndReady = (): void => {
+    const calcTarget = (): number => {
+      try {
+        const fullDur = fullEl!.duration || 0;
+        const previewDur = preview.duration || 8;
+        const elapsed = (preview.currentTime || 0) % previewDur;
+        return (PREVIEW_OFFSET_SEC + elapsed) % (fullDur || previewDur || 1);
+      } catch {
+        return 0;
+      }
+    };
+
+    const playAndReveal = (): void => {
       if (!fullEl || upgraded || disposed) return;
-      // Play и сразу reveal в одной анимационной кадре.
       fullEl
         .play()
-        .then(() => {
-          requestAnimationFrame(() => reveal());
-        })
+        .then(() => requestAnimationFrame(() => reveal()))
         .catch(() => cleanup());
     };
 
-    fullEl.currentTime = targetTime;
+    // Двушаговый seek: первый seek даёт грубое приближение, во время
+    // которого preview уехал на ~250-400мс вперёд (seek-delay). После
+    // seeked пересчитываем target по АКТУАЛЬНОМУ preview.currentTime —
+    // получаем точную позицию. Если разница маленькая (<0.1с) — играем
+    // сразу. Иначе делаем второй seek и ждём.
+    const initialTarget = calcTarget();
+    fullEl.currentTime = initialTarget;
 
-    // Если уже на нужной позиции (буферизовано) — сразу.
+    const correctAndReveal = (): void => {
+      if (!fullEl || upgraded || disposed) return;
+      if (preview.paused) {
+        cleanup();
+        return;
+      }
+      const correctedTarget = calcTarget();
+      const drift = Math.abs(fullEl.currentTime - correctedTarget);
+      if (drift < 0.08) {
+        // Достаточно близко — играем без второго seek.
+        playAndReveal();
+        return;
+      }
+      // Slip > 80мс — корректируем. Forward-slip (drift вперёд) лучше
+      // backward, поэтому добавляем небольшой буфер (~50мс) на seek
+      // delay второго round'a.
+      fullEl.currentTime = correctedTarget + 0.05;
+      const onSecondSeeked = (): void => playAndReveal();
+      fullEl.addEventListener('seeked', onSecondSeeked, { once: true });
+      // Safety — если seeked не пришёл за 400мс, всё равно играем.
+      setTimeout(() => {
+        if (!upgraded && fullEl) {
+          fullEl.removeEventListener('seeked', onSecondSeeked);
+          playAndReveal();
+        }
+      }, 400);
+    };
+
     if (
-      Math.abs(fullEl.currentTime - targetTime) < 0.05 &&
+      Math.abs(fullEl.currentTime - initialTarget) < 0.05 &&
       fullEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
     ) {
-      onSeekedAndReady();
+      correctAndReveal();
     } else {
-      fullEl.addEventListener('seeked', onSeekedAndReady, { once: true });
-      // Safety на iOS — seeked иногда теряется. Лимит 800мс.
+      fullEl.addEventListener('seeked', correctAndReveal, { once: true });
       setTimeout(() => {
-        if (!upgraded && fullEl) onSeekedAndReady();
+        if (!upgraded && fullEl) correctAndReveal();
       }, 800);
     }
   };
