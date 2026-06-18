@@ -333,30 +333,26 @@ app-back-link.feed-back {
   }
 }
 
-// CTA-кнопка «В проект» — главный action в feed/search. Раньше сливалась
-// с фоном (nz-button дефолтный primary без emphasis), юзеры не видели.
-// Новый дизайн:
-//   • Капсула с акцент-градиентом, белый текст + иконка plus
-//   • Лёгкое свечение (box-shadow с акцент-тоном)
-//   • Hover: чуть приподнимается + усиливается тень
-//   • State «в проекте»: успех-зелёный с иконкой check (видимый contrast
-//     к обычному состоянию — сразу понятно «добавлено»)
-// CTA-кнопка «В проект» — прямоугольник с лёгким скруглением (6px),
-// плотная цветная заливка, белый текст с иконкой. Hover чуть темнее
-// + поднимается.
+// CTA-кнопка «В проект» — прямоугольник, плотная цветная заливка,
+// белый текст с иконкой. Стили без color-mix() — на старых iOS Safari
+// color-mix невалидно → !important-декларация игнорится → фолбэк на
+// глобальный .ant-btn-primary, юзер видит «то же что было».
+//
+// Цвет hex'ом из --accent (#e23d4b) для гарантированной поддержки.
 .project-cart-btn {
   display: inline-flex !important;
   align-items: center;
   gap: 6px;
-  padding: 0 16px !important;
-  height: 34px !important;
+  padding: 0 18px !important;
+  height: 36px !important;
   border-radius: 6px !important;
-  background: var(--accent) !important;
+  background: #ff5e3a !important;
   border: 0 !important;
   color: #fff !important;
   font-weight: 600;
+  font-size: 14px !important;
   letter-spacing: 0.01em;
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 30%, transparent) !important;
+  box-shadow: 0 3px 10px rgba(255, 94, 58, 0.4) !important;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -370,27 +366,28 @@ app-back-link.feed-back {
   &:hover,
   &:focus {
     transform: translateY(-1px);
-    background: color-mix(in srgb, var(--accent) 88%, #000) !important;
+    background: #e54a2a !important;
     color: #fff !important;
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent) !important;
+    box-shadow: 0 6px 16px rgba(255, 94, 58, 0.55) !important;
+    border: 0 !important;
   }
 
   &:active {
     transform: translateY(0);
-    box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 25%, transparent) !important;
+    box-shadow: 0 2px 6px rgba(255, 94, 58, 0.45) !important;
   }
 }
 
 .project-cart-btn.in-project {
   background: #52c41a !important;
   color: #fff !important;
-  box-shadow: 0 2px 6px rgba(82, 196, 26, 0.3) !important;
+  box-shadow: 0 3px 10px rgba(82, 196, 26, 0.35) !important;
 
   &:hover,
   &:focus {
     background: #389e0d !important;
     color: #fff !important;
-    box-shadow: 0 4px 12px rgba(82, 196, 26, 0.4) !important;
+    box-shadow: 0 6px 16px rgba(82, 196, 26, 0.5) !important;
   }
 }
 
