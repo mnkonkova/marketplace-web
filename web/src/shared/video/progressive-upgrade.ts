@@ -170,8 +170,9 @@ export function enableProgressiveUpgrade(
     full.style.height = '100%';
     full.style.objectFit = getComputedStyle(preview).objectFit || 'cover';
     full.style.opacity = '0';
-    full.style.transition = 'opacity 300ms ease';
     full.style.pointerEvents = 'none';
+    // transition ставим в performSwap прямо перед fade-in (180мс) —
+    // чтобы первоначальный seek не триггерил случайный fade.
     fullEl = full;
 
     const parent = preview.parentElement;
@@ -221,27 +222,65 @@ export function enableProgressiveUpgrade(
       cleanup();
       return;
     }
+
+    // ВАЖНО про синхронизацию таймлайна.
+    // Preview не равен оригиналу: backend делает `-ss 2 -t 8` —
+    // показывает 8 секунд начиная со 2-й секунды оригинала, лупится.
+    // Без коррекции `full.currentTime = preview.currentTime` начало
+    // full будет на 2 секунды раньше preview'а → видно резкий «прыжок»
+    // контента при swap. Добавляем offset 2с.
+    const PREVIEW_OFFSET_SEC = 2;
+    let targetTime = 0;
     try {
-      fullEl.currentTime = preview.currentTime % (fullEl.duration || preview.duration || 1);
+      const fullDur = fullEl.duration || 0;
+      const previewT = preview.currentTime || 0;
+      const previewDur = preview.duration || 8;
+      // Сколько секунд preview уже проиграл с НАЧАЛА оригинала (со 2с).
+      const previewElapsed = previewT % previewDur;
+      // Соответствует моменту original.
+      targetTime = (PREVIEW_OFFSET_SEC + previewElapsed) % (fullDur || previewDur || 1);
     } catch {
       /* NaN duration — играем с 0 */
     }
+
+    // Запускаем full на нужном моменте, но opacity:0 (невидимо).
+    // Ждём `seeked` — это значит full уже прорендерил нужный кадр.
+    // Только тогда быстрый fade-in 180мс — глаз не замечает переключения.
+    const startFadeIn = (): void => {
+      if (!fullEl || upgraded || disposed) return;
+      fullEl.style.transition = 'opacity 180ms linear';
+      fullEl.style.opacity = '1';
+      upgraded = true;
+      onUpgraded?.();
+      if (releaseSlot) {
+        releaseSlot();
+        releaseSlot = null;
+      }
+      // Дожидаемся конца fade перед replaceChild — иначе preview
+      // удалится пока full ещё прозрачен → чёрная вспышка.
+      setTimeout(() => {
+        if (!fullEl || disposed) return;
+        finalizeSwap();
+      }, 200);
+    };
+
+    fullEl.currentTime = targetTime;
+
     fullEl
       .play()
       .then(() => {
         if (!fullEl) return;
-        fullEl.style.opacity = '1';
-        setTimeout(() => {
-          if (!fullEl) return;
-          finalizeSwap();
-        }, 320);
-        upgraded = true;
-        onUpgraded?.();
-        // Слот освобождаем НЕ через cleanup, потому что full остаётся
-        // живым в DOM. Просто отпускаем rate-slot.
-        if (releaseSlot) {
-          releaseSlot();
-          releaseSlot = null;
+        // seeked не сработает если currentTime уже совпадает после play().
+        // Подстрахуемся: если readyState ≥ HAVE_CURRENT_DATA после seek —
+        // считаем что готов и стартуем fade. Иначе ждём seeked.
+        if (Math.abs(fullEl.currentTime - targetTime) < 0.05) {
+          startFadeIn();
+        } else {
+          fullEl.addEventListener('seeked', startFadeIn, { once: true });
+          // Safety timeout — на iOS Safari seeked иногда теряется.
+          setTimeout(() => {
+            if (!upgraded && fullEl) startFadeIn();
+          }, 500);
         }
       })
       .catch(() => cleanup());
