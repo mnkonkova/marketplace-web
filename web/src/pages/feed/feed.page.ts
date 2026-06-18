@@ -68,13 +68,16 @@ export class FeedPage implements OnInit {
 
   public readonly total = signal(0);
 
-  private categoryTitles = new Map<string, string>();
+  // Signal а не plain Map чтобы OnPush CD триггерилось при загрузке
+  // категорий — иначе template рендерит коды ('editor', 'motion') пока
+  // не подоспеет API ответ и юзер видит «английскую» вспышку.
+  private readonly categoryTitles = signal<Map<string, string>>(new Map());
 
   private currentSearch: ClarifySearchParams = {};
 
   public ngOnInit(): void {
     this.categoryApi.list().subscribe((cats) => {
-      this.categoryTitles = new Map(cats.map((c) => [c.code, c.title]));
+      this.categoryTitles.set(new Map(cats.map((c) => [c.code, c.title])));
     });
 
     this.route.queryParamMap.subscribe((qp) => {
@@ -119,7 +122,13 @@ export class FeedPage implements OnInit {
   public readonly formatRate = formatRate;
 
   public categoryTitle(code: string): string {
-    return this.categoryTitles.get(code) ?? code;
+    const map = this.categoryTitles();
+    // Map пуст = категории ещё не загрузились → возвращаем '' чтобы
+    // template не показывал английский код (template сам прячет пустые
+    // через @if). Когда категории придут — signal обновится, CD
+    // пересчитает, заголовки заменятся на русские.
+    if (map.size === 0) return '';
+    return map.get(code) ?? code;
   }
 
   /** Слово «специалист*» в винительном для «подобрал N {word}». */

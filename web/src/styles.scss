@@ -339,19 +339,8 @@ h6 {
   color: #000 !important;
 }
 
-.project-cart-btn.in-project {
-  color: var(--accent) !important;
-  background: white !important;
-  border-color: var(--accent) !important;
-
-  &:hover,
-  &:focus,
-  &:active {
-    color: var(--accent) !important;
-    background: white !important;
-    border-color: var(--accent) !important;
-  }
-}
+// .project-cart-btn — стилизация переехала в feed.page.scss и
+// specialist-profile.page.scss, чтобы не конфликтовать с component-уровнем.
 
 .ant-btn-dangerous {
   background: var(--surface);

@@ -36,9 +36,11 @@
               Смотреть работы
             </button>
             @if (targetCategoryCode(); as code) {
-              <button nz-button nzType="default" type="button" (click)="showAllInCategory(code)">
-                Все в категории «{{ categoryTitle(code) }}»
-              </button>
+              @if (categoryTitle(code); as t) {
+                <button nz-button nzType="default" type="button" (click)="showAllInCategory(code)">
+                  Все в категории «{{ t }}»
+                </button>
+              }
             } @else {
               <button nz-button nzType="default" type="button" (click)="showAllMatches()">
                 Все совпадения
@@ -68,8 +70,8 @@
             <div class="pick-id">
               <h3>{{ spec.display_name }}</h3>
               <div class="pick-meta">
-                @if (spec.primary_category) {
-                  <span class="pick-cat">{{ categoryTitle(spec.primary_category) }}</span>
+                @if (spec.primary_category && categoryTitle(spec.primary_category); as t) {
+                  <span class="pick-cat">{{ t }}</span>
                   <span class="pick-dot" aria-hidden="true">·</span>
                 }
                 <span>{{ spec.city || 'удалённо' }}</span>
@@ -105,7 +107,9 @@
           @if ((spec.categories ?? []).length > 1) {
             <div class="pick-chips">
               @for (cat of (spec.categories ?? []).slice(0, 4); track cat) {
-                <span>{{ categoryTitle(cat) }}</span>
+                @if (categoryTitle(cat); as t) {
+                  <span>{{ t }}</span>
+                }
               }
             </div>
           }
@@ -127,8 +131,8 @@
         <div class="spec-main">
           <h2>{{ spec.display_name }}</h2>
           <div class="spec-meta">
-            @if (spec.primary_category) {
-            <span class="cat">{{ categoryTitle(spec.primary_category) }}</span>
+            @if (spec.primary_category && categoryTitle(spec.primary_category); as t) {
+            <span class="cat">{{ t }}</span>
             }
             <span>{{ spec.city || 'удалённо' }}</span>
             <span>
