@@ -201,6 +201,9 @@ export class PortfolioUploadDialog implements OnDestroy {
         video_url: this.uploadedVideoUrl(),
         thumbnail_url: this.uploadedThumbnailUrl(),
         category_codes: [...this.selectedCategoryCodes()],
+        // Form-state категорий профиля — для валидации видео-категорий
+        // на стороне backend, когда профиль ещё не сохранён в БД.
+        profile_categories: this.data.categories.map((c) => c.code),
       })
       .subscribe({
         next: (created) => {

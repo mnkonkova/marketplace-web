@@ -118,6 +118,11 @@ export interface PortfolioCreateInput {
   video_url: string;
   thumbnail_url: string;
   category_codes: string[];
+  // Form-state категорий профиля. Backend валидирует category_codes против
+  // этого списка (если он передан) — нужно для случая когда юзер только
+  // зарегистрировался, выбрал категорию в форме, но ещё не нажал
+  // «Сохранить», и сразу пытается загрузить видео.
+  profile_categories?: string[];
 }
 
 export interface PublishErrorBody {
