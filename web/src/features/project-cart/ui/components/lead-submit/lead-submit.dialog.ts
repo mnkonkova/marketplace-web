@@ -57,6 +57,7 @@ export class LeadSubmitDialogComponent {
   public readonly form = this.fb.group({
     client_name: [''],
     client_contact: [''],
+    title: ['', [Validators.required, Validators.minLength(3)]],
     brief: ['', [Validators.required]],
     budget_min: [null as number | null],
     budget_max: [null as number | null],

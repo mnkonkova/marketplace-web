@@ -8,6 +8,7 @@ export function buildCreateLeadPayload(
   const payload: CreateLeadPayload = {
     client_name: form.client_name,
     client_contact: form.client_contact,
+    title: form.title,
     brief: form.brief,
     specialist_ids: specialistIds,
   };

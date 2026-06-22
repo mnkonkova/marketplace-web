@@ -94,6 +94,10 @@ export interface ProjectClientView extends ProjectBase {
   current_step_status?: StepStatus;
   revisions_total: number;
   specialist_display_name?: string;
+  // Основная категория исполнителя (e.g., «Видеооператор», «Дизайнер»).
+  // Используется как опознавательный знак карточки когда у клиента
+  // несколько проектов.
+  specialist_primary_category?: string;
   stages: ProjectStageView[];
 }
 

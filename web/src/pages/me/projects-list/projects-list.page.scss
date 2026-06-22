@@ -306,3 +306,24 @@
     }
   }
 }
+
+// Опознавательный знак карточки проекта (категория + имя спеца).
+// Показывается когда у клиента ≥2 проектов — чтобы было понятно
+// «вот этот для Иванова-видеооператора, а вот этот для Петрова-дизайнера».
+.spec-badge {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  .spec-cat {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .spec-name {
+    color: var(--text-dim);
+  }
+}

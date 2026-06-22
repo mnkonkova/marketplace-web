@@ -88,6 +88,17 @@
 
           <h3>{{ p.title }}</h3>
 
+          @if (projects().length > 1 && (p.specialist_primary_category || p.specialist_display_name)) {
+            <p class="spec-badge">
+              @if (p.specialist_primary_category) {
+                <span class="spec-cat">{{ p.specialist_primary_category }}</span>
+              }
+              @if (p.specialist_display_name) {
+                <span class="spec-name">· {{ p.specialist_display_name }}</span>
+              }
+            </p>
+          }
+
           @if (p.current_step_title) {
             <p class="cur">
               <span class="cur-label">Сейчас:</span>

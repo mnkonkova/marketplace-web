@@ -13,6 +13,7 @@ export interface CreateLeadResponse {
 export interface LeadSubmitFormValue {
   client_name: string;
   client_contact: string;
+  title: string;
   brief: string;
   budget_min: number | null;
   budget_max: number | null;
@@ -22,6 +23,7 @@ export interface LeadSubmitFormValue {
 export interface CreateLeadPayload {
   client_name: string;
   client_contact: string;
+  title: string;
   brief: string;
   specialist_ids: string[];
   budget_min?: number;
