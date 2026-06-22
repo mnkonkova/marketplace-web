@@ -2,12 +2,11 @@ import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { NavHistoryService } from '@shared/nav/nav-history.service';
-import { CookieBannerComponent } from '@widgets/cookie-banner/cookie-banner.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CookieBannerComponent],
-  template: '<router-outlet /><app-cookie-banner />',
+  imports: [RouterOutlet],
+  template: '<router-outlet />',
   styles: `
     :host {
       display: block;
