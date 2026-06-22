@@ -470,8 +470,12 @@ h6 {
   background: var(--surface) !important;
 }
 
-.ant-empty-description {
-  color: var(--text-muted) !important;
+.ant-empty-description,
+.ant-select-dropdown .ant-empty,
+.ant-select-dropdown .ant-empty-description,
+.ant-select-item-empty,
+.ant-select-dropdown .ant-select-item-empty {
+  color: var(--text) !important;
 }
 
 .ant-spin-dot-item {
