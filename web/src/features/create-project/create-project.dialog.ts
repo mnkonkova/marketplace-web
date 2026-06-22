@@ -265,10 +265,12 @@ export class CreateProjectDialogComponent {
         this.saving.set(false);
         this.msg.success('Проект создан');
         this.modalRef.destroy(created);
-        const route = this.data.mode === 'admin'
-          ? ['/admin/projects', created.id]
-          : ['/manager/projects', created.id];
-        void this.router.navigate(route);
+        // Отдельной /admin/projects/:id страницы нет — manager-project-detail
+        // пропускает admin через requireRole('manager','admin'). Используем
+        // его для обоих режимов. Раньше admin-mode шёл на несуществующий
+        // /admin/projects/<uuid> → router падал в wildcard → юзера выкидывало
+        // на главную.
+        void this.router.navigate(['/manager/projects', created.id]);
       });
   }
 }
