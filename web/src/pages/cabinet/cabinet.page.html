@@ -362,17 +362,21 @@
 
   <div class="actions">
     <button nz-button nzDanger type="button" (click)="logout()">Выйти</button>
-    <button nz-button nzType="default" type="button" [nzLoading]="saving()" (click)="save(false)">
-      Сохранить
-    </button>
     @if (p.is_published) {
-    <button nz-button nzDanger type="button" [nzLoading]="saving()" (click)="unpublish()">
-      Снять с публикации
-    </button>
+      <button nz-button nzType="default" type="button" [nzLoading]="saving()" (click)="save(false)">
+        Сохранить
+      </button>
+      <button nz-button nzDanger type="button" [nzLoading]="saving()" (click)="unpublish()">
+        Снять с публикации
+      </button>
     } @else {
-    <button nz-button nzType="primary" type="button" [nzLoading]="saving()" (click)="save(true)">
-      {{ p.moderation_status === 'rejected' ? 'Отправить на повторную проверку' : 'Опубликовать' }}
-    </button>
+      <!-- До первой публикации одна кнопка делает PATCH + publish.
+           Отдельный «Сохранить» не показываем — он бесполезен пока
+           нет публичного состояния, юзеры пугались двух «совершенно
+           одинаковых» CTA и публиковали невольно вторую копию. -->
+      <button nz-button nzType="primary" type="button" [nzLoading]="saving()" (click)="save(true)">
+        {{ p.moderation_status === 'rejected' ? 'Отправить на повторную проверку' : 'Опубликовать' }}
+      </button>
     }
   </div>
   } @else {

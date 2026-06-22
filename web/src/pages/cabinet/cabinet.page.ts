@@ -575,6 +575,10 @@ export class CabinetPage implements OnInit, OnDestroy {
 
   private applyProfile(p: MeProfile): void {
     this.profile.set(p);
+    // Синхронизируем sessionStorage updated_at — иначе после publish/
+    // unpublish следующий save получит 409 «объект был изменён другим
+    // запросом», потому что бэк bump'нул updated_at внутри publish-tx.
+    if (p.updated_at) this.setUpdatedAt(p.updated_at);
     this.form = {
       display_name: p.display_name ?? '',
       bio: p.bio ?? '',
