@@ -11,6 +11,38 @@
     margin: 0 0 4px;
   }
 
+  // Inline-редактируемое название воронки. Визуально как h1, но input —
+  // ховером появляется лёгкая подложка чтобы было понятно «можно кликнуть».
+  // Save по blur или Enter (см. шаблон).
+  .pipeline-name-input {
+    display: block;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 0 4px;
+    padding: 4px 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.2;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+
+    &:hover {
+      background: var(--surface);
+      border-color: var(--border);
+    }
+
+    &:focus {
+      outline: none;
+      background: var(--surface);
+      border-color: var(--accent);
+    }
+  }
+
   .hint {
     margin: 0;
     color: var(--text-muted);

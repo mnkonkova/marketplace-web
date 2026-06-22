@@ -4,7 +4,13 @@
   } @else if (pipeline()) { @let p = pipeline()!;
     <header class="head">
       <div>
-        <h1>{{ p.name }}</h1>
+        <input
+          class="pipeline-name-input"
+          [(ngModel)]="p.name"
+          (blur)="savePipelineName(p)"
+          (keydown.enter)="$any($event.target).blur()"
+          placeholder="Название воронки"
+        />
         <p class="hint">
           Воронка — шаблон шагов проекта. Изменения <strong>не затрагивают активные проекты</strong>
           (у них собственный снимок).

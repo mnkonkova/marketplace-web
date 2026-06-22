@@ -191,6 +191,18 @@ export class AdminPipelineEditorPage implements OnInit {
     });
   }
 
+  public savePipelineName(p: PipelineFull): void {
+    const name = (p.name || '').trim();
+    if (!name) {
+      this.msg.error('Название воронки не может быть пустым');
+      return;
+    }
+    this.api.patch(p.id, { name }).subscribe({
+      next: () => this.msg.success('Название обновлено'),
+      error: () => this.msg.error('Не удалось переименовать'),
+    });
+  }
+
   public saveStep(step: PipelineStep): void {
     this.api
       .patchStep(step.id, {
