@@ -1,0 +1,23 @@
+{
+  "name": "wayprmarket",
+  "short_name": "wayprmarket",
+  "description": "Маркетплейс специалистов",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32 48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "theme_color": "#08090c",
+  "background_color": "#08090c",
+  "display": "standalone",
+  "start_url": "/"
+}
