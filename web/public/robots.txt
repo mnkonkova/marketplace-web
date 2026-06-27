@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+# Закрываем от индексации служебные/приватные разделы.
+Disallow: /api/
+Disallow: /admin/
+Disallow: /manager/
+Disallow: /me/
+Disallow: /cabinet
+Disallow: /auth/
+Disallow: /verify
+Disallow: /swagger/
+
+Host: https://wayprmarket.ru
+Sitemap: https://wayprmarket.ru/sitemap.xml

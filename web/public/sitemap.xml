@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Статический sitemap для главных страниц. Динамические страницы (профили
+  специалистов /specialist/:id) пока не добавляем — у нас модерация и
+  изменчивый набор. Когда станет >100 одобренных спецов и захотим SEO-трафик
+  на их карточки — генерим sitemap-specialists.xml из БД через cron + добавляем
+  sitemapindex.xml. Сейчас MVP — главная + поиск + лента + категории.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://wayprmarket.ru/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://wayprmarket.ru/search</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://wayprmarket.ru/feed</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://wayprmarket.ru/auth/register</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://wayprmarket.ru/auth/login</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>
