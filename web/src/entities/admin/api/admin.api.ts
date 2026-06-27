@@ -111,6 +111,9 @@ export interface ModerationSpecialistDetail {
     id: string;
     title: string;
     description: string;
+    // kind: 'video' (default) | 'image' — определяет рендер на admin-странице.
+    // Для 'image' карточка показывает images[], для 'video' — preview_url/video_url.
+    kind?: 'video' | 'image';
     video_url?: string;
     thumbnail_url?: string;
     external_url?: string;
@@ -120,6 +123,8 @@ export interface ModerationSpecialistDetail {
     sort_order: number;
     created_at: string;
     updated_at: string;
+    // Фото-кейсы: массив картинок (используется когда kind='image').
+    images?: { id: string; image_url: string; sort_order?: number }[];
   }[];
   // optimistic-lock версия профиля. Фронт обязан прислать её обратно при
   // Approve/Reject, чтобы admin не одобрил устаревшую версию (см. backend

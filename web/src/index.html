@@ -6,6 +6,68 @@
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090c" />
+    <meta
+      name="description"
+      content="Wayprmarket — discovery-маркетплейс для подбора специалистов в видео-производстве: монтажёры, операторы, SMM, UGC-креаторы, таргетологи. Прозрачный канбан, прямая связь, верифицированные исполнители."
+    />
+    <meta name="author" content="Wayprmarket" />
+
+    <!-- Open Graph / соцсети при шаринге -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Wayprmarket" />
+    <meta property="og:title" content="Wayprmarket — подбор специалистов" />
+    <meta
+      property="og:description"
+      content="Discovery-маркетплейс специалистов для видео-производства. Опишите задачу — получите подборку за минуту."
+    />
+    <meta property="og:url" content="https://wayprmarket.ru" />
+    <meta property="og:locale" content="ru_RU" />
+
+    <!-- Schema.org JSON-LD: Organization + WebSite. Помогает Google понять что
+         мы — реальный сервис, а не очередная фишинг-страница. Критично для
+         новых доменов чтобы пройти Safe Browsing review (см. 2026-06-27). -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://wayprmarket.ru/#organization",
+            "name": "Wayprmarket",
+            "url": "https://wayprmarket.ru",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://wayprmarket.ru/apple-touch-icon.png"
+            },
+            "description": "Discovery-маркетплейс для подбора специалистов в видео-производстве: монтаж, съёмка, SMM, UGC, таргет, посевы.",
+            "email": "info@wayprmarket.ru",
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "email": "info@wayprmarket.ru",
+              "contactType": "customer support",
+              "availableLanguage": ["Russian"]
+            },
+            "areaServed": "RU"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://wayprmarket.ru/#website",
+            "url": "https://wayprmarket.ru",
+            "name": "Wayprmarket",
+            "publisher": { "@id": "https://wayprmarket.ru/#organization" },
+            "inLanguage": "ru-RU",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://wayprmarket.ru/search?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          }
+        ]
+      }
+    </script>
     <!-- Favicon: ICO для Яндекса (он SVG не подхватывает), SVG для
          современных браузеров, apple-touch-icon для iOS home-screen,
          PWA-manifest с 192/512 PNG для Android. Все файлы лежат в
