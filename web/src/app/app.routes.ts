@@ -142,5 +142,13 @@ export const routes: Routes = [
     loadComponent: () =>
       import('@pages/reset-password/reset-password.page').then((m) => m.ResetPasswordPage),
   },
+  {
+    path: 'privacy',
+    loadComponent: () => import('@pages/legal/privacy.page').then((m) => m.PrivacyPage),
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('@pages/legal/terms.page').then((m) => m.TermsPage),
+  },
   { path: '**', redirectTo: '' },
 ];
