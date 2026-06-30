@@ -56,7 +56,21 @@ import {
   PhotoSetUploadDialogResult,
 } from '@features/portfolio-upload/photoset-upload.dialog';
 import { resizeImageToBlob } from '@shared/image/resize';
+import { SOCIAL_NETWORKS, SocialKey } from '@shared/lib/social-links';
 import { ProfileShareComponent } from '@features/profile-share/profile-share.component';
+import { CompletenessIndicatorComponent } from '@widgets/completeness-indicator/completeness-indicator.component';
+
+function emptySocialLinks(): Record<SocialKey, string> {
+  // Все 9 ключей с пустыми значениями. Нужно чтобы ngModel мог писать
+  // через `form.social_links[key]` без undefined-проблем.
+  return SOCIAL_NETWORKS.reduce(
+    (acc, n) => {
+      acc[n.key] = '';
+      return acc;
+    },
+    {} as Record<SocialKey, string>,
+  );
+}
 
 interface ProfileForm {
   display_name: string;
@@ -68,6 +82,7 @@ interface ProfileForm {
   currency: string;
   contact_email: string;
   contact_phone: string;
+  social_links: Record<SocialKey, string>;
   updated_at?: string;
 }
 
@@ -86,6 +101,7 @@ interface ProfileForm {
     DragDropModule,
     AppHeaderComponent,
     ProfileShareComponent,
+    CompletenessIndicatorComponent,
   ],
   templateUrl: './cabinet.page.html',
   styleUrl: './cabinet.page.scss',
@@ -208,7 +224,11 @@ export class CabinetPage implements OnInit, OnDestroy {
     currency: 'RUB',
     contact_email: '',
     contact_phone: '',
+    social_links: emptySocialLinks(),
   };
+
+  // Список соцсетей для шаблона (рендер inputs).
+  public readonly socialNetworks = SOCIAL_NETWORKS;
 
   public readonly tools = computed(() => this.recommendedSkills());
 
@@ -311,6 +331,7 @@ export class CabinetPage implements OnInit, OnDestroy {
       rate_min: this.form.rate_min ?? null,
       rate_max: this.form.rate_max ?? null,
       skills: { skill_ids: [...this.selectedSkills()] },
+      social_links: this.form.social_links,
       updated_at: this.sessionStorage.getItem('updated_at') ?? undefined,
     };
     if (codes.length) {
@@ -881,6 +902,12 @@ export class CabinetPage implements OnInit, OnDestroy {
     // unpublish следующий save получит 409 «объект был изменён другим
     // запросом», потому что бэк bump'нул updated_at внутри publish-tx.
     if (p.updated_at) this.setUpdatedAt(p.updated_at);
+    const social = emptySocialLinks();
+    if (p.social_links) {
+      for (const n of SOCIAL_NETWORKS) {
+        social[n.key] = (p.social_links[n.key] as string | undefined) ?? '';
+      }
+    }
     this.form = {
       display_name: p.display_name ?? '',
       bio: p.bio ?? '',
@@ -891,6 +918,7 @@ export class CabinetPage implements OnInit, OnDestroy {
       currency: p.currency || 'RUB',
       contact_email: p.contact_email ?? '',
       contact_phone: p.contact_phone ?? '',
+      social_links: social,
     };
     this.selectedCategories.set(new Set(p.categories ?? []));
     this.primaryCategory.set(p.primary_category || p.categories?.[0] || '');

@@ -78,11 +78,24 @@ export interface ReviewItem {
   created_at: string;
 }
 
+export interface SocialLinks {
+  telegram?: string;
+  whatsapp?: string;
+  vk?: string;
+  youtube?: string;
+  instagram?: string;
+  tiktok?: string;
+  behance?: string;
+  dribbble?: string;
+  website?: string;
+}
+
 export interface SpecialistProfile extends Omit<SpecialistLite, 'categories'> {
   categories: CategoryRef[];
   skills: SkillRef[];
   portfolio: PortfolioItem[];
   reviews: ReviewItem[];
+  social_links?: SocialLinks;
   /** true если профиль возвращён в owner-preview режиме (без публикации/
    *  модерации). Только для аутентифицированного владельца. */
   is_preview?: boolean;

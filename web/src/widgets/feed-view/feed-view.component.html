@@ -101,9 +101,10 @@
                   formatRate(it.specialist.rate_min, it.specialist.rate_max, it.specialist.currency)
                 }}</span>
               </div>
-              @if (it.specialist.bio) {
-                <p class="feed-spec-bio">{{ it.specialist.bio }}</p>
-              }
+              <!-- Био убрали: на длинных описаниях overlay наезжал на
+                   карусель/контролы. В ленте оставляем только то, что нужно
+                   для выбора (имя, категория, город/рейт), полное био — на
+                   странице спеца по тапу на имя. -->
             </div>
 
             <div class="feed-overlay-right">

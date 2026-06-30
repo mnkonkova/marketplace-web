@@ -75,22 +75,65 @@
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
 }
 
-// Photo-set: badge с числом фото в правом-нижнем углу плитки.
+// Photo-set: бейдж с числом фото в правом-нижнем углу плитки.
+// Ярче чем counter у видео — phc должен сразу показывать «здесь не одно фото,
+// загляни». Accent-цвет + лёгкий blur подложки + чуть крупнее.
 .photoset-counter {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
-  padding: 4px 8px;
-  border-radius: 10px;
+  right: 10px;
+  bottom: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
   background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   color: #fff;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.1;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  // Иконка-карусель перед числом — добавляется через ::before чтобы
+  // не менять template.
+  &::before {
+    content: '🖼';
+    font-size: 11px;
+  }
 }
 
 .has-photoset {
   position: relative;
+}
+
+// Чипы категорий поверх плитки (left-top corner). Сразу подсказывают
+// клиенту «это видеомонтаж» / «это съёмка» — не нужно копаться.
+.cat-chips {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+}
+
+.cat-chip {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .portfolio-video {

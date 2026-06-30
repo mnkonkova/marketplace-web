@@ -23,6 +23,10 @@ const TOUCH_QUERY = '(pointer: coarse), (max-width: 720px)';
 export class PortfolioGridComponent {
   public readonly items = input<PortfolioItem[]>([]);
 
+  /** Map<category_code, title> — родитель передаёт чтобы чип показывал
+   *  читаемое название. Если код не найден — используется сам код. */
+  public readonly categoryTitles = input<Record<string, string>>({});
+
   /** На тачах тап по тайлу не играет видео inline, а просит родителя
    *  открыть fullscreen-плеер. idx — индекс ролика в items[]. */
   public readonly openOverlay = output<number>();
@@ -74,5 +78,9 @@ export class PortfolioGridComponent {
 
   public requestPhotoSet(idx: number): void {
     this.openPhotoSet.emit(idx);
+  }
+
+  public categoryLabel(code: string): string {
+    return this.categoryTitles()[code] ?? code;
   }
 }

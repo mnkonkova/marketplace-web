@@ -4,49 +4,59 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   margin-top: 64px;
-  padding: 16px 24px;
+  padding: 24px 24px 28px;
   font-size: 13px;
-  color: #888;
-  border-top: 1px solid #f0f0f0;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .footer-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 10px; // row 4 / col 10 — комфортно когда ссылки переносятся на 2 строки
+  max-width: 760px;
 }
 
 .footer .legal-note {
   margin: 0;
-  max-width: 720px;
+  max-width: 760px;
   font-size: 11px;
-  line-height: 1.4;
-  color: #999;
+  line-height: 1.5;
+  color: var(--text-dim);
   text-align: center;
 }
 
 .footer .muted {
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .footer .sep {
-  color: #ccc;
+  color: var(--text-dim);
+  user-select: none;
 }
 
 .footer .link {
   background: none;
   border: none;
-  padding: 0;
+  padding: 4px 2px; // touch-friendly tap-area не меняя layout
   cursor: pointer;
-  color: #555;
+  color: var(--text);
   font-size: 13px;
   text-decoration: underline;
+  text-decoration-color: var(--text-dim);
+  transition: color 0.12s;
 }
 
-.footer .link:hover {
-  color: #000;
+.footer .link:hover,
+.footer .link:focus-visible {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+  outline: none;
 }
 
 .row {
@@ -57,18 +67,35 @@
   display: block;
   margin-bottom: 4px;
   font-size: 13px;
-  color: #555;
+  color: var(--text-muted);
 }
 
 .row label small {
-  color: #999;
+  color: var(--text-dim);
   font-weight: normal;
 }
 
 @media (max-width: bp.$touch) {
   .footer {
-    padding: 12px 16px;
-    flex-wrap: wrap;
-    font-size: 12px;
+    margin-top: 40px;
+    padding: 20px 16px;
+    font-size: 13px; // не уменьшаем, иначе на тачах нечитаемо
+    gap: 12px;
+  }
+
+  // На мобиле скрываем точки-разделители — wrap'аются как карточки,
+  // gap сам разделяет визуально.
+  .footer-row .sep {
+    display: none;
+  }
+
+  .footer-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .footer .link {
+    padding: 6px 4px;
+    font-size: 14px;
   }
 }

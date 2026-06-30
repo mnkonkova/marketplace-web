@@ -1,11 +1,15 @@
 <div class="portfolio-grid" [class.is-touch]="isTouch()">
   @for (p of items().slice(0, 6); track p.id; let i = $index) {
+    @let cats = p.category_codes || [];
     @if (p.kind === 'image') {
+      <!-- На тачах photo-set открывается в том же fullscreen feed-view'е что и
+           видео — пользователь привычно свайпает между работами (включая
+           карусели). На desktop остаётся lightbox с навигацией стрелками. -->
       <button
         type="button"
         class="portfolio-card has-photoset tap-tile"
         [style.background-image]="p.thumbnail_url ? 'url(' + p.thumbnail_url + ')' : null"
-        (click)="requestPhotoSet(i)"
+        (click)="isTouch() ? requestOverlay(i) : requestPhotoSet(i)"
         [attr.aria-label]="p.title || 'Открыть фото-кейс'"
       >
         @if (!p.thumbnail_url) {
@@ -13,6 +17,13 @@
         }
         @if ((p.images?.length || 0) > 1) {
           <span class="photoset-counter">{{ p.images?.length }} фото</span>
+        }
+        @if (cats.length) {
+          <span class="cat-chips" aria-hidden="true">
+            @for (c of cats.slice(0, 2); track c) {
+              <span class="cat-chip">{{ categoryLabel(c) }}</span>
+            }
+          </span>
         }
       </button>
     } @else if (p.video_url) {
@@ -31,6 +42,13 @@
             <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.55)" />
             <path d="M9.5 7.5v9l7-4.5z" fill="#fff" />
           </svg>
+          @if (cats.length) {
+            <span class="cat-chips" aria-hidden="true">
+              @for (c of cats.slice(0, 2); track c) {
+                <span class="cat-chip">{{ categoryLabel(c) }}</span>
+              }
+            </span>
+          }
         </button>
       } @else {
         <div class="portfolio-card has-video">

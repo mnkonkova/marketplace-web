@@ -382,18 +382,6 @@
   }
 }
 
-.feed-spec-bio {
-  margin: 10px 0 0;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.72);
-  line-height: 1.4;
-  display: -webkit-box;
-  line-clamp: 3;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 .feed-overlay-right {
   display: flex;
   flex-direction: column;
@@ -580,14 +568,8 @@
   }
 
   .feed-video-title,
-  .feed-spec-meta,
-  .feed-spec-bio {
+  .feed-spec-meta {
     font-size: clamp(12px, 3.4vw, 13px);
-  }
-
-  .feed-spec-bio {
-    line-clamp: 2;
-    -webkit-line-clamp: 2;
   }
 
   .feed-cat-chip {

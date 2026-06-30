@@ -4,11 +4,12 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { SpecialistProfile } from '@entities/specialist/model/specialist.types';
 import { formatRate } from '@shared/lib/format';
+import { SocialRowComponent } from '@widgets/social-row/social-row.component';
 
 @Component({
   selector: 'app-profile-aside',
   standalone: true,
-  imports: [NzCardModule, NzButtonModule, NzTagModule],
+  imports: [NzCardModule, NzButtonModule, NzTagModule, SocialRowComponent],
   templateUrl: './profile-aside.component.html',
   styleUrl: './profile-aside.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

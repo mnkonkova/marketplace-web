@@ -1,0 +1,57 @@
+.social-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.social-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    color 0.12s;
+
+  &:hover {
+    border-color: var(--accent);
+    background: var(--surface-hover);
+    color: var(--accent);
+  }
+}
+
+.social-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.social-row.is-compact {
+  gap: 6px;
+
+  .social-link {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .social-icon {
+    font-size: 18px;
+  }
+}
+
+@media (pointer: coarse) {
+  .social-row.is-compact .social-link {
+    width: 44px;
+    height: 44px;
+  }
+}

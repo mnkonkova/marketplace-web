@@ -29,6 +29,8 @@
   </ng-template>
   }
 
+  <app-completeness-indicator [profile]="p" [portfolio]="portfolio()" />
+
   <section class="panel profile-panel">
     <div class="panel-head">
       <h2>Профиль</h2>
@@ -175,6 +177,36 @@
         Телефон
         <input nz-input [(ngModel)]="form.contact_phone" name="contact_phone" />
       </label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Соцсети для клиентов</h2>
+        <p>
+          Опубликовано на странице вашего профиля. Клик по иконке открывает
+          мессенджер или соцсеть напрямую — снимает «холодный контакт».
+        </p>
+      </div>
+    </div>
+    <div class="social-grid">
+      @for (net of socialNetworks; track net.key) {
+        <label class="social-field">
+          <span class="social-field-head">
+            <span class="ic" aria-hidden="true">{{ net.icon }}</span>
+            <span>{{ net.label }}</span>
+          </span>
+          <input
+            nz-input
+            [(ngModel)]="form.social_links[net.key]"
+            [name]="'social_' + net.key"
+            [placeholder]="net.placeholder"
+            maxlength="200"
+          />
+          <span class="hint">{{ net.hint }}</span>
+        </label>
+      }
     </div>
   </section>
 

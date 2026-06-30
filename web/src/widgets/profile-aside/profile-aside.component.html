@@ -1,4 +1,10 @@
 <div class="aside-stack">
+  @if (profile().social_links; as soc) {
+    <nz-card nzTitle="Где найти" class="aside-card">
+      <app-social-row [social]="soc" />
+    </nz-card>
+  }
+
   <nz-card nzTitle="Стоимость услуг" class="aside-card">
     <ul class="price-list">
       <li>
@@ -10,6 +16,11 @@
     </ul>
   </nz-card>
 
+  <!-- TODO Занятость и среднее время ответа: пока хардкод-заглушки, скрываем
+       до тех пор пока бэк не отдаёт реальные значения (нужен трекинг
+       last_seen + статус «свободен/занят» в profile + расчёт avg response
+       time по leads). См. backlog «specialist availability». -->
+  <!--
   <nz-card nzTitle="Занятость" class="aside-card">
     <nz-tag nzColor="success">Свободен</nz-tag>
     <p class="hint">Готов начать в течение 1–2 дней</p>
@@ -18,4 +29,5 @@
   <nz-card nzTitle="Среднее время ответа" class="aside-card">
     <p class="big">~2 часа</p>
   </nz-card>
+  -->
 </div>

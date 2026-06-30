@@ -25,7 +25,12 @@
     <div class="profile-grid">
       <div class="profile-content">
         <header class="profile-hero">
-          <nz-avatar [nzSize]="96" [nzSrc]="p.avatar_url || undefined" class="avatar">
+          <nz-avatar
+            [nzSize]="96"
+            [nzSrc]="p.avatar_url || undefined"
+            nzShape="square"
+            class="avatar"
+          >
             {{ p.display_name.slice(0, 1) }}
           </nz-avatar>
           <div class="hero-text">
@@ -42,16 +47,28 @@
               } @else { новый специалист }
             </p>
             <div class="hero-actions">
+              <!-- Primary CTA: «обсудить» через первую соцсеть спеца если есть
+                   (telegram > whatsapp > vk > website), иначе в корзину.
+                   Прямой контакт > отложенная заявка. -->
+              @if (primaryDirectContact(); as cta) {
+                <a
+                  class="cta-btn cta-direct"
+                  [href]="cta.url"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <span aria-hidden="true">{{ cta.icon }}</span>
+                  Обсудить в {{ cta.label }}
+                </a>
+              }
               <button
-                nz-button
-                nzType="primary"
                 type="button"
-                class="project-cart-btn"
+                class="cta-btn cta-cart"
                 [class.in-project]="inCart()"
                 (click)="toggleProject()"
               >
-                <span nz-icon [nzType]="inCart() ? 'check' : 'plus'"></span>
-                {{ inCart() ? 'В проекте' : 'Пригласить в проект' }}
+                <span aria-hidden="true">{{ inCart() ? '✓' : '➕' }}</span>
+                {{ inCart() ? 'В проекте' : 'Добавить в проект' }}
               </button>
             </div>
           </div>
@@ -82,6 +99,7 @@
           </div>
           <app-portfolio-grid
             [items]="p.portfolio"
+            [categoryTitles]="categoryTitlesMap()"
             (openOverlay)="openPlayer()"
             (openPhotoSet)="openPhotoSet($event)"
           />
@@ -119,7 +137,7 @@
          «Пригласить» иначе уезжает в hero и теряется. -->
     <div class="sticky-cta">
       <div class="sticky-cta-info">
-        <nz-avatar [nzSize]="32" [nzSrc]="p.avatar_url || undefined">
+        <nz-avatar [nzSize]="32" [nzSrc]="p.avatar_url || undefined" nzShape="square">
           {{ p.display_name.slice(0, 1) }}
         </nz-avatar>
         <span class="sticky-cta-name">{{ p.display_name }}</span>

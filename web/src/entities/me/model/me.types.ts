@@ -1,9 +1,22 @@
+export interface SocialLinks {
+  telegram?: string;
+  whatsapp?: string;
+  vk?: string;
+  youtube?: string;
+  instagram?: string;
+  tiktok?: string;
+  behance?: string;
+  dribbble?: string;
+  website?: string;
+}
+
 export interface MeProfile {
   updated_at: string;
   user_id: string;
   /** Публичный handle для URL /specialist/<username>. Пусто = не выбрал. */
   username?: string;
   display_name: string;
+  social_links?: SocialLinks;
   bio: string;
   avatar_url?: string;
   city?: string;
@@ -45,6 +58,7 @@ export interface MeProfileFullPatch {
   rate_max?: number | null;
   categories?: { codes: string[]; primary: string };
   skills?: { skill_ids: string[] };
+  social_links?: SocialLinks;
   updated_at?: string;
   // CRM v5: production_id="uuid" → выбрать; ""=снять; не задано=не трогать.
   // is_freelance=true/false → переключить флаг (сервер автоматом снимет
