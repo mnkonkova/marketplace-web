@@ -1,0 +1,116 @@
+<div class="body">
+  <div
+    class="grid"
+    cdkDropList
+    cdkDropListOrientation="mixed"
+    (cdkDropListDropped)="onSlotsReorder($event)"
+  >
+    @for (slot of slots(); track slot.id) {
+      <div class="cell" [class.is-error]="slot.status === 'error'" cdkDrag>
+        <img [src]="slot.previewUrl" alt="" loading="lazy" />
+        @if (slot.status === 'uploading' || slot.status === 'pending') {
+          <div class="cell-overlay">
+            <nz-progress
+              [nzPercent]="slot.progressPercent"
+              [nzShowInfo]="false"
+              nzSize="small"
+            ></nz-progress>
+          </div>
+        } @else if (slot.status === 'done') {
+          <div class="cell-overlay is-done">
+            <span nz-icon nzType="check"></span>
+          </div>
+        } @else if (slot.status === 'error') {
+          <div class="cell-overlay is-error" [title]="slot.errorText || ''">!</div>
+        }
+        <button
+          type="button"
+          class="cell-remove"
+          (click)="removeSlot(slot)"
+          aria-label="Удалить фото"
+        >×</button>
+      </div>
+    }
+    @if (canAddMore()) {
+      <button type="button" class="cell add" (click)="pickFiles()">
+        <span class="add-plus">+</span>
+        <span class="add-text">Добавить фото</span>
+        <span class="add-hint">{{ slots().length }}/{{ maxImages }}</span>
+      </button>
+    }
+  </div>
+  <input
+    #fileInput
+    type="file"
+    class="hidden-file"
+    [accept]="accept"
+    multiple
+    (change)="onFilesPicked($event)"
+  />
+
+  @if (hasSlots()) {
+    <div class="form">
+      <label>
+        Название кейса*
+        <input
+          nz-input
+          [ngModel]="title()"
+          (ngModelChange)="title.set($event)"
+          name="t"
+          placeholder="Например: Съёмка для бренда X"
+          maxlength="120"
+        />
+      </label>
+      <label>
+        Описание
+        <textarea
+          nz-input
+          rows="3"
+          [ngModel]="description()"
+          (ngModelChange)="description.set($event)"
+          name="d"
+          placeholder="Что это за работа, что вы делали"
+        ></textarea>
+      </label>
+      @if (availableCategories().length > 0) {
+        <div class="cats">
+          <label class="cats-label">Категории</label>
+          <div class="chips">
+            @for (cat of availableCategories(); track cat.code) {
+              <button
+                type="button"
+                class="chip"
+                [class.is-on]="selectedCategoryCodes().has(cat.code)"
+                (click)="toggleCategory(cat.code)"
+              >
+                {{ cat.title }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (errorText()) {
+    <div class="error">{{ errorText() }}</div>
+  }
+</div>
+
+<div class="footer">
+  <button nz-button type="button" (click)="cancel()">Отмена</button>
+  <button
+    nz-button
+    nzType="primary"
+    type="button"
+    [disabled]="!canSave()"
+    [nzLoading]="saving()"
+    (click)="save()"
+  >
+    @if (uploadingCount() > 0) {
+      Грузим {{ uploadingCount() }}…
+    } @else {
+      Сохранить ({{ doneCount() }})
+    }
+  </button>
+</div>

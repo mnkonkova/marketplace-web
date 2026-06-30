@@ -8,6 +8,20 @@
     @if (loading()) {
     <div class="loading"><nz-spin nzSize="large"></nz-spin></div>
     } @else if (profile()) { @let p = profile()!;
+    @if (p.is_preview) {
+      <div class="preview-banner" role="status">
+        <strong>👁 Превью</strong>
+        @if (!p.is_published) {
+          — это черновик. Клиенты пока не видят профиль. Опубликуйте в кабинете чтобы он появился в каталоге.
+        } @else if (p.moderation_status === 'pending_review') {
+          — профиль опубликован, ждёт проверки модератором. Клиенты увидят после approval.
+        } @else if (p.moderation_status === 'rejected') {
+          — профиль отклонён модератором. Исправьте замечания в кабинете и опубликуйте заново.
+        } @else {
+          — клиенты увидят профиль когда он будет одобрен модератором.
+        }
+      </div>
+    }
     <div class="profile-grid">
       <div class="profile-content">
         <header class="profile-hero">
@@ -66,7 +80,11 @@
             <h2>Портфолио</h2>
             <span class="muted">{{ p.portfolio.length }} работ</span>
           </div>
-          <app-portfolio-grid [items]="p.portfolio" (openOverlay)="openPlayer()" />
+          <app-portfolio-grid
+            [items]="p.portfolio"
+            (openOverlay)="openPlayer()"
+            (openPhotoSet)="openPhotoSet($event)"
+          />
         </section>
         } @if (p.reviews.length) {
         <section class="block">
@@ -133,4 +151,12 @@
       (close)="closePlayer()"
     />
   }
+}
+
+@if (lightboxImages(); as imgs) {
+  <app-photo-lightbox
+    [images]="imgs"
+    [title]="lightboxTitle()"
+    (close)="closeLightbox()"
+  />
 }

@@ -76,7 +76,13 @@
             <div class="portfolio-grid">
               @for (item of p.portfolio; track item.id) {
                 <article class="port-item">
-                  @if (item.preview_url || item.video_url) {
+                  @if (item.kind === 'image' && (item.images?.length || 0) > 0) {
+                    <div class="port-photoset">
+                      @for (img of item.images || []; track img.id) {
+                        <img [src]="img.image_url" alt="" />
+                      }
+                    </div>
+                  } @else if (item.preview_url || item.video_url) {
                     <video
                       [src]="item.preview_url || item.video_url"
                       [poster]="item.thumbnail_url || null"
@@ -91,6 +97,9 @@
                   }
                   <div class="port-text">
                     <strong>{{ item.title || '(без названия)' }}</strong>
+                    @if (item.kind === 'image') {
+                      <span class="hint">Фото-кейс · {{ item.images?.length || 0 }} фото</span>
+                    }
                     @if (item.description) {
                       <p>{{ item.description }}</p>
                     }
@@ -102,7 +111,7 @@
         } @else {
           <nz-alert
             nzType="warning"
-            nzMessage="У спеца нет ни одного видео в портфолио"
+            nzMessage="У спеца нет ни одной работы в портфолио"
             nzShowIcon
           />
         }

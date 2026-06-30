@@ -8,13 +8,14 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { SpecialistApi } from '@entities/specialist/api/specialist.api';
-import { SpecialistProfile } from '@entities/specialist/model/specialist.types';
+import { PortfolioImage, SpecialistProfile } from '@entities/specialist/model/specialist.types';
 import { CategoryApi } from '@entities/category/api/category.api';
 import { Category } from '@entities/category/model/category.types';
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { PortfolioGridComponent } from '@widgets/portfolio-grid/portfolio-grid.component';
 import { PortfolioPlayerOverlayComponent } from '@widgets/portfolio-player-overlay/portfolio-player-overlay.component';
+import { PhotoLightboxComponent } from '@widgets/photo-lightbox/photo-lightbox.component';
 import { ProfileAsideComponent } from '@widgets/profile-aside/profile-aside.component';
 import { formatRate } from '@shared/lib/format';
 import { RateStarsComponent } from '@widgets/rate-stars/rate-stars.component';
@@ -35,6 +36,7 @@ import { catchError, finalize } from 'rxjs/operators';
     AppHeaderComponent,
     PortfolioGridComponent,
     PortfolioPlayerOverlayComponent,
+    PhotoLightboxComponent,
     ProfileAsideComponent,
     RateStarsComponent,
   ],
@@ -56,6 +58,10 @@ export class SpecialistProfilePage implements OnInit {
 
   /** Открыт ли fullscreen-плеер портфолио (на тачах после тапа по тайлу). */
   public readonly playerOpen = signal(false);
+
+  /** Открытый photo-set для lightbox'а. null = закрыт. */
+  public readonly lightboxImages = signal<PortfolioImage[] | null>(null);
+  public readonly lightboxTitle = signal<string>('');
 
   /** Развёрнут ли полный bio (по умолчанию clamp до 3 строк на тачах). */
   public readonly bioExpanded = signal(false);
@@ -109,6 +115,17 @@ export class SpecialistProfilePage implements OnInit {
 
   public closePlayer(): void {
     this.playerOpen.set(false);
+  }
+
+  public openPhotoSet(idx: number): void {
+    const item = this.profile()?.portfolio?.[idx];
+    if (!item || item.kind !== 'image' || !item.images?.length) return;
+    this.lightboxImages.set(item.images);
+    this.lightboxTitle.set(item.title || '');
+  }
+
+  public closeLightbox(): void {
+    this.lightboxImages.set(null);
   }
 
   public toggleBio(): void {

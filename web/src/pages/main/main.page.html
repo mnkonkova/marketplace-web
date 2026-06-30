@@ -68,8 +68,8 @@
         @for (item of featuredWorks(); track item.video.id) {
           <a
             class="work-tile"
-            href="/specialist/{{ item.specialist.user_id }}"
-            (click)="openSpecialist(item.specialist.user_id, $event)"
+            href="/specialist/{{ item.specialist.username || item.specialist.user_id }}"
+            (click)="openSpecialist(item.specialist, $event)"
           >
             @if (animatedThumbSrc(item.video); as gif) {
               <!-- Animated WebP — autoplay везде. -->

@@ -109,6 +109,90 @@
     linear-gradient(160deg, #0d1518, #1a2a30);
 }
 
+// === photo-set carousel ===
+// Один контейнер на ширину карточки + горизонтальный scroll-snap.
+// Все фото — 100% ширины и высоты, object-fit: contain (как видео-плеер
+// у landscape — letterbox чтобы не резать кадр).
+.feed-carousel {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.feed-carousel-img {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  background: #000;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+// Индикатор страниц в каруселе фото — стиль TikTok photo-mode:
+// pill-подложка под точками, активная точка — белая капсула.
+// Размещаем выше overlay'я с именем спеца/категориями (≈ 200px от низа).
+.feed-carousel-dots {
+  position: absolute;
+  bottom: 200px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  // Лёгкая защита от сливания с тёмным контентом фото.
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.55);
+    // width transition — растёт в капсулу при активации.
+    transition:
+      background 0.2s ease,
+      width 0.25s ease;
+
+    &.is-on {
+      background: #fff;
+      width: 18px;
+    }
+  }
+}
+
+// На очень узких экранах overlay сжимается — поднимем меньше, чтобы
+// не уезжать выше середины кадра.
+@media (max-width: 480px) {
+  .feed-carousel-dots {
+    bottom: 170px;
+  }
+}
+
+// is-photoset: tap = no-op (cursor default, не «pointer»).
+.feed-item.is-photoset {
+  cursor: default;
+}
+
 .feed-video {
   z-index: 1;
   display: block;

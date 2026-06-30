@@ -27,6 +27,10 @@ export class PortfolioGridComponent {
    *  открыть fullscreen-плеер. idx — индекс ролика в items[]. */
   public readonly openOverlay = output<number>();
 
+  /** Photo-set: тап по тайлу открывает lightbox с каруселью. Родитель
+   *  получает индекс айтема в items[] — достаёт images и передаёт в lightbox. */
+  public readonly openPhotoSet = output<number>();
+
   public readonly formatDuration = formatDuration;
 
   public readonly playingIds = signal<ReadonlySet<string>>(new Set());
@@ -66,5 +70,9 @@ export class PortfolioGridComponent {
 
   public requestOverlay(idx: number): void {
     this.openOverlay.emit(idx);
+  }
+
+  public requestPhotoSet(idx: number): void {
+    this.openPhotoSet.emit(idx);
   }
 }

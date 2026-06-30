@@ -29,6 +29,25 @@
   }
 }
 
+// Preview-баннер для owner-mode (спец смотрит свой профиль до публикации).
+// Жёлтая подложка чтобы выделить от обычного content'a + не выглядел как
+// «настоящий» элемент клиентского UI.
+.preview-banner {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(255, 200, 0, 0.1);
+  border: 1px solid rgba(255, 200, 0, 0.32);
+  color: #ffba59;
+  font-size: 13px;
+  line-height: 1.5;
+
+  strong {
+    color: #ffd066;
+    margin-right: 4px;
+  }
+}
+
 .profile-grid {
   display: grid;
   grid-template-columns: 1fr 280px;

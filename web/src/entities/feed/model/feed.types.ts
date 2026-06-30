@@ -27,8 +27,18 @@ export interface FeedVideo {
   created_at: string;
 }
 
+export interface FeedImage {
+  url: string;
+  width?: number;
+  height?: number;
+}
+
 export interface FeedItem {
+  /** 'video' | 'image'. Фронт распознаёт рендер: видео-плеер vs карусель фото. */
+  kind: 'video' | 'image';
   video: FeedVideo;
+  /** Для kind='image' — карусель фото в порядке sort_order. */
+  images?: FeedImage[];
   specialist: SpecialistLite & {
     categories: string[];
     primary_category?: string;

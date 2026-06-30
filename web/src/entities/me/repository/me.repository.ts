@@ -14,6 +14,8 @@ import {
   MultipartStartInput,
   MultipartStartResponse,
   PortfolioCreateInput,
+  PortfolioPhotoRef,
+  PortfolioPhotoSetCreateInput,
   ProfileCheckResult,
   UploadURLResponse,
 } from '../model/me.types';
@@ -97,8 +99,56 @@ export class MeRepository {
     return this.http.post<PortfolioItem>(`${this.api}/me/portfolio`, input);
   }
 
+  public addPortfolioPhotoSet(input: PortfolioPhotoSetCreateInput): Observable<PortfolioItem> {
+    return this.http.post<PortfolioItem>(`${this.api}/me/portfolio/photoset`, input);
+  }
+
   public deletePortfolio(id: string): Observable<void> {
     return this.http.delete<void>(`${this.api}/me/portfolio/${encodeURIComponent(id)}`);
+  }
+
+  public updatePortfolioMeta(
+    id: string,
+    patch: { title?: string; description?: string; updated_at?: string },
+  ): Observable<PortfolioItem> {
+    return this.http.patch<PortfolioItem>(
+      `${this.api}/me/portfolio/${encodeURIComponent(id)}`,
+      patch,
+    );
+  }
+
+  public deletePortfolioImage(imageId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.api}/me/portfolio/images/${encodeURIComponent(imageId)}`,
+    );
+  }
+
+  public appendPortfolioImages(
+    itemId: string,
+    images: PortfolioPhotoRef[],
+  ): Observable<{
+    images: import('@entities/specialist/model/specialist.types').PortfolioImage[];
+    updated_at: string;
+  }> {
+    return this.http.post<{
+      images: import('@entities/specialist/model/specialist.types').PortfolioImage[];
+      updated_at: string;
+    }>(`${this.api}/me/portfolio/${encodeURIComponent(itemId)}/images`, { images });
+  }
+
+  public reorderPortfolioImages(
+    itemId: string,
+    imageIds: string[],
+  ): Observable<{
+    images: import('@entities/specialist/model/specialist.types').PortfolioImage[];
+    updated_at: string;
+  }> {
+    return this.http.put<{
+      images: import('@entities/specialist/model/specialist.types').PortfolioImage[];
+      updated_at: string;
+    }>(`${this.api}/me/portfolio/${encodeURIComponent(itemId)}/images/order`, {
+      image_ids: imageIds,
+    });
   }
 
   public updatePortfolioCategories(id: string, codes: string[]): Observable<PortfolioItem> {

@@ -6,6 +6,7 @@ import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { SpecialistLite } from '@entities/specialist/model/specialist.types';
 import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
 import { formatRate } from '@shared/lib/format';
+import { specialistHandle } from '@shared/lib/specialist-link';
 import { computeCartTotal } from '../../../lib/cart-total';
 import { ProjectCartStore } from '../../../model/project-cart.store';
 import { LeadSubmitDialogComponent } from '../lead-submit/lead-submit.dialog';
@@ -77,6 +78,6 @@ export class ProjectCartDialogComponent {
 
   public openProfile(spec: SpecialistLite): void {
     this.cartModal.destroy();
-    void this.router.navigate(['/specialist', spec.user_id], withFromPage(this.router));
+    void this.router.navigate(['/specialist', specialistHandle(spec)], withFromPage(this.router));
   }
 }

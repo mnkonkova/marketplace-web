@@ -17,6 +17,7 @@ import { SupportFooterComponent } from '@widgets/support-footer/support-footer.c
 import { pluralSpecialists } from '@shared/lib/format';
 import { isHomeSectionAnchor, scrollToAnchorWhenReady } from '@shared/lib/scroll-to-anchor';
 import { withFromPage } from '@shared/nav/from-page';
+import { specialistHandle } from '@shared/lib/specialist-link';
 
 @Component({
   selector: 'app-main-page',
@@ -142,9 +143,9 @@ export class MainPage implements OnInit {
     return this.categories().find((c) => c.code === code)?.title ?? code;
   }
 
-  public openSpecialist(id: string, ev: MouseEvent): void {
+  public openSpecialist(spec: { user_id: string; username?: string }, ev: MouseEvent): void {
     ev.preventDefault();
-    void this.router.navigate(['/specialist', id], withFromPage(this.router));
+    void this.router.navigate(['/specialist', specialistHandle(spec)], withFromPage(this.router));
   }
 
   public search(): void {

@@ -1,5 +1,7 @@
 export interface SpecialistLite {
   user_id: string;
+  /** Публичный handle для красивого URL /specialist/<username>. Пусто = не выбрал, фронт фолбэчит на user_id. */
+  username?: string;
   display_name: string;
   bio?: string;
   avatar_url?: string;
@@ -32,8 +34,19 @@ export interface SkillRef {
   kind: string;
 }
 
+export interface PortfolioImage {
+  id: string;
+  image_url: string;
+  sort_order: number;
+  width?: number;
+  height?: number;
+  created_at: string;
+}
+
 export interface PortfolioItem {
   id: string;
+  /** 'video' | 'image' | 'external' — фронт выбирает рендер. */
+  kind: 'video' | 'image' | 'external';
   title: string;
   description: string;
   video_url?: string;
@@ -50,6 +63,11 @@ export interface PortfolioItem {
   category_codes: string[];
   sort_order: number;
   created_at: string;
+  /** Optimistic-lock версия portfolio_items.updated_at. Только в /me/portfolio,
+   *  на публичных карточках спеца этого поля нет. */
+  updated_at?: string;
+  /** Для kind='image' — кадры карусели в порядке sort_order. */
+  images?: PortfolioImage[];
 }
 
 export interface ReviewItem {
@@ -65,6 +83,14 @@ export interface SpecialistProfile extends Omit<SpecialistLite, 'categories'> {
   skills: SkillRef[];
   portfolio: PortfolioItem[];
   reviews: ReviewItem[];
+  /** true если профиль возвращён в owner-preview режиме (без публикации/
+   *  модерации). Только для аутентифицированного владельца. */
+  is_preview?: boolean;
+  /** Фактический статус публикации. Нужен в preview-баннере чтобы различить
+   *  «черновик» (false) и «на модерации» (true + status != 'approved'). */
+  is_published?: boolean;
+  /** moderation_status — только в preview-режиме. */
+  moderation_status?: 'pending_review' | 'approved' | 'rejected';
 }
 
 export interface SearchHit extends SpecialistLite {

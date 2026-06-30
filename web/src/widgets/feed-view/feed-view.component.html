@@ -15,20 +15,44 @@
           class="feed-item"
           [class.is-landscape]="isLandscape(it)"
           [class.is-portrait]="!isLandscape(it)"
+          [class.is-photoset]="it.kind === 'image'"
           [attr.data-index]="i"
+          [attr.data-kind]="it.kind"
           (click)="togglePlayback($event)"
         >
           <div class="feed-media">
-            @if (it.video.thumb || it.specialist.avatar_url) {
-              <img class="feed-poster" [src]="it.video.thumb || it.specialist.avatar_url" alt="" />
+            @if (it.kind === 'image') {
+              <!-- Карусель фото: горизонтальный scroll-snap. Каждое фото —
+                   полноэкранный кадр. Dots-индикатор + counter «1/N» сбоку. -->
+              <div
+                class="feed-carousel"
+                #carousel
+                (scroll)="onCarouselScroll($event, i)"
+                (click)="$event.stopPropagation()"
+              >
+                @for (img of (it.images || []); track img.url; let imgIdx = $index) {
+                  <img class="feed-carousel-img" [src]="img.url" [alt]="it.video.title || ''" loading="lazy" />
+                }
+              </div>
+              @if ((it.images?.length || 0) > 1) {
+                <div class="feed-carousel-dots" aria-hidden="true">
+                  @for (img of (it.images || []); track $index; let imgIdx = $index) {
+                    <span class="dot" [class.is-on]="carouselIndex(i) === imgIdx"></span>
+                  }
+                </div>
+              }
             } @else {
-              <div class="feed-poster feed-poster-fallback"></div>
+              @if (it.video.thumb || it.specialist.avatar_url) {
+                <img class="feed-poster" [src]="it.video.thumb || it.specialist.avatar_url" alt="" />
+              } @else {
+                <div class="feed-poster feed-poster-fallback"></div>
+              }
+              <!-- Виден пока ensureVideo не получил loadeddata: класс
+                   .is-video-loading навешивается на .feed-item в TS. -->
+              <div class="feed-video-loading" aria-hidden="true">
+                <span class="feed-spinner"></span>
+              </div>
             }
-            <!-- Виден пока ensureVideo не получил loadeddata: класс
-                 .is-video-loading навешивается на .feed-item в TS. -->
-            <div class="feed-video-loading" aria-hidden="true">
-              <span class="feed-spinner"></span>
-            </div>
           </div>
 
           <div class="feed-overlay">
@@ -95,7 +119,13 @@
               <span class="feed-action-label">
                 {{ isInCart(it.specialist.user_id) ? 'В проекте' : 'В проект' }}
               </span>
-              <span class="feed-video-idx">{{ it.video_idx + 1 }}/{{ it.video_total }}</span>
+              @if (it.kind === 'image' && (it.images?.length || 0) > 1) {
+                <span class="feed-video-idx">
+                  {{ carouselIndex(i) + 1 }}/{{ it.images?.length }} 🖼
+                </span>
+              } @else {
+                <span class="feed-video-idx">{{ it.video_idx + 1 }}/{{ it.video_total }}</span>
+              }
             </div>
           </div>
         </article>

@@ -95,6 +95,9 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
 
   private playbackStarted = false;
 
+  /** Текущий индекс кадра в карусели photo-set'а, по индексу items[]. */
+  private readonly carouselIndexes = signal<Record<number, number>>({});
+
   public ngAfterViewInit(): void {
     this.syncAppHeaderHeight();
     this.categoryApi.list().subscribe((cats) => {
@@ -155,10 +158,27 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     const target = ev.target as HTMLElement | null;
     if (target?.closest('button, a')) return;
     const article = ev.currentTarget as HTMLElement;
+    // Photo-set: tap по карточке = no-op (свайп между фото = горизонтальный
+    // scroll-snap, плеера для паузы нет).
+    if (article.dataset['kind'] === 'image') return;
     const video = article.querySelector<HTMLVideoElement>('video.feed-video');
     if (!video) return;
     if (video.paused) this.playVideo(article, video);
     else video.pause();
+  }
+
+  public carouselIndex(itemIdx: number): number {
+    return this.carouselIndexes()[itemIdx] ?? 0;
+  }
+
+  public onCarouselScroll(ev: Event, itemIdx: number): void {
+    const el = ev.currentTarget as HTMLElement;
+    const w = el.clientWidth || 1;
+    const idx = Math.round(el.scrollLeft / w);
+    const cur = this.carouselIndex(itemIdx);
+    if (idx !== cur) {
+      this.carouselIndexes.set({ ...this.carouselIndexes(), [itemIdx]: idx });
+    }
   }
 
   /** Горизонтальное видео (16:9 и т.п.) — letterbox по центру, как Shorts/Reels. */
@@ -290,10 +310,13 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
       this.activeArticle.querySelectorAll('video').forEach((v) => v.pause());
     }
     this.activeArticle = article;
-    const video = this.ensureVideo(article);
-    if (video) {
-      if (video.videoWidth) this.applyVideoOrientation(article, video);
-      this.playVideo(article, video);
+    // Photo-set — нет видео для preload/play.
+    if (article.dataset['kind'] !== 'image') {
+      const video = this.ensureVideo(article);
+      if (video) {
+        if (video.videoWidth) this.applyVideoOrientation(article, video);
+        this.playVideo(article, video);
+      }
     }
     const idx = article.dataset['index'];
     const root = this.listRef()?.nativeElement;
@@ -301,7 +324,7 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
       const i = parseInt(idx, 10);
       [-1, 0, 1].forEach((d) => {
         const neighbor = root.querySelector(`[data-index="${i + d}"]`) as HTMLElement | null;
-        if (neighbor) this.ensureVideo(neighbor);
+        if (neighbor && neighbor.dataset['kind'] !== 'image') this.ensureVideo(neighbor);
       });
     }
   }

@@ -424,6 +424,7 @@ label {
   }
 }
 
+
 .portfolio-list {
   display: flex;
   flex-direction: column;
@@ -431,26 +432,301 @@ label {
 }
 
 .portfolio-row {
+  position: relative;
   display: grid;
-  grid-template-columns: 96px 1fr auto;
+  grid-template-columns: 96px minmax(0, 1fr); // minmax(0,1fr) — без него grid
+  // отдаёт второй колонке min-content от внутреннего grid'а thumbnails,
+  // и она расширяется outside parent → визуально «лезет» на cover слева.
   gap: 14px;
-  align-items: center;
-  padding: 12px;
+  align-items: start;
+  padding: 14px 14px 14px 14px;
+  padding-right: 100px; // место под row-actions, чтобы текст не подтекал
   border: 1px solid var(--border);
   border-radius: $default-radius;
   background: rgba(255, 255, 255, 0.03);
+
+  // Photo-set: без большой обложки слева → одна колонка на всю ширину.
+  &.is-photoset {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.item-title {
+  display: block;
+  font-size: 15px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+// Блок action-кнопок в правом верхнем углу карточки. На desktop появляется
+// при hover'е на ряд (минимизирует визуальный шум). На тачах всегда виден
+// и крупнее — pointer:coarse не имеет hover.
+.row-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.portfolio-row:hover .row-actions,
+.portfolio-row:focus-within .row-actions {
+  opacity: 1;
+}
+
+.row-action {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s;
+
+  &:hover {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  &.delete:hover {
+    border-color: rgba(255, 80, 80, 0.5);
+    color: #ff7a7a;
+  }
+}
+
+// На тач-устройствах нет hover'a → переносим row-actions ПОД контент карточки,
+// чтобы не съедать место у title/thumbnails и не накладываться. На desktop
+// остаются плавающими в правом-верхнем (появляются на hover).
+@media (pointer: coarse) {
+  .portfolio-row {
+    padding: 12px;
+    padding-right: 12px; // отменяем десктопный clearance справа
+  }
+
+  .row-actions {
+    position: static;
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    margin-top: 10px;
+    gap: 10px;
+    opacity: 1;
+  }
+
+  .row-action {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+}
+
+// Очень узкие экраны: thumb колонка чуть уже, чтобы текст не сдавливался.
+@media (max-width: 480px) {
+  .portfolio-row {
+    grid-template-columns: 72px minmax(0, 1fr);
+
+    &.is-photoset {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .row-actions {
+    position: static;
+    margin-top: 10px;
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    opacity: 1;
+  }
 }
 
 .thumb {
+  position: relative;
   width: 96px;
   height: 128px;
   border-radius: $default-radius;
+  overflow: hidden;
+  background: #1a1a1a;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .thumb {
+    width: 72px;
+    height: 96px;
+  }
+}
+
+// Счётчик «+N» поверх первого фото photo-set'а в правом-нижнем углу.
+.thumb-counter {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.hint-inline {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+// Inline-edit title/description в карточке портфолио — поля и actions.
+.edit-title,
+.edit-desc {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+// Сетка миниатюр photo-set'а внутри карточки портфолио. Каждая ячейка —
+// квадрат с кнопкой × в углу. cdkDrag даёт DnD reorder.
+.photoset-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+// На тачах ровно 3 плитки в ряду — крупно, удобно тапать на ×,
+// видно содержимое фото. Карточка photo-set'а full-width на тачах
+// (см. .portfolio-row.is-photoset), плиток помещается красиво.
+@media (pointer: coarse) {
+  .photoset-thumbs {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+}
+
+.photoset-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #111;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+  }
+
+  // DnD preview (плавающая миниатюра при перетаскивании)
+  &.cdk-drag-preview {
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 1500;
+  }
+
+  &.cdk-drag-placeholder {
+    opacity: 0.3;
+  }
+}
+
+// Анимация спадения остальных миниатюр когда сосед перетаскивается.
+.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.photoset-thumbs.cdk-drop-list-dragging .photoset-thumb:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.photoset-thumb-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  aspect-ratio: 1;
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+
+  .plus {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
+.photoset-thumb-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+
+  &:hover {
+    background: rgba(255, 60, 60, 0.85);
+  }
+}
+
+// На тачах bump'аем до 32px — палец нормально попадает (Apple HIG: ≥44pt,
+// Material: ≥48dp; 32 — компромисс на маленькой превьюшке).
+@media (pointer: coarse) {
+  .photoset-thumb-remove {
+    width: 32px;
+    height: 32px;
+    font-size: 22px;
+    top: 6px;
+    right: 6px;
+  }
 }
 
 .portfolio-main {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0; // защита от расширения за пределы 1fr-колонки.
 
   a {
     color: var(--accent);
@@ -504,10 +780,12 @@ label {
 
   .profile-grid,
   .inline-fields,
-  .inline-fields.two,
-  .portfolio-row {
+  .inline-fields.two {
     grid-template-columns: 1fr;
   }
+  // .portfolio-row — собственный responsive (see @media 480px ниже).
+  // На touch'ах оставляем thumb видимым (96/72px колонка), стек делает только
+  // row-actions через position:static.
 
   .actions {
     align-items: stretch;

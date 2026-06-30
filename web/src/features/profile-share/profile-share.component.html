@@ -1,0 +1,101 @@
+<div class="share">
+  <div class="share-head">
+    <h3>Поделиться профилем</h3>
+  </div>
+
+  <!-- Username editor. Read mode: prefix /specialist/ muted, username — accent. -->
+  @if (!editing()) {
+    <div class="username-view">
+      <div class="url-display" (click)="startEdit()" role="button" tabindex="0"
+           [class.is-empty]="!username()" title="Нажмите чтобы изменить">
+        <span class="url-host">{{ host() }}</span>
+        <span class="url-prefix">/specialist/</span>
+        @if (username()) {
+          <span class="url-handle">{{ username() }}</span>
+        } @else {
+          <span class="url-handle is-placeholder">придумайте_username</span>
+        }
+        <span class="url-edit-icon" aria-hidden="true">✎</span>
+      </div>
+      @if (!username()) {
+        <p class="hint warn">
+          Сейчас ссылка идёт по UUID — некрасиво и нечитаемо. Придумайте username,
+          чтобы клиенты получали короткую ссылку.
+        </p>
+      }
+    </div>
+  } @else {
+    <div class="username-edit">
+      <label>Меняется только эта часть URL (после /specialist/):</label>
+      <div class="username-input-row">
+        <span class="prefix-fixed" aria-label="Фиксированная часть">
+          {{ host() }}/specialist/
+        </span>
+        <input
+          #handleInput
+          nz-input
+          [ngModel]="draft()"
+          (ngModelChange)="draft.set($event)"
+          (keydown.enter)="saveUsername()"
+          placeholder="напр. foxy"
+          maxlength="30"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+        />
+      </div>
+      <p class="hint">{{ usernameHint }}</p>
+      @if (editError()) {
+        <p class="err">{{ editError() }}</p>
+      }
+      <div class="edit-actions">
+        <button nz-button (click)="cancelEdit()" [disabled]="saving()">Отмена</button>
+        <button nz-button nzType="primary" (click)="saveUsername()" [nzLoading]="saving()">
+          Сохранить
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Action row -->
+  @if (!editing()) {
+    <div class="share-actions">
+      <button class="action-btn primary" (click)="copyURL()">
+        <span class="ic" nz-icon nzType="copy"></span>
+        <span class="lbl">Скопировать ссылку</span>
+      </button>
+      @if (canNativeShare()) {
+        <button class="action-btn" (click)="nativeShare()">
+          <span class="ic" nz-icon nzType="share-alt"></span>
+          <span class="lbl">Поделиться</span>
+        </button>
+      }
+      <button class="action-btn" (click)="showQR.set(true)">
+        <span class="ic emoji" aria-hidden="true">▦</span>
+        <span class="lbl">QR-код</span>
+      </button>
+      <button class="action-btn" (click)="viewAsClient()">
+        <span class="ic" nz-icon nzType="eye"></span>
+        <span class="lbl">Как видят клиенты</span>
+      </button>
+    </div>
+  }
+</div>
+
+<!-- QR fullscreen modal — как в TG. Большой QR + дублирует URL. -->
+@if (showQR()) {
+  <div class="qr-modal" (click)="closeQR($event)" role="dialog" aria-modal="true">
+    <div class="qr-modal-card" (click)="$event.stopPropagation()">
+      <button class="qr-close" (click)="showQR.set(false)" aria-label="Закрыть">×</button>
+      <h4>{{ displayName() || 'Профиль' }}</h4>
+      <canvas #qrCanvas width="280" height="280" aria-label="QR-код профиля"></canvas>
+      <p class="qr-url">{{ shareURL() }}</p>
+      <div class="qr-actions">
+        <button class="action-btn primary" (click)="copyURL()">
+          <span class="ic" nz-icon nzType="copy"></span>
+          <span class="lbl">Скопировать ссылку</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}

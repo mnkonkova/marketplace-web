@@ -482,6 +482,84 @@ h6 {
   background: var(--accent) !important;
 }
 
+/* === Pagination в тёмной теме. ===
+   Antd по умолчанию рисует pagination под светлый фон (белые кнопки,
+   чёрный текст). На наших тёмных страницах (`/admin/users`, etc.)
+   без override'ов получалось «чёрные цифры на тёмном» — нечитаемо. */
+.ant-pagination {
+  color: var(--text) !important;
+}
+
+.ant-pagination-item,
+.ant-pagination-prev .ant-pagination-item-link,
+.ant-pagination-next .ant-pagination-item-link,
+.ant-pagination-jump-prev .ant-pagination-item-link,
+.ant-pagination-jump-next .ant-pagination-item-link {
+  background: var(--bg-elevated) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Покрываем все текстовые ноды внутри pagination-item — ng-zorro может
+   рендерить число как text-node, как <a>, как <button>. Без catch-all
+   на потомков получаем чёрные цифры на тёмном bg. */
+.ant-pagination-item *,
+.ant-pagination-prev *,
+.ant-pagination-next *,
+.ant-pagination-jump-prev *,
+.ant-pagination-jump-next * {
+  color: var(--text) !important;
+}
+
+.ant-pagination-item:hover,
+.ant-pagination-prev:hover .ant-pagination-item-link,
+.ant-pagination-next:hover .ant-pagination-item-link {
+  border-color: var(--accent) !important;
+}
+
+.ant-pagination-item:hover a {
+  color: var(--accent) !important;
+}
+
+.ant-pagination-item-active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+.ant-pagination-item-active,
+.ant-pagination-item-active *,
+.ant-pagination-item-active a {
+  color: #fff !important;
+}
+
+.ant-pagination-disabled .ant-pagination-item-link,
+.ant-pagination-disabled:hover .ant-pagination-item-link {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-dim) !important;
+}
+
+.ant-pagination-jump-prev .ant-pagination-item-container .ant-pagination-item-ellipsis,
+.ant-pagination-jump-next .ant-pagination-item-container .ant-pagination-item-ellipsis,
+.ant-pagination-jump-prev .ant-pagination-item-container .ant-pagination-item-link-icon,
+.ant-pagination-jump-next .ant-pagination-item-container .ant-pagination-item-link-icon {
+  color: var(--text-muted) !important;
+}
+
+.ant-pagination-options-quick-jumper,
+.ant-pagination-options-quick-jumper input {
+  color: var(--text) !important;
+  background: var(--bg-elevated) !important;
+  border-color: var(--border) !important;
+}
+
+.ant-pagination-total-text {
+  color: var(--text-muted) !important;
+}
+
+/* nzShowSizeChanger открывает .ant-select — общий select-override его
+   покрывает (см. выше .ant-select-selector и т.п.), повторять не нужно. */
+
 .ant-message-notice-content {
   background: var(--surface) !important;
   color: var(--text) !important;

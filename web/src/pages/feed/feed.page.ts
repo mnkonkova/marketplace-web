@@ -18,6 +18,7 @@ import {
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
 import { formatRate } from '@shared/lib/format';
 import { withFromPage } from '@shared/nav/from-page';
+import { specialistHandle } from '@shared/lib/specialist-link';
 import { RateStarsComponent } from '@widgets/rate-stars/rate-stars.component';
 import { EMPTY } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
@@ -116,7 +117,7 @@ export class FeedPage implements OnInit {
   }
 
   public goProfile(spec: SpecialistLite): void {
-    this.router.navigate(['/specialist', spec.user_id], withFromPage(this.router));
+    this.router.navigate(['/specialist', specialistHandle(spec)], withFromPage(this.router));
   }
 
   public readonly formatRate = formatRate;

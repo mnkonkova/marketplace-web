@@ -1,0 +1,38 @@
+<div class="lightbox" (click)="closeOnBackdrop($event)" role="dialog" aria-modal="true">
+  <button
+    type="button"
+    class="lightbox-close"
+    (click)="close.emit()"
+    aria-label="Закрыть"
+  >×</button>
+
+  @if (title()) {
+    <div class="lightbox-title">{{ title() }}</div>
+  }
+
+  <div class="lightbox-track" #track (scroll)="onTrackScroll($event)">
+    @for (img of images(); track img.id) {
+      <div class="lightbox-cell">
+        <img [src]="img.image_url" [alt]="title() || ''" />
+      </div>
+    }
+  </div>
+
+  @if (hasMany()) {
+    <button
+      type="button"
+      class="lightbox-nav prev"
+      [disabled]="!canPrev()"
+      (click)="goPrev()"
+      aria-label="Предыдущее фото"
+    >‹</button>
+    <button
+      type="button"
+      class="lightbox-nav next"
+      [disabled]="!canNext()"
+      (click)="goNext()"
+      aria-label="Следующее фото"
+    >›</button>
+    <div class="lightbox-counter">{{ index() + 1 }} / {{ images().length }}</div>
+  }
+</div>

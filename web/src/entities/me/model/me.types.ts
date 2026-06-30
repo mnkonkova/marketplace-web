@@ -1,6 +1,8 @@
 export interface MeProfile {
   updated_at: string;
   user_id: string;
+  /** Публичный handle для URL /specialist/<username>. Пусто = не выбрал. */
+  username?: string;
   display_name: string;
   bio: string;
   avatar_url?: string;
@@ -31,6 +33,8 @@ export interface MeProfile {
 // updated_at — общий optimistic-lock; проверяется один раз на всю транзакцию.
 export interface MeProfileFullPatch {
   display_name?: string;
+  /** Поменять username. "" = сбросить, undefined = не трогать. */
+  username?: string;
   bio?: string;
   avatar_url?: string;
   city?: string;
@@ -123,6 +127,20 @@ export interface PortfolioCreateInput {
   // зарегистрировался, выбрал категорию в форме, но ещё не нажал
   // «Сохранить», и сразу пытается загрузить видео.
   profile_categories?: string[];
+}
+
+export interface PortfolioPhotoRef {
+  image_url: string;
+  width?: number;
+  height?: number;
+}
+
+export interface PortfolioPhotoSetCreateInput {
+  title: string;
+  description?: string;
+  category_codes?: string[];
+  profile_categories?: string[];
+  images: PortfolioPhotoRef[];
 }
 
 export interface PublishErrorBody {

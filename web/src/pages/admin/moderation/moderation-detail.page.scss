@@ -107,11 +107,31 @@
           flex-direction: column;
 
           video,
-          img {
+          > img {
             width: 100%;
             aspect-ratio: 9 / 16;
             object-fit: cover;
             background: #000;
+          }
+
+          .port-photoset {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2px;
+            background: #000;
+
+            img {
+              width: 100%;
+              aspect-ratio: 1;
+              object-fit: cover;
+            }
+          }
+
+          .hint {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
           }
 
           .port-text {

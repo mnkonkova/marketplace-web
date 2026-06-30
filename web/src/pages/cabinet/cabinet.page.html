@@ -260,13 +260,23 @@
     </div>
   </section>
 
+  @if (p.is_published) {
+    <app-profile-share
+      #share
+      [username]="p.username || ''"
+      [userId]="p.user_id"
+      [displayName]="p.display_name"
+      (usernameChange)="onUsernameChange($event)"
+    />
+  }
+
   <section class="panel">
     <div class="panel-head">
       <div>
         <h2>Портфолио</h2>
-        <p>Видео появятся в ленте, когда профиль опубликован.</p>
+        <p>Видео и фото появятся в ленте, когда профиль опубликован.</p>
       </div>
-      <span class="muted">{{ portfolio().length }} видео</span>
+      <span class="muted">{{ portfolio().length }} элементов</span>
     </div>
 
     <div class="portfolio-cta">
@@ -281,14 +291,18 @@
         role="button"
         tabindex="0"
       >
-        <div class="dz-icon">📹</div>
-        <strong>Перетащите видео сюда или выберите файл</strong>
-        <p>MP4 или MOV до 200 МБ. Превью соберётся автоматически.</p>
+        <div class="dz-icon">📹🖼</div>
+        <strong>Перетащите видео или фото — или выберите файлы</strong>
+        <p>
+          Видео: MP4/MOV до 200 МБ → один ролик в ленте.<br />
+          Фото: JPG/PNG/WEBP/HEIC, 1–10 шт → карусель в ленте.
+        </p>
         <input
           #portfolioFile
           type="file"
           class="hidden-file"
-          accept="video/mp4,video/quicktime"
+          accept="video/mp4,video/quicktime,image/jpeg,image/png,image/webp,image/heic,image/heif"
+          multiple
           (change)="onPortfolioPicked($event)"
         />
       </div>
@@ -309,23 +323,93 @@
         capture="environment"
         (change)="onPortfolioPicked($event)"
       />
+      <!-- Скрытый input для добавления фото в существующий photo-set.
+           Используется из любого item — мы запоминаем target itemId в TS. -->
+      <input
+        #appendPhotosInput
+        type="file"
+        class="hidden-file"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        multiple
+        (change)="onAppendPhotosPicked($event)"
+      />
     </div>
 
     <div class="portfolio-list">
       @for (item of portfolio(); track item.id) {
-      <article class="portfolio-row">
-        <div class="thumb">
-          @if (item.thumbnail_url) {
-          <img [src]="item.thumbnail_url" alt="" />
-          } @else {
-          <span>▶</span>
-          }
-        </div>
+      <article class="portfolio-row" [class.is-photoset]="item.kind === 'image'">
+        <!-- Большую обложку показываем только для видео — у photo-set'а
+             cover дублирует первое фото из миниатюр-карусели ниже, и слева
+             она съедала горизонтальное пространство на тачах. -->
+        @if (item.kind !== 'image') {
+          <div class="thumb">
+            @if (item.thumbnail_url) {
+            <img [src]="item.thumbnail_url" alt="" />
+            } @else {
+            <span>▶</span>
+            }
+          </div>
+        }
         <div class="portfolio-main">
-          <strong>{{ item.title || '(без названия)' }}</strong>
-          @if (item.video_url) {
+          @if (editingItemId() === item.id) {
+            <input
+              nz-input
+              class="edit-title"
+              [(ngModel)]="editTitle"
+              maxlength="200"
+              placeholder="Название"
+            />
+            <textarea
+              nz-input
+              class="edit-desc"
+              rows="2"
+              [(ngModel)]="editDescription"
+              maxlength="1000"
+              placeholder="Описание (необязательно)"
+            ></textarea>
+            <div class="edit-actions">
+              <button nz-button nzSize="small" (click)="cancelEditMeta()" [disabled]="savingMeta()">Отмена</button>
+              <button nz-button nzSize="small" nzType="primary" (click)="saveEditMeta(item)" [nzLoading]="savingMeta()">Сохранить</button>
+            </div>
+          } @else {
+            <strong class="item-title">{{ item.title || '(без названия)' }}</strong>
+          }
+          @if (item.kind === 'video' && item.video_url) {
           <a [href]="item.video_url" target="_blank" rel="noopener">открыть видео ↗</a>
-          } @if (item.description) {
+          } @else if (item.kind === 'image') {
+          <span class="hint-inline">Фото-кейс · {{ item.images?.length || 0 }} фото</span>
+          <div
+            class="photoset-thumbs"
+            cdkDropList
+            cdkDropListOrientation="mixed"
+            (cdkDropListDropped)="onReorderImages(item, $event)"
+          >
+            @for (img of item.images || []; track img.id) {
+            <div class="photoset-thumb" cdkDrag>
+              <img [src]="img.image_url" [alt]="item.title" loading="lazy" draggable="false" />
+              <button
+                type="button"
+                class="photoset-thumb-remove"
+                (click)="deletePhotoSetImage(item, img.id)"
+                aria-label="Удалить фото"
+                title="Удалить фото"
+              >×</button>
+            </div>
+            }
+            @if ((item.images?.length || 0) < maxPhotosPerSet) {
+              <button
+                type="button"
+                class="photoset-thumb-add"
+                (click)="pickAppendPhotos(item)"
+                [attr.aria-label]="'Добавить фото в кейс'"
+                title="Добавить фото"
+              >
+                <span class="plus">+</span>
+                <span class="lbl">Фото</span>
+              </button>
+            }
+          </div>
+          } @if (editingItemId() !== item.id && item.description) {
           <p>{{ item.description }}</p>
           }
           <div class="chips">
@@ -341,10 +425,31 @@
             }
           </div>
         </div>
-        <span nz-icon nzType="delete" nzTheme="outline" (click)="deletePortfolio(item.id)"></span>
+        @if (editingItemId() !== item.id) {
+          <div class="row-actions">
+            <button
+              type="button"
+              class="row-action edit"
+              (click)="startEditMeta(item)"
+              aria-label="Редактировать"
+              title="Редактировать"
+            >
+              <span aria-hidden="true">✎</span>
+            </button>
+            <button
+              type="button"
+              class="row-action delete"
+              (click)="deletePortfolio(item.id)"
+              aria-label="Удалить"
+              title="Удалить"
+            >
+              <span nz-icon nzType="delete" nzTheme="outline"></span>
+            </button>
+          </div>
+        }
       </article>
       } @empty {
-      <p class="hint">Добавьте первый ролик — он появится в кабинете и ленте.</p>
+      <p class="hint">Добавьте первый ролик или фото-кейс — появится в кабинете и ленте.</p>
       }
     </div>
   </section>

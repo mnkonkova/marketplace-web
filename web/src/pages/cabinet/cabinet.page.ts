@@ -1,12 +1,15 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   OnDestroy,
   OnInit,
   computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
@@ -47,6 +50,13 @@ import {
   PortfolioUploadDialogData,
   PortfolioUploadDialogResult,
 } from '@features/portfolio-upload/portfolio-upload.dialog';
+import {
+  PhotoSetUploadDialog,
+  PhotoSetUploadDialogData,
+  PhotoSetUploadDialogResult,
+} from '@features/portfolio-upload/photoset-upload.dialog';
+import { resizeImageToBlob } from '@shared/image/resize';
+import { ProfileShareComponent } from '@features/profile-share/profile-share.component';
 
 interface ProfileForm {
   display_name: string;
@@ -73,7 +83,9 @@ interface ProfileForm {
     NzAlertModule,
     NzSelectModule,
     NzIconModule,
+    DragDropModule,
     AppHeaderComponent,
+    ProfileShareComponent,
   ],
   templateUrl: './cabinet.page.html',
   styleUrl: './cabinet.page.scss',
@@ -101,6 +113,33 @@ export class CabinetPage implements OnInit, OnDestroy {
   public readonly user = signal<MeUser | null>(null);
 
   public readonly profile = signal<MeProfile | null>(null);
+
+  public readonly shareRef = viewChild<ProfileShareComponent>('share');
+
+  public onUsernameChange(newUsername: string): void {
+    // newUsername уже trimmed+lowercased в child. "" = сброс.
+    const ref = this.shareRef();
+    this.meRepo
+      .patchProfileFull({
+        username: newUsername,
+        updated_at: this.profile()?.updated_at,
+      })
+      .subscribe({
+        next: (p) => {
+          this.applyProfile(p);
+          ref?.onSaveSuccess();
+          this.msg.success(newUsername ? 'Username сохранён' : 'Username сброшен');
+        },
+        error: (err) => {
+          const msg = err?.error?.message || 'Не удалось сохранить username';
+          ref?.onSaveError(msg);
+          // Дублируем тостом, чтобы юзер заметил ошибку даже если форма
+          // ниже скролла (на узких экранах). 409 username_taken — самый
+          // частый кейс, должен явно сигналиться.
+          this.msg.error(msg, { nzDuration: 5000 });
+        },
+      });
+  }
 
   public readonly categories = signal<Category[]>([]);
 
@@ -386,7 +425,7 @@ export class CabinetPage implements OnInit, OnDestroy {
       // фиксированные 512×512 — для круглого аватара 160px этого с запасом
       // на retina. iOS Safari больше не рисует частями (canvas decodes
       // полностью), и upload меньше в ~10×.
-      const resized = await resizeImageToBlob(original, 512, 0.9);
+      const { file: resized } = await resizeImageToBlob(original, 512, 0.9);
 
       // blob: URL РЕСАЙЗНУТОГО canvas-вывода — отрисуется мгновенно из ОЗУ.
       const prevLocal = this.localAvatarUrl();
@@ -419,6 +458,158 @@ export class CabinetPage implements OnInit, OnDestroy {
 
   public readonly portfolioDragOver = signal(false);
 
+  // Inline-edit для title/description портфолио-айтема (video или photoset).
+  // editingItemId — id текущего открытого редактора (null = ничего не редактируется).
+  public readonly editingItemId = signal<string | null>(null);
+  public editTitle = '';
+  public editDescription = '';
+  public readonly savingMeta = signal(false);
+
+  public readonly maxPhotosPerSet = 10;
+
+  // Скрытый input для append-фото — на него триггерим клик когда юзер жмёт
+  // «+ Фото» в карточке photo-set'а. Запоминаем target item для onChange.
+  public readonly appendPhotosInput = viewChild<ElementRef<HTMLInputElement>>('appendPhotosInput');
+  private appendTargetItemId: string | null = null;
+
+  public pickAppendPhotos(item: PortfolioItem): void {
+    this.appendTargetItemId = item.id;
+    this.appendPhotosInput()?.nativeElement.click();
+  }
+
+  public async onAppendPhotosPicked(ev: Event): Promise<void> {
+    const input = ev.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    const itemId = this.appendTargetItemId;
+    this.appendTargetItemId = null;
+    if (!itemId || files.length === 0) return;
+    const item = this.portfolio().find((p) => p.id === itemId);
+    if (!item) return;
+    const room = this.maxPhotosPerSet - (item.images?.length || 0);
+    if (room <= 0) {
+      this.msg.warning(`Максимум ${this.maxPhotosPerSet} фото на кейс — удалите лишние`);
+      return;
+    }
+    const toUpload = files.slice(0, room);
+    if (files.length > room) {
+      this.msg.warning(`Можно добавить ещё ${room} — лишние пропущены`);
+    }
+    // Параллельный upload каждого файла → массив PortfolioPhotoRef → POST.
+    this.savingMeta.set(true);
+    try {
+      const refs = await Promise.all(
+        toUpload.map(async (f) => {
+          const { file: resized, width, height } = await resizeImageToBlob(f, 1920, 0.85);
+          const presign = await firstValueFrom(this.meRepo.presignAvatarUpload(resized));
+          await putFileToPresignedUrl(presign.upload_url, resized);
+          return { image_url: presign.public_url, width, height };
+        }),
+      );
+      const res = await firstValueFrom(this.meRepo.appendPortfolioImages(itemId, refs));
+      this.portfolio.update((items) =>
+        items.map((p) =>
+          p.id === itemId
+            ? {
+                ...p,
+                images: res.images,
+                thumbnail_url: res.images[0]?.image_url || p.thumbnail_url,
+                updated_at: res.updated_at, // sync optimistic-lock snapshot
+              }
+            : p,
+        ),
+      );
+      this.refreshProfileUpdatedAt();
+      this.msg.success(`Добавлено ${refs.length} фото`);
+    } catch (err) {
+      this.msg.error(apiErrorMessage((err as { error?: ApiErrorBody })?.error ?? null, 'Не удалось добавить фото'));
+    } finally {
+      this.savingMeta.set(false);
+    }
+  }
+
+  public onReorderImages(item: PortfolioItem, ev: CdkDragDrop<unknown>): void {
+    if (!item.images || ev.previousIndex === ev.currentIndex) return;
+    const reordered = [...item.images];
+    moveItemInArray(reordered, ev.previousIndex, ev.currentIndex);
+    // Оптимистично применяем на фронте — пользователь видит мгновенный отклик.
+    this.portfolio.update((items) =>
+      items.map((p) =>
+        p.id === item.id
+          ? { ...p, images: reordered, thumbnail_url: reordered[0].image_url }
+          : p,
+      ),
+    );
+    this.meRepo.reorderPortfolioImages(item.id, reordered.map((i) => i.id)).subscribe({
+      next: (res) => {
+        // Бэк может перенумеровать sort_order и обновляет parent.updated_at —
+        // синхронизируем и то, и другое (иначе следующий PATCH meta = 409).
+        this.portfolio.update((items) =>
+          items.map((p) =>
+            p.id === item.id
+              ? {
+                  ...p,
+                  images: res.images,
+                  thumbnail_url: res.images[0]?.image_url || p.thumbnail_url,
+                  updated_at: res.updated_at,
+                }
+              : p,
+          ),
+        );
+        this.refreshProfileUpdatedAt();
+      },
+      error: (err) => {
+        // Откатываем — перезагружаем с сервера.
+        this.loadPortfolio();
+        this.msg.error(apiErrorMessage(err?.error ?? null, 'Не удалось изменить порядок'));
+      },
+    });
+  }
+
+  public startEditMeta(item: PortfolioItem): void {
+    this.editingItemId.set(item.id);
+    this.editTitle = item.title || '';
+    this.editDescription = item.description || '';
+  }
+
+  public cancelEditMeta(): void {
+    this.editingItemId.set(null);
+  }
+
+  public saveEditMeta(item: PortfolioItem): void {
+    const title = this.editTitle.trim();
+    const description = this.editDescription.trim();
+    if (!title) {
+      this.msg.error('Название не может быть пустым');
+      return;
+    }
+    if (title === (item.title || '') && description === (item.description || '')) {
+      // Ничего не изменилось — закрываем без запроса.
+      this.editingItemId.set(null);
+      return;
+    }
+    this.savingMeta.set(true);
+    this.meRepo
+      .updatePortfolioMeta(item.id, { title, description, updated_at: item.updated_at })
+      .pipe(
+        catchError((err) => {
+          this.savingMeta.set(false);
+          const m = apiErrorMessage(err.error, 'Не удалось сохранить');
+          this.msg.error(m);
+          return EMPTY;
+        }),
+      )
+      .subscribe((updated) => {
+        this.savingMeta.set(false);
+        this.portfolio.update((items) =>
+          items.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
+        );
+        this.editingItemId.set(null);
+        this.refreshProfileUpdatedAt();
+        this.msg.success('Сохранено');
+      });
+  }
+
   public onPortfolioDragEnter(ev: DragEvent): void {
     if (!ev.dataTransfer?.types.includes('Files')) return;
     ev.preventDefault();
@@ -441,15 +632,49 @@ export class CabinetPage implements OnInit, OnDestroy {
   public onPortfolioDrop(ev: DragEvent): void {
     ev.preventDefault();
     this.portfolioDragOver.set(false);
-    const f = ev.dataTransfer?.files?.[0];
-    if (f) this.openUploadDialog(f);
+    this.routeFiles(Array.from(ev.dataTransfer?.files ?? []));
   }
 
   public onPortfolioPicked(ev: Event): void {
     const input = ev.target as HTMLInputElement;
-    const f = input.files?.[0];
+    const files = Array.from(input.files ?? []);
     input.value = '';
-    if (f) this.openUploadDialog(f);
+    this.routeFiles(files);
+  }
+
+  // routeFiles — единая логика «куда дальше» по типу файлов:
+  //   • все картинки → photo-set (диалог с авто-добавленными файлами)
+  //   • первый файл — видео → video-upload (берём только этот файл; остальные
+  //     видео-айтемы заводятся как отдельные работы, batch не предусмотрен)
+  //   • смешано (фото + видео) → берём фото как photo-set + warning что
+  //     видео нужно отдельной загрузкой (избегаем потери информации без
+  //     явной отметки юзеру)
+  private routeFiles(files: File[]): void {
+    if (files.length === 0) return;
+    const isImage = (f: File) => /^image\//.test(f.type) || /\.(heic|heif)$/i.test(f.name);
+    const isVideo = (f: File) => /^video\//.test(f.type) || /\.(mp4|mov|m4v)$/i.test(f.name);
+
+    const images = files.filter(isImage);
+    const videos = files.filter(isVideo);
+
+    if (images.length > 0 && videos.length === 0) {
+      this.openPhotoSetDialog(images);
+      return;
+    }
+    if (videos.length > 0 && images.length === 0) {
+      if (videos.length > 1) {
+        this.msg.warning('Видео загружаются по одному. Открываю первое — остальные загрузите следующими.');
+      }
+      this.openUploadDialog(videos[0]);
+      return;
+    }
+    if (images.length > 0 && videos.length > 0) {
+      this.msg.warning('Видео и фото нельзя в одну загрузку. Открыл фото-кейс — видео загрузите отдельно.');
+      this.openPhotoSetDialog(images);
+      return;
+    }
+    // Ничего не распознано
+    this.msg.error('Поддерживаются только видео (MP4/MOV) и фото (JPG/PNG/WEBP/HEIC).');
   }
 
   public openUploadDialog(initialFile?: File): void {
@@ -474,15 +699,56 @@ export class CabinetPage implements OnInit, OnDestroy {
     ref.afterClose.subscribe((res: PortfolioUploadDialogResult | null | undefined) => {
       if (res?.created) {
         this.loadPortfolio();
-        // Бэк бампит specialist_profiles.updated_at внутри AddPortfolioVideo
-        // (через LockProfileForUpdateInTx — лок на лимит 20 видео).
-        // Без обновления sessionStorage следующий main-save получит 409.
-        this.meRepo.getProfile().subscribe({
-          next: (p) => this.setUpdatedAt(p.updated_at),
-          error: () => {},
-        });
+        this.refreshProfileUpdatedAt();
         this.msg.success('Видео добавлено');
       }
+    });
+  }
+
+  public openPhotoSetDialog(initialFiles?: File[]): void {
+    const ref = this.modalService.create<
+      PhotoSetUploadDialog,
+      PhotoSetUploadDialogData,
+      PhotoSetUploadDialogResult | null
+    >({
+      nzTitle: 'Новый фото-кейс',
+      nzContent: PhotoSetUploadDialog,
+      nzFooter: null,
+      nzWidth: 640,
+      nzClassName: 'portfolio-upload-modal',
+      nzMaskClosable: false,
+      nzData: {
+        categories: this.categories(),
+        primaryCategory: this.primaryCategory(),
+        selectedCategoryCodes: [...this.selectedCategories()],
+        initialFiles,
+      },
+    });
+    ref.afterClose.subscribe((res: PhotoSetUploadDialogResult | null | undefined) => {
+      if (res?.created) {
+        this.loadPortfolio();
+        this.refreshProfileUpdatedAt();
+        this.msg.success('Фото-кейс добавлен');
+      }
+    });
+  }
+
+  // refreshProfileUpdatedAt — синхронизирует optimistic-lock snapshot после
+  // любой portfolio-write операции. Бэкенд бампает specialist_profiles.updated_at
+  // двумя путями:
+  //   1. LockProfileForUpdateInTx — берётся при create video / create photoset /
+  //      delete photo (для concurrency-safety). UPDATE specialist_profiles
+  //      SET updated_at = now() — всегда бампает.
+  //   2. BumpModerationToPendingIfApprovedInTx — если спец approved, любой
+  //      portfolio-change переводит в pending_review (+ бампает updated_at).
+  // Без рефреша следующий PATCH /me/profile получит 409 conflict.
+  private refreshProfileUpdatedAt(): void {
+    this.meRepo.getProfile().subscribe({
+      next: (p) => this.setUpdatedAt(p.updated_at),
+      error: () => {
+        // Не критично: на следующем save юзер получит 409 и страница
+        // подскажет обновить — лучше чем ронять текущий happy-path action.
+      },
     });
   }
 
@@ -497,7 +763,38 @@ export class CabinetPage implements OnInit, OnDestroy {
       )
       .subscribe(() => {
         this.portfolio.update((items) => items.filter((p) => p.id !== id));
+        this.refreshProfileUpdatedAt();
         this.msg.success('Видео удалено');
+      });
+  }
+
+  // Удалить одно фото из photo-set'а. Бэк автоматически снесёт сам сет,
+  // если в нём не осталось фото — поэтому удаляем из portfolio локально
+  // либо обновляем images-массив.
+  public deletePhotoSetImage(item: PortfolioItem, imageId: string): void {
+    this.meRepo
+      .deletePortfolioImage(imageId)
+      .pipe(
+        catchError((err) => {
+          this.error.set(apiErrorMessage(err.error, 'Не удалось удалить фото'));
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        const remaining = (item.images ?? []).filter((i) => i.id !== imageId);
+        if (remaining.length === 0) {
+          this.portfolio.update((items) => items.filter((p) => p.id !== item.id));
+          this.refreshProfileUpdatedAt();
+          this.msg.success('Сет удалён — последнее фото было удалено');
+          return;
+        }
+        // Полностью перезагружаем portfolio: backend обновляет
+        // portfolio_items.updated_at при изменении cover'а, без перезагрузки
+        // фронт держал бы stale snapshot → следующий PATCH meta = 409.
+        // loadPortfolio() возвращает свежие updated_at для всех items.
+        this.loadPortfolio();
+        this.refreshProfileUpdatedAt();
+        this.msg.success('Фото удалено');
       });
   }
 
@@ -515,6 +812,11 @@ export class CabinetPage implements OnInit, OnDestroy {
       )
       .subscribe((updated) => {
         this.portfolio.update((items) => items.map((p) => (p.id === updated.id ? updated : p)));
+        // SetPortfolioCategories на бэке проходит через
+        // BumpModerationToPendingIfApprovedInTx (для approved-спецов) — это
+        // меняет specialist_profiles.updated_at. Без refresh следующий
+        // PATCH /me/profile получит 409.
+        this.refreshProfileUpdatedAt();
       });
   }
 
@@ -679,81 +981,3 @@ export class CabinetPage implements OnInit, OnDestroy {
   }
 }
 
-// resizeImageToBlob — даун-скейлит картинку в canvas и пересохраняет
-// как baseline JPEG с правильным EXIF-rotation. Решает:
-//   • iOS Safari progressive-JPG «шторка» (canvas всегда выдаёт baseline);
-//   • HEIC/огромные фото с камеры — десериализуются canvas'ом в обычный JPEG;
-//   • EXIF rotation iPhone-камеры — createImageBitmap респектит ориентацию
-//     (без этого drawImage рисует неповёрнутые байты → серые поля);
-//   • upload в 5-10× меньше — мобильный канал тянет быстрее.
-async function resizeImageToBlob(file: File, maxSize: number, quality: number): Promise<File> {
-  const source = await loadImageRespectingExif(file);
-  const sourceW = 'naturalWidth' in source ? source.naturalWidth : source.width;
-  const sourceH = 'naturalHeight' in source ? source.naturalHeight : source.height;
-  const { width, height } = scaleToFit(sourceW, sourceH, maxSize);
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas_unsupported');
-  // Прозрачность не нужна, заполним фоном чтобы серых полей не было
-  // даже если EXIF неожиданно не учёлся.
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(source as CanvasImageSource, 0, 0, width, height);
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error('canvas_toblob_null'));
-          return;
-        }
-        const baseName = file.name.replace(/\.\w+$/, '') || 'avatar';
-        resolve(new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' }));
-      },
-      'image/jpeg',
-      quality,
-    );
-  });
-}
-
-// createImageBitmap с imageOrientation='from-image' — это РАБОЧИЙ способ
-// учесть EXIF rotation в canvas. <img> + drawImage не учитывают EXIF в
-// canvas — рисуется raw-битмап → перевёрнутый, плюс серые поля по краям.
-async function loadImageRespectingExif(file: File): Promise<ImageBitmap | HTMLImageElement> {
-  // Path A: createImageBitmap с EXIF — Chrome 79+, Safari 15+, Firefox 113+.
-  if (typeof createImageBitmap === 'function') {
-    try {
-      return await createImageBitmap(file, { imageOrientation: 'from-image' });
-    } catch {
-      // Fallthrough: некоторые мобильные Safari < 15 не поддерживают второй
-      // аргумент с опциями — переходим на HTMLImage fallback.
-    }
-  }
-  // Path B: <img> fallback. Современные Safari/Chrome автоматически
-  // применяют EXIF при отрисовке <img> в canvas через drawImage. Старые
-  // не применяют — но на них и проблемы изначально не было.
-  return fileToHtmlImage(file);
-}
-
-function fileToHtmlImage(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = (): void => {
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    img.onerror = (): void => {
-      URL.revokeObjectURL(url);
-      reject(new Error('image_decode'));
-    };
-    img.src = url;
-  });
-}
-
-function scaleToFit(w: number, h: number, maxSize: number): { width: number; height: number } {
-  if (w <= maxSize && h <= maxSize) return { width: w, height: h };
-  if (w >= h) return { width: maxSize, height: Math.round((h / w) * maxSize) };
-  return { width: Math.round((w / h) * maxSize), height: maxSize };
-}
