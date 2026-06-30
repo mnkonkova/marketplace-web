@@ -122,66 +122,6 @@
   flex-wrap: wrap;
 }
 
-// Двойной CTA: «Обсудить в TG» (direct, primary) + «В проект» (secondary).
-// Direct убирает friction — клиент сразу в чат, не отложенная заявка.
-.cta-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 20px;
-  min-height: 48px;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  transition:
-    background 0.12s,
-    border-color 0.12s,
-    transform 0.05s;
-  border: 1px solid transparent;
-
-  &:active {
-    transform: translateY(1px);
-  }
-}
-
-.cta-direct {
-  background: var(--accent);
-  color: #fff;
-
-  &:hover {
-    background: rgba(32, 161, 148, 0.85);
-    color: #fff;
-  }
-}
-
-.cta-cart {
-  background: var(--bg-elevated);
-  color: var(--text);
-  border-color: var(--border);
-
-  &:hover {
-    background: var(--surface-hover);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  &.in-project {
-    background: rgba(82, 196, 26, 0.15);
-    border-color: rgba(82, 196, 26, 0.4);
-    color: #52c41a;
-  }
-}
-
-@media (pointer: coarse) {
-  .cta-btn {
-    min-height: 52px;
-    padding: 14px 22px;
-    width: 100%;
-  }
-}
 
 .block {
   margin-bottom: 32px;

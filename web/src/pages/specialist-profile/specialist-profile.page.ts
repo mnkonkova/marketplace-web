@@ -18,7 +18,6 @@ import { PortfolioPlayerOverlayComponent } from '@widgets/portfolio-player-overl
 import { PhotoLightboxComponent } from '@widgets/photo-lightbox/photo-lightbox.component';
 import { ProfileAsideComponent } from '@widgets/profile-aside/profile-aside.component';
 import { formatRate } from '@shared/lib/format';
-import { socialLinkURL, SocialKey } from '@shared/lib/social-links';
 import { RateStarsComponent } from '@widgets/rate-stars/rate-stars.component';
 import { EMPTY } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
@@ -79,29 +78,6 @@ export class SpecialistProfilePage implements OnInit {
     return out;
   });
 
-  // Primary direct-contact CTA: первая заполненная соцсеть из приоритетного
-  // порядка. Telegram > WhatsApp > VK > Website. Если ни одной — null,
-  // и фронт показывает только корзинную кнопку (existing flow).
-  public readonly primaryDirectContact = computed<
-    { key: SocialKey; label: string; icon: string; url: string } | null
-  >(() => {
-    const s = this.profile()?.social_links;
-    if (!s) return null;
-    const priority: Array<{ key: SocialKey; label: string; icon: string }> = [
-      { key: 'telegram', label: 'Telegram', icon: '✈️' },
-      { key: 'whatsapp', label: 'WhatsApp', icon: '💬' },
-      { key: 'vk', label: 'ВКонтакте', icon: '🌐' },
-      { key: 'website', label: 'сайте', icon: '🔗' },
-    ];
-    for (const p of priority) {
-      const raw = (s as Record<string, string | undefined>)[p.key];
-      if (raw) {
-        const url = socialLinkURL(p.key, raw);
-        if (url) return { ...p, url };
-      }
-    }
-    return null;
-  });
 
   public ngOnInit(): void {
     this.route.paramMap.subscribe((pm) => {

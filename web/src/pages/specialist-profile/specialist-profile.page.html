@@ -12,13 +12,13 @@
       <div class="preview-banner" role="status">
         <strong>👁 Превью</strong>
         @if (!p.is_published) {
-          — это черновик. Клиенты пока не видят профиль. Опубликуйте в кабинете чтобы он появился в каталоге.
+          — это черновик. Клиенты пока не видят ни профиль, ни работы. Доступ к работам появится после одобрения модератором — в том числе для вас самих в ленте и каталоге. Опубликуйте в кабинете чтобы отправить на проверку.
         } @else if (p.moderation_status === 'pending_review') {
-          — профиль опубликован, ждёт проверки модератором. Клиенты увидят после approval.
+          — профиль опубликован, ждёт проверки модератором. После одобрения работы появятся в общей ленте и каталоге — в том числе для вас самих. Сейчас работы видны только тут, в превью.
         } @else if (p.moderation_status === 'rejected') {
-          — профиль отклонён модератором. Исправьте замечания в кабинете и опубликуйте заново.
+          — профиль отклонён модератором. Исправьте замечания в кабинете и опубликуйте заново — после одобрения профиль и работы появятся и для клиентов, и для вас в ленте.
         } @else {
-          — клиенты увидят профиль когда он будет одобрен модератором.
+          — профиль и работы появятся в ленте и каталоге после одобрения модератором (в том числе у вас самих).
         }
       </div>
     }
@@ -47,34 +47,34 @@
               } @else { новый специалист }
             </p>
             <div class="hero-actions">
-              <!-- Primary CTA: «обсудить» через первую соцсеть спеца если есть
-                   (telegram > whatsapp > vk > website), иначе в корзину.
-                   Прямой контакт > отложенная заявка. -->
-              @if (primaryDirectContact(); as cta) {
-                <a
-                  class="cta-btn cta-direct"
-                  [href]="cta.url"
-                  target="_blank"
-                  rel="noopener"
-                >
-                  <span aria-hidden="true">{{ cta.icon }}</span>
-                  Обсудить в {{ cta.label }}
-                </a>
-              }
               <button
+                nz-button
+                nzType="primary"
                 type="button"
-                class="cta-btn cta-cart"
+                class="project-cart-btn"
                 [class.in-project]="inCart()"
                 (click)="toggleProject()"
               >
-                <span aria-hidden="true">{{ inCart() ? '✓' : '➕' }}</span>
+                <span nz-icon [nzType]="inCart() ? 'check' : 'plus'"></span>
                 {{ inCart() ? 'В проекте' : 'Добавить в проект' }}
               </button>
             </div>
           </div>
         </header>
 
-        @if (p.bio) {
+        @if (p.portfolio.length) {
+        <section class="block">
+          <div class="block-head">
+            <h2>Портфолио</h2>
+            <span class="muted">{{ p.portfolio.length }} работ</span>
+          </div>
+          <app-portfolio-grid
+            [items]="p.portfolio"
+            [categoryTitles]="categoryTitlesMap()"
+            (openOverlay)="openPlayer()"
+          />
+        </section>
+        } @if (p.bio) {
         <section class="block">
           <h2>О себе</h2>
           <p class="bio" [class.is-clamped]="!bioExpanded()">{{ p.bio }}</p>
@@ -90,19 +90,6 @@
             <nz-tag>{{ s.title }}</nz-tag>
             }
           </div>
-        </section>
-        } @if (p.portfolio.length) {
-        <section class="block">
-          <div class="block-head">
-            <h2>Портфолио</h2>
-            <span class="muted">{{ p.portfolio.length }} работ</span>
-          </div>
-          <app-portfolio-grid
-            [items]="p.portfolio"
-            [categoryTitles]="categoryTitlesMap()"
-            (openOverlay)="openPlayer()"
-            (openPhotoSet)="openPhotoSet($event)"
-          />
         </section>
         } @if (p.reviews.length) {
         <section class="block">
@@ -151,7 +138,7 @@
         (click)="toggleProject()"
       >
         <span nz-icon [nzType]="inCart() ? 'check' : 'plus'"></span>
-        {{ inCart() ? 'В проекте' : 'Пригласить' }}
+        {{ inCart() ? 'В проекте' : 'Добавить в проект' }}
       </button>
     </div>
     } @else {
@@ -171,10 +158,3 @@
   }
 }
 
-@if (lightboxImages(); as imgs) {
-  <app-photo-lightbox
-    [images]="imgs"
-    [title]="lightboxTitle()"
-    (close)="closeLightbox()"
-  />
-}

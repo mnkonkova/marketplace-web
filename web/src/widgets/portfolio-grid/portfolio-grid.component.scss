@@ -16,13 +16,12 @@
     grid-template-columns: 1fr;
   }
 
+  // На тачах: ровно 2 в ряд — крупнее плитки, видно содержимое каждой
+  // работы и категория-чипа поверх. 3 в ряд на маленьких экранах было
+  // тесно (плитка ≈ 100px width на iPhone SE).
   &.is-touch {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2px;
-
-    @media (max-width: 360px) {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
   }
 }
 

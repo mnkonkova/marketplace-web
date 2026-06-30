@@ -8,7 +8,6 @@ import {
   signal,
 } from '@angular/core';
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
-import { formatDuration } from '@shared/lib/format';
 
 /** Соответствует $touch в shared/scss/_breakpoints.scss. */
 const TOUCH_QUERY = '(pointer: coarse), (max-width: 720px)';
@@ -27,20 +26,11 @@ export class PortfolioGridComponent {
    *  читаемое название. Если код не найден — используется сам код. */
   public readonly categoryTitles = input<Record<string, string>>({});
 
-  /** На тачах тап по тайлу не играет видео inline, а просит родителя
-   *  открыть fullscreen-плеер. idx — индекс ролика в items[]. */
+  /** Тап по любой плитке (на любом устройстве) просит родителя открыть
+   *  fullscreen feed-view overlay со swipe-листанием работ. idx — индекс. */
   public readonly openOverlay = output<number>();
 
-  /** Photo-set: тап по тайлу открывает lightbox с каруселью. Родитель
-   *  получает индекс айтема в items[] — достаёт images и передаёт в lightbox. */
-  public readonly openPhotoSet = output<number>();
-
-  public readonly formatDuration = formatDuration;
-
-  public readonly playingIds = signal<ReadonlySet<string>>(new Set());
-
-  /** Touch-режим: тачскрин ИЛИ узкий вьюпорт (resize-окно на десктопе).
-   *  Реактивно реагирует на изменение matchMedia (поворот / resize). */
+  /** Touch-режим (только для CSS-таргетинга grid-cols 2/3). */
   public readonly isTouch = signal(false);
 
   constructor() {
@@ -52,32 +42,8 @@ export class PortfolioGridComponent {
     inject(DestroyRef).onDestroy(() => mql.removeEventListener('change', handler));
   }
 
-  public startPlayback(v: HTMLVideoElement): void {
-    v.play().catch(() => {});
-  }
-
-  public onPlay(id: string): void {
-    this.playingIds.update((s) => {
-      const next = new Set(s);
-      next.add(id);
-      return next;
-    });
-  }
-
-  public onPause(id: string): void {
-    this.playingIds.update((s) => {
-      const next = new Set(s);
-      next.delete(id);
-      return next;
-    });
-  }
-
   public requestOverlay(idx: number): void {
     this.openOverlay.emit(idx);
-  }
-
-  public requestPhotoSet(idx: number): void {
-    this.openPhotoSet.emit(idx);
   }
 
   public categoryLabel(code: string): string {

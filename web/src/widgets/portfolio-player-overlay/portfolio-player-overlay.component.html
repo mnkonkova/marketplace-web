@@ -1,4 +1,24 @@
 <div class="overlay" role="dialog" aria-modal="true" [attr.aria-label]="title()">
+  <button type="button" class="back-btn" (click)="onClose()" aria-label="Назад к профилю">
+    <span aria-hidden="true">←</span>
+    <span class="back-label">К профилю</span>
+  </button>
   <button type="button" class="close-btn" (click)="onClose()" aria-label="Закрыть">×</button>
   <app-feed-view [params]="feedParams()" [title]="title()" />
+
+  <!-- Hint «листайте» — показывается одноразово первому юзеру при открытии
+       overlay'я. Auto-hide через 4 сек или по любому скроллу feed-view'a.
+       Сохраняем в localStorage чтобы не мозолить повторно. -->
+  @if (showSwipeHint()) {
+    <div class="swipe-hint" aria-hidden="true">
+      <div class="swipe-hint-icon">{{ isTouch() ? '👆' : '🖱' }}</div>
+      <div class="swipe-hint-text">
+        @if (isTouch()) {
+          Свайпайте вверх<br />для следующей работы
+        } @else {
+          Скролл / клавиши ↑ ↓<br />между работами
+        }
+      </div>
+    </div>
+  }
 </div>

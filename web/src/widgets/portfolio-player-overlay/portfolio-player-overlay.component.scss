@@ -38,6 +38,109 @@
   }
 }
 
+// Back-кнопка в overlay'е — на тачах обязательна (юзер пришёл из портфолио
+// спеца, должна явно сигналить «вернуться»). Pill с иконкой+текстом.
+.back-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px 10px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.75);
+  }
+
+  span[aria-hidden] {
+    font-size: 18px;
+    line-height: 1;
+  }
+}
+
+@media (pointer: coarse) {
+  .back-btn {
+    padding: 12px 16px 12px 14px;
+    font-size: 15px;
+  }
+}
+
+// Подсказка «листайте» — большая полупрозрачная плашка по центру,
+// исчезает после первого скролла/тача или через 4 сек. Pointer-events:none
+// чтобы не блокировать жесты.
+.swipe-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1150;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 28px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  pointer-events: none;
+  text-align: center;
+  animation: hint-pulse 1.4s ease-in-out infinite, hint-fadein 0.3s ease-out;
+}
+
+.swipe-hint-icon {
+  font-size: 36px;
+  line-height: 1;
+  animation: hint-bob 1.4s ease-in-out infinite;
+}
+
+.swipe-hint-text {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  opacity: 0.92;
+}
+
+@keyframes hint-fadein {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+}
+
+@keyframes hint-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(255, 255, 255, 0);
+  }
+}
+
+@keyframes hint-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
 /* feed-view внутри использует sticky-шапку под app-header. В overlay нет
    app-header — обнуляем offset. И прячем feed-top (там mute + title),
    close-btn даёт основное действие, mute auto-восстанавливается из localStorage. */
