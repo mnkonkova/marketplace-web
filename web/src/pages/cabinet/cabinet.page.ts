@@ -20,8 +20,8 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { EMPTY, Observable, firstValueFrom, forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { EMPTY, Observable, firstValueFrom, forkJoin, of, throwError, timer } from 'rxjs';
+import { catchError, finalize, timeout } from 'rxjs/operators';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { MeUser } from '@entities/auth/model/auth.types';
 import { MeRepository } from '@entities/me/repository/me.repository';
@@ -865,18 +865,29 @@ export class CabinetPage implements OnInit, OnDestroy {
     this.meRepo
       .getProfile()
       .pipe(
+        // 15 сек на ответ — если backend / прокси завис, лучше показать
+        // ошибку чем держать вечный спиннер. Загрузка профиля в норме <500ms.
+        timeout({
+          each: 15000,
+          with: () =>
+            throwError(
+              () => ({ error: { message: 'Сервер не отвечает 15 секунд. Обновите страницу.' } }),
+            ),
+        }),
         catchError((err) => {
-          this.loading.set(false);
-          this.error.set(apiErrorMessage(err.error, 'Не удалось загрузить профиль'));
+          this.error.set(apiErrorMessage(err?.error, 'Не удалось загрузить профиль'));
           return EMPTY;
         }),
+        // finalize гарантирует loading=false ВНЕ зависимости от success/error/
+        // timeout — раньше флаг сбрасывался только в success branch + catch,
+        // в каком-то edge-case (например interceptor застрял в refresh-loop'е
+        // и подавил emission) loading оставался true → вечный спиннер.
+        finalize(() => this.loading.set(false)),
       )
       .subscribe((p) => {
-        console.log(p);
         this.setUpdatedAt(p.updated_at);
         this.applyProfile(p);
         this.loadPortfolio();
-        this.loading.set(false);
       });
   }
 
