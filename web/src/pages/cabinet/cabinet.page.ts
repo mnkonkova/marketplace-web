@@ -765,7 +765,16 @@ export class CabinetPage implements OnInit, OnDestroy {
   // Без рефреша следующий PATCH /me/profile получит 409 conflict.
   private refreshProfileUpdatedAt(): void {
     this.meRepo.getProfile().subscribe({
-      next: (p) => this.setUpdatedAt(p.updated_at),
+      next: (p) => {
+        this.setUpdatedAt(p.updated_at);
+        // Обновляем ТАКЖЕ signal profile.updated_at — иначе onUsernameChange /
+        // saveProfile берут устаревший snapshot из this.profile() и получают
+        // 409 «объект изменён». applyProfile() не используем чтобы не
+        // перезатереть form-state (юзер мог что-то печатать в полях).
+        this.profile.update((cur) =>
+          cur ? { ...cur, updated_at: p.updated_at } : cur,
+        );
+      },
       error: () => {
         // Не критично: на следующем save юзер получит 409 и страница
         // подскажет обновить — лучше чем ронять текущий happy-path action.
