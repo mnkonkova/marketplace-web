@@ -19,22 +19,51 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 14px;
+  padding: 6px 6px 6px 14px;
   background: var(--surface);
-  border: 2px solid rgba(99, 102, 241, 0.28);
+  // Белая рамка та же что на главной hero-search — единая визуальная семантика
+  border: 2px solid rgba(255, 255, 255, 0.55);
   border-radius: 14px;
-  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
   transition: border-color 0.15s, box-shadow 0.15s;
 
   &:focus-within {
-    border-color: rgba(99, 102, 241, 0.6);
-    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.18);
+    border-color: #ffffff;
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.35),
+      0 0 0 3px rgba(255, 255, 255, 0.1);
   }
 }
 
 .search-bar__icon {
   font-size: 18px;
-  color: #6366f1;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+// Оранжевая CTA «Найти» — одинаково с главной hero-search
+.search-bar__submit {
+  background: #ff5e3a !important;
+  border-color: #ff5e3a !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  height: 42px !important;
+  padding: 0 20px !important;
+  box-shadow: 0 4px 12px rgba(255, 94, 58, 0.28);
+
+  &:hover {
+    background: #ff7252 !important;
+    border-color: #ff7252 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-bar {
+    flex-wrap: wrap;
+  }
+  .search-bar__submit {
+    width: 100%;
+    margin-top: 6px;
+  }
 }
 
 .search-bar__input {

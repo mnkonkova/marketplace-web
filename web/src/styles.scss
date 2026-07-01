@@ -442,6 +442,24 @@ h6 {
   color: var(--text) !important;
 }
 
+// Multiple-select: каждый выбранный элемент рендерится как pill-тег с
+// собственным background'ом (antd default: #f5f5f5, светло-серый → на
+// dark-теме белый на белом). Оверрайдим на bg-elevated + text-color.
+// .ant-select-multiple > .ant-select-selector > .ant-select-selection-overflow ...
+.ant-select-multiple .ant-select-selection-item {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+
+.ant-select-multiple .ant-select-selection-item-remove {
+  color: var(--text-muted) !important;
+
+  &:hover {
+    color: #ff7a7a !important;
+  }
+}
+
 .ant-select-dropdown {
   background: var(--surface) !important;
   border: 1px solid var(--border) !important;

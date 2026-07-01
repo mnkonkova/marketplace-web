@@ -133,6 +133,12 @@ export class SearchResultsPage implements OnInit {
     this.syncUrl();
   }
 
+  // submitNow — instant поиск по клику на «Найти» или Enter в input'е.
+  // Обходит debounce 250мс: юзер уже дал явный сигнал что готов запросить.
+  public submitNow(): void {
+    this.syncUrl();
+  }
+
   public showMore(): void {
     if (this.loading() || !this.hasMore()) return;
     this.loading.set(true);

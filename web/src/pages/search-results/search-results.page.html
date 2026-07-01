@@ -4,7 +4,7 @@
   <!-- Sticky search bar — тот же visual signature что hero на главной,
        но компактнее. Юзер меняет запрос без scroll to top. -->
   <div class="search-bar-sticky">
-    <div class="search-bar">
+    <form class="search-bar" (submit)="$event.preventDefault(); submitNow()">
       <span nz-icon nzType="search" class="search-bar__icon"></span>
       <input
         nz-input
@@ -14,7 +14,10 @@
         [attr.placeholder]="placeholder()"
         autocomplete="off"
       />
-    </div>
+      <button nz-button nzType="primary" nzSize="large" type="submit" class="search-bar__submit">
+        Найти
+      </button>
+    </form>
 
     <div class="filters">
       <nz-select
@@ -87,7 +90,17 @@
       @for (spec of items(); track spec.user_id) {
         <article class="result-card" (click)="goProfile(spec)">
           <div class="result-card__media">
-            @if (spec.preview_video_url) {
+            <!-- Приоритет медиа: animated WebP > mp4 > avatar > placeholder.
+                 WebP автоплей через <img> работает везде включая iOS LPM
+                 и не съедает video-slot браузера (chrome soft-limit ≈75
+                 конкурентных <video>). См. docs про animated_thumb в API. -->
+            @if (spec.preview_animated_url) {
+              <img
+                [src]="spec.preview_animated_url"
+                [alt]="spec.display_name"
+                loading="lazy"
+              />
+            } @else if (spec.preview_video_url) {
               <video
                 [src]="spec.preview_video_url"
                 [poster]="spec.preview_thumb_url || null"
