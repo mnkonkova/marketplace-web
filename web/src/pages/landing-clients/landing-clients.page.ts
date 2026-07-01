@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { Title, Meta } from '@angular/platform-browser';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
@@ -31,22 +32,36 @@ export class LandingClientsPage implements OnInit {
   private readonly msg = inject(NzMessageService);
   private readonly cart = inject(ProjectCartStore);
   private readonly auth = inject(AuthSessionStore);
+  private readonly router = inject(Router);
 
   // «Опубликовать первую заявку» — клиент попадает сразу в форму брифа,
   // где WAYPROD уже выбран как исполнитель. Если не залогинен, сначала
-  // предлагаем зарегистрироваться (без этого /leads всё равно упадёт
-  // на contacts_required — лучше явный шаг чем 400).
+  // предлагаем зарегистрироваться, ПОСЛЕ УСПЕХА автоматически открываем
+  // бриф — иначе юзер зарегистрировался и остался на лендинге, не понимая
+  // что делать (баг v2.1: 2026-07-01 регистрация проходила, но заявка
+  // не появлялась).
   public openBriefWithWayprod(): void {
     if (!this.auth.isLoggedIn()) {
       this.msg.info('Зарегистрируйтесь — заявка появится в вашем кабинете');
-      this.modal.create({
+      const authRef = this.modal.create({
         nzContent: AuthDialogComponent,
         nzFooter: null,
         nzWidth: 'min(420px, 92vw)',
         nzData: { initialTab: 1, initialKind: 'client' },
       });
+      // AuthDialog делает modal.destroy(true) при успешной регистрации /
+      // логине (см. auth.dialog.ts). Ловим truthy result и продолжаем
+      // цепочку. При отмене — result undefined, ничего не делаем.
+      authRef.afterClose.subscribe((ok) => {
+        if (ok) this.openLeadDialog();
+      });
       return;
     }
+    this.openLeadDialog();
+  }
+
+  // Извлечено чтобы переиспользовать в обеих ветках openBriefWithWayprod.
+  private openLeadDialog(): void {
     // Кладём WAYPROD в корзину как единственного «спеца». Если раньше
     // юзер набрал других — очищаем: лендинг-CTA семантически означает
     // «начать с чистого листа».
@@ -55,12 +70,18 @@ export class LandingClientsPage implements OnInit {
       user_id: WAYPROD_USER_ID,
       display_name: WAYPROD_DISPLAY_NAME,
     });
-    this.modal.create({
+    const leadRef = this.modal.create({
       nzContent: LeadSubmitDialogComponent,
       nzFooter: null,
       nzWidth: 540,
       nzClassName: 'project-modal',
       nzCentered: true,
+    });
+    // После успешной отправки заявки — сразу в кабинет /me/projects.
+    // Юзер видит там свою заявку и понимает «работа пошла». Cancel
+    // (крестик) оставляет result undefined и мы не редиректим.
+    leadRef.afterClose.subscribe((ok) => {
+      if (ok) void this.router.navigate(['/me/projects']);
     });
   }
 

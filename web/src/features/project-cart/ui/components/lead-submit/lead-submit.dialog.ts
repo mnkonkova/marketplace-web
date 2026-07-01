@@ -116,7 +116,9 @@ export class LeadSubmitDialogComponent {
       .subscribe((res) => {
         const message = buildLeadSuccessMessage(specialists, formValue.client_contact);
         this.cart.clear();
-        this.modalRef.destroy();
+        // destroy(true) — сигнализируем caller'у (например, LandingClientsPage),
+        // что lead реально создался. Cancel/крестик оставляют undefined.
+        this.modalRef.destroy(true);
         this.modalService.create({
           nzContent: LeadSuccessDialogComponent,
           nzData: {

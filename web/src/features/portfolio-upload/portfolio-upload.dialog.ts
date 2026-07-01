@@ -30,7 +30,11 @@ const MAX_BYTES = 200 * 1024 * 1024;
 /** Файлы крупнее этого лимита грузим через S3 multipart (бэк: > 5 МБ). */
 const MULTIPART_THRESHOLD = 5 * 1024 * 1024;
 const ALLOWED_TYPES = /^video\/(mp4|quicktime)$/;
-const THUMB_SECOND = 1.5;
+// Offset для thumbnail'а. Раньше было 1.5с, но на многих видео первые
+// пара секунд — плавные фейд-ины / чёрные кадры → превьюшка в поиске
+// получалась просто чёрным квадратом. 2с ловит уже открывшийся кадр
+// в подавляющем большинстве роликов.
+const THUMB_SECOND = 2;
 const ETA_WINDOW = 5;
 
 export interface PortfolioUploadDialogData {
@@ -390,7 +394,10 @@ export class PortfolioUploadDialog implements OnDestroy {
       video.addEventListener(
         'loadedmetadata',
         () => {
-          const target = Math.min(THUMB_SECOND, Math.max(0, video.duration * 0.1));
+          // Для коротких клипов (< 4с) не улетаем за середину — иначе
+          // на 3-секундном ролике thumbnail упирался бы в конец. duration*0.5
+          // даёт разумный кадр в первой половине.
+          const target = Math.min(THUMB_SECOND, Math.max(0, video.duration * 0.5));
           // iOS quirk: иногда нужен play+pause чтобы seek работал.
           video.play().catch(() => {});
           video.currentTime = target;
