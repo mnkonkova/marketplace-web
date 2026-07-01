@@ -54,9 +54,13 @@ export class AuthDialogComponent {
 
   private readonly cdr = inject(ChangeDetectorRef);
 
-  private readonly data = inject<{ initialTab?: number } | null>(NZ_MODAL_DATA, {
-    optional: true,
-  });
+  private readonly data = inject<{
+    initialTab?: number;
+    // initialKind — прокидываем с лендинга: клик «Стать специалистом» /
+    // «Опубликовать заявку» открывает модалку с уже отмеченным типом
+    // аккаунта, юзеру не нужно выбирать радио.
+    initialKind?: 'client' | 'specialist';
+  } | null>(NZ_MODAL_DATA, { optional: true });
 
   public readonly tab = signal(this.data?.initialTab ?? 0);
 
@@ -87,7 +91,7 @@ export class AuthDialogComponent {
     // apiErrorMessage. Дублировать правило тут = риск рассинхрона:
     // backend бампнули до 10, фронт пускает 9 → юзер тыкается в 400.
     password: ['', Validators.required],
-    kind: ['', Validators.required],
+    kind: [this.data?.initialKind ?? '', Validators.required],
   });
 
   public readonly forgotForm = this.fb.group({

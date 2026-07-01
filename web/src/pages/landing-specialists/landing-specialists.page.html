@@ -5,8 +5,8 @@
     title="Получайте проекты от проверенных клиентов"
     subtitle="Без обхода маркетплейса, легально, с поддержкой менеджера на каждом этапе."
     primaryLabel="Стать специалистом"
-    [primaryHref]="['/auth/invite']"
-    [primaryQueryParams]="registerParams"
+    [primaryAsButton]="true"
+    (primaryClick)="openRegisterSpecialist()"
     accent="specialists"
   />
 
@@ -70,12 +70,9 @@
 
   <section class="section final-cta">
     <h2 class="section__title">Готовы начать?</h2>
-    <a
-      class="final-cta__btn"
-      [href]="'/auth/invite?role=specialist&from=landing-specialists-final'"
-    >
+    <button type="button" class="final-cta__btn" (click)="openRegisterSpecialist()">
       Стать специалистом
-    </a>
+    </button>
     <p class="final-cta__faq">
       Есть вопросы? <a href="mailto:hello@wayprmarket.ru">hello&#64;wayprmarket.ru</a>
     </p>

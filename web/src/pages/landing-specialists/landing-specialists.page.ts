@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
+import { NzModalService } from 'ng-zorro-antd/modal';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { SupportFooterComponent } from '@widgets/support-footer/support-footer.component';
 import { LandingHeroComponent } from '@widgets/landing-hero/landing-hero.component';
+import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
 
 @Component({
   selector: 'app-landing-specialists-page',
@@ -15,6 +17,20 @@ import { LandingHeroComponent } from '@widgets/landing-hero/landing-hero.compone
 export class LandingSpecialistsPage implements OnInit {
   private readonly title = inject(Title);
   private readonly meta = inject(Meta);
+  private readonly modal = inject(NzModalService);
+
+  // Открывает AuthDialog на вкладке «Регистрация» с уже выбранным
+  // типом аккаунта = specialist. Категорию юзер выбирает в кабинете
+  // при первом заходе в /me/specialist — на лендинге сокращаем воронку
+  // до одного клика.
+  public openRegisterSpecialist(): void {
+    this.modal.create({
+      nzContent: AuthDialogComponent,
+      nzFooter: null,
+      nzWidth: 'min(420px, 92vw)',
+      nzData: { initialTab: 1, initialKind: 'specialist' },
+    });
+  }
 
   // «Что вы получаете» для спецов. Один пункт помечен beta = true —
   // регулярные подборки вакансий (агрегация с интернета) в бета.
@@ -46,8 +62,6 @@ export class LandingSpecialistsPage implements OnInit {
     { num: 2, title: 'Загрузите 3–5 кейсов', text: 'С описанием результата.' },
     { num: 3, title: 'Опубликуйте профиль', text: 'Модерация 1–2 рабочих дня.' },
   ];
-
-  public readonly registerParams = { role: 'specialist', from: 'landing-specialists' };
 
   public ngOnInit(): void {
     this.title.setTitle('Для специалистов — wayprmarket');
