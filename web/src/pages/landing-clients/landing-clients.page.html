@@ -1,0 +1,61 @@
+<app-header />
+
+<main class="landing">
+  <app-landing-hero
+    title="Команды под рекламу — без поиска, тендеров и сюрпризов"
+    subtitle="Опишите задачу — соберём команду из проверенных специалистов. Контролируем качество, сроки и результат."
+    primaryLabel="Опубликовать первую заявку"
+    [primaryHref]="['/auth/invite']"
+    [primaryQueryParams]="registerParams"
+    secondaryLabel="Посмотреть специалистов"
+    [secondaryHref]="['/search']"
+    accent="clients"
+  />
+
+  <section class="section">
+    <h2 class="section__title">Как это работает</h2>
+    <div class="steps">
+      @for (s of howSteps; track s.num) {
+        <article class="step">
+          <div class="step__num">{{ s.num }}</div>
+          <h3 class="step__title">{{ s.title }}</h3>
+          <p class="step__text">{{ s.text }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section__title">Что вы получаете</h2>
+    <div class="benefits">
+      @for (b of benefits; track b.title) {
+        <article class="benefit">
+          <h3 class="benefit__title">{{ b.title }}</h3>
+          <p class="benefit__text">{{ b.text }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section__title">Кому подходит</h2>
+    <p class="who">
+      SMB с бюджетом 100 000 — 1 000 000 ₽/мес, маркетологи в средних компаниях, стартапы.
+    </p>
+  </section>
+
+  <section class="section final-cta">
+    <h2 class="section__title">Готовы начать?</h2>
+    <p class="final-cta__note">
+      Заявка не обязывает к оплате — сначала покажем команды.
+    </p>
+    <a
+      class="final-cta__btn"
+      [href]="'/auth/invite?role=client&from=landing-clients-final'"
+    >
+      Опубликовать первую заявку
+    </a>
+  </section>
+
+  <app-support-footer />
+</main>

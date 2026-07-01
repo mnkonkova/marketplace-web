@@ -1,0 +1,85 @@
+<app-header />
+
+<main class="landing">
+  <app-landing-hero
+    title="Получайте проекты от проверенных клиентов"
+    subtitle="Без обхода маркетплейса, легально, с поддержкой менеджера на каждом этапе."
+    primaryLabel="Стать специалистом"
+    [primaryHref]="['/auth/invite']"
+    [primaryQueryParams]="registerParams"
+    accent="specialists"
+  />
+
+  <section class="section">
+    <h2 class="section__title">Что вы получаете</h2>
+    <div class="benefits">
+      @for (b of benefits; track b.title) {
+        <article class="benefit">
+          <div class="benefit__head">
+            <h3 class="benefit__title">{{ b.title }}</h3>
+            @if (b.beta) {
+              <span class="benefit__badge" aria-label="Функция в бета-режиме">BETA</span>
+            }
+          </div>
+          <p class="benefit__text">{{ b.text }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section__title">Как стать специалистом</h2>
+    <div class="steps">
+      @for (s of howSteps; track s.num) {
+        <article class="step">
+          <div class="step__num">{{ s.num }}</div>
+          <h3 class="step__title">{{ s.title }}</h3>
+          <p class="step__text">{{ s.text }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="section terms">
+    <h2 class="section__title">Условия</h2>
+    <ul class="terms__list">
+      <li>
+        <strong>Комиссия площадки:</strong> 10% от стоимости работ. Удерживается из выплаты
+        исполнителю.
+      </li>
+      <li>
+        <strong>Дополнительно на фриланс-ветке:</strong> 20% менеджеру проекта (ведёт сделку
+        от брифа до сдачи). Итого удержание ~30% от указанной вами ставки —
+        <em>требует письменного согласия перед стартом сделки</em>.
+      </li>
+      <li><strong>Выплата:</strong> после приёмки клиентом.</li>
+      <li>
+        <strong>Легально:</strong> работаем с ИП и самозанятыми. Договор оферты доступен при
+        регистрации.
+      </li>
+      <li>
+        <strong>Поддержка:</strong> менеджер сопровождает сделку, помогает с правками.
+      </li>
+    </ul>
+    <p class="terms__note">
+      * Цифры выше — часть публичной оферты по ст. 437 ГК РФ. На этапе MVP и закрытой беты
+      публикуем как есть, оферта на юр. проверке. Финальные формулировки будут
+      синхронизированы с оферой при выходе.
+    </p>
+  </section>
+
+  <section class="section final-cta">
+    <h2 class="section__title">Готовы начать?</h2>
+    <a
+      class="final-cta__btn"
+      [href]="'/auth/invite?role=specialist&from=landing-specialists-final'"
+    >
+      Стать специалистом
+    </a>
+    <p class="final-cta__faq">
+      Есть вопросы? <a href="mailto:hello@wayprmarket.ru">hello&#64;wayprmarket.ru</a>
+    </p>
+  </section>
+
+  <app-support-footer />
+</main>

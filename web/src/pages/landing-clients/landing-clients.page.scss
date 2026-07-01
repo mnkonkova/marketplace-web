@@ -1,0 +1,131 @@
+.landing {
+  padding-bottom: 40px;
+}
+
+.section {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 56px 24px;
+}
+
+.section__title {
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  margin: 0 0 40px;
+}
+
+// «Как это работает» — 3 колонки
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+.step {
+  padding: 28px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.step__num {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+  font-size: 20px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  margin-bottom: 8px;
+}
+
+.step__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.step__text {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+// «Что вы получаете» — 2×2
+.benefits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.benefit {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.benefit__title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.benefit__text {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.who {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.final-cta {
+  text-align: center;
+}
+
+.final-cta__note {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
+.final-cta__btn {
+  display: inline-block;
+  padding: 14px 32px;
+  background: #6366f1;
+  color: #fff;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.12s, transform 0.05s;
+
+  &:hover {
+    background: #4f52d1;
+    color: #fff;
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}

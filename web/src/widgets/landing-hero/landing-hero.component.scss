@@ -1,0 +1,63 @@
+.landing-hero {
+  position: relative;
+  padding: 96px 24px 72px;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.22), transparent 60%);
+    pointer-events: none;
+  }
+
+  &[data-accent='specialists']::before {
+    background: radial-gradient(circle at 50% 0%, rgba(32, 161, 148, 0.22), transparent 60%);
+  }
+}
+
+.landing-hero__inner {
+  position: relative;
+  max-width: 780px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.landing-hero__title {
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0 0 20px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.landing-hero__subtitle {
+  font-size: clamp(15px, 2vw, 18px);
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 640px;
+  margin: 0 auto 32px;
+}
+
+.landing-hero__cta {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.landing-hero__cta-primary,
+.landing-hero__cta-secondary {
+  min-width: 220px;
+}
+
+@media (max-width: 480px) {
+  .landing-hero {
+    padding: 56px 20px 48px;
+  }
+  .landing-hero__cta-primary,
+  .landing-hero__cta-secondary {
+    width: 100%;
+  }
+}
