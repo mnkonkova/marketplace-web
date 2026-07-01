@@ -43,6 +43,30 @@
 
 	# Статика + SPA fallback: любой GET вне /api отдаёт index.html, чтобы
 	# /search и /specialist/:id работали при прямом заходе.
+	#
+	# Cache-Control:
+	#   • hashed-assets (chunk-*.js, chunk-*.css, *.woff2, изображения) —
+	#     immutable на год: имя файла содержит content-hash от Angular CLI,
+	#     старая версия под тем же именем никогда не всплывёт.
+	#   • index.html и manifest — no-cache: HTML-shell перезагружается
+	#     каждый заход, чтобы юзер увидел новый билд без Ctrl+F5.
+	#   • sitemap.xml / robots.txt — короткий кеш, чтобы Яндекс/Google
+	#     подхватывали обновления быстро, но не долбили каждый скролл.
+	@hashedAsset {
+		path_regexp \.(js|css|woff2|woff|ttf|png|jpg|jpeg|svg|ico|webp|avif|mp4)$
+	}
+	header @hashedAsset Cache-Control "public, max-age=31536000, immutable"
+
+	@htmlShell {
+		path /index.html / /manifest.webmanifest
+	}
+	header @htmlShell Cache-Control "no-cache, must-revalidate"
+
+	@seoFiles {
+		path /robots.txt /sitemap.xml
+	}
+	header @seoFiles Cache-Control "public, max-age=3600"
+
 	handle {
 		try_files {path} /index.html
 		file_server
