@@ -27,22 +27,23 @@
     <div class="hero-overlay" aria-hidden="true"></div>
 
     <div class="hero-inner">
-      <h1 class="hero-title">
-        Создаём контент,<br />
-        который смотрят.
-      </h1>
-      <p class="hero-subtitle">Подбираем тех, кто его снимет.</p>
+      <h1 class="hero-title">Найдите команду под рекламу</h1>
 
-      <form class="hero-search" (submit)="$event.preventDefault(); search()">
+      <form class="hero-search" (submit)="$event.preventDefault(); submitSearch()">
         <span nz-icon nzType="search" class="search-icon"></span>
         <input
           nz-input
           [(ngModel)]="query"
           name="q"
-          placeholder="Опишите задачу — найдём команду"
+          [attr.placeholder]="placeholder()"
+          autocomplete="off"
         />
-        <button nz-button nzType="primary" type="submit">Подобрать</button>
+        <button nz-button nzType="primary" nzSize="large" type="submit">Найти</button>
       </form>
+
+      @if (!isLoggedIn()) {
+        <app-invite-banner />
+      }
 
       <div class="quick-tags">
         @for (tag of quickTags; track tag) {

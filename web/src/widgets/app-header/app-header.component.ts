@@ -171,6 +171,8 @@ export class AppHeaderComponent implements OnInit {
     // /me и /me/projects подсвечиваем одним пунктом «Кабинет» — фронт
     // подбирает URL по роли, но визуально это всегда один таб в шапке.
     if (path === '/me' || path.startsWith('/me/projects')) return 'cabinet';
+    // /clarify — legacy, redirect'ится на /search в routes. Оставляем в
+    // match'е чтобы во время pending-redirect'а header не мигал.
     if (path === '/search' || path === '/clarify') return 'search';
     if (path === '/') {
       if (hash === 'production') return 'production';

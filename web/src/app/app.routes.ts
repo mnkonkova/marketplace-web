@@ -8,11 +8,29 @@ export const routes: Routes = [
   },
   {
     path: 'search',
-    loadComponent: () => import('@pages/feed/feed.page').then((m) => m.FeedPage),
+    loadComponent: () =>
+      import('@pages/search-results/search-results.page').then((m) => m.SearchResultsPage),
   },
+  // /clarify (LLM-диалог) убран из воронки в v2.1 — юзер идёт с главной сразу
+  // на /search. Оставляем redirect чтобы старые письма/закладки не 404-или.
+  // prefix — потому что /clarify?q=... → /search?q=... сохраняет queryParams.
   {
     path: 'clarify',
-    loadComponent: () => import('@pages/clarify/clarify.page').then((m) => m.ClarifyPage),
+    redirectTo: '/search',
+    pathMatch: 'prefix',
+  },
+  // Публичные лендинги — вход в воронку регистрации. Не требуют auth.
+  {
+    path: 'for-clients',
+    loadComponent: () =>
+      import('@pages/landing-clients/landing-clients.page').then((m) => m.LandingClientsPage),
+  },
+  {
+    path: 'for-specialists',
+    loadComponent: () =>
+      import('@pages/landing-specialists/landing-specialists.page').then(
+        (m) => m.LandingSpecialistsPage,
+      ),
   },
   {
     path: 'specialist/:id',

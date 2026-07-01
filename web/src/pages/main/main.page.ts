@@ -18,6 +18,10 @@ import { pluralSpecialists } from '@shared/lib/format';
 import { isHomeSectionAnchor, scrollToAnchorWhenReady } from '@shared/lib/scroll-to-anchor';
 import { withFromPage } from '@shared/nav/from-page';
 import { specialistHandle } from '@shared/lib/specialist-link';
+import { createTypewriter } from '@shared/lib/typewriter.signal';
+import { SEARCH_PLACEHOLDER_EXAMPLES, PLACEHOLDER_TIMING } from '@shared/lib/search-placeholders';
+import { InviteBannerComponent } from '@widgets/invite-banner/invite-banner.component';
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 
 @Component({
   selector: 'app-main-page',
@@ -31,6 +35,7 @@ import { specialistHandle } from '@shared/lib/specialist-link';
     CategoryGridComponent,
     SupportFooterComponent,
     ProgressiveVideoDirective,
+    InviteBannerComponent,
   ],
   templateUrl: './main.page.html',
   styleUrl: './main.page.scss',
@@ -45,6 +50,18 @@ export class MainPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
 
   public readonly quickTags = HERO_QUICK_TAGS;
+
+  // Typewriter в placeholder'е — ротирующиеся примеры «что искать».
+  // На prefers-reduced-motion — статичная первая фраза.
+  public readonly placeholder = createTypewriter({
+    phrases: SEARCH_PLACEHOLDER_EXAMPLES,
+    ...PLACEHOLDER_TIMING,
+  });
+
+  // Условие показа invite-banner: только неавторизованным. Signal reactive
+  // (AuthSessionStore.isLoggedIn — computed от session().access_token).
+  private readonly auth = inject(AuthSessionStore);
+  public readonly isLoggedIn = this.auth.isLoggedIn;
 
   public readonly howSteps = [
     {
@@ -148,11 +165,13 @@ export class MainPage implements OnInit {
     void this.router.navigate(['/specialist', specialistHandle(spec)], withFromPage(this.router));
   }
 
-  public search(): void {
+  public submitSearch(): void {
     const q = this.query.trim();
     if (!q) return;
     this.query = '';
-    this.router.navigate(['/clarify'], withFromPage(this.router, { queryParams: { q } }));
+    // v2.1: главная → сразу /search (LLM-diaлог /clarify убран из воронки,
+    // /search/summarize остаётся под капотом как опциональный re-rank).
+    this.router.navigate(['/search'], withFromPage(this.router, { queryParams: { q } }));
   }
 
   public openCategory(cat: Category): void {
