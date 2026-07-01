@@ -111,6 +111,12 @@ export interface SearchHit extends SpecialistLite {
   skill_titles?: string;
   is_published?: boolean;
   updated_at?: string;
+  /** Денормализованное последнее опубликованное видео спеца для рендера
+   *  превью в SearchResultsPage (v2.1 backend). Пусто если у спеца нет
+   *  видео. Preview URL = preview_url (480p) или fallback на оригинал. */
+  preview_video_url?: string;
+  preview_thumb_url?: string;
+  preview_animated_url?: string;
 }
 
 export interface SearchResult {

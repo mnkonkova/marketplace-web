@@ -1,36 +1,258 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzEmptyModule } from 'ng-zorro-antd/empty';
+import { Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-// Skeleton — реализация в следующем коммите v2.1 (шаг #2 из плана).
-// Роут /search уже указывает сюда; чтобы не 404-ить существующим ссылкам,
-// временно рендерим заголовок и заметку. Feed-page ещё живёт рядом до
-// шага #4 (полное удаление). До того момента можно вернуть роут на
-// FeedPage если что-то критичное сломается.
+import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import { SpecialistApi } from '@entities/specialist/api/specialist.api';
+import { SearchHit } from '@entities/specialist/model/specialist.types';
+import { CategoryApi } from '@entities/category/api/category.api';
+import { Category, Skill } from '@entities/category/model/category.types';
+import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
+import { specialistHandle } from '@shared/lib/specialist-link';
+import { withFromPage } from '@shared/nav/from-page';
+import { createTypewriter } from '@shared/lib/typewriter.signal';
+import { SEARCH_PLACEHOLDER_EXAMPLES, PLACEHOLDER_TIMING } from '@shared/lib/search-placeholders';
+
+/**
+ * SearchResultsPage — карточная сетка результатов поиска специалистов.
+ * Заменяет старый TikTok-like feed-player на /search (см. v2.1 промпт).
+ *
+ * URL — источник истины: /search?q=...&category=csv&skill=csv[&ids=csv].
+ * Дропдауны читают начальное состояние из URL, при изменении обновляют
+ * URL (replaceUrl:true — не плодим history entries).
+ *
+ * Пагинация — button «Показать ещё» (никаких бесконечных скроллов).
+ * Карточка — превью-видео (autoplay muted loop playsinline), под ним
+ * имя + специальность + «В проект». Клик по карточке → /specialist/:handle,
+ * клик по «В проект» — stopPropagation.
+ */
 @Component({
   selector: 'app-search-results-page',
   standalone: true,
-  imports: [AppHeaderComponent],
-  template: `
-    <app-header />
-    <main class="stub">
-      <h1>Поиск</h1>
-      <p>Страница результатов в разработке. Верните позже.</p>
-    </main>
-  `,
-  styles: [
-    `
-      .stub {
-        max-width: 720px;
-        margin: 64px auto;
-        padding: 0 24px;
-        text-align: center;
-        color: var(--text-muted);
-      }
-      h1 {
-        color: var(--text);
-      }
-    `,
+  imports: [
+    CommonModule,
+    FormsModule,
+    NzButtonModule,
+    NzInputModule,
+    NzSelectModule,
+    NzIconModule,
+    NzSpinModule,
+    NzEmptyModule,
+    AppHeaderComponent,
   ],
+  templateUrl: './search-results.page.html',
+  styleUrl: './search-results.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SearchResultsPage {}
+export class SearchResultsPage implements OnInit {
+  private readonly api = inject(SpecialistApi);
+  private readonly categoryApi = inject(CategoryApi);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly cart = inject(ProjectCartStore);
+  private readonly destroyRef = inject(DestroyRef);
+
+  // Форма (bound через ngModel)
+  public q = '';
+  public categories: string[] = [];
+  public skills: string[] = [];
+  // ids фильтр из ?ids=csv — legacy из feed.viewWorks (жёсткое ограничение
+  // на конкретных спецов). Не рендерим UI управления, только читаем.
+  private ids: string[] = [];
+
+  // Данные справочников (для select-options)
+  public readonly categoryOptions = signal<Category[]>([]);
+  public readonly skillOptions = signal<Skill[]>([]);
+
+  // Состояние выдачи
+  public readonly items = signal<SearchHit[]>([]);
+  public readonly total = signal<number>(0);
+  public readonly loading = signal<boolean>(false);
+  public readonly error = signal<string>('');
+
+  // Пагинация
+  private readonly pageSize = 20;
+  public readonly hasMore = computed(() => this.items().length < this.total());
+
+  // Cart — определяем «В проекте» на кнопке
+  public readonly cartSpecialists = this.cart.specialists;
+
+  // Typewriter в sticky-search — тот же список фраз что на главной
+  public readonly placeholder = createTypewriter({
+    phrases: SEARCH_PLACEHOLDER_EXAMPLES,
+    ...PLACEHOLDER_TIMING,
+  });
+
+  // Debounce для input'а — не сыплем запрос на каждую букву
+  private readonly q$ = new Subject<string>();
+
+  public ngOnInit(): void {
+    // Читаем URL при загрузке и на back/forward navigation
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((p) => {
+      this.q = p.get('q') ?? '';
+      this.categories = csv(p.get('category'));
+      this.skills = csv(p.get('skill'));
+      this.ids = csv(p.get('ids'));
+      this.reloadFirstPage();
+    });
+
+    // Debounce ручного ввода в поле — обновит URL, что дёрнет ngOnInit-subscribe.
+    this.q$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.syncUrl();
+    });
+
+    // Справочники — один раз при загрузке
+    this.categoryApi.list().subscribe((items) => this.categoryOptions.set(items));
+    this.categoryApi.skills().subscribe((items) => this.skillOptions.set(items));
+  }
+
+  public onQChange(v: string): void {
+    this.q = v;
+    this.q$.next(v);
+  }
+
+  public onFiltersChange(): void {
+    this.syncUrl();
+  }
+
+  public showMore(): void {
+    if (this.loading() || !this.hasMore()) return;
+    this.loading.set(true);
+    this.api
+      .search({
+        q: this.q || undefined,
+        categories: this.categories.length ? this.categories : undefined,
+        skills: this.skills.length ? this.skills : undefined,
+        limit: this.pageSize,
+        offset: this.items().length,
+      })
+      .subscribe({
+        next: (res) => {
+          this.items.update((cur) => [...cur, ...res.items]);
+          this.total.set(res.total);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.error.set('Не удалось загрузить ещё. Попробуйте обновить страницу.');
+          this.loading.set(false);
+        },
+      });
+  }
+
+  public goProfile(spec: SearchHit): void {
+    void this.router.navigate(
+      ['/specialist', specialistHandle(spec)],
+      withFromPage(this.router),
+    );
+  }
+
+  public toggleCart(spec: SearchHit, ev: Event): void {
+    ev.stopPropagation();
+    ev.preventDefault();
+    this.cart.toggle(spec);
+  }
+
+  public isInCart(userId: string): boolean {
+    return this.cartSpecialists().some((s) => s.user_id === userId);
+  }
+
+  public categoryTitle(code: string): string {
+    return this.categoryOptions().find((c) => c.code === code)?.title ?? code;
+  }
+
+  public skillTitle(slug: string): string {
+    return this.skillOptions().find((s) => s.slug === slug)?.title ?? slug;
+  }
+
+  public removeCategory(code: string): void {
+    this.categories = this.categories.filter((c) => c !== code);
+    this.syncUrl();
+  }
+
+  public removeSkill(slug: string): void {
+    this.skills = this.skills.filter((s) => s !== slug);
+    this.syncUrl();
+  }
+
+  public clearAll(): void {
+    this.categories = [];
+    this.skills = [];
+    this.q = '';
+    this.syncUrl();
+  }
+
+  private reloadFirstPage(): void {
+    this.loading.set(true);
+    this.error.set('');
+    this.api
+      .search({
+        q: this.q || undefined,
+        categories: this.categories.length ? this.categories : undefined,
+        skills: this.skills.length ? this.skills : undefined,
+        limit: this.pageSize,
+        offset: 0,
+      })
+      .subscribe({
+        next: (res) => {
+          // ids-filter: если пришли конкретные user_id из /feed.viewWorks —
+          // фильтруем на клиенте (бэк /search не принимает ids). Redundant
+          // работа, но проще чем менять API. См. промпт §3.7.
+          let items = res.items;
+          if (this.ids.length) {
+            const idSet = new Set(this.ids);
+            items = items.filter((s) => idSet.has(s.user_id));
+          }
+          this.items.set(items);
+          this.total.set(this.ids.length ? items.length : res.total);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.error.set('Не удалось загрузить результаты. Попробуйте позже.');
+          this.loading.set(false);
+        },
+      });
+  }
+
+  private syncUrl(): void {
+    // При изменении фильтров ids-локбок больше не нужен — юзер выбрал
+    // новую комбинацию, значит явно расширяет выборку. Обнуляем.
+    this.ids = [];
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        q: this.q.trim() || null,
+        category: this.categories.length ? this.categories.join(',') : null,
+        skill: this.skills.length ? this.skills.join(',') : null,
+        ids: null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+}
+
+function csv(v: string | null): string[] {
+  if (!v) return [];
+  return v
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+}

@@ -1,0 +1,233 @@
+.results {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px 48px;
+}
+
+// Sticky search bar — та же цветовая семантика что на главной hero,
+// но компактнее (padding поменьше, тень тише).
+.search-bar-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 16px 0 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  background: var(--surface);
+  border: 2px solid rgba(99, 102, 241, 0.28);
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.1);
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:focus-within {
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.18);
+  }
+}
+
+.search-bar__icon {
+  font-size: 18px;
+  color: #6366f1;
+}
+
+.search-bar__input {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 16px;
+  flex: 1;
+  padding: 8px 4px !important;
+  color: var(--text) !important;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.filters__select {
+  flex: 1 1 220px;
+  min-width: 200px;
+}
+
+.active-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  span {
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0.6;
+  }
+
+  &--clear {
+    background: transparent;
+    color: var(--text-muted);
+    border-style: dashed;
+  }
+}
+
+.results-meta {
+  margin: 20px 0 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+
+  strong {
+    color: var(--text);
+  }
+}
+
+.results-loading {
+  display: grid;
+  place-items: center;
+  padding: 80px 0;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.result-card__media {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  background: #1a1a1a;
+  overflow: hidden;
+
+  video,
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.result-card__placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 48px;
+  font-weight: 700;
+  background: linear-gradient(160deg, #1a2a30, #2a3a40);
+}
+
+.result-card__body {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.result-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-card__specialty {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.result-card__cta {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #ff5e3a;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+
+  &:hover {
+    background: #ff7252;
+  }
+
+  &.is-in-project {
+    background: rgba(82, 196, 26, 0.18);
+    color: #52c41a;
+    border: 1px solid rgba(82, 196, 26, 0.5);
+  }
+}
+
+.show-more {
+  display: grid;
+  place-items: center;
+  margin: 32px 0;
+}
+
+@media (max-width: 480px) {
+  .cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .result-card__body {
+    padding: 10px 12px 12px;
+  }
+  .result-card__title {
+    font-size: 13px;
+  }
+  .result-card__specialty {
+    font-size: 11px;
+  }
+  .result-card__cta {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}

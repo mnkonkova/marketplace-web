@@ -1,0 +1,145 @@
+<app-header />
+
+<main class="results">
+  <!-- Sticky search bar — тот же visual signature что hero на главной,
+       но компактнее. Юзер меняет запрос без scroll to top. -->
+  <div class="search-bar-sticky">
+    <div class="search-bar">
+      <span nz-icon nzType="search" class="search-bar__icon"></span>
+      <input
+        nz-input
+        class="search-bar__input"
+        [ngModel]="q"
+        (ngModelChange)="onQChange($event)"
+        [attr.placeholder]="placeholder()"
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="filters">
+      <nz-select
+        class="filters__select"
+        nzMode="multiple"
+        nzPlaceHolder="Специальность"
+        nzAllowClear
+        [(ngModel)]="categories"
+        (ngModelChange)="onFiltersChange()"
+      >
+        @for (c of categoryOptions(); track c.code) {
+          <nz-option [nzValue]="c.code" [nzLabel]="c.title"></nz-option>
+        }
+      </nz-select>
+
+      <nz-select
+        class="filters__select"
+        nzMode="multiple"
+        nzPlaceHolder="Навыки"
+        nzShowSearch
+        nzAllowClear
+        [(ngModel)]="skills"
+        (ngModelChange)="onFiltersChange()"
+      >
+        @for (s of skillOptions(); track s.slug) {
+          <nz-option [nzValue]="s.slug" [nzLabel]="s.title"></nz-option>
+        }
+      </nz-select>
+    </div>
+
+    <!-- Active filter chips — квик-удаление одного клика -->
+    @if (categories.length || skills.length) {
+      <div class="active-chips">
+        @for (c of categories; track c) {
+          <button type="button" class="chip" (click)="removeCategory(c)">
+            {{ categoryTitle(c) }}
+            <span aria-hidden="true">×</span>
+          </button>
+        }
+        @for (s of skills; track s) {
+          <button type="button" class="chip" (click)="removeSkill(s)">
+            {{ skillTitle(s) }}
+            <span aria-hidden="true">×</span>
+          </button>
+        }
+        <button type="button" class="chip chip--clear" (click)="clearAll()">
+          Сбросить всё
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Счётчик + результаты -->
+  <div class="results-meta">
+    @if (!loading() || items().length > 0) {
+      <span class="results-count">Найдено: <strong>{{ total() }}</strong></span>
+    }
+  </div>
+
+  @if (loading() && items().length === 0) {
+    <div class="results-loading"><nz-spin nzSize="large"></nz-spin></div>
+  } @else if (error()) {
+    <nz-empty [nzNotFoundContent]="error()"></nz-empty>
+  } @else if (items().length === 0) {
+    <nz-empty
+      nzNotFoundContent="Ничего не нашли. Попробуйте смягчить фильтры или упростить запрос."
+    ></nz-empty>
+  } @else {
+    <div class="cards">
+      @for (spec of items(); track spec.user_id) {
+        <article class="result-card" (click)="goProfile(spec)">
+          <div class="result-card__media">
+            @if (spec.preview_video_url) {
+              <video
+                [src]="spec.preview_video_url"
+                [poster]="spec.preview_thumb_url || null"
+                autoplay
+                muted
+                loop
+                playsinline
+                webkit-playsinline
+                preload="metadata"
+              ></video>
+            } @else if (spec.avatar_url) {
+              <img [src]="spec.avatar_url" [alt]="spec.display_name" />
+            } @else {
+              <div class="result-card__placeholder">
+                {{ spec.display_name.slice(0, 1) }}
+              </div>
+            }
+          </div>
+          <div class="result-card__body">
+            <div class="result-card__title">{{ spec.display_name }}</div>
+            <div class="result-card__specialty">
+              {{ categoryTitle(spec.primary_category || spec.categories?.[0] || '') }}
+            </div>
+            <button
+              type="button"
+              class="result-card__cta"
+              [class.is-in-project]="isInCart(spec.user_id)"
+              (click)="toggleCart(spec, $event)"
+            >
+              @if (isInCart(spec.user_id)) {
+                ✓ В проекте
+              } @else {
+                + В проект
+              }
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+
+    @if (hasMore()) {
+      <div class="show-more">
+        <button
+          nz-button
+          nzType="default"
+          nzSize="large"
+          [nzLoading]="loading()"
+          (click)="showMore()"
+        >
+          Показать ещё
+        </button>
+      </div>
+    }
+  }
+</main>
