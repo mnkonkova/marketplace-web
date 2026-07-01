@@ -125,8 +125,18 @@
           </div>
           <div class="result-card__body">
             <div class="result-card__title">{{ spec.display_name }}</div>
+            <!-- headline — либо категория из активного фильтра (если у спеца
+                 есть), либо его primary. Так выдача по editor'у не выглядит
+                 багом когда Анна с primary=smm попадает: карточка показывает
+                 её «как Монтажёра», остальные категории серым — понятно
+                 почему она матчит и что ещё умеет. -->
             <div class="result-card__specialty">
-              {{ categoryTitle(spec.primary_category || spec.categories?.[0] || '') }}
+              <span class="result-card__specialty-primary">{{
+                categoryTitle(headlineCategory(spec))
+              }}</span>
+              @for (c of otherCategories(spec); track c) {
+                <span class="result-card__specialty-other">{{ categoryTitle(c) }}</span>
+              }
             </div>
             <button
               type="button"

@@ -190,6 +190,27 @@ export class SearchResultsPage implements OnInit {
     return this.categoryOptions().find((c) => c.code === code)?.title ?? code;
   }
 
+  // headlineCategory — какую категорию писать на карточке как «главную».
+  // Если юзер отфильтровал по конкретной категории и она у спеца есть —
+  // показываем именно её (Анна с primary=smm при фильтре editor будет
+  // показана как «Монтажёр» — иначе выглядело бы багом «SMM в editor
+  // выдаче»). Без фильтра — старый primary_category.
+  public headlineCategory(spec: SearchHit): string {
+    const cats = spec.categories ?? [];
+    const match = this.categories.find((c) => cats.includes(c));
+    if (match) return match;
+    return spec.primary_category || cats[0] || '';
+  }
+
+  // otherCategories — остальные категории спеца для inline-подписи серым.
+  // Отсекаем ту что уже пошла в headline. Обрезаем до 3, чтобы карточка
+  // не разбухала на спецах со спамом категорий.
+  public otherCategories(spec: SearchHit): string[] {
+    const cats = spec.categories ?? [];
+    const headline = this.headlineCategory(spec);
+    return cats.filter((c) => c && c !== headline).slice(0, 3);
+  }
+
   public skillTitle(slug: string): string {
     return this.skillOptions().find((s) => s.slug === slug)?.title ?? slug;
   }

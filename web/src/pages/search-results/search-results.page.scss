@@ -213,6 +213,29 @@
 .result-card__specialty {
   font-size: 13px;
   color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+}
+
+// Primary — обычным цветом (акцент), non-primary — приглушённые серые.
+// Юзер сразу видит главную роль, но понимает набор скиллов.
+.result-card__specialty-primary {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.result-card__specialty-other {
+  color: var(--text-muted);
+  opacity: 0.65;
+  font-size: 12px;
+
+  &::before {
+    content: '·';
+    margin-right: 6px;
+    opacity: 0.6;
+  }
 }
 
 .result-card__cta {
