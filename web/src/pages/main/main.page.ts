@@ -10,7 +10,7 @@ import { FeedApi } from '@entities/feed/api/feed.api';
 import { FeedItem } from '@entities/feed/model/feed.types';
 import { feedVideoAnimatedThumbSrc, feedVideoPreviewSrc } from '@entities/feed/lib/preview';
 import { ProgressiveVideoDirective } from '@shared/video/progressive-video.directive';
-import { groupCategoriesByType, HERO_QUICK_TAGS } from '@shared/lib/category-groups';
+import { groupCategoriesByType } from '@shared/lib/category-groups';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { CategoryGridComponent } from '@widgets/category-grid/category-grid.component';
 import { SupportFooterComponent } from '@widgets/support-footer/support-footer.component';
@@ -48,8 +48,6 @@ export class MainPage implements OnInit {
   private readonly router = inject(Router);
 
   private readonly route = inject(ActivatedRoute);
-
-  public readonly quickTags = HERO_QUICK_TAGS;
 
   // Typewriter в placeholder'е — ротирующиеся примеры «что искать».
   // На prefers-reduced-motion — статичная первая фраза.
@@ -183,10 +181,6 @@ export class MainPage implements OnInit {
 
   public seeAll(): void {
     this.router.navigate(['/search'], withFromPage(this.router));
-  }
-
-  public openQuick(tag: string): void {
-    this.query = tag;
   }
 
   public totalLabel(): string {

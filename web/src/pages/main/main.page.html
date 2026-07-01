@@ -44,12 +44,6 @@
       @if (!isLoggedIn()) {
         <app-invite-banner />
       }
-
-      <div class="quick-tags">
-        @for (tag of quickTags; track tag) {
-          <button type="button" class="tag" (click)="openQuick(tag)">{{ tag }}</button>
-        }
-      </div>
     </div>
 
     <a class="scroll-hint" href="#categories">
