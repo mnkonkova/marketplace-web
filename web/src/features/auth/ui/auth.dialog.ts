@@ -60,6 +60,9 @@ export class AuthDialogComponent {
     // «Опубликовать заявку» открывает модалку с уже отмеченным типом
     // аккаунта, юзеру не нужно выбирать радио.
     initialKind?: 'client' | 'specialist';
+    // source — уходит в POST /auth/register как трэкинг и (для landing_clients)
+    // сигнал бэку авто-подтвердить email.
+    source?: string;
   } | null>(NZ_MODAL_DATA, { optional: true });
 
   public readonly tab = signal(this.data?.initialTab ?? 0);
@@ -179,6 +182,7 @@ export class AuthDialogComponent {
         password: v.password!,
         display_name: v.display_name!,
         kind: v.kind! as 'client' | 'specialist',
+        source: this.data?.source,
       })
       .pipe(
         catchError((e) => {

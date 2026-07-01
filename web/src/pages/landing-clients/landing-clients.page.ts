@@ -47,7 +47,9 @@ export class LandingClientsPage implements OnInit {
         nzContent: AuthDialogComponent,
         nzFooter: null,
         nzWidth: 'min(420px, 92vw)',
-        nzData: { initialTab: 1, initialKind: 'client' },
+        // source=landing_clients → бэк авто-подтверждает email, юзер идёт
+        // сразу в форму брифа без клика по письму (см. auth/service.go).
+        nzData: { initialTab: 1, initialKind: 'client', source: 'landing_clients' },
       });
       // AuthDialog делает modal.destroy(true) при успешной регистрации /
       // логине (см. auth.dialog.ts). Ловим truthy result и продолжаем

@@ -18,6 +18,10 @@ export interface RegisterPayload {
   password: string;
   kind: 'client' | 'specialist';
   display_name: string;
+  // source — трэкинг + мягкий шорткат: "landing_clients" разрешает бэку
+  // авто-подтвердить email. Юзер регается на /for-clients и сразу идёт
+  // в бриф, клик по письму на этом шаге ломает воронку.
+  source?: string;
 }
 
 export interface LoginPayload {
