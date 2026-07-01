@@ -4,13 +4,15 @@
   padding: 0 20px 48px;
 }
 
-// Sticky search bar — та же цветовая семантика что на главной hero,
-// но компактнее (padding поменьше, тень тише).
-.search-bar-sticky {
+// Sticky-блок с фильтрами и активными чипами. Именно он остаётся
+// наверху при скролле (см. HTML: .filters + .active-chips обёрнуты
+// .filters-sticky). Строка поиска (.search-bar выше в шаблоне) едет
+// со страницей — юзер меняет запрос редко, фильтры — часто.
+.filters-sticky {
   position: sticky;
   top: 0;
   z-index: 10;
-  padding: 16px 0 12px;
+  padding: 10px 0 12px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
@@ -20,6 +22,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 6px 6px 14px;
+  margin: 16px 0 10px;
   background: var(--surface);
   // Белая рамка та же что на главной hero-search — единая визуальная семантика
   border: 2px solid rgba(255, 255, 255, 0.55);

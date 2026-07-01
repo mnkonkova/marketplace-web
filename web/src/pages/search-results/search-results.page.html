@@ -1,25 +1,28 @@
 <app-header />
 
 <main class="results">
-  <!-- Sticky search bar — тот же visual signature что hero на главной,
-       но компактнее. Юзер меняет запрос без scroll to top. -->
-  <div class="search-bar-sticky">
-    <form class="search-bar" (submit)="$event.preventDefault(); submitNow()">
-      <span nz-icon nzType="search" class="search-bar__icon"></span>
-      <input
-        nz-input
-        name="q"
-        class="search-bar__input"
-        [value]="q()"
-        (input)="onQChange($any($event.target).value)"
-        [attr.placeholder]="placeholder()"
-        autocomplete="off"
-      />
-      <button nz-button nzType="primary" nzSize="large" type="submit" class="search-bar__submit">
-        Найти
-      </button>
-    </form>
+  <!-- Верхняя строка поиска (input + «Найти») скроллится со страницей —
+       на длинной выдаче она не нужна постоянно, юзер меняет фильтры,
+       а не переписывает запрос каждый раз. -->
+  <form class="search-bar" (submit)="$event.preventDefault(); submitNow()">
+    <span nz-icon nzType="search" class="search-bar__icon"></span>
+    <input
+      nz-input
+      name="q"
+      class="search-bar__input"
+      [value]="q()"
+      (input)="onQChange($any($event.target).value)"
+      [attr.placeholder]="placeholder()"
+      autocomplete="off"
+    />
+    <button nz-button nzType="primary" nzSize="large" type="submit" class="search-bar__submit">
+      Найти
+    </button>
+  </form>
 
+  <!-- Sticky фильтры + активные чипы. Они полезны при скролле по длинной
+       выдаче: юзер сужает набор не возвращаясь наверх. -->
+  <div class="filters-sticky">
     <div class="filters">
       <nz-select
         class="filters__select"
