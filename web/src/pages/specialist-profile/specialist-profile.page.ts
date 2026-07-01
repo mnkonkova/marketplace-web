@@ -101,6 +101,15 @@ export class SpecialistProfilePage implements OnInit {
     return primary?.title ?? p.categories?.[0]?.title ?? 'Специалист';
   }
 
+  // otherRoles — не-primary категории спеца для inline-подписи под именем
+  // (серым, через точку). Единая семантика с карточкой в /search: юзер
+  // видит основную роль + весь набор без клика по деталям.
+  public otherRoles(p: SpecialistProfile): string[] {
+    const cats = p.categories ?? [];
+    const primary = cats.find((c) => c.is_primary) ?? cats[0];
+    return cats.filter((c) => c !== primary).map((c) => c.title);
+  }
+
   public inCart(): boolean {
     const id = this.profile()?.user_id;
     return id ? this.cart.has(id) : false;

@@ -35,7 +35,12 @@
           </nz-avatar>
           <div class="hero-text">
             <h1>{{ p.display_name }}</h1>
-            <p class="role">{{ primaryRole(p) }}</p>
+            <p class="role">
+              <span class="role__primary">{{ primaryRole(p) }}</span>
+              @for (c of otherRoles(p); track c) {
+                <span class="role__other">{{ c }}</span>
+              }
+            </p>
             @if (p.production_name) {
               <p class="production">{{ p.production_name }}</p>
             } @else if (p.is_freelance) {
