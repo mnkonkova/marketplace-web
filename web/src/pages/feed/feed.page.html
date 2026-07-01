@@ -1,0 +1,220 @@
+<app-header />
+<app-back-link
+  class="feed-back"
+  defaultUrl="/clarify"
+  [excludePrefix]="['/search', '/specialist/']"
+/>
+<div class="feed-page">
+  @if (mode() === 'feed') { @for (k of [feedKey()]; track k) {
+  <app-feed-view [params]="params()" [title]="title()" (specialistClick)="goProfile($event)" />
+  } } @else {
+  <main class="results-page">
+    <header class="results-head">
+      <div>
+        <div class="eyebrow">Подбор специалистов</div>
+        <h2>{{ title() }}</h2>
+      </div>
+    </header>
+
+    @if (summary() || picks().length) {
+      <section class="ai-card">
+        <div class="ai-card-head">
+          <div class="ai-avatar" aria-hidden="true">
+            <span nz-icon nzType="thunderbolt" nzTheme="fill"></span>
+          </div>
+          <div class="ai-meta">
+            <div class="ai-name">AI-рекрутер</div>
+            <div class="ai-status">
+              @if (picks().length) {
+                подобрал {{ picks().length }} {{ picksWord(picks().length) }}
+              } @else {
+                показывает каталог
+              }
+            </div>
+          </div>
+        </div>
+        @if (summary()) {
+          <p class="ai-summary">{{ summary() }}</p>
+        }
+        @if (picks().length) {
+          <div class="ai-actions">
+            <button nz-button nzType="primary" type="button" (click)="viewWorks()">
+              Смотреть работы
+            </button>
+            @if (targetCategoryCode(); as code) {
+              @if (categoryTitle(code); as t) {
+                <button nz-button nzType="default" type="button" (click)="showAllInCategory(code)">
+                  Все в категории «{{ t }}»
+                </button>
+              }
+            } @else {
+              <button nz-button nzType="default" type="button" (click)="showAllMatches()">
+                Все совпадения
+              </button>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    @if (mode() === 'ai') {
+    <div class="picks">
+      @for (pick of picks(); track pick.user_id; let i = $index) { @let spec = pick.profile;
+      <article class="pick-card" (click)="goProfile(spec)" tabindex="0">
+        <div class="pick-rank" [class.is-top]="i === 0">
+          <span class="pick-rank-hash">#</span>{{ pick.rank || i + 1 }}
+        </div>
+        <div class="pick-body">
+          <div class="pick-head">
+            <div class="pick-avatar">
+              @if (spec.avatar_url) {
+                <img [src]="spec.avatar_url" [alt]="spec.display_name" />
+              } @else {
+                <span>{{ spec.display_name.slice(0, 1) }}</span>
+              }
+            </div>
+            <div class="pick-id">
+              <h3>{{ spec.display_name }}</h3>
+              <div class="pick-meta">
+                @if (spec.primary_category && categoryTitle(spec.primary_category); as t) {
+                  <span class="pick-cat">{{ t }}</span>
+                  <span class="pick-dot" aria-hidden="true">·</span>
+                }
+                <span>{{ spec.city || 'удалённо' }}</span>
+                <span class="pick-dot" aria-hidden="true">·</span>
+                @if (spec.reviews_count) {
+                  <app-rate-stars [rating]="spec.rating_avg!" [reviewsCount]="spec.reviews_count" />
+                } @else {
+                  <span class="pick-new">новый</span>
+                }
+              </div>
+            </div>
+            <div class="pick-side">
+              <div class="pick-rate">{{ formatRate(spec.rate_min, spec.rate_max, spec.currency) }}</div>
+              <button
+                nz-button
+                nzType="primary"
+                type="button"
+                class="project-cart-btn"
+                [class.in-project]="inCart(spec.user_id)"
+                (click)="toggleCart(spec, $event)"
+              >
+                <span nz-icon [nzType]="inCart(spec.user_id) ? 'check' : 'plus'"></span>
+                {{ inCart(spec.user_id) ? 'В проекте' : 'В проект' }}
+              </button>
+            </div>
+          </div>
+
+          <blockquote class="pick-reason">{{ pick.reason }}</blockquote>
+
+          @if (spec.bio) {
+            <p class="pick-bio">{{ spec.bio }}</p>
+          }
+          @if ((spec.categories ?? []).length > 1) {
+            <div class="pick-chips">
+              @for (cat of (spec.categories ?? []).slice(0, 4); track cat) {
+                @if (categoryTitle(cat); as t) {
+                  <span>{{ t }}</span>
+                }
+              }
+            </div>
+          }
+        </div>
+      </article>
+      }
+    </div>
+    } @else {
+    <div class="results-list">
+      @for (spec of list(); track spec.user_id) {
+      <article class="spec-row" (click)="goProfile(spec)" tabindex="0">
+        <div class="avatar">
+          @if (spec.avatar_url) {
+          <img [src]="spec.avatar_url" alt="" />
+          } @else {
+          <span>{{ spec.display_name.slice(0, 1) }}</span>
+          }
+        </div>
+        <div class="spec-main">
+          <h2>{{ spec.display_name }}</h2>
+          <div class="spec-meta">
+            @if (spec.primary_category && categoryTitle(spec.primary_category); as t) {
+            <span class="cat">{{ t }}</span>
+            }
+            <span>{{ spec.city || 'удалённо' }}</span>
+            <span>
+              @if (spec.reviews_count) {
+              <app-rate-stars [rating]="spec.rating_avg!" [reviewsCount]="spec.reviews_count" />
+              } @else { новый }
+            </span>
+          </div>
+        </div>
+        <div class="spec-side">
+          <div class="rate">{{ formatRate(spec.rate_min, spec.rate_max, spec.currency) }}</div>
+          <button
+            nz-button
+            type="button"
+            nzType="primary"
+            class="project-cart-btn"
+            [class.in-project]="inCart(spec.user_id)"
+            (click)="toggleCart(spec, $event)"
+          >
+            {{ inCart(spec.user_id) ? 'В проекте' : 'В проект' }}
+          </button>
+        </div>
+      </article>
+      } @if (similar().length) {
+      <div class="similar-title">Похожие специалисты</div>
+      @for (spec of similar(); track spec.user_id) {
+      <article class="spec-row similar" (click)="goProfile(spec)" tabindex="0">
+        <div class="avatar">
+          @if (spec.avatar_url) {
+          <img [src]="spec.avatar_url" alt="" />
+          } @else {
+          <span>{{ spec.display_name.slice(0, 1) }}</span>
+          }
+        </div>
+        <div class="spec-main">
+          <h2>{{ spec.display_name }}</h2>
+          <div class="spec-meta">{{ spec.city || 'удалённо' }}</div>
+        </div>
+        <div class="spec-side">
+          <div class="rate">{{ formatRate(spec.rate_min, spec.rate_max, spec.currency) }}</div>
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            class="project-cart-btn"
+            [class.in-project]="inCart(spec.user_id)"
+            (click)="toggleCart(spec, $event)"
+          >
+            {{ inCart(spec.user_id) ? 'В проекте' : 'В проект' }}
+          </button>
+        </div>
+      </article>
+      } }
+    </div>
+    }
+
+    @if (!loading() && isEmpty()) {
+      <section class="empty-state">
+        <div class="empty-state__icon" aria-hidden="true">
+          <span nz-icon nzType="search" nzTheme="outline"></span>
+        </div>
+        <h3 class="empty-state__title">Ничего не нашлось</h3>
+        <p class="empty-state__hint">
+          По текущим фильтрам никого не подобрали. Попробуйте смягчить запрос,
+          убрать категорию или посмотреть всех специалистов в каталоге.
+        </p>
+        <div class="empty-state__actions">
+          <button nz-button nzType="primary" type="button" (click)="showAllSpecialists()">
+            Смотреть всех специалистов
+          </button>
+          <button nz-button nzType="default" type="button" (click)="backToClarify()">
+            Уточнить задачу
+          </button>
+        </div>
+      </section>
+    }
+  </main>
+  }
+</div>

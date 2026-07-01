@@ -180,7 +180,9 @@ export class MainPage implements OnInit {
   }
 
   public seeAll(): void {
-    this.router.navigate(['/search'], withFromPage(this.router));
+    // «Смотреть всех» → тикток-лента /feed. Отфильтрованный список
+    // (карточки + фильтры) остался на /search — туда ведут категории.
+    this.router.navigate(['/feed'], withFromPage(this.router));
   }
 
   public totalLabel(): string {

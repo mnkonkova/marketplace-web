@@ -11,6 +11,13 @@ export const routes: Routes = [
     loadComponent: () =>
       import('@pages/search-results/search-results.page').then((m) => m.SearchResultsPage),
   },
+  // /feed — тикток-лента «Смотреть всех». v2.1 фильтрованный список вывели
+  // на /search (карточки), а тикток-скролл оставили для режима «просто
+  // всё подряд» с главной кнопки «Смотреть всех».
+  {
+    path: 'feed',
+    loadComponent: () => import('@pages/feed/feed.page').then((m) => m.FeedPage),
+  },
   // /clarify (LLM-диалог) убран из воронки в v2.1 — юзер идёт с главной сразу
   // на /search. Оставляем redirect чтобы старые письма/закладки не 404-или.
   // prefix — потому что /clarify?q=... → /search?q=... сохраняет queryParams.
