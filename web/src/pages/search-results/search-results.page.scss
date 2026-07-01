@@ -199,6 +199,11 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  // flex: 1 + margin-top: auto на .result-card__cta = все «В проект»
+  // на одном уровне независимо от кол-ва категорий на карточке.
+  // Работает потому что grid по-умолчанию align-items: stretch и
+  // строка cards принимает высоту максимальной.
+  flex: 1;
 }
 
 .result-card__title {
@@ -239,7 +244,7 @@
 }
 
 .result-card__cta {
-  margin-top: 8px;
+  margin-top: auto;
   padding: 10px 14px;
   border: 0;
   border-radius: 10px;
