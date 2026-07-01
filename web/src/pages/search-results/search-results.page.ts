@@ -70,8 +70,11 @@ export class SearchResultsPage implements OnInit {
   private readonly cart = inject(ProjectCartStore);
   private readonly destroyRef = inject(DestroyRef);
 
-  // Форма (bound через ngModel)
-  public q = '';
+  // Форма: q — signal, чтобы OnPush change detection пересчитывал
+  // [ngModel]="q()" когда subscribe кладёт значение из URL. С plain
+  // property'ем поле оставалось пустым после перехода с главной
+  // (queryParam был, но [ngModel] не обновлялся).
+  public readonly q = signal<string>('');
   public categories: string[] = [];
   public skills: string[] = [];
   // ids фильтр из ?ids=csv — legacy из feed.viewWorks (жёсткое ограничение
@@ -107,7 +110,7 @@ export class SearchResultsPage implements OnInit {
   public ngOnInit(): void {
     // Читаем URL при загрузке и на back/forward navigation
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((p) => {
-      this.q = p.get('q') ?? '';
+      this.q.set(p.get('q') ?? '');
       this.categories = csv(p.get('category'));
       this.skills = csv(p.get('skill'));
       this.ids = csv(p.get('ids'));
@@ -125,7 +128,7 @@ export class SearchResultsPage implements OnInit {
   }
 
   public onQChange(v: string): void {
-    this.q = v;
+    this.q.set(v);
     this.q$.next(v);
   }
 
@@ -134,9 +137,12 @@ export class SearchResultsPage implements OnInit {
   }
 
   // submitNow — instant поиск по клику на «Найти» или Enter в input'е.
-  // Обходит debounce 250мс: юзер уже дал явный сигнал что готов запросить.
+  // Помимо syncUrl (обновит адрес) явно зовём reloadFirstPage — иначе
+  // если URL не изменился (юзер клацнул «Найти» второй раз с тем же q),
+  // queryParamMap subscribe не эмитит событие и запрос не улетает.
   public submitNow(): void {
     this.syncUrl();
+    this.reloadFirstPage();
   }
 
   public showMore(): void {
@@ -144,7 +150,7 @@ export class SearchResultsPage implements OnInit {
     this.loading.set(true);
     this.api
       .search({
-        q: this.q || undefined,
+        q: this.q() || undefined,
         categories: this.categories.length ? this.categories : undefined,
         skills: this.skills.length ? this.skills : undefined,
         limit: this.pageSize,
@@ -201,7 +207,7 @@ export class SearchResultsPage implements OnInit {
   public clearAll(): void {
     this.categories = [];
     this.skills = [];
-    this.q = '';
+    this.q.set('');
     this.syncUrl();
   }
 
@@ -210,7 +216,7 @@ export class SearchResultsPage implements OnInit {
     this.error.set('');
     this.api
       .search({
-        q: this.q || undefined,
+        q: this.q() || undefined,
         categories: this.categories.length ? this.categories : undefined,
         skills: this.skills.length ? this.skills : undefined,
         limit: this.pageSize,
@@ -244,7 +250,7 @@ export class SearchResultsPage implements OnInit {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: {
-        q: this.q.trim() || null,
+        q: this.q().trim() || null,
         category: this.categories.length ? this.categories.join(',') : null,
         skill: this.skills.length ? this.skills.join(',') : null,
         ids: null,

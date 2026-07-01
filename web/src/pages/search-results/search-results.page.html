@@ -8,9 +8,10 @@
       <span nz-icon nzType="search" class="search-bar__icon"></span>
       <input
         nz-input
+        name="q"
         class="search-bar__input"
-        [ngModel]="q"
-        (ngModelChange)="onQChange($event)"
+        [value]="q()"
+        (input)="onQChange($any($event.target).value)"
         [attr.placeholder]="placeholder()"
         autocomplete="off"
       />
