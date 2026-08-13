@@ -77,7 +77,24 @@
   <!-- Счётчик + результаты -->
   <div class="results-meta">
     @if (!loading() || items().length > 0) {
-      <span class="results-count">Найдено: <strong>{{ total() }}</strong></span>
+      <!-- broadened — бэк не нашёл по тексту ничего и отдал всех подряд.
+           Без этой плашки выдача выглядит как ошибка поиска: на «монтажер»
+           первой карточкой шёл актёр. Счётчик «Найдено: N» в этом режиме
+           не показываем — он относится не к запросу, а ко всей базе. -->
+      @if (broadened()) {
+        <div class="broadened-note" role="status">
+          <span nz-icon nzType="info-circle" nzTheme="outline"></span>
+          <span class="broadened-note__text">
+            По запросу <strong>«{{ broadenedQuery() }}»</strong> ничего не нашли —
+            показываем всех специалистов ({{ total() }}).
+          </span>
+          <button type="button" class="broadened-note__clear" (click)="clearQuery()">
+            Очистить запрос
+          </button>
+        </div>
+      } @else {
+        <span class="results-count">Найдено: <strong>{{ total() }}</strong></span>
+      }
     }
   </div>
 

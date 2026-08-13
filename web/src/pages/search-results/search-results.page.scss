@@ -139,6 +139,44 @@
   }
 }
 
+// Плашка «ничего не нашли по тексту, показываем всех». Не danger — это не
+// ошибка, а объяснение того, почему в выдаче не то, что просили.
+.broadened-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+
+  strong {
+    color: var(--text);
+  }
+
+  &__text {
+    flex: 1 1 240px;
+  }
+
+  &__clear {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
 .results-loading {
   display: grid;
   place-items: center;

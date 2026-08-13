@@ -91,6 +91,15 @@ export class SearchResultsPage implements OnInit {
   public readonly loading = signal<boolean>(false);
   public readonly error = signal<string>('');
 
+  // broadened — бэк не нашёл по тексту НИЧЕГО и вместо пустой выдачи вернул
+  // всех подряд (см. search.Service: при 0 хитов и отсутствии фильтров q
+  // выкидывается). Без явной плашки это читается как баг: на «монтажер»
+  // первой карточкой шёл актёр, потому что порядок в такой выдаче
+  // произвольный. Храним и сам запрос, который никуда не попал — q()
+  // успевает измениться, пока юзер допечатывает следующий.
+  public readonly broadened = signal<boolean>(false);
+  public readonly broadenedQuery = signal<string>('');
+
   // Пагинация
   private readonly pageSize = 20;
   public readonly hasMore = computed(() => this.items().length < this.total());
@@ -225,6 +234,14 @@ export class SearchResultsPage implements OnInit {
     this.syncUrl();
   }
 
+  // clearQuery — «показываете всех? тогда убери мой запрос из строки».
+  // Фильтры не трогаем: их юзер выставлял осознанно, в отличие от текста,
+  // который ни во что не попал.
+  public clearQuery(): void {
+    this.q.set('');
+    this.syncUrl();
+  }
+
   public clearAll(): void {
     this.categories = [];
     this.skills = [];
@@ -235,6 +252,9 @@ export class SearchResultsPage implements OnInit {
   private reloadFirstPage(): void {
     this.loading.set(true);
     this.error.set('');
+    // Снимок запроса на момент отправки: пока летит ответ, юзер может уже
+    // печатать следующий — в плашке должно стоять то, что реально искали.
+    const asked = this.q().trim();
     this.api
       .search({
         q: this.q() || undefined,
@@ -255,10 +275,16 @@ export class SearchResultsPage implements OnInit {
           }
           this.items.set(items);
           this.total.set(this.ids.length ? items.length : res.total);
+          // ids-режим показывает конкретных спецов — плашка про «ничего не
+          // нашли по тексту» там не к месту.
+          const broadened = !!res.broadened && !this.ids.length && !!asked;
+          this.broadened.set(broadened);
+          this.broadenedQuery.set(broadened ? asked : '');
           this.loading.set(false);
         },
         error: () => {
           this.error.set('Не удалось загрузить результаты. Попробуйте позже.');
+          this.broadened.set(false);
           this.loading.set(false);
         },
       });
