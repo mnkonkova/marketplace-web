@@ -109,9 +109,18 @@
           nzErrorTip="Выберите тип аккаунта"
         >
           <div class="auth-field-label">Тип аккаунта *</div>
+          <!-- Подпись под названием роли, а не только название: «клиент» и
+               «специалист» — это про то, кем человек себя считает, а выбрать
+               ему надо по тому, что он собирается делать. -->
           <nz-radio-group formControlName="kind" class="auth-kind-group">
-            <label nz-radio-button nzValue="client">Клиент</label>
-            <label nz-radio-button nzValue="specialist">Специалист</label>
+            <label nz-radio-button nzValue="client">
+              <span class="kind-name">Клиент</span>
+              <span class="kind-hint">заказываю проекты</span>
+            </label>
+            <label nz-radio-button nzValue="specialist">
+              <span class="kind-name">Специалист</span>
+              <span class="kind-hint">создаю проекты</span>
+            </label>
           </nz-radio-group>
         </nz-form-control>
       </nz-form-item>

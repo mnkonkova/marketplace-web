@@ -131,6 +131,24 @@
     background: var(--surface) !important;
     border-color: rgba(255, 255, 255, 0.18) !important;
     color: var(--text) !important;
+    // Кнопка держит две строки: название роли и что она означает. Высота
+    // по умолчанию рассчитана на одну, поэтому задаём свою.
+    height: auto;
+    padding: 8px 12px;
+    line-height: 1.25;
+  }
+
+  .kind-name {
+    display: block;
+    font-weight: 600;
+  }
+
+  // Подсказка тише названия, но читаемая: она и есть то, по чему выбирают.
+  .kind-hint {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    opacity: 0.7;
   }
 
   // Разделитель между кнопками — псевдоэлемент :before, по дефолту красится
