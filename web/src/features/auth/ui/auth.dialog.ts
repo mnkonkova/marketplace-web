@@ -101,13 +101,21 @@ export class AuthDialogComponent {
     email: ['', [Validators.required, Validators.email]],
   });
 
+  // registerKind — выбранный тип аккаунта, продублированный в signal.
+  // От него зависит, какие документы человек акцептует: публичная оферта
+  // адресована специалистам (это они размещают ресурсы и платят процент
+  // с выручки), клиент по ней не сторона. Signal, а не чтение контрола из
+  // шаблона: под OnPush значение формы обновляется не всегда предсказуемо.
+  public readonly registerKind = signal<string>(this.data?.initialKind ?? '');
+
   constructor() {
     // Любое изменение полей регистрации сбрасывает бек-ошибку — иначе
     // баннер «email занят» висит даже после правки на новый email.
-    this.registerForm.valueChanges.subscribe(() => {
+    this.registerForm.valueChanges.subscribe((v) => {
       if (this.registerBackendError() !== null) {
         this.registerBackendError.set(null);
       }
+      this.registerKind.set(v.kind ?? '');
     });
   }
 

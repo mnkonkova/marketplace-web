@@ -164,3 +164,23 @@
     box-shadow: none !important;
   }
 }
+
+// Согласие с офертой под кнопкой регистрации. Мелкое и приглушённое: это
+// юридическая сноска, а не то, что человек должен читать вместо формы, —
+// но кегль оставлен читаемым (12px), потому что прятать условия нельзя.
+.auth-consent {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

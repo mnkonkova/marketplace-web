@@ -175,6 +175,10 @@ export const routes: Routes = [
     path: 'terms',
     loadComponent: () => import('@pages/legal/terms.page').then((m) => m.TermsPage),
   },
+  {
+    path: 'offer',
+    loadComponent: () => import('@pages/legal/offer.page').then((m) => m.OfferPage),
+  },
   // Привязка аккаунта к «Боту Работ». Открывается по одноразовой ссылке из
   // мини-приложения; auth не требуется — страница сама предложит войти или
   // зарегистрироваться, не потеряв код.
