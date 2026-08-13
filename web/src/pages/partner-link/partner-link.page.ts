@@ -53,11 +53,19 @@ export class PartnerLinkPage implements OnInit {
   /** Что пошло не так — человеческим языком и с понятным следующим шагом. */
   public readonly problem = signal('');
 
+  /** Пробовали ли подтвердить сами. Обычное поле, а не сигнал, и это важно:
+   *  сигнал внутри effect стал бы его зависимостью, и эффект перезапускал бы
+   *  сам себя — запрос, ответ, снова запрос. Ровно так страница и зависла на
+   *  «Подтвердить»: при любой ошибке она уходила в вечный круг. */
+  private tried = false;
+
   public constructor() {
     // Вошёл прямо на этой странице — подтверждаем сразу, без второго нажатия:
     // он уже нажал «Привязать» в приложении, повторять просьбу незачем.
+    // Ровно один раз: дальше решает человек кнопкой.
     effect(() => {
-      if (this.auth.isLoggedIn() && this.code() && !this.done() && !this.busy()) {
+      if (this.auth.isLoggedIn() && this.code() && !this.tried) {
+        this.tried = true;
         this.confirm();
       }
     });
@@ -98,7 +106,12 @@ export class PartnerLinkPage implements OnInit {
       .pipe(finalize(() => this.busy.set(false)))
       .subscribe({
         next: () => this.done.set(true),
-        error: (err: HttpErrorResponse) => this.problem.set(this.explain(err)),
+        error: (err: HttpErrorResponse) => {
+          // Показываем причину и оставляем кнопку: почти все отказы здесь —
+          // «сделайте ещё шаг», а не «всё сломалось».
+          this.problem.set(this.explain(err));
+          console.error('partner link failed', err.status, err.error);
+        },
       });
   }
 
