@@ -86,9 +86,7 @@
       }
 
       <span class="cap">
-        @if (p.title) {
-          <span class="cap__title">{{ p.title }}</span>
-        }
+        <span class="cap__title" [class.cap__title--fallback]="!hasTitle(p)">{{ caption(p) }}</span>
         @if (tags(p).length) {
           <span class="cap__tags">
             @for (t of tags(p); track t) {

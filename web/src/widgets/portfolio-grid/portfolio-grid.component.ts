@@ -84,6 +84,22 @@ export class PortfolioGridComponent {
     return formatDuration(item.duration_sec);
   }
 
+  /**
+   * Подпись плитки. Название работы, а если специалист его не заполнил —
+   * формат или тип медиа. Пустой подписи быть не должно: на тёмной обложке
+   * плитка без текста выглядит как случайная кнопка ▶ на чёрном поле.
+   */
+  public caption(item: PortfolioItem): string {
+    const title = item.title?.trim();
+    if (title) return title;
+    return this.formatBadge(item) || (item.kind === 'image' ? 'Фото-кейс' : 'Видео');
+  }
+
+  /** Название заполнено — подпись выводим обычным, а не приглушённым. */
+  public hasTitle(item: PortfolioItem): boolean {
+    return !!item.title?.trim();
+  }
+
   /** До трёх тегов самой работы — не глобальная роль специалиста. */
   public tags(item: PortfolioItem): string[] {
     const titles = this.categoryTitles();

@@ -5,20 +5,30 @@
   display: block;
 }
 
-/* CSS-masonry: колонки набираются по целевой ширине плитки, а не жёстким
-   `columns: 2`. На ноутбуке выходит ~2 колонки, на широком мониторе 3-4, на
-   телефоне 1 — и плитка везде остаётся комфортного размера. Никакого JS,
-   любые аспекты укладываются без дыр. */
+/* Grid, а не multicol. Колонки всё так же набираются по ширине плитки
+   (2 на ноутбуке, 3-4 на широком, 2 на телефоне), но grid держит плитки
+   строго внутри своего бокса.
+   
+   Почему не `columns`: multicol с плитками разной высоты на узком экране
+   разъезжается и вылезает за контейнер — чёрные плитки наезжали на «О себе»
+   и «Навыки». Плата за надёжность — под короткими плитками в ряду остаётся
+   небольшой зазор вместо плотной кладки. Это предсказуемо и лучше, чем
+   перекрытие соседних секций.
+   
+   align-items: start — иначе grid растянул бы плитку на высоту самой
+   высокой в ряду и сломал бы aspect-ratio работы. */
 .feed-grid {
-  columns: layout.$fluid-tile-column;
-  column-gap: layout.$fluid-grid-gap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 26vw, 340px), 1fr));
+  gap: layout.$fluid-grid-gap;
+  align-items: start;
 }
 
 .tile {
   position: relative;
   display: block;
   width: 100%;
-  margin: 0 0 layout.$fluid-grid-gap;
+  margin: 0;
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -26,7 +36,6 @@
   background: var(--surface);
   cursor: pointer;
   isolation: isolate;
-  break-inside: avoid;
   /* aspect-ratio приходит инлайном из компонента — родной формат работы. */
 
   &:hover {
@@ -149,6 +158,13 @@
   overflow: hidden;
 }
 
+/* Подпись-заглушка (формат или тип), когда названия у работы нет —
+   приглушаем, чтобы не выдавать её за настоящее название. */
+.cap__title--fallback {
+  color: rgba(238, 246, 248, 0.7);
+  font-weight: 500;
+}
+
 .cap__tags {
   display: flex;
   flex-wrap: wrap;
@@ -182,13 +198,13 @@
    Но плитка становится узкой, поэтому с неё снимаем всё, кроме названия —
    формат, длительность и теги на 160px ширины читаются как мусор. */
 @media (max-width: bp.$mobile-small) {
+  /* minmax(160px) при ширине контента ~340px даёт ровно две колонки —
+     формат «лента 2×» сохраняется без отдельного хака. */
   .feed-grid {
-    columns: 2;
-    column-gap: 10px;
+    gap: 10px;
   }
 
   .tile {
-    margin-bottom: 10px;
     border-radius: 12px;
   }
 

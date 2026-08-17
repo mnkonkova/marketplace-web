@@ -264,17 +264,17 @@
 }
 
 .skeleton-feed {
-  columns: layout.$fluid-tile-column;
-  column-gap: layout.$fluid-grid-gap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 26vw, 340px), 1fr));
+  gap: layout.$fluid-grid-gap;
+  align-items: start;
 }
 
 .skeleton-tile {
   height: 320px;
-  margin-bottom: 16px;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
-  break-inside: avoid;
 
   &--short {
     height: 200px;
