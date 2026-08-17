@@ -2,14 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, input, output, signal } f
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import { formatDuration } from '@shared/lib/format';
+import { MeasureAspectDirective } from '@shared/ui/measure-aspect.directive';
 import {
   aspectLabel,
   aspectRatioCss,
   hoverPreview,
   orientationOf,
-  parseAspectRatio,
+  knownRatio,
   posterSrc,
-  ratioFromElement,
 } from '@shared/lib/portfolio-media';
 
 /**
@@ -24,7 +24,7 @@ import {
 @Component({
   selector: 'app-portfolio-grid',
   standalone: true,
-  imports: [NzIconModule],
+  imports: [NzIconModule, MeasureAspectDirective],
   templateUrl: './portfolio-grid.component.html',
   styleUrl: './portfolio-grid.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -65,7 +65,7 @@ export class PortfolioGridComponent {
   public readonly count = computed(() => this.items().length);
 
   public ratio(item: PortfolioItem): number | null {
-    return parseAspectRatio(item.aspect) ?? this.measured()[item.id] ?? null;
+    return knownRatio(item) ?? this.measured()[item.id] ?? null;
   }
 
   public aspectStyle(item: PortfolioItem): string {
@@ -99,15 +99,12 @@ export class PortfolioGridComponent {
   }
 
   /**
-   * Замер формата по загруженному элементу. Постер — кадр того же ролика,
-   * поэтому его natural-размеры дают аспект видео без скачивания метаданных
-   * самого видео.
+   * Формат, измеренный на клиенте. Постер — кадр того же ролика, поэтому
+   * его natural-размеры дают аспект видео без загрузки метаданных самого
+   * видео.
    */
-  public measure(item: PortfolioItem, ev: Event): void {
-    const el = ev.target as HTMLVideoElement | HTMLImageElement | null;
-    if (!el) return;
-    const ratio = ratioFromElement(el);
-    if (ratio == null || this.measured()[item.id] === ratio) return;
+  public setRatio(item: PortfolioItem, ratio: number): void {
+    if (this.measured()[item.id] === ratio) return;
     this.measured.update((m) => ({ ...m, [item.id]: ratio }));
   }
 

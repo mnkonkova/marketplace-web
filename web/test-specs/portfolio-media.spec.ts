@@ -1,6 +1,7 @@
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import {
   aspectLabel,
+  knownRatio,
   hoverPreview,
   orientationOf,
   parseAspectRatio,
@@ -32,6 +33,55 @@ describe('parseAspectRatio', () => {
     expect(parseAspectRatio('16/9')).toBeNull();
     expect(parseAspectRatio('0:16')).toBeNull();
     expect(parseAspectRatio('abc:def')).toBeNull();
+  });
+});
+
+describe('knownRatio', () => {
+  it('измеренный на бэке aspect в приоритете', () => {
+    expect(knownRatio(item({ aspect: '16:9' }))).toBeCloseTo(16 / 9, 5);
+  });
+
+  // Для фото-сетов бэк отдаёт размеры каждого кадра — мерить картинку
+  // заново незачем, и до её загрузки плитка не прыгает.
+  it('у фото-сета берутся размеры первого кадра', () => {
+    const photoset = item({
+      kind: 'image',
+      images: [
+        {
+          id: 'a',
+          image_url: 'https://s3/1.jpg',
+          sort_order: 0,
+          created_at: '',
+          width: 594,
+          height: 914,
+        },
+      ],
+    });
+    expect(knownRatio(photoset)).toBeCloseTo(594 / 914, 5);
+  });
+
+  it('aspect важнее размеров кадра', () => {
+    const both = item({
+      aspect: '1:1',
+      images: [
+        {
+          id: 'a',
+          image_url: 'https://s3/1.jpg',
+          sort_order: 0,
+          created_at: '',
+          width: 594,
+          height: 914,
+        },
+      ],
+    });
+    expect(knownRatio(both)).toBe(1);
+  });
+
+  it('нет ни того, ни другого → null (мерим на клиенте)', () => {
+    expect(knownRatio(item())).toBeNull();
+    expect(
+      knownRatio(item({ images: [{ id: 'a', image_url: 'x', sort_order: 0, created_at: '' }] })),
+    ).toBeNull();
   });
 });
 

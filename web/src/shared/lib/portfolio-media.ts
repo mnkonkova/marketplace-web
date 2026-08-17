@@ -7,6 +7,19 @@ import { PortfolioItem } from '@entities/specialist/model/specialist.types';
  */
 export type Orientation = 'vertical' | 'horizontal' | 'square';
 
+/**
+ * Формат, известный из данных: сначала измеренный на бэке aspect, затем
+ * размеры первого кадра фото-сета (бэк отдаёт width/height у каждого
+ * изображения). null — придётся мерить на клиенте.
+ */
+export function knownRatio(item: PortfolioItem): number | null {
+  const fromAspect = parseAspectRatio(item.aspect);
+  if (fromAspect != null) return fromAspect;
+  const first = item.images?.[0];
+  if (first?.width && first?.height) return first.width / first.height;
+  return null;
+}
+
 /** Ширина/высота. null — формат неизвестен (нет aspect и не измерили). */
 export function parseAspectRatio(aspect?: string): number | null {
   if (!aspect) return null;

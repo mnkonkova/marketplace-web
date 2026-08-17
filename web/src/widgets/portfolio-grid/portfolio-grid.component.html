@@ -27,7 +27,8 @@
           [alt]="p.title || 'Кадр работы'"
           loading="lazy"
           decoding="async"
-          (load)="measure(p, $event)"
+          appMeasureAspect
+          (measured)="setRatio(p, $event)"
           (error)="markBroken(p)"
         />
       } @else if (p.video_url && !isBroken(p)) {
@@ -37,7 +38,8 @@
           preload="metadata"
           muted
           playsinline
-          (loadedmetadata)="measure(p, $event)"
+          appMeasureAspect
+          (measured)="setRatio(p, $event)"
           (error)="markBroken(p)"
         ></video>
       } @else {

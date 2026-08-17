@@ -20,7 +20,8 @@
           class="flagship__frame"
           [src]="poster()"
           [alt]="p.title || 'Кадр закреплённой работы'"
-          (load)="measure($event)"
+          appMeasureAspect
+          (measured)="setRatio($event)"
           (error)="markBroken()"
         />
       } @else if (p.video_url && !isBroken()) {
@@ -30,7 +31,8 @@
           preload="metadata"
           muted
           playsinline
-          (loadedmetadata)="measure($event)"
+          appMeasureAspect
+          (measured)="setRatio($event)"
           (error)="markBroken()"
         ></video>
       } @else {

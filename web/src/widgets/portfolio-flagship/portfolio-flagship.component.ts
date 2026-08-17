@@ -3,12 +3,8 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import { formatDuration } from '@shared/lib/format';
-import {
-  orientationOf,
-  parseAspectRatio,
-  posterSrc,
-  ratioFromElement,
-} from '@shared/lib/portfolio-media';
+import { knownRatio, orientationOf, posterSrc } from '@shared/lib/portfolio-media';
+import { MeasureAspectDirective } from '@shared/ui/measure-aspect.directive';
 
 /**
  * Флагман — закреплённая специалистом промо-работа над лентой.
@@ -23,7 +19,7 @@ import {
 @Component({
   selector: 'app-portfolio-flagship',
   standalone: true,
-  imports: [NzButtonModule, NzIconModule],
+  imports: [NzButtonModule, NzIconModule, MeasureAspectDirective],
   templateUrl: './portfolio-flagship.component.html',
   styleUrl: './portfolio-flagship.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,7 +39,7 @@ export class PortfolioFlagshipComponent {
 
   public readonly poster = computed(() => posterSrc(this.item()));
 
-  public readonly ratio = computed(() => parseAspectRatio(this.item().aspect) ?? this.measured());
+  public readonly ratio = computed(() => knownRatio(this.item()) ?? this.measured());
 
   /**
    * Пока формат неизвестен, показываем вертикальную раскладку: в портфолио
@@ -66,11 +62,8 @@ export class PortfolioFlagshipComponent {
 
   public readonly isBroken = computed(() => this.broken());
 
-  public measure(ev: Event): void {
-    const el = ev.target as HTMLVideoElement | HTMLImageElement | null;
-    if (!el) return;
-    const ratio = ratioFromElement(el);
-    if (ratio != null) this.measured.set(ratio);
+  public setRatio(ratio: number): void {
+    this.measured.set(ratio);
   }
 
   public markBroken(): void {
