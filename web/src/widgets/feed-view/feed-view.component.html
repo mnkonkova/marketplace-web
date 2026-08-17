@@ -17,6 +17,7 @@
           [class.is-portrait]="!isLandscape(it)"
           [class.is-photoset]="it.kind === 'image'"
           [attr.data-index]="i"
+          [attr.data-item-id]="it.video.id"
           [attr.data-kind]="it.kind"
           (click)="togglePlayback($event)"
         >

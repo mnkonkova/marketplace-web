@@ -4,24 +4,45 @@
   <main class="profile-main">
     <app-back-link defaultUrl="/search" excludePrefix="/specialist/" />
 
-
     @if (loading()) {
-    <div class="loading"><nz-spin nzSize="large"></nz-spin></div>
-    } @else if (profile()) { @let p = profile()!;
-    @if (p.is_preview) {
-      <div class="preview-banner" role="status">
-        <strong>👁 Превью</strong>
-        @if (!p.is_published) {
-          — это черновик. Клиенты пока не видят ни профиль, ни работы. Доступ к работам появится после одобрения модератором — в том числе для вас самих в ленте и каталоге. Опубликуйте в кабинете чтобы отправить на проверку.
-        } @else if (p.moderation_status === 'pending_review') {
-          — профиль опубликован, ждёт проверки модератором. После одобрения работы появятся в общей ленте и каталоге — в том числе для вас самих. Сейчас работы видны только тут, в превью.
-        } @else if (p.moderation_status === 'rejected') {
-          — профиль отклонён модератором. Исправьте замечания в кабинете и опубликуйте заново — после одобрения профиль и работы появятся и для клиентов, и для вас в ленте.
-        } @else {
-          — профиль и работы появятся в ленте и каталоге после одобрения модератором (в том числе у вас самих).
-        }
+    <!-- Скелетоны повторяют реальную раскладку: шапка, флагман, лента,
+           сайдбар. Один спиннер посреди пустой страницы читался как «всё
+           сломалось», особенно на медленной мобильной сети. -->
+    <div class="profile-grid" aria-hidden="true">
+      <div class="profile-content">
+        <div class="skeleton-hero">
+          <nz-skeleton-element nzType="avatar" [nzSize]="96" nzShape="square" [nzActive]="true" />
+          <div class="skeleton-hero__text">
+            <nz-skeleton [nzActive]="true" [nzTitle]="true" [nzParagraph]="{ rows: 2 }" />
+          </div>
+        </div>
+        <div class="skeleton-flagship"></div>
+        <div class="skeleton-feed">
+          @for (i of [1, 2, 3, 4]; track i) {
+          <div class="skeleton-tile" [class.skeleton-tile--short]="i === 2 || i === 3"></div>
+          }
+        </div>
       </div>
+      <aside class="skeleton-aside">
+        <nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 3 }" />
+        <nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 2 }" />
+      </aside>
+    </div>
+    } @else if (profile()) { @let p = profile()!; @if (p.is_preview) {
+    <div class="preview-banner" role="status">
+      <strong>👁 Превью</strong>
+      @if (!p.is_published) { — это черновик. Клиенты пока не видят ни профиль, ни работы. Доступ к
+      работам появится после одобрения модератором — в том числе для вас самих в ленте и каталоге.
+      Опубликуйте в кабинете чтобы отправить на проверку. } @else if (p.moderation_status ===
+      'pending_review') { — профиль опубликован, ждёт проверки модератором. После одобрения работы
+      появятся в общей ленте и каталоге — в том числе для вас самих. Сейчас работы видны только тут,
+      в превью. } @else if (p.moderation_status === 'rejected') { — профиль отклонён модератором.
+      Исправьте замечания в кабинете и опубликуйте заново — после одобрения профиль и работы
+      появятся и для клиентов, и для вас в ленте. } @else { — профиль и работы появятся в ленте и
+      каталоге после одобрения модератором (в том числе у вас самих). }
+    </div>
     }
+
     <div class="profile-grid">
       <div class="profile-content">
         <header class="profile-hero">
@@ -35,22 +56,33 @@
           </nz-avatar>
           <div class="hero-text">
             <h1>{{ p.display_name }}</h1>
-            <p class="role">
-              <span class="role__primary">{{ primaryRole(p) }}</span>
-              @for (c of otherRoles(p); track c) {
-                <span class="role__other">{{ c }}</span>
+
+            <!-- Роли свёрнуты до трёх: пятнадцать штук в строку читаются
+                   как «умею всё», то есть как отсутствие специализации. -->
+            @if (rolesToShow().length) {
+            <p class="roles">
+              @for (role of rolesToShow(); track role; let first = $first) {
+              <span class="role" [class.role--primary]="first">{{ role }}</span>
+              } @if (hiddenRolesCount() && !rolesExpanded()) {
+              <button type="button" class="role-more" (click)="toggleRoles()">
+                ещё {{ hiddenRolesCount() }}
+              </button>
+              } @else if (rolesExpanded()) {
+              <button type="button" class="role-more" (click)="toggleRoles()">свернуть</button>
               }
             </p>
-            @if (p.production_name) {
-              <p class="production">{{ p.production_name }}</p>
+            } @if (p.production_name) {
+            <p class="production">{{ p.production_name }}</p>
             } @else if (p.is_freelance) {
-              <p class="production production--freelance">Фриланс</p>
+            <p class="production production--freelance">Фриланс</p>
             }
+
             <p class="meta">
               {{ p.city || 'Удалённо' }} · @if (p.reviews_count) {
               <app-rate-stars [rating]="p.rating_avg!" [reviewsCount]="p.reviews_count" />
               } @else { новый специалист }
             </p>
+
             <div class="hero-actions">
               <button
                 nz-button
@@ -63,36 +95,52 @@
                 <span nz-icon [nzType]="inCart() ? 'check' : 'plus'"></span>
                 {{ inCart() ? 'В проекте' : 'Добавить в проект' }}
               </button>
+              <button nz-button type="button" class="share-btn" (click)="share()">
+                <span nz-icon nzType="share-alt"></span>
+                Поделиться
+              </button>
             </div>
           </div>
         </header>
 
-        @if (p.portfolio.length) {
         <section class="block">
           <div class="block-head">
             <h2>Портфолио</h2>
-            <span class="muted">{{ p.portfolio.length }} работ</span>
+            @if (worksCount()) {
+            <span class="muted">{{ worksCount() }} работ</span>
+            }
           </div>
-          <app-portfolio-grid
-            [items]="p.portfolio"
+
+          @if (worksCount()) {
+          <!-- Флагман только если специалист сам закрепил промо-работу. -->
+          @if (featured(); as flagship) {
+          <app-portfolio-flagship
+            [item]="flagship"
             [categoryTitles]="categoryTitlesMap()"
-            (openOverlay)="openPlayer()"
+            (open)="openFlagship()"
           />
+          } @if (feedItems().length) {
+          <app-portfolio-grid
+            [items]="feedItems()"
+            [categoryTitles]="categoryTitlesMap()"
+            (open)="openFromFeed($event)"
+          />
+          } } @else {
+          <nz-empty nzNotFoundContent="Работы ещё не опубликованы" />
+          }
         </section>
-        } @if (p.bio) {
+
+        @if (p.bio) {
         <section class="block">
           <h2>О себе</h2>
-          <p class="bio" [class.is-clamped]="!bioExpanded()">{{ p.bio }}</p>
-          <button type="button" class="bio-toggle" (click)="toggleBio()">
-            {{ bioExpanded() ? 'свернуть' : 'показать полностью' }}
-          </button>
+          <app-rich-bio [text]="p.bio" />
         </section>
         } @if (p.skills.length) {
         <section class="block">
           <h2>Навыки</h2>
           <div class="chips">
             @for (s of p.skills; track s.id) {
-            <nz-tag>{{ s.title }}</nz-tag>
+            <span class="skill-tag">{{ s.title }}</span>
             }
           </div>
         </section>
@@ -120,13 +168,14 @@
       <app-profile-aside
         [profile]="p"
         [inProject]="inCart()"
-        (addToProject)="toggleProject()"
-        (discuss)="toggleProject()"
+        [shareUrl]="shareUrl()"
+        [shareRoles]="shareRoles()"
+        [shareCover]="shareCover()"
       />
     </div>
 
     <!-- Sticky bottom CTA только на тачах: на длинном scroll'е кнопка
-         «Пригласить» иначе уезжает в hero и теряется. -->
+           «Добавить в проект» иначе уезжает в hero и теряется. -->
     <div class="sticky-cta">
       <div class="sticky-cta-info">
         <nz-avatar [nzSize]="32" [nzSrc]="p.avatar_url || undefined" nzShape="square">
@@ -147,19 +196,23 @@
       </button>
     </div>
     } @else {
-    <p class="empty">Профиль не найден</p>
+    <div class="not-found">
+      <nz-empty nzNotFoundContent="Профиль не найден" />
+      <p class="not-found__hint">
+        Возможно, специалист снял профиль с публикации или ссылка устарела.
+      </p>
+    </div>
     }
   </main>
 </div>
 
-@if (playerOpen()) {
-  @let p = profile();
-  @if (p) {
-    <app-portfolio-player-overlay
-      [specialistId]="p.user_id"
-      [title]="p.display_name"
-      (close)="closePlayer()"
-    />
-  }
-}
-
+<!-- Полноэкранный прод-плеер: тот же, что в ленте и каталоге. Открывается
+     на кликнутой работе, ужимать его в модалку нельзя. -->
+@if (playerItemId(); as itemId) { @let p = profile(); @if (p) {
+<app-portfolio-player-overlay
+  [specialistId]="p.user_id"
+  [title]="p.display_name"
+  [startItemId]="itemId"
+  (close)="closePlayer()"
+/>
+} }

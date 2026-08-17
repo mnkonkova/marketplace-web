@@ -27,6 +27,9 @@ export class PortfolioPlayerOverlayComponent {
   /** Заголовок (имя спеца) — выводится в шапке feed-view. */
   public readonly title = input<string>('Работы');
 
+  /** id работы, с которой открыть плеер (клик по конкретной плитке). */
+  public readonly startItemId = input<string>('');
+
   public readonly close = output<void>();
 
   public readonly feedParams = computed<FeedParams>(() => ({

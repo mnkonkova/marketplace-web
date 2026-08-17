@@ -43,6 +43,17 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
 
   public readonly title = input('Лента');
 
+  /**
+   * С какой работы открыть ленту (id элемента портфолио). Пусто — с первой.
+   * Нужно для перехода из сетки портфолио: юзер кликнул конкретную работу,
+   * она и должна открыться, а не первая по порядку.
+   *
+   * Ищем по id, а не по индексу: порядок в /feed (sort_order, created_at)
+   * не обязан совпадать с порядком на странице специалиста, где сверху
+   * отдельно вынесен флагман.
+   */
+  public readonly startItemId = input<string>('');
+
   public readonly specialistClick = output<SpecialistLite>();
 
   private readonly feedApi = inject(FeedApi);
@@ -285,10 +296,16 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     this.attachPaginationSentinel(root, all);
     if (!this.playbackStarted && all.length) {
       this.playbackStarted = true;
+      // Стартовая работа: запрошенная или первая. Промах возможен только
+      // если её нет в выдаче (не опубликована / внешняя ссылка) — тогда
+      // честно открываем ленту с начала.
+      const wanted = this.startItemId();
+      const target =
+        (wanted && root.querySelector(`.feed-item[data-item-id="${wanted}"]`)) ||
+        (all[0] as HTMLElement);
       root.scrollTop = 0;
-      const first = all[0] as HTMLElement;
-      first.scrollIntoView({ block: 'start' });
-      this.activate(first);
+      (target as HTMLElement).scrollIntoView({ block: 'start' });
+      this.activate(target as HTMLElement);
     }
   }
 

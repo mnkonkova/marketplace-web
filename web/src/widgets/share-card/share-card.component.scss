@@ -1,0 +1,126 @@
+:host {
+  display: block;
+}
+
+.share-card {
+  padding: 20px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  /* Лёгкий градиент из двух акцентов — блок «продающий», должен читаться
+     как главный в сайдбаре, но не перетягивать на себя CTA в шапке. */
+  background: linear-gradient(160deg, rgba(255, 94, 58, 0.1), rgba(32, 161, 148, 0.06));
+}
+
+.share-card__title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.share-card__hint {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.share-card__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.share-card__btn {
+  flex: 1;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px !important;
+  border-radius: 10px !important;
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  font-weight: 600;
+
+  &:hover {
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+  }
+}
+
+.share-card__btn--primary {
+  background: var(--text) !important;
+  border-color: transparent !important;
+  color: #05100f !important;
+
+  &:hover {
+    background: #fff !important;
+    color: #05100f !important;
+    border-color: transparent !important;
+  }
+}
+
+.share-card__qr {
+  display: grid;
+  place-items: center;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+
+  canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+.share-card__label {
+  margin: 16px 0 6px;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Предпросмотр повторяет раскладку карточки Telegram: обложка сверху,
+   заголовок и домен снизу. */
+.share-card__unfurl {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+
+.share-card__cover {
+  display: block;
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+}
+
+.share-card__cover--empty {
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+  font-size: 22px;
+  background: var(--surface);
+}
+
+.share-card__unfurl-body {
+  padding: 10px 12px;
+}
+
+.share-card__unfurl-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.share-card__unfurl-sub {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-dim);
+}

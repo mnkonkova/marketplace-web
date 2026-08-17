@@ -1,7 +1,19 @@
 <div class="aside-stack">
-  @if (profile().social_links; as soc) {
+  @if (shareUrl()) {
+    <app-share-card
+      [url]="shareUrl()"
+      [displayName]="profile().display_name"
+      [roles]="shareRoles()"
+      [worksCount]="worksCount()"
+      [coverUrl]="shareCover()"
+    />
+  }
+
+  <!-- «Где найти» только когда есть что показать: пустая рамка с заголовком
+       выглядит как сломанная вёрстка, а не как «контактов нет». -->
+  @if (hasContacts()) {
     <nz-card nzTitle="Где найти" class="aside-card">
-      <app-social-row [social]="soc" />
+      <app-social-row [social]="profile().social_links!" />
     </nz-card>
   }
 
@@ -9,9 +21,7 @@
     <ul class="price-list">
       <li>
         <span>Работа специалиста</span>
-        <strong>{{
-          formatRate(profile().rate_min, profile().rate_max, profile().currency)
-        }}</strong>
+        <strong>{{ rateLabel() }}</strong>
       </li>
     </ul>
   </nz-card>
@@ -20,14 +30,4 @@
        до тех пор пока бэк не отдаёт реальные значения (нужен трекинг
        last_seen + статус «свободен/занят» в profile + расчёт avg response
        time по leads). См. backlog «specialist availability». -->
-  <!--
-  <nz-card nzTitle="Занятость" class="aside-card">
-    <nz-tag nzColor="success">Свободен</nz-tag>
-    <p class="hint">Готов начать в течение 1–2 дней</p>
-  </nz-card>
-
-  <nz-card nzTitle="Среднее время ответа" class="aside-card">
-    <p class="big">~2 часа</p>
-  </nz-card>
-  -->
 </div>

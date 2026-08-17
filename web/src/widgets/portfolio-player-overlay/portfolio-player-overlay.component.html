@@ -4,7 +4,7 @@
     <span class="back-label">К профилю</span>
   </button>
   <button type="button" class="close-btn" (click)="onClose()" aria-label="Закрыть">×</button>
-  <app-feed-view [params]="feedParams()" [title]="title()" />
+  <app-feed-view [params]="feedParams()" [title]="title()" [startItemId]="startItemId()" />
 
   <!-- Hint «листайте» — показывается одноразово первому юзеру при открытии
        overlay'я. Auto-hide через 4 сек или по любому скроллу feed-view'a.

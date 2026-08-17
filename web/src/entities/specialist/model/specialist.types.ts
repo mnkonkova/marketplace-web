@@ -58,8 +58,27 @@ export interface PortfolioItem {
    */
   preview_url?: string;
   preview_status?: 'pending' | 'processing' | 'ready' | 'failed';
+  /**
+   * Animated WebP (~50-150KB) — играет через <img>, без autoplay-политик
+   * iOS. Используется для hover-превью на плитке портфолио.
+   */
+  animated_thumb_url?: string;
   thumbnail_url?: string;
   external_url?: string;
+  /**
+   * «W:H» исходника, измеренный ffprobe'ом на бэке (миграция 00028 +
+   * cmd/backfill-aspect). Пусто = не измерен: фронт меряет сам на
+   * loadedmetadata, см. shared/lib/portfolio-media.ts.
+   */
+  aspect?: string;
+  /** Длительность ролика в секундах. 0/undefined — неизвестна. */
+  duration_sec?: number;
+  /**
+   * Закреплённая промо-работа: рендерится флагманом сверху публичной
+   * страницы. Не более одной на специалиста (гарантия — partial unique
+   * index на бэке).
+   */
+  is_featured?: boolean;
   category_codes: string[];
   sort_order: number;
   created_at: string;

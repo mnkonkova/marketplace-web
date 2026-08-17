@@ -1,3 +1,4 @@
+@use 'layout';
 :host {
   display: block;
   position: sticky;
@@ -7,18 +8,24 @@
 
 .header-wrap {
   position: relative;
+  // Полоса шапки — во всю ширину экрана (фон и разделитель), а её содержимое
+  // ограничено тем же контейнером, что и тело страницы. Иначе на широком
+  // мониторе логотип и меню липнут к краям, а контент идёт по центру.
+  border-bottom: 1px solid var(--border);
+  background: rgba(8, 12, 14, 0.85);
+  backdrop-filter: blur(12px);
 }
 
 .header {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 16px 32px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(8, 12, 14, 0.85);
-  backdrop-filter: blur(12px);
+  padding-block: 16px;
   position: relative;
   z-index: 1;
+
+  // Инклуд последним — см. комментарий в specialist-profile.page.scss.
+  @include layout.page-container;
 }
 
 .header-wrap--menu-open .header {
@@ -158,7 +165,6 @@
       background: rgba(32, 161, 148, 0.12);
     }
   }
-
 }
 
 .mobile-nav-backdrop {

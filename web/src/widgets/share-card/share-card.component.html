@@ -1,0 +1,49 @@
+<section class="share-card">
+  <h3 class="share-card__title">Ссылка-визитка</h3>
+  <p class="share-card__hint">
+    Это то, что вы отправляете клиенту. В мессенджерах разворачивается карточкой.
+  </p>
+
+  <div class="share-card__actions">
+    <button
+      nz-button
+      type="button"
+      class="share-card__btn share-card__btn--primary"
+      (click)="share()"
+    >
+      <span nz-icon nzType="share-alt"></span>
+      Поделиться
+    </button>
+    <button
+      nz-button
+      type="button"
+      class="share-card__btn"
+      (click)="toggleQR()"
+      [attr.aria-expanded]="showQR()"
+    >
+      <span nz-icon nzType="qrcode"></span>
+      QR
+    </button>
+  </div>
+
+  @if (showQR()) {
+    <div class="share-card__qr">
+      <canvas #qrCanvas width="240" height="240"></canvas>
+    </div>
+  }
+
+  <p class="share-card__label">Предпросмотр ссылки в мессенджере</p>
+  <div class="share-card__unfurl">
+    @if (coverUrl()) {
+      <img class="share-card__cover" [src]="coverUrl()" alt="" aria-hidden="true" />
+    } @else {
+      <div class="share-card__cover share-card__cover--empty" aria-hidden="true">
+        <span nz-icon nzType="play-circle"></span>
+      </div>
+    }
+    <div class="share-card__unfurl-body">
+      <p class="share-card__unfurl-title">{{ unfurlTitle() }}</p>
+      <p class="share-card__unfurl-sub">{{ unfurlSubtitle() }}</p>
+    </div>
+  </div>
+</section>

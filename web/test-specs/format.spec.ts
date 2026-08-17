@@ -1,9 +1,10 @@
 import {
   formatRate,
+  formatPublicRate,
   formatDuration,
   pluralCategories,
   pluralSpecialists,
-} from './format';
+} from '@shared/lib/format';
 
 describe('formatRate', () => {
   it('диапазон min–max возвращает диапазон с символом валюты', () => {
@@ -29,6 +30,37 @@ describe('formatRate', () => {
 
   it('кастомная валюта — без знака рубля', () => {
     expect(formatRate(100, 200, 'USD')).toBe('100–200 USD');
+  });
+});
+
+describe('formatPublicRate', () => {
+  it('вменяемая вилка показывается диапазоном', () => {
+    expect(formatPublicRate(50000, 150000)).toBe('50\u00a0000–150\u00a0000 ₽');
+  });
+
+  // «100 000 – 100 000 000 ₽» клиенту ничего не сообщает, кроме того что
+  // специалист не понял, что вписать. Схлопываем до нижней границы.
+  it('абсурдно широкая вилка схлопывается до «от N»', () => {
+    expect(formatPublicRate(100000, 100000000)).toBe('от 100\u00a0000 ₽');
+  });
+
+  it('нули считаются «не указано» — никаких «от 0»', () => {
+    expect(formatPublicRate(0, 0)).toBe('по договорённости');
+    expect(formatPublicRate(0, 50000)).toBe('до 50\u00a0000 ₽');
+    expect(formatPublicRate(50000, 0)).toBe('от 50\u00a0000 ₽');
+  });
+
+  it('равные границы — не диапазон', () => {
+    expect(formatPublicRate(30000, 30000)).toBe('от 30\u00a0000 ₽');
+  });
+
+  it('ничего не задано → по договорённости', () => {
+    expect(formatPublicRate(null, null)).toBe('по договорённости');
+    expect(formatPublicRate(undefined, undefined)).toBe('по договорённости');
+  });
+
+  it('кастомная валюта', () => {
+    expect(formatPublicRate(100, 200, 'USD')).toBe('100–200 USD');
   });
 });
 

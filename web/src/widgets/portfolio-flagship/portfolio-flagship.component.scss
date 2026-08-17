@@ -1,0 +1,246 @@
+@use 'breakpoints' as bp;
+@use 'layout';
+
+:host {
+  display: block;
+}
+
+.flagship {
+  position: relative;
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  min-height: 300px;
+  background: var(--surface);
+}
+
+/* Размытый кадр под вертикальным плеером. inset отрицательный, чтобы края
+   блюра не показывали границу картинки. */
+.flagship__bg {
+  position: absolute;
+  inset: -60px;
+  width: calc(100% + 120px);
+  height: calc(100% + 120px);
+  object-fit: cover;
+  filter: blur(64px) brightness(0.42) saturate(1.25);
+  transform: scale(1.25);
+  z-index: 0;
+}
+
+.flagship__inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  /* Текстовую колонку ограничиваем по ширине и центрируем пару целиком:
+     на 27" при `1fr` текст растягивался на 900px, а справа от него
+     оставалось пустое поле в половину блока. */
+  grid-template-columns: auto minmax(0, 52ch);
+  justify-content: center;
+  gap: clamp(24px, 2.4vw, 44px);
+  padding: layout.$fluid-card-padding;
+  align-items: center;
+}
+
+.flagship__player {
+  position: relative;
+  /* Плеер растёт с экраном, но не выше 540px: иначе на 27" флагман
+     выталкивает ленту за первый экран целиком. */
+  height: clamp(360px, 42vh, 540px);
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  cursor: pointer;
+  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.8);
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.flagship__frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.flagship__frame--fallback {
+  display: grid;
+  place-items: center;
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  font-size: 34px;
+}
+
+.flagship__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.flagship__play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: rgba(20, 22, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(4px);
+  transition: 0.18s;
+
+  svg {
+    margin-left: 3px;
+  }
+}
+
+.flagship__player:hover .flagship__play {
+  background: var(--cta);
+  border-color: transparent;
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+.flagship__duration {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.flagship__eyebrow {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cta);
+}
+
+.flagship__title {
+  margin: 0 0 12px;
+  font-size: layout.$fluid-flagship-title;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.flagship__desc {
+  margin: 0 0 18px;
+  max-width: 48ch;
+  color: var(--text-muted);
+  font-size: layout.$fluid-body;
+  /* Описание работы бывает на пол-экрана — во флагмане это анонс, а не
+     полный текст: остальное юзер прочитает в лайтбоксе. */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.flagship__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.wtag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 11px;
+  color: rgba(238, 246, 248, 0.88);
+}
+
+.flagship__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.flagship__cta {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  height: 40px !important;
+  padding: 0 20px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: var(--cta) !important;
+  color: #fff !important;
+  font-weight: 600;
+
+  &:hover,
+  &:focus {
+    background: var(--cta-hover) !important;
+    color: #fff !important;
+  }
+}
+
+/* Горизонтальная работа / шоурил — баннер во всю ширину, подложка не нужна. */
+.flagship.is-landscape {
+  .flagship__inner {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    padding: 0;
+  }
+
+  .flagship__player {
+    width: 100%;
+    height: auto;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .flagship__text {
+    padding: 0 28px 28px;
+  }
+}
+
+@media (max-width: bp.$touch) {
+  .flagship__inner {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .flagship__player {
+    height: 380px;
+  }
+
+  .flagship__tags,
+  .flagship__actions {
+    justify-content: center;
+  }
+
+  .flagship__title {
+    font-size: 24px;
+  }
+
+  .flagship.is-landscape .flagship__text {
+    padding: 0 18px 22px;
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flagship__play {
+    transition: none;
+  }
+}

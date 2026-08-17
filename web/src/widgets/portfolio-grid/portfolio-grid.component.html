@@ -1,65 +1,100 @@
-<!-- Единый tap-tile вид на всех устройствах: на любой клик открывается
-     fullscreen feed-view overlay со swipe-листанием работ. Inline-видео
-     с controls убрали — клиентский UX единообразный, лента-style. -->
-<div class="portfolio-grid" [class.is-touch]="isTouch()">
-  @for (p of items().slice(0, 6); track p.id; let i = $index) {
-    @let cats = p.category_codes || [];
-    @if (p.kind === 'image') {
-      <button
-        type="button"
-        class="portfolio-card has-photoset tap-tile"
-        [style.background-image]="p.thumbnail_url ? 'url(' + p.thumbnail_url + ')' : null"
-        (click)="requestOverlay(i)"
-        [attr.aria-label]="p.title || 'Открыть фото-кейс'"
-      >
-        @if (!p.thumbnail_url) {
-          <span class="fallback">🖼</span>
+<!-- Лента 2× со смешанными форматами. Каждая плитка держит собственный
+     aspect-ratio, поэтому вертикаль, горизонталь и квадрат уживаются в одной
+     сетке без кропа. Клик открывает лайтбокс — inline-плеера в теле нет. -->
+<div class="feed-grid">
+  @for (p of items(); track p.id; let i = $index) {
+    @let poster = posterSrc(p);
+    @let preview = hoverPreview(p);
+    @let isHovered = hovered() === p.id;
+
+    <button
+      type="button"
+      class="tile"
+      [class.is-broken]="isBroken(p)"
+      [attr.data-orientation]="orientation(p)"
+      [style.aspect-ratio]="aspectStyle(p)"
+      (click)="open.emit(i)"
+      (mouseenter)="onEnter(p)"
+      (mouseleave)="onLeave()"
+      [attr.aria-label]="p.title || 'Открыть работу'"
+    >
+      <!-- Кадр. Если постера нет — сам ролик с preload=metadata: браузер
+           покажет первый кадр, и он же даст нам размеры для aspect-ratio. -->
+      @if (poster && !isBroken(p)) {
+        <img
+          class="frame"
+          [src]="poster"
+          [alt]="p.title || 'Кадр работы'"
+          loading="lazy"
+          decoding="async"
+          (load)="measure(p, $event)"
+          (error)="markBroken(p)"
+        />
+      } @else if (p.video_url && !isBroken(p)) {
+        <video
+          class="frame"
+          [src]="p.video_url"
+          preload="metadata"
+          muted
+          playsinline
+          (loadedmetadata)="measure(p, $event)"
+          (error)="markBroken(p)"
+        ></video>
+      } @else {
+        <!-- Фолбэк вместо голого чёрного прямоугольника. -->
+        <span class="frame frame--fallback" aria-hidden="true">
+          <span nz-icon [nzType]="p.kind === 'image' ? 'picture' : 'video-camera'"></span>
+        </span>
+      }
+
+      <!-- Hover-автоплей (только desktop). Animated webp предпочтительнее:
+           играет через <img>, мимо autoplay-политик и Low Power Mode. -->
+      @if (isHovered && preview) {
+        @if (preview.kind === 'img') {
+          <img class="frame frame--hover" [src]="preview.src" alt="" aria-hidden="true" />
+        } @else {
+          <video
+            class="frame frame--hover"
+            [src]="preview.src"
+            autoplay
+            muted
+            loop
+            playsinline
+          ></video>
         }
-        @if ((p.images?.length || 0) > 1) {
-          <span class="photoset-counter">{{ p.images?.length }} фото</span>
+      }
+
+      <span class="scrim" aria-hidden="true"></span>
+
+      @if (formatBadge(p)) {
+        <span class="badge badge--format">{{ formatBadge(p) }}</span>
+      }
+      @if (durationBadge(p)) {
+        <span class="badge badge--duration">{{ durationBadge(p) }}</span>
+      } @else if (p.kind === 'image' && photoCount(p) > 1) {
+        <span class="badge badge--duration">{{ photoCount(p) }} фото</span>
+      }
+
+      @if (p.kind !== 'image') {
+        <span class="play" aria-hidden="true">
+          <svg viewBox="0 0 16 18" width="15" height="17" fill="#fff">
+            <path d="M0 0l16 9L0 18z" />
+          </svg>
+        </span>
+      }
+
+      <span class="cap">
+        @if (p.title) {
+          <span class="cap__title">{{ p.title }}</span>
         }
-        @if (cats.length) {
-          <span class="cat-chips" aria-hidden="true">
-            @for (c of cats.slice(0, 2); track c) {
-              <span class="cat-chip">{{ categoryLabel(c) }}</span>
+        @if (tags(p).length) {
+          <span class="cap__tags">
+            @for (t of tags(p); track t) {
+              <span class="wtag">{{ t }}</span>
             }
           </span>
         }
-      </button>
-    } @else if (p.video_url) {
-      <button
-        type="button"
-        class="portfolio-card has-video tap-tile"
-        [style.background-image]="p.thumbnail_url ? 'url(' + p.thumbnail_url + ')' : null"
-        (click)="requestOverlay(i)"
-        [attr.aria-label]="p.title || 'Открыть видео'"
-      >
-        @if (!p.thumbnail_url) {
-          <span class="fallback">▶</span>
-        }
-        <svg class="play-icon" viewBox="0 0 24 24" width="48" height="48" aria-hidden="true">
-          <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.55)" />
-          <path d="M9.5 7.5v9l7-4.5z" fill="#fff" />
-        </svg>
-        @if (cats.length) {
-          <span class="cat-chips" aria-hidden="true">
-            @for (c of cats.slice(0, 2); track c) {
-              <span class="cat-chip">{{ categoryLabel(c) }}</span>
-            }
-          </span>
-        }
-      </button>
-    } @else {
-      <a
-        class="portfolio-card thumb-only"
-        [href]="p.external_url || null"
-        [attr.target]="p.external_url ? '_blank' : null"
-        [style.background-image]="p.thumbnail_url ? 'url(' + p.thumbnail_url + ')' : null"
-      >
-        @if (!p.thumbnail_url) {
-          <span>🖼</span>
-        }
-      </a>
-    }
+      </span>
+    </button>
   }
 </div>

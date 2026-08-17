@@ -18,6 +18,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import * as QRCode from 'qrcode';
+import { copyToClipboard } from '@shared/lib/clipboard';
 
 @Component({
   selector: 'app-profile-share',
@@ -126,41 +127,10 @@ export class ProfileShareComponent implements AfterViewInit {
   }
 
   public copyURL(): void {
-    const url = this.shareURL();
-    // navigator.clipboard работает только в secure context (https://, localhost).
-    // На http://192.168.x.x:4200 → DOMException. Fallback через legacy
-    // execCommand('copy') на временный textarea — работает в любом контексте.
-    if (this.copyToClipboard(url)) {
+    if (copyToClipboard(this.shareURL())) {
       this.msg.success('Ссылка скопирована');
     } else {
       this.msg.error('Не удалось скопировать — выделите ссылку вручную');
-    }
-  }
-
-  private copyToClipboard(text: string): boolean {
-    // 1) Современный API — только в secure context.
-    if (typeof navigator !== 'undefined' && navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).catch(() => {});
-      return true;
-    }
-    // 2) Legacy fallback — работает в http: localhost-сетях / IP-доменах
-    // во время локальной разработки.
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      // Прячем визуально, но оставляем в дереве — иначе iOS Safari
-      // не делает copy. position:fixed чтобы не скроллило viewport.
-      ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-      ta.setAttribute('readonly', '');
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      // execCommand deprecated, но `copy` ещё поддерживается во всех браузерах.
-      const ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      return ok;
-    } catch {
-      return false;
     }
   }
 

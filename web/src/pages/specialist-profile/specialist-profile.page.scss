@@ -1,14 +1,21 @@
 @use '../../assets/size' as *;
 @use 'breakpoints' as bp;
+@use 'layout';
 .profile-layout {
   display: flex;
   min-height: calc(100dvh - 64px);
 }
 
 .profile-main {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 24px 24px 64px;
+  // Базовый кегль страницы флюидный: на широком мониторе всё остальное
+  // масштабируется вместе с ним, а не остаётся мелким на фоне выросшего
+  // контейнера.
+  font-size: layout.$fluid-body;
+  padding-block: clamp(24px, 2.5vw, 40px) 64px;
+
+  // Инклуд последним: он несёт вложенный @media, а декларации после
+  // вложенного правила — deprecated в Sass.
+  @include layout.page-container;
 
   // Back-link pill: дышит от хедера сверху и отделяется
   // воздухом от анкеты снизу.
@@ -50,12 +57,15 @@
 
 .profile-grid {
   display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 32px;
+  // Сайдбар тоже флюидный: снизу 300px (ниже предпросмотр ссылки
+  // нечитаем), сверху 380px — шире он начинает воровать место у ленты.
+  grid-template-columns: 1fr clamp(300px, 24vw, 380px);
+  gap: clamp(32px, 3vw, 56px);
   align-items: start;
 
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
+    gap: 32px;
   }
 }
 
@@ -78,36 +88,57 @@
 
   h1 {
     margin: 0 0 4px;
-    font-size: 28px;
+    font-size: layout.$fluid-name;
     font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
   }
 }
 
-.role {
-  margin: 0 0 8px;
-  font-size: 15px;
+// Строка ролей. Показываем три главные, остальные — под «ещё N»: у части
+// специалистов их полтора десятка, и сплошной строкой они читаются как
+// «берусь за всё», то есть как отсутствие специализации.
+.roles {
+  margin: 0 0 10px;
   display: flex;
   flex-wrap: wrap;
   gap: 4px 8px;
   align-items: baseline;
+  font-size: 15px;
 }
 
-// Primary — акцент, non-primary — приглушённые серые. Единая семантика
-// с карточками в /search.
-.role__primary {
-  color: var(--accent);
-  font-weight: 500;
-}
-
-.role__other {
+.role {
   color: var(--text-muted);
-  opacity: 0.7;
   font-size: 13px;
 
-  &::before {
+  // Разделитель между ролями рисуем псевдоэлементом, чтобы не плодить
+  // пустые span'ы в шаблоне.
+  & + .role::before {
     content: '·';
     margin-right: 6px;
     opacity: 0.6;
+  }
+}
+
+.role--primary {
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.role-more {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text);
+    border-color: rgba(255, 255, 255, 0.2);
   }
 }
 
@@ -144,14 +175,14 @@
   flex-wrap: wrap;
 }
 
-
 .block {
-  margin-bottom: 32px;
+  margin-bottom: layout.$fluid-section-gap;
 
   h2 {
     margin: 0 0 16px;
-    font-size: 18px;
+    font-size: layout.$fluid-section-title;
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 }
 
@@ -171,21 +202,71 @@
   color: var(--text-dim);
 }
 
-.bio {
-  margin: 0;
-  line-height: 1.6;
-  color: var(--text-muted);
+// Навыки — стилистика выбранных тегов из редактора: зелёная рамка, полупрозрачная
+// заливка. nz-tag не используем: его дефолтные цвета пришлось бы перебивать
+// целиком, проще собственный чип.
+.skill-tag {
+  padding: 7px 14px;
+  border: 1px solid rgba(45, 212, 191, 0.35);
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 14px;
 }
 
-.bio-toggle {
-  display: none; /* по умолчанию только на тачах */
-  margin-top: 6px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  color: var(--accent);
+.not-found {
+  padding: 64px 24px;
+  text-align: center;
+}
+
+.not-found__hint {
+  margin: 8px 0 0;
+  color: var(--text-dim);
   font-size: 13px;
-  cursor: pointer;
+}
+
+// ── Скелетоны загрузки ──────────────────────────────────────────────
+.skeleton-hero {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.skeleton-hero__text {
+  flex: 1;
+  max-width: 420px;
+}
+
+.skeleton-flagship {
+  height: 300px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.skeleton-feed {
+  columns: layout.$fluid-tile-column;
+  column-gap: layout.$fluid-grid-gap;
+}
+
+.skeleton-tile {
+  height: 320px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  break-inside: avoid;
+
+  &--short {
+    height: 200px;
+  }
+}
+
+.skeleton-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .sticky-cta {
@@ -221,17 +302,6 @@
   /* CTA внутри hero прячем — заменяет sticky bottom bar. */
   .hero-actions {
     display: none;
-  }
-
-  .bio.is-clamped {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .bio-toggle {
-    display: inline-block;
   }
 
   /* Sticky bottom CTA. */
@@ -334,7 +404,7 @@
   padding: 0 18px !important;
   height: 36px !important;
   border-radius: 6px !important;
-  background: #ff5e3a !important;
+  background: var(--cta) !important;
   border: 0 !important;
   color: #fff !important;
   font-weight: 600;
@@ -391,5 +461,27 @@
     box-shadow:
       0 3px 14px rgba(255, 94, 58, 0.75),
       0 0 0 6px rgba(255, 94, 58, 0.18);
+  }
+}
+
+// Вторичная «Поделиться» рядом с коралловым CTA: та же высота, но без
+// заливки — чтобы не спорить с главным действием за внимание.
+.share-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  height: 36px !important;
+  padding: 0 16px !important;
+  border-radius: 6px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  font-weight: 600;
+  font-size: 14px !important;
+
+  &:hover,
+  &:focus {
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
   }
 }

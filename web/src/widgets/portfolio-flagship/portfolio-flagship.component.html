@@ -1,0 +1,86 @@
+@let p = item();
+
+<section class="flagship" [class.is-landscape]="isLandscape()">
+  <!-- Подложка = тот же кадр, размытый и притемнённый. Нужна только
+       вертикали: горизонталь заполняет контейнер сама. -->
+  @if (!isLandscape() && poster() && !isBroken()) {
+    <img class="flagship__bg" [src]="poster()" alt="" aria-hidden="true" />
+  }
+
+  <div class="flagship__inner">
+    <button
+      type="button"
+      class="flagship__player"
+      [style.aspect-ratio]="aspectStyle()"
+      (click)="open.emit()"
+      [attr.aria-label]="p.title || 'Смотреть закреплённую работу'"
+    >
+      @if (poster() && !isBroken()) {
+        <img
+          class="flagship__frame"
+          [src]="poster()"
+          [alt]="p.title || 'Кадр закреплённой работы'"
+          (load)="measure($event)"
+          (error)="markBroken()"
+        />
+      } @else if (p.video_url && !isBroken()) {
+        <video
+          class="flagship__frame"
+          [src]="p.video_url"
+          preload="metadata"
+          muted
+          playsinline
+          (loadedmetadata)="measure($event)"
+          (error)="markBroken()"
+        ></video>
+      } @else {
+        <span class="flagship__frame flagship__frame--fallback" aria-hidden="true">
+          <span nz-icon [nzType]="p.kind === 'image' ? 'picture' : 'video-camera'"></span>
+        </span>
+      }
+
+      <span class="flagship__scrim" aria-hidden="true"></span>
+
+      @if (duration()) {
+        <span class="flagship__duration">{{ duration() }}</span>
+      }
+
+      @if (p.kind !== 'image') {
+        <span class="flagship__play" aria-hidden="true">
+          <svg viewBox="0 0 16 18" width="18" height="20" fill="#fff">
+            <path d="M0 0l16 9L0 18z" />
+          </svg>
+        </span>
+      }
+    </button>
+
+    <div class="flagship__text">
+      <p class="flagship__eyebrow">Закреплённая работа</p>
+      @if (p.title) {
+        <h3 class="flagship__title">{{ p.title }}</h3>
+      }
+      @if (p.description) {
+        <p class="flagship__desc">{{ p.description }}</p>
+      }
+      @if (tags().length) {
+        <div class="flagship__tags">
+          @for (t of tags(); track t) {
+            <span class="wtag">{{ t }}</span>
+          }
+        </div>
+      }
+      <div class="flagship__actions">
+        <button
+          nz-button
+          nzType="primary"
+          type="button"
+          class="flagship__cta"
+          (click)="open.emit()"
+        >
+          <span nz-icon nzType="play-circle"></span>
+          Смотреть
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
