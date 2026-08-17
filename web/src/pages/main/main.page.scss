@@ -128,8 +128,8 @@
   button {
     // Оранжевая CTA — та же семантика что «В проект» на карточке спеца
     // и sticky-cta feed-overlay'а. Единый visual signature действия.
-    background: #ff5e3a !important;
-    border-color: #ff5e3a !important;
+    background: var(--cta) !important;
+    border-color: var(--cta) !important;
     color: #fff !important;
     font-weight: 700;
     height: 50px;

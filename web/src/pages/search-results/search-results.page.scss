@@ -45,8 +45,8 @@
 
 // Оранжевая CTA «Найти» — одинаково с главной hero-search
 .search-bar__submit {
-  background: #ff5e3a !important;
-  border-color: #ff5e3a !important;
+  background: var(--cta) !important;
+  border-color: var(--cta) !important;
   color: #fff !important;
   font-weight: 700 !important;
   height: 42px !important;
@@ -286,7 +286,7 @@
   padding: 10px 14px;
   border: 0;
   border-radius: 10px;
-  background: #ff5e3a;
+  background: var(--cta);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
