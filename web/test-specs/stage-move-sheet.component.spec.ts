@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { PipelineFull, PipelineStageFull, PipelineStep } from '@entities/pipeline/model/pipeline.types';
 
-import { StageMoveSheetComponent } from './stage-move-sheet.component';
+import { StageMoveSheetComponent } from '@widgets/stage-move-sheet/stage-move-sheet.component';
 
 function step(id: string, name: string, sort: number, owner: PipelineStep['owner'] = 'team'): PipelineStep {
   return {

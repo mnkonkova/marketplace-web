@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { BoardColumn, BoardForPipeline } from '@entities/project/model/board.types';
 import { ProjectManagerView } from '@entities/project/model/project.types';
 
-import { BoardListViewComponent } from './board-list-view.component';
+import { BoardListViewComponent } from '@widgets/board-list-view/board-list-view.component';
 
 function col(
   stage_name: string,

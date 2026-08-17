@@ -2,7 +2,7 @@ import {
   MultipartContext,
   PutFileOptions,
   uploadMultipart,
-} from './me-upload';
+} from '@entities/me/repository/me-upload';
 
 /**
  * Тесты на `uploadMultipart` — orchestrator multipart-загрузки. PUT в S3

@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { NZ_MODAL_DATA, NzModalRef } from 'ng-zorro-antd/modal';
 import { throwError } from 'rxjs';
 
@@ -7,7 +8,7 @@ import { MeRepository } from '@entities/me/repository/me.repository';
 import {
   PortfolioUploadDialog,
   PortfolioUploadDialogData,
-} from './portfolio-upload.dialog';
+} from '@features/portfolio-upload/portfolio-upload.dialog';
 
 function makeData(overrides: Partial<PortfolioUploadDialogData> = {}): PortfolioUploadDialogData {
   return {
@@ -39,6 +40,10 @@ describe('PortfolioUploadDialog', () => {
   let meRepo: jasmine.SpyObj<MeRepository>;
 
   function setup(data?: Partial<PortfolioUploadDialogData>): PortfolioUploadDialog {
+    // Reset нужен, потому что часть тестов зовёт setup() несколько раз подряд
+    // (перебор имён файлов в цикле). Первый runInInjectionContext уже создаёт
+    // инстанс модуля, и второй configureTestingModule без сброса падает.
+    TestBed.resetTestingModule();
     modalRef = jasmine.createSpyObj<NzModalRef>('NzModalRef', ['close']);
     meRepo = jasmine.createSpyObj<MeRepository>('MeRepository', [
       'presignPortfolioUpload',
@@ -52,6 +57,9 @@ describe('PortfolioUploadDialog', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        // Диалог на ошибке аплоада показывает nz-message, а тот анимирован.
+        // Без провайдера анимаций рендер сообщения падает с NG05105.
+        provideNoopAnimations(),
         { provide: NzModalRef, useValue: modalRef },
         { provide: NZ_MODAL_DATA, useValue: makeData(data) },
         { provide: MeRepository, useValue: meRepo },

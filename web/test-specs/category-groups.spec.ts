@@ -6,7 +6,7 @@ import {
   groupCategoriesByType,
   tileTitle,
   SHORT_TITLES,
-} from './category-groups';
+} from '@shared/lib/category-groups';
 
 function cat(code: string, title: string, type: string, sort_order = 0): Category {
   return { code, title, description: '', type, sort_order } as Category;

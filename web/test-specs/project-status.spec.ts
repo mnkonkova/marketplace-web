@@ -5,7 +5,7 @@ import {
   STAGE_STATUS_COLOR,
   OWNER_LABEL,
   getStepBadge,
-} from './project-status';
+} from '@shared/lib/project-status';
 
 describe('PROJECT_STATUS_LABEL/COLOR', () => {
   it('покрывает все display_status значения', () => {
