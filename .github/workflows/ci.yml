@@ -1,0 +1,71 @@
+# CI фронтенда: prod-сборка + unit-тесты в headless Chrome.
+#
+# Про «не скипается»: у karma другая ловушка, чем у Go. Спеки лежат в
+# test-specs/ (вне src/), и если потерять `include` в angular.json, билдер
+# просто не найдёт ни одного файла и напишет «Executed 0 of 0 SUCCESS» —
+# зелёный прогон, в котором не выполнилось ничего. Поэтому ниже стоит
+# проверка на минимальное число выполненных тестов.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    env:
+      # ubuntu-latest несёт предустановленный Google Chrome. Karma сама его
+      # не находит без переменной, а без --no-sandbox (лаунчер
+      # ChromeHeadlessNoSandbox в karma.conf.js) он падает на CI-ядрах.
+      CHROME_BIN: /usr/bin/google-chrome
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Формат
+        run: npx prettier --check "src/**/*.{ts,html,scss}" "test-specs/**/*.ts"
+        # Репозиторий пока не отформатирован целиком (~110 файлов из прошлых
+        # спринтов), поэтому шаг не блокирует мерж. Прогоните `npm run format`
+        # отдельным коммитом — и удалите эту строку, тогда формат станет
+        # обязательным.
+        continue-on-error: true
+
+      - name: Prod-сборка
+        run: npx ng build --configuration production
+
+      - name: Тесты
+        run: |
+          set -o pipefail
+          npm run test:ci 2>&1 | tee /tmp/karma.log
+
+      - name: Проверка, что тесты реально выполнялись
+        run: |
+          # «Executed 0 of 0 SUCCESS» — зелёный прогон без единого теста.
+          # Порог заведомо ниже текущего числа (93), чтобы не переписывать
+          # его после каждого нового спека, но выше нуля.
+          TOTAL=$(grep -oE 'Executed [0-9]+ of [0-9]+' /tmp/karma.log | tail -1 | awk '{print $4}')
+          echo "выполнено тестов: ${TOTAL:-0}"
+          if [ "${TOTAL:-0}" -lt 50 ]; then
+            echo "::error::карма нашла ${TOTAL:-0} тестов — проверь include в angular.json (test-specs вне src/)"
+            exit 1
+          fi
