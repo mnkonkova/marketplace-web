@@ -139,8 +139,12 @@
         <section class="block">
           <h2>Навыки</h2>
           <div class="chips">
-            @for (s of p.skills; track s.id) {
+            @for (s of skillsToShow(); track s.id) {
             <span class="skill-tag">{{ s.title }}</span>
+            } @if (hiddenSkillsCount()) {
+            <button type="button" class="skill-more" (click)="toggleSkills()">
+              {{ skillsExpanded() ? 'Свернуть' : 'Показать все · ' + allSkills().length }}
+            </button>
             }
           </div>
         </section>

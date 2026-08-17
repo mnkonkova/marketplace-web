@@ -34,6 +34,9 @@ import { catchError, finalize } from 'rxjs/operators';
 /** Сколько ролей показываем до клика по «ещё N». */
 const VISIBLE_ROLES = 3;
 
+/** Сколько навыков помещается в один ряд — остальные под кнопкой. */
+const VISIBLE_SKILLS = 8;
+
 @Component({
   selector: 'app-specialist-profile-page',
   standalone: true,
@@ -76,6 +79,9 @@ export class SpecialistProfilePage implements OnInit {
 
   /** Развёрнут ли полный список ролей. */
   public readonly rolesExpanded = signal(false);
+
+  /** Развёрнут ли полный список навыков. */
+  public readonly skillsExpanded = signal(false);
 
   /**
    * id работы, с которой открыт полноэкранный плеер. null = плеер закрыт.
@@ -149,6 +155,19 @@ export class SpecialistProfilePage implements OnInit {
 
   public readonly shareRoles = computed(() => this.visibleRoles().join(', ').toLowerCase());
 
+  // Навыки сворачиваются тем же паттерном, что и роли: у части специалистов
+  // их два-три десятка, и сплошная простыня тегов перетягивает на себя
+  // внимание с портфолио, ради которого страницу и открыли.
+  public readonly allSkills = computed(() => this.profile()?.skills ?? []);
+
+  public readonly hiddenSkillsCount = computed(() =>
+    Math.max(0, this.allSkills().length - VISIBLE_SKILLS),
+  );
+
+  public readonly skillsToShow = computed(() =>
+    this.skillsExpanded() ? this.allSkills() : this.allSkills().slice(0, VISIBLE_SKILLS),
+  );
+
   public ngOnInit(): void {
     this.route.paramMap.subscribe((pm) => {
       const id = pm.get('id');
@@ -188,6 +207,10 @@ export class SpecialistProfilePage implements OnInit {
 
   public toggleRoles(): void {
     this.rolesExpanded.update((v) => !v);
+  }
+
+  public toggleSkills(): void {
+    this.skillsExpanded.update((v) => !v);
   }
 
   /**

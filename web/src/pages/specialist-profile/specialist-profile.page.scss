@@ -214,6 +214,24 @@
   font-size: 14px;
 }
 
+// Кнопка разворота навыков — визуально это такой же чип, как теги рядом,
+// но действие, поэтому серый вместо зелёного.
+.skill-more {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
 .not-found {
   padding: 64px 24px;
   text-align: center;
@@ -274,9 +292,13 @@
 }
 
 @media (max-width: bp.$touch) {
-  /* Компактный hero на тачах и узких десктоп-окнах. */
+  /* Компактный hero на тачах и узких десктоп-окнах. Аватар уходит НАД
+     именем: в строку рядом с ним на 360px остаётся полторы строки под
+     длинное имя, и оно рвётся посреди слова. */
   .profile-hero {
-    gap: 14px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
     margin-bottom: 20px;
 
     .avatar {
@@ -287,8 +309,21 @@
     }
 
     h1 {
-      font-size: 20px;
+      font-size: 24px;
     }
+  }
+
+  /* CTA на всю ширину: пальцем в кнопку 120px попадать неудобно, а места
+     в стеке достаточно. */
+  .hero-text,
+  .hero-actions {
+    width: 100%;
+  }
+
+  .hero-actions .project-cart-btn,
+  .hero-actions .share-btn {
+    flex: 1;
+    justify-content: center;
   }
 
   .meta {
@@ -299,9 +334,19 @@
     font-size: 14px;
   }
 
-  /* CTA внутри hero прячем — заменяет sticky bottom bar. */
-  .hero-actions {
-    display: none;
+  /* «Добавить в проект» в шапке прячем — его роль берёт на себя sticky-бар
+     внизу, который виден всегда. А вот «Поделиться» оставляем: страницу
+     затем и открывают, чтобы отправить ссылку, и прятать это действие на
+     телефоне (где шарят чаще всего) — ровно наоборот к задаче. Растягиваем
+     на всю ширину: пальцем в узкую кнопку попадать неудобно. */
+  .hero-actions .project-cart-btn {
+    display: none !important;
+  }
+
+  .hero-actions .share-btn {
+    width: 100%;
+    justify-content: center;
+    height: 44px !important;
   }
 
   /* Sticky bottom CTA. */

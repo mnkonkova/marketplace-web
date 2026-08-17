@@ -1,3 +1,4 @@
+@use 'breakpoints' as bp;
 @use 'layout';
 
 :host {
@@ -173,5 +174,42 @@
 
   .tile:hover .frame {
     transform: none;
+  }
+}
+
+/* На телефоне формат «лента 2×» сохраняем принудительно: одна колонка
+   превращает портфолио в вертикальный список и убивает саму идею витрины.
+   Но плитка становится узкой, поэтому с неё снимаем всё, кроме названия —
+   формат, длительность и теги на 160px ширины читаются как мусор. */
+@media (max-width: bp.$mobile-small) {
+  .feed-grid {
+    columns: 2;
+    column-gap: 10px;
+  }
+
+  .tile {
+    margin-bottom: 10px;
+    border-radius: 12px;
+  }
+
+  .badge,
+  .cap__tags {
+    display: none;
+  }
+
+  .cap {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .cap__title {
+    font-size: 12px;
+    -webkit-line-clamp: 2;
+  }
+
+  .play {
+    width: 38px;
+    height: 38px;
   }
 }

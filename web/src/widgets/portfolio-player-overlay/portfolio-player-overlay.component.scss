@@ -77,6 +77,26 @@
   }
 }
 
+/* Узкий экран: верхние кнопки ужимаем. «К профилю» оставляем стрелкой без
+   подписи — на 360px она вместе с ✕ и переключателем звука съедала строку
+   и налезала на кадр. */
+@media (max-width: 560px) {
+  .back-btn {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .back-label {
+    display: none;
+  }
+
+  .close-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+}
+
 // Подсказка «листайте» — большая полупрозрачная плашка по центру,
 // исчезает после первого скролла/тача или через 4 сек. Pointer-events:none
 // чтобы не блокировать жесты.
@@ -98,7 +118,9 @@
   color: #fff;
   pointer-events: none;
   text-align: center;
-  animation: hint-pulse 1.4s ease-in-out infinite, hint-fadein 0.3s ease-out;
+  animation:
+    hint-pulse 1.4s ease-in-out infinite,
+    hint-fadein 0.3s ease-out;
 }
 
 .swipe-hint-icon {

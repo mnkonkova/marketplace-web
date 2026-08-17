@@ -132,6 +132,43 @@ describe('SpecialistProfilePage — открытие плеера', () => {
   });
 });
 
+describe('SpecialistProfilePage — навыки', () => {
+  function withSkills(count: number): SpecialistProfilePage {
+    const page = setup();
+    const skills = Array.from({ length: count }, (_, i) => ({
+      id: `s${i}`,
+      slug: `skill-${i}`,
+      title: `Навык ${i}`,
+      kind: 'tool',
+    }));
+    page.profile.set({ ...profile([]), skills } as SpecialistProfile);
+    return page;
+  }
+
+  it('показывается первый ряд — восемь тегов', () => {
+    const page = withSkills(25);
+    expect(page.skillsToShow().length).toBe(8);
+    expect(page.hiddenSkillsCount()).toBe(17);
+  });
+
+  it('после разворота видно все', () => {
+    const page = withSkills(25);
+    page.toggleSkills();
+    expect(page.skillsToShow().length).toBe(25);
+  });
+
+  it('восемь и меньше — кнопки нет', () => {
+    expect(withSkills(8).hiddenSkillsCount()).toBe(0);
+    expect(withSkills(3).hiddenSkillsCount()).toBe(0);
+  });
+
+  it('без навыков ничего не падает', () => {
+    const page = withSkills(0);
+    expect(page.skillsToShow()).toEqual([]);
+    expect(page.hiddenSkillsCount()).toBe(0);
+  });
+});
+
 describe('SpecialistProfilePage — роли в шапке', () => {
   function withRoles(count: number): SpecialistProfilePage {
     const page = setup();
