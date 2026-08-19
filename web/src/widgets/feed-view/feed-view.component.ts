@@ -55,21 +55,13 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
   public readonly startItemId = input<string>('');
 
   /**
-   * Активная работа на паузе — только тогда показываем ▶. Во время
-   * проигрывания оверлей чистый, как в Reels.
+   * Активная работа на паузе — только тогда показываем центральные
+   * контролы (звук + ▶). Во время проигрывания оверлей чистый, как в Reels.
    */
   public readonly showPlay = signal(false);
 
   /** Индекс активной карточки — чтобы ▶ рисовать только в ней. */
   public readonly activeIndex = signal(-1);
-
-  /**
-   * Транзиентный значок звука после тапа: 'on' | 'off' | null.
-   * Заменяет постоянную кнопку-переключатель.
-   */
-  public readonly soundFlash = signal<'on' | 'off' | null>(null);
-
-  private soundFlashTimer?: ReturnType<typeof setTimeout>;
 
   public readonly specialistClick = output<SpecialistLite>();
 
@@ -183,14 +175,9 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
   // без controls стабильно, поэтому слушаем на родительском <article>.
   // Тапы по кнопкам overlay не должны паузить — отсекаем по closest('button, a').
   /**
-   * Тап по карточке, модель Reels:
-   *   на паузе  → запустить воспроизведение (и убрать ▶);
-   *   играет    → переключить звук + показать значок на 0.7с.
-   *
-   * Раньше тап ставил на паузу, а звук переключался кнопкой в шапке
-   * feed-view — но в полноэкранном плеере эта шапка скрыта (см.
-   * portfolio-player-overlay.scss), и включить звук было физически нечем:
-   * видимая плашка «звук выкл.» — индикатор, а не кнопка.
+   * Тап по карточке — обычная пауза/продолжение, как в любом плеере.
+   * Звук отдельной кнопкой в центре: она видна только на паузе, поэтому
+   * во время проигрывания оверлей остаётся чистым, как в Reels.
    */
   public togglePlayback(ev: Event): void {
     const target = ev.target as HTMLElement | null;
@@ -201,19 +188,56 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     if (article.dataset['kind'] === 'image') return;
     const video = article.querySelector<HTMLVideoElement>('video.feed-video');
     if (!video) return;
-    if (video.paused) {
-      this.playVideo(article, video);
-      return;
-    }
-    // Тап — это user gesture, единственный момент, когда браузер (и особенно
-    // iOS Safari) разрешает включить звук без блокировки.
-    this.setMuted(!video.muted);
+    if (video.paused) this.resume(article, video);
+    else this.pauseArticle(article);
   }
 
   /**
-   * Единая точка смены звука: сигнал, localStorage, все видео в ленте и
-   * транзиентный значок. Всем видео, а не только активному, — чтобы
-   * следующая работа при свайпе была уже в нужном состоянии.
+   * Кнопка ▶ в центре: продолжает воспроизведение. stopPropagation —
+   * иначе click всплывёт до <article> и togglePlayback переключит ещё раз.
+   */
+  public resumePlayback(ev: Event): void {
+    ev.stopPropagation();
+    const btn = ev.currentTarget as HTMLElement | null;
+    const article = (btn?.closest('.feed-item') as HTMLElement | null) ?? this.activeArticle;
+    if (!article) return;
+    const video = article.querySelector<HTMLVideoElement>('video.feed-video');
+    if (!video) return;
+    this.resume(article, video);
+  }
+
+  /**
+   * Кнопка звука в центре: переключает mute на месте и НЕ снимает с паузы.
+   * stopPropagation по той же причине, что и у ▶.
+   */
+  public toggleSound(ev: Event): void {
+    ev.stopPropagation();
+    this.setMuted(!this.muted());
+  }
+
+  private resume(article: HTMLElement, video: HTMLVideoElement): void {
+    this.showPlay.set(false);
+    this.playVideo(article, video);
+  }
+
+  /**
+   * Пауза всех <video> карточки: после progressive-upgrade в article
+   * какое-то время живут два элемента (preview + full), и паузить надо оба.
+   * showPlay ставим сразу, не дожидаясь события pause — оно приходит
+   * асинхронно, а оверлей должен появиться под пальцем.
+   */
+  private pauseArticle(article: HTMLElement): void {
+    article.querySelectorAll('video').forEach((v) => v.pause());
+    this.showPlay.set(true);
+  }
+
+  /**
+   * Единая точка смены звука: сигнал, localStorage и все видео в ленте.
+   * Всем видео, а не только активному, — чтобы следующая работа при свайпе
+   * была уже в нужном состоянии.
+   *
+   * Воспроизведение не трогаем: кнопка звука живёт на паузе, и unmute не
+   * должен её снимать — для этого рядом отдельная ▶.
    */
   public setMuted(next: boolean): void {
     this.muted.set(next);
@@ -226,23 +250,6 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
       if (next) v.setAttribute('muted', '');
       else v.removeAttribute('muted');
     });
-    // После включения звука активная карточка должна играть: если юзер
-    // до этого поставил её на паузу, unmute без play() выглядит как
-    // «нажал и ничего не произошло». Трогаем только активную — иначе
-    // фоновые карточки заговорят хором.
-    if (!next && this.activeArticle) {
-      this.activeArticle.querySelectorAll<HTMLVideoElement>('video').forEach((v) => {
-        if (v.paused) v.play().catch(() => {});
-      });
-    }
-    this.flashSound(next);
-  }
-
-  /** Значок 🔊/🔇 по центру на 700мс. */
-  private flashSound(muted: boolean): void {
-    clearTimeout(this.soundFlashTimer);
-    this.soundFlash.set(muted ? 'off' : 'on');
-    this.soundFlashTimer = setTimeout(() => this.soundFlash.set(null), 700);
   }
 
   public carouselIndex(itemIdx: number): number {

@@ -305,8 +305,7 @@
   pointer-events: none;
 }
 
-.reels-badge,
-.sound-badge {
+.reels-badge {
   padding: 6px 9px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.38);
@@ -629,68 +628,63 @@
   }
 }
 
-/* ▶ поверх видео — только на паузе (рендерится по showPlay в шаблоне).
-   pointer-events: none, потому что тап ловит родительский <article>:
-   кнопка внутри перехватила бы его и сломала бы переключение звука. */
-.feed-play-btn {
+/* Центральные контролы — рендерятся только на паузе (showPlay в шаблоне):
+   сверху звук, под ним ▶. Обе кнопки кликабельны, а промежутки между ними —
+   нет, иначе стопка съела бы тап по видео (пауза/плей ловится на <article>). */
+.feed-center-controls {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.feed-center-btn {
   display: grid;
   place-items: center;
-  width: 68px;
-  height: 68px;
+  padding: 0;
   border-radius: 50%;
-  background: rgba(20, 22, 26, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  backdrop-filter: blur(4px);
-  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(15, 17, 20, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.12s ease, background 0.12s ease;
 
+  &:active {
+    transform: scale(0.94);
+    background: rgba(15, 17, 20, 0.62);
+  }
+
+  svg {
+    display: block;
+  }
+}
+
+.feed-sound-btn {
+  width: 52px;
+  height: 52px;
+}
+
+.feed-play-btn {
+  width: 80px;
+  height: 80px;
+
+  /* Оптический центр треугольника правее геометрического. */
   svg {
     margin-left: 4px;
   }
 }
 
-/* Значок звука после тапа: появляется мгновенно, гаснет за 0.7с. */
-.feed-sound-flash {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 7;
-  display: grid;
-  place-items: center;
-  width: 84px;
-  height: 84px;
-  border-radius: 50%;
-  background: rgba(20, 22, 26, 0.6);
-  font-size: 34px;
-  pointer-events: none;
-  animation: sound-flash 0.7s ease-out forwards;
-}
-
-@keyframes sound-flash {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.8);
-  }
-  20% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  70% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .feed-sound-flash {
-    animation: none;
-    opacity: 1;
+  .feed-center-btn {
+    transition: none;
   }
 }
