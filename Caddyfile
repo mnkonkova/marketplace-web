@@ -52,26 +52,24 @@
 	#     каждый заход, чтобы юзер увидел новый билд без Ctrl+F5.
 	#   • sitemap.xml / robots.txt — короткий кеш, чтобы Яндекс/Google
 	#     подхватывали обновления быстро, но не долбили каждый скролл.
-	# Страница специалиста идёт через API — он отдаёт ту же оболочку SPA, но
-	# с og-метой конкретного человека. Нужно ради превью ссылок: боты
-	# Telegram/WhatsApp/VK не исполняют JS и читают только теги из первого
-	# HTML-ответа, а в статическом index.html лежит общая мета сайта.
+	# Превью ссылок в мессенджерах: только ботам.
 	#
-	# handle_response на 4xx/5xx возвращает обычный index.html: если API
-	# лёг или специалиста нет, страница всё равно откроется (SPA сам покажет
-	# «Профиль не найден»), просто без персональной меты.
-	handle /specialist/* {
+	# Боты не исполняют JS и читают og-теги из первого HTML-ответа, поэтому
+	# им нужен ответ от API с персональной метой. Людям он не нужен — их
+	# страницу рисует SPA.
+	#
+	# Раньше на API шли ВСЕ запросы к /specialist/*, и это вышло боком:
+	# API ответил ошибкой (не смог забрать оболочку) — и пользователь
+	# получил пустой 502 вместо страницы, хотя остальной сайт работал.
+	# Теперь путь человека не зависит от API вообще: он всегда получает
+	# статику со статусом 200. Ботам в худшем случае достанется общая мета
+	# сайта — это деградация превью, а не сломанная страница.
+	@ogBot expression `{http.request.uri.path}.startsWith("/specialist/") && {http.request.header.User-Agent}.matches("(?i)(bot|crawler|spider|preview|telegram|whatsapp|vkshare|facebookexternalhit|twitter|discord|slack|skype)")`
+	handle @ogBot {
 		reverse_proxy {$API_UPSTREAM:api:8080} {
-			lb_try_duration 5s
+			lb_try_duration 3s
 			lb_try_interval 250ms
-			header_up X-Forwarded-For {remote_host}
 			header_up X-Real-IP {remote_host}
-
-			@spaFallback status 4xx 5xx
-			handle_response @spaFallback {
-				rewrite * /index.html
-				file_server
-			}
 		}
 	}
 
@@ -92,6 +90,19 @@
 
 	handle {
 		try_files {path} /index.html
+		file_server
+	}
+
+	# Страховка на любую ошибку: если API недоступен или ответил 5xx,
+	# отдаём обычный index.html и SPA доигрывает сама.
+	#
+	# handle_response внутри reverse_proxy (см. блок /specialist/*) ловит
+	# только СТАТУС ответа. Когда upstream не отвечает вовсе — контейнер
+	# перезапускается, деплой, сеть — ответа нет, матчер не срабатывает, и
+	# Caddy отдавал пустой 502. Пользователь видел белую страницу на
+	# /specialist/:id, хотя весь остальной сайт работал.
+	handle_errors {
+		rewrite * /index.html
 		file_server
 	}
 }
