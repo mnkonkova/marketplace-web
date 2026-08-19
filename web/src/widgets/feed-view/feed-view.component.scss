@@ -628,3 +628,69 @@
     font-size: 12px;
   }
 }
+
+/* ▶ поверх видео — только на паузе (рендерится по showPlay в шаблоне).
+   pointer-events: none, потому что тап ловит родительский <article>:
+   кнопка внутри перехватила бы его и сломала бы переключение звука. */
+.feed-play-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(20, 22, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+
+  svg {
+    margin-left: 4px;
+  }
+}
+
+/* Значок звука после тапа: появляется мгновенно, гаснет за 0.7с. */
+.feed-sound-flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: rgba(20, 22, 26, 0.6);
+  font-size: 34px;
+  pointer-events: none;
+  animation: sound-flash 0.7s ease-out forwards;
+}
+
+@keyframes sound-flash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-sound-flash {
+    animation: none;
+    opacity: 1;
+  }
+}

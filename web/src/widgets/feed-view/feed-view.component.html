@@ -1,9 +1,6 @@
 <div class="feed-shell">
   <div class="feed-top">
     <h2>{{ title() }}</h2>
-    <button type="button" class="mute-btn" (click)="toggleMute()">
-      {{ muted() ? '🔇' : '🔊' }}
-    </button>
   </div>
 
   @if (empty()) {
@@ -56,10 +53,24 @@
             }
           </div>
 
+          <!-- ▶ только когда активная работа на паузе: во время
+               проигрывания оверлей чистый, как в Reels. -->
+          @if (showPlay() && activeIndex() === i) {
+            <span class="feed-play-btn" aria-hidden="true">
+              <svg viewBox="0 0 16 18" width="26" height="30" fill="#fff">
+                <path d="M0 0l16 9L0 18z" />
+              </svg>
+            </span>
+          }
+
+          <!-- Значок звука после тапа — живёт 0.7с и гаснет. -->
+          @if (soundFlash() && activeIndex() === i) {
+            <span class="feed-sound-flash" aria-hidden="true">
+              {{ soundFlash() === 'on' ? '🔊' : '🔇' }}
+            </span>
+          }
+
           <div class="feed-overlay">
-            <div class="feed-top-badges">
-              <span class="sound-badge">{{ muted() ? 'звук выкл.' : 'звук вкл.' }}</span>
-            </div>
 
             <div class="feed-overlay-left">
               <button

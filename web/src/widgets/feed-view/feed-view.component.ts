@@ -54,6 +54,23 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
    */
   public readonly startItemId = input<string>('');
 
+  /**
+   * Активная работа на паузе — только тогда показываем ▶. Во время
+   * проигрывания оверлей чистый, как в Reels.
+   */
+  public readonly showPlay = signal(false);
+
+  /** Индекс активной карточки — чтобы ▶ рисовать только в ней. */
+  public readonly activeIndex = signal(-1);
+
+  /**
+   * Транзиентный значок звука после тапа: 'on' | 'off' | null.
+   * Заменяет постоянную кнопку-переключатель.
+   */
+  public readonly soundFlash = signal<'on' | 'off' | null>(null);
+
+  private soundFlashTimer?: ReturnType<typeof setTimeout>;
+
   public readonly specialistClick = output<SpecialistLite>();
 
   private readonly feedApi = inject(FeedApi);
@@ -165,6 +182,16 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
   // Tap по статье = play/pause. iOS Safari не выдаёт click на <video playsinline>
   // без controls стабильно, поэтому слушаем на родительском <article>.
   // Тапы по кнопкам overlay не должны паузить — отсекаем по closest('button, a').
+  /**
+   * Тап по карточке, модель Reels:
+   *   на паузе  → запустить воспроизведение (и убрать ▶);
+   *   играет    → переключить звук + показать значок на 0.7с.
+   *
+   * Раньше тап ставил на паузу, а звук переключался кнопкой в шапке
+   * feed-view — но в полноэкранном плеере эта шапка скрыта (см.
+   * portfolio-player-overlay.scss), и включить звук было физически нечем:
+   * видимая плашка «звук выкл.» — индикатор, а не кнопка.
+   */
   public togglePlayback(ev: Event): void {
     const target = ev.target as HTMLElement | null;
     if (target?.closest('button, a')) return;
@@ -174,8 +201,48 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     if (article.dataset['kind'] === 'image') return;
     const video = article.querySelector<HTMLVideoElement>('video.feed-video');
     if (!video) return;
-    if (video.paused) this.playVideo(article, video);
-    else video.pause();
+    if (video.paused) {
+      this.playVideo(article, video);
+      return;
+    }
+    // Тап — это user gesture, единственный момент, когда браузер (и особенно
+    // iOS Safari) разрешает включить звук без блокировки.
+    this.setMuted(!video.muted);
+  }
+
+  /**
+   * Единая точка смены звука: сигнал, localStorage, все видео в ленте и
+   * транзиентный значок. Всем видео, а не только активному, — чтобы
+   * следующая работа при свайпе была уже в нужном состоянии.
+   */
+  public setMuted(next: boolean): void {
+    this.muted.set(next);
+    localStorage.setItem('marketpclce.feed_muted.v1', next ? 'on' : 'off');
+    document.querySelectorAll<HTMLVideoElement>('.feed-video').forEach((v) => {
+      v.muted = next;
+      // Атрибут ставился ради autoplay-policy на iOS. После user gesture он
+      // больше не нужен, а оставшись — снова заглушит видео при следующем
+      // пересоздании элемента (например, после progressive-upgrade).
+      if (next) v.setAttribute('muted', '');
+      else v.removeAttribute('muted');
+    });
+    // После включения звука активная карточка должна играть: если юзер
+    // до этого поставил её на паузу, unmute без play() выглядит как
+    // «нажал и ничего не произошло». Трогаем только активную — иначе
+    // фоновые карточки заговорят хором.
+    if (!next && this.activeArticle) {
+      this.activeArticle.querySelectorAll<HTMLVideoElement>('video').forEach((v) => {
+        if (v.paused) v.play().catch(() => {});
+      });
+    }
+    this.flashSound(next);
+  }
+
+  /** Значок 🔊/🔇 по центру на 700мс. */
+  private flashSound(muted: boolean): void {
+    clearTimeout(this.soundFlashTimer);
+    this.soundFlash.set(muted ? 'off' : 'on');
+    this.soundFlashTimer = setTimeout(() => this.soundFlash.set(null), 700);
   }
 
   public carouselIndex(itemIdx: number): number {
@@ -196,30 +263,6 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
   public isLandscape(it: FeedItem): boolean {
     const ratio = this.parseAspectRatio(it.video.aspect);
     return ratio != null ? ratio > 1 : false;
-  }
-
-  public toggleMute(): void {
-    const next = !this.muted();
-    this.muted.set(next);
-    localStorage.setItem('marketpclce.feed_muted.v1', next ? 'on' : 'off');
-    // user gesture от tap по кнопке — безопасный момент изменить muted
-    // даже на iOS Safari (autoplay-ограничения сняты).
-    //
-    // muted-флаг ставим ВСЕМ видео в фиде — когда юзер скроллит на
-    // следующую карточку, она должна сразу быть в нужном состоянии.
-    document.querySelectorAll<HTMLVideoElement>('.feed-video').forEach((v) => {
-      v.muted = next;
-    });
-    // А вот play()'ить — ТОЛЬКО активную карточку. Иначе после unmute
-    // все приостановленные preview/full стартуют со звуком одновременно
-    // и получается каша.
-    if (!next && this.activeArticle) {
-      this.activeArticle
-        .querySelectorAll<HTMLVideoElement>('video')
-        .forEach((v) => {
-          if (v.paused) v.play().catch(() => {});
-        });
-    }
   }
 
   private resetFeed(): void {
@@ -327,6 +370,7 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
       this.activeArticle.querySelectorAll('video').forEach((v) => v.pause());
     }
     this.activeArticle = article;
+    this.activeIndex.set(parseInt(article.dataset['index'] ?? '-1', 10));
     // Photo-set — нет видео для preload/play.
     if (article.dataset['kind'] !== 'image') {
       const video = this.ensureVideo(article);
@@ -364,7 +408,7 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     // muted установлен ДО play() и без посторонних активаций. Стартуем
     // всегда muted=true (HTML-attribute через setAttribute — Safari иногда
     // игнорит .muted property без attribute), независимо от localStorage.
-    // После toggleMute() (user gesture от кнопки) можно безопасно unmute —
+    // После тапа по видео (user gesture) можно безопасно unmute —
     // это уже доверенный контекст. Иначе на iPhone видео висит на постере
     // пока не тапнут.
     video.muted = this.muted();
@@ -388,11 +432,20 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
     const onFail = (): void => {
       article.classList.remove('is-video-loading');
       article.querySelector('.feed-poster')?.classList.remove('is-hidden');
+      this.markPaused(article);
     };
 
     // Listeners ВСЕГДА вешаем ДО присвоения src — иначе для закешированных
     // или быстрых ответов loadeddata срабатывает между src= и addEventListener,
     // мы его пропускаем и спиннер висит бесконечно.
+    // ▶ показываем строго по фактическому состоянию элемента, а не по
+    // нашим намерениям: play() может отклониться autoplay-политикой, и
+    // тогда кнопка обязана появиться сама.
+    const syncPlayState = (): void => {
+      if (this.activeArticle === article) this.showPlay.set(video.paused);
+    };
+    video.addEventListener('play', syncPlayState);
+    video.addEventListener('pause', syncPlayState);
     video.addEventListener('loadedmetadata', () => this.applyVideoOrientation(article, video));
     video.addEventListener('loadeddata', onReady);
     video.addEventListener('error', onFail);
@@ -446,8 +499,13 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
         // на muted=true (молчаливо). Юзер потом тапнет unmute сам.
         if (!video.muted) {
           video.muted = true;
-          video.play().catch(() => {});
+          video.play().catch(() => this.markPaused(article));
+          return;
         }
+        // Не завелось даже в muted (кодек не поддержан, битый файл,
+        // политика): показываем ▶, иначе юзер смотрит на статичный кадр
+        // без единой подсказки, что с ним можно что-то сделать.
+        this.markPaused(article);
       });
     };
     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -459,6 +517,11 @@ export class FeedViewComponent implements AfterViewInit, OnDestroy {
       if (this.activeArticle === article) start();
     };
     video.addEventListener('canplay', onReady);
+  }
+
+  /** Показать ▶: воспроизведение не идёт, а события pause мы не дождались. */
+  private markPaused(article: HTMLElement): void {
+    if (this.activeArticle === article) this.showPlay.set(true);
   }
 
   private applyVideoOrientation(article: HTMLElement, video: HTMLVideoElement): void {
