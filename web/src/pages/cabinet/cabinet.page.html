@@ -5,486 +5,114 @@
   <nz-spin nzSize="large"></nz-spin>
   } @else if (profile()) { @let p = profile()!;
 
-  @if (p.is_published && p.moderation_status === 'pending_review') {
-  <nz-alert
-    class="moderation-banner"
-    nzType="info"
-    nzShowIcon
-    nzMessage="Профиль на проверке у админа"
-    nzDescription="Обычно занимает до 24 часов. После одобрения вы появитесь в каталоге и ленте. Если внесёте правки, проверка начнётся заново."
-  />
-  } @if (p.moderation_status === 'rejected') {
-  <nz-alert
-    class="moderation-banner"
-    nzType="error"
-    nzShowIcon
-    nzMessage="Профиль отклонён модератором"
-    [nzDescription]="rejectReasonTpl"
-  />
-  <ng-template #rejectReasonTpl>
-    @if (p.moderation_reason) {
-    <p class="reject-reason">{{ p.moderation_reason }}</p>
-    }
-    <p>Внесите правки и нажмите «Опубликовать» заново — заявка снова уйдёт админу.</p>
-  </ng-template>
-  }
-
-  <app-completeness-indicator [profile]="p" [portfolio]="portfolio()" />
-
-  <section class="panel profile-panel">
-    <div class="panel-head">
-      <h2>Профиль</h2>
-    </div>
-
-    <div class="profile-grid">
-      <div class="avatar-column">
-        <input
-          #avatarFile
-          id="avatarFileInput"
-          type="file"
-          class="hidden-file"
-          accept="image/*"
-          (click)="$any($event.target).value = ''"
-          (change)="uploadAvatar($event)"
-        />
-        <label
-          for="avatarFileInput"
-          class="avatar-preview"
-          [class.has-image]="displayedAvatarUrl()"
-          [class.is-uploading]="avatarBusy()"
-          [class.is-disabled]="avatarUploading()"
-        >
-          @if (displayedAvatarUrl(); as src) {
-          <img [src]="src" alt="" decoding="async" />
-          } @else {
-          <span>{{ (form.display_name || '?').slice(0, 1) }}</span>
-          }
-          @if (avatarBusy()) {
-          <div class="avatar-overlay" role="status" aria-label="Загрузка аватара">
-            <span nz-icon nzType="loading" nzTheme="outline"></span>
-          </div>
-          }
-        </label>
-        <label
-          for="avatarFileInput"
-          class="avatar-pick-btn"
-          [class.is-disabled]="avatarUploading()"
-        >
-          @if (avatarUploading()) {
-          <span nz-icon nzType="loading" nzTheme="outline"></span>
-          }
-          Загрузить аватар
-        </label>
-        @if (form.avatar_url || localAvatarUrl()) {
-        <button nz-button type="button" (click)="clearAvatar()">Очистить</button>
-        }
-        <p class="hint">
-          JPG, PNG, WEBP или HEIC. Любой размер до 50 МБ — автоматически уменьшим до 512 px.
-          После загрузки нажмите «Сохранить».
-        </p>
-      </div>
-
-      <div class="fields">
-        <label>
-          Имя / название
-          <input nz-input [(ngModel)]="form.display_name" name="display_name" />
-        </label>
-        <label>
-          Город
-          <input nz-input [(ngModel)]="form.city" name="city" placeholder="Ваш город или удаленно" />
-        </label>
-        <div class="inline-fields">
-          <label>
-            Ставка от
-            <input nz-input type="number" [(ngModel)]="form.rate_min" name="rate_min" />
-          </label>
-          <label>
-            Ставка до
-            <input nz-input type="number" [(ngModel)]="form.rate_max" name="rate_max" />
-          </label>
-          <label>
-            Валюта
-            <input nz-input [(ngModel)]="form.currency" name="currency" />
-          </label>
-        </div>
-        <label>
-          Описание
-          <textarea nz-input rows="7" [(ngModel)]="form.bio" name="bio"></textarea>
-        </label>
-      </div>
-    </div>
-  </section>
-
-  <section class="panel check-panel" [class.rejected]="check() && !check()!.ok">
-    <div class="panel-head check-head">
-      <div>
-        <h2>Проверка профиля</h2>
-        <p>AI-подсказки по имени и описанию перед публикацией.</p>
-      </div>
-      <button
-        nz-button
-        nzType="default"
-        type="button"
-        (click)="runCheck()"
-        [nzLoading]="checkLoading()"
-      >
-        Проверить bio
-      </button>
-    </div>
-
-    @if (check(); as c) { @if (c.name) {
-    <div class="check-row">
-      <strong>Имя: {{ c.name.ok ? 'OK' : 'нужно доработать' }} · {{ c.name.score }}/100</strong>
-      @if (c.name.suggestion) { <span>{{ c.name.suggestion }}</span> }
-    </div>
-    @if (c.name.reasons?.length) {
-    <ul>
-      @for (reason of c.name.reasons; track reason) {
-      <li>{{ reason }}</li>
-      }
-    </ul>
-    } } @if (c.bio) {
-    <div class="check-row">
-      <strong>Описание: {{ c.bio.ok ? 'OK' : 'нужно доработать' }} · {{ c.bio.score }}/100</strong>
-      @if (c.bio.suggestion) { <span>{{ c.bio.suggestion }}</span> }
-    </div>
-    @if (c.bio.reasons?.length) {
-    <ul>
-      @for (reason of c.bio.reasons; track reason) {
-      <li>{{ reason }}</li>
-      }
-    </ul>
-    } } } @else {
-    <p class="hint">Нажмите «Проверить bio», чтобы получить рекомендации.</p>
-    }
-  </section>
-
-  <section class="panel">
-    <div class="panel-head">
-      <div>
-        <h2>Контакты для заявок</h2>
-        <p>
-          Эти контакты не видны в публичном профиле. Они вернутся менеджеру после отправки заявки.
-        </p>
-      </div>
-    </div>
-    <div class="inline-fields two">
-      <label>
-        Контактный email
-        <input nz-input [(ngModel)]="form.contact_email" name="contact_email" />
-      </label>
-      <label>
-        Телефон
-        <input nz-input [(ngModel)]="form.contact_phone" name="contact_phone" />
-      </label>
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="panel-head">
-      <div>
-        <h2>Соцсети для клиентов</h2>
-        <p>
-          Опубликовано на странице вашего профиля. Клик по иконке открывает
-          мессенджер или соцсеть напрямую — снимает «холодный контакт».
-        </p>
-      </div>
-    </div>
-    <div class="social-grid">
-      @for (net of socialNetworks; track net.key) {
-        <label class="social-field">
-          <span class="social-field-head">
-            <span class="ic" aria-hidden="true">{{ net.icon }}</span>
-            <span>{{ net.label }}</span>
-          </span>
-          <input
-            nz-input
-            [(ngModel)]="form.social_links[net.key]"
-            [name]="'social_' + net.key"
-            [placeholder]="net.placeholder"
-            maxlength="200"
-          />
-          <span class="hint">{{ net.hint }}</span>
-        </label>
-      }
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="panel-head">
-      <div>
-        <h2>Где вы работаете</h2>
-        <p>Фрилансер или один из продакшенов. Сохранится вместе с профилем.</p>
-      </div>
-    </div>
-    <nz-select
-      style="min-width: 320px"
-      [(ngModel)]="productionSelectedValue"
-      name="production"
-      nzPlaceHolder="Выберите вариант"
-    >
-      <nz-option nzValue="" nzLabel="— не выбрано —"></nz-option>
-      <nz-option nzValue="freelance" nzLabel="Фрилансер"></nz-option>
-      @for (pr of productions(); track pr.id) {
-        <nz-option [nzValue]="pr.id" [nzLabel]="pr.name"></nz-option>
-      }
-    </nz-select>
-  </section>
-
-  <section class="panel">
-    <div class="panel-head">
-      <div>
-        <h2>Категории</h2>
-        <p>Выберите одну или несколько. Звёздочка задаёт основную категорию.</p>
-      </div>
-    </div>
-    @for (group of categoryGroups(); track group.type) {
-    <h3 class="pick-type">{{ group.type }}</h3>
-    <div class="pick-grid">
-      @for (cat of group.categories; track cat.code) {
-      <button
-        type="button"
-        class="cat-pick"
-        [class.is-on]="selectedCategories().has(cat.code)"
-        [class.is-primary]="primaryCategory() === cat.code && selectedCategories().has(cat.code)"
-        (click)="toggleCategory(cat.code)"
-      >
-        <span class="cat-title">{{ cat.title }}</span>
-        <span class="cat-desc">{{ cat.description }}</span>
-        <span class="primary-action" (click)="setPrimary(cat.code, $event)">★ основная</span>
-      </button>
-      }
-    </div>
-    }
-  </section>
-
-  <section class="panel">
-    <h2>Навыки</h2>
-    <div class="skill-block">
-      <h3>Инструменты и форматы</h3>
-      <div class="chips">
-        @for (skill of tools(); track skill.id) {
-        <button
-          type="button"
-          class="chip"
-          [class.is-on]="selectedSkills().has(skill.id)"
-          (click)="toggleSkill(skill.id)"
-        >
-          {{ skill.title }}
-        </button>
-        }
-      </div>
-    </div>
-    <div class="skill-block">
-      <h3>Платформы</h3>
-      <div class="chips">
-        @for (skill of platforms(); track skill.id) {
-        <button
-          type="button"
-          class="chip"
-          [class.is-on]="selectedSkills().has(skill.id)"
-          (click)="toggleSkill(skill.id)"
-        >
-          {{ skill.title }}
-        </button>
-        }
-      </div>
-    </div>
-  </section>
-
-  @if (p.is_published) {
-    <app-profile-share
-      #share
-      [username]="p.username || ''"
-      [userId]="p.user_id"
-      [displayName]="p.display_name"
-      (usernameChange)="onUsernameChange($event)"
+  <!-- Шапка над табами: баннер модерации и прогресс видны на любой вкладке. -->
+  <header class="cabinet-head">
+    @if (p.is_published && p.moderation_status === 'pending_review') {
+    <nz-alert
+      class="moderation-banner"
+      nzType="info"
+      nzShowIcon
+      nzMessage="Профиль на проверке у админа"
+      nzDescription="Обычно занимает до 24 часов. После одобрения вы появитесь в каталоге и ленте. Если внесёте правки, проверка начнётся заново."
     />
-  }
-
-  <section class="panel">
-    <div class="panel-head">
-      <div>
-        <h2>Портфолио</h2>
-        <p>Видео и фото появятся в ленте, когда профиль опубликован.</p>
-      </div>
-      <span class="muted">{{ portfolio().length }} элементов</span>
-    </div>
-
-    <div class="portfolio-cta">
-      <div
-        class="dropzone"
-        [class.is-drag]="portfolioDragOver()"
-        (dragenter)="onPortfolioDragEnter($event)"
-        (dragover)="onPortfolioDragOver($event)"
-        (dragleave)="onPortfolioDragLeave($event)"
-        (drop)="onPortfolioDrop($event)"
-        (click)="portfolioFile.click()"
-        role="button"
-        tabindex="0"
-      >
-        <div class="dz-icon">📹🖼</div>
-        <strong>Перетащите видео или фото — или выберите файлы</strong>
-        <p>
-          Видео: MP4/MOV до 200 МБ → один ролик в ленте.<br />
-          Фото: JPG/PNG/WEBP/HEIC, 1–10 шт → карусель в ленте.
-        </p>
-        <input
-          #portfolioFile
-          type="file"
-          class="hidden-file"
-          accept="video/mp4,video/quicktime,image/jpeg,image/png,image/webp,image/heic,image/heif"
-          multiple
-          (change)="onPortfolioPicked($event)"
-        />
-      </div>
-      <button
-        class="camera-btn"
-        nz-button
-        nzType="default"
-        type="button"
-        (click)="portfolioCamera.click(); $event.stopPropagation()"
-      >
-        📷 Снять на камеру
-      </button>
-      <input
-        #portfolioCamera
-        type="file"
-        class="hidden-file"
-        accept="video/*"
-        capture="environment"
-        (change)="onPortfolioPicked($event)"
-      />
-      <!-- Скрытый input для добавления фото в существующий photo-set.
-           Используется из любого item — мы запоминаем target itemId в TS. -->
-      <input
-        #appendPhotosInput
-        type="file"
-        class="hidden-file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-        multiple
-        (change)="onAppendPhotosPicked($event)"
-      />
-    </div>
-
-    <div class="portfolio-list">
-      @for (item of portfolio(); track item.id) {
-      <article class="portfolio-row" [class.is-photoset]="item.kind === 'image'">
-        <!-- Большую обложку показываем только для видео — у photo-set'а
-             cover дублирует первое фото из миниатюр-карусели ниже, и слева
-             она съедала горизонтальное пространство на тачах. -->
-        @if (item.kind !== 'image') {
-          <div class="thumb">
-            @if (item.thumbnail_url) {
-            <img [src]="item.thumbnail_url" alt="" />
-            } @else {
-            <span>▶</span>
-            }
-          </div>
-        }
-        <div class="portfolio-main">
-          @if (editingItemId() === item.id) {
-            <input
-              nz-input
-              class="edit-title"
-              [(ngModel)]="editTitle"
-              maxlength="200"
-              placeholder="Название"
-            />
-            <textarea
-              nz-input
-              class="edit-desc"
-              rows="2"
-              [(ngModel)]="editDescription"
-              maxlength="1000"
-              placeholder="Описание (необязательно)"
-            ></textarea>
-            <div class="edit-actions">
-              <button nz-button nzSize="small" (click)="cancelEditMeta()" [disabled]="savingMeta()">Отмена</button>
-              <button nz-button nzSize="small" nzType="primary" (click)="saveEditMeta(item)" [nzLoading]="savingMeta()">Сохранить</button>
-            </div>
-          } @else {
-            <strong class="item-title">{{ item.title || '(без названия)' }}</strong>
-          }
-          @if (item.kind === 'video' && item.video_url) {
-          <a [href]="item.video_url" target="_blank" rel="noopener">открыть видео ↗</a>
-          } @else if (item.kind === 'image') {
-          <span class="hint-inline">Фото-кейс · {{ item.images?.length || 0 }} фото</span>
-          <div
-            class="photoset-thumbs"
-            cdkDropList
-            cdkDropListOrientation="mixed"
-            (cdkDropListDropped)="onReorderImages(item, $event)"
-          >
-            @for (img of item.images || []; track img.id) {
-            <div class="photoset-thumb" cdkDrag>
-              <img [src]="img.image_url" [alt]="item.title" loading="lazy" draggable="false" />
-              <button
-                type="button"
-                class="photoset-thumb-remove"
-                (click)="deletePhotoSetImage(item, img.id)"
-                aria-label="Удалить фото"
-                title="Удалить фото"
-              >×</button>
-            </div>
-            }
-            @if ((item.images?.length || 0) < maxPhotosPerSet) {
-              <button
-                type="button"
-                class="photoset-thumb-add"
-                (click)="pickAppendPhotos(item)"
-                [attr.aria-label]="'Добавить фото в кейс'"
-                title="Добавить фото"
-              >
-                <span class="plus">+</span>
-                <span class="lbl">Фото</span>
-              </button>
-            }
-          </div>
-          } @if (editingItemId() !== item.id && item.description) {
-          <p>{{ item.description }}</p>
-          }
-          <div class="chips">
-            @for (code of selectedCategories(); track code) {
-            <button
-              type="button"
-              class="chip small"
-              [class.is-on]="item.category_codes.includes(code)"
-              (click)="togglePortfolioCategory(item, code)"
-            >
-              {{ categoryTitle(code) }}
-            </button>
-            }
-          </div>
-        </div>
-        @if (editingItemId() !== item.id) {
-          <div class="row-actions">
-            <button
-              type="button"
-              class="row-action edit"
-              (click)="startEditMeta(item)"
-              aria-label="Редактировать"
-              title="Редактировать"
-            >
-              <span aria-hidden="true">✎</span>
-            </button>
-            <button
-              type="button"
-              class="row-action delete"
-              (click)="deletePortfolio(item.id)"
-              aria-label="Удалить"
-              title="Удалить"
-            >
-              <span nz-icon nzType="delete" nzTheme="outline"></span>
-            </button>
-          </div>
-        }
-      </article>
-      } @empty {
-      <p class="hint">Добавьте первый ролик или фото-кейс — появится в кабинете и ленте.</p>
+    } @if (p.moderation_status === 'rejected') {
+    <nz-alert
+      class="moderation-banner"
+      nzType="error"
+      nzShowIcon
+      nzMessage="Профиль отклонён модератором"
+      [nzDescription]="rejectReasonTpl"
+    />
+    <ng-template #rejectReasonTpl>
+      @if (p.moderation_reason) {
+      <p class="reject-reason">{{ p.moderation_reason }}</p>
       }
-    </div>
-  </section>
+      <p>Внесите правки и нажмите «Опубликовать» заново — заявка снова уйдёт админу.</p>
+    </ng-template>
+    }
+
+    <app-completeness-indicator [profile]="p" [portfolio]="portfolio()" />
+  </header>
+
+  <nz-tabset
+    class="cabinet-tabs"
+    [nzSelectedIndex]="tabIndex()"
+    (nzSelectedIndexChange)="onTabIndexChange($event)"
+    [nzAnimated]="false"
+  >
+    <nz-tab [nzTitle]="tabBasic">
+      <app-profile-basic
+        [form]="form"
+        [avatarUrl]="displayedAvatarUrl()"
+        [avatarUploading]="avatarUploading()"
+        [productions]="productions()"
+        [production]="productionSelected()"
+        [check]="check()"
+        [checkLoading]="checkLoading()"
+        (avatarPicked)="uploadAvatar($event)"
+        (avatarCleared)="clearAvatar()"
+        (checkRequested)="runCheck()"
+        (productionChange)="productionSelected.set($event)"
+      />
+    </nz-tab>
+
+    <nz-tab [nzTitle]="tabSkills">
+      <app-profile-skills
+        [categoryGroups]="categoryGroups()"
+        [categories]="categories()"
+        [selectedCategories]="selectedCategories()"
+        [primaryCategory]="primaryCategory()"
+        [tools]="tools()"
+        [platforms]="platforms()"
+        [selectedSkills]="selectedSkills()"
+        (categoryToggled)="toggleCategory($event)"
+        (primarySet)="setPrimary($event)"
+        (skillToggled)="toggleSkill($event)"
+      />
+    </nz-tab>
+
+    <nz-tab [nzTitle]="tabPortfolio">
+      <app-profile-portfolio
+        [items]="portfolio()"
+        [categories]="categories()"
+        [profileCategories]="selectedCategories()"
+        [primaryCategory]="primaryCategory()"
+        [publicUrl]="publicUrl()"
+        (itemsChange)="onPortfolioItemsChange($event)"
+        (reloadRequested)="onPortfolioReload()"
+        (profileTouched)="refreshProfileUpdatedAt()"
+      />
+    </nz-tab>
+
+    <nz-tab [nzTitle]="tabContacts">
+      <app-profile-contacts [form]="form" />
+    </nz-tab>
+
+    <nz-tab [nzTitle]="tabPublish">
+      <app-profile-publish #publishTab [profile]="p" (usernameChange)="onUsernameChange($event)" />
+    </nz-tab>
+  </nz-tabset>
+
+  <!-- Точка на заголовке = во вкладке есть незаполненное, дающее +% -->
+  <ng-template #tabBasic>
+    <nz-badge [nzDot]="tabMissing('basic')"><span class="tab-label">Основное</span></nz-badge>
+  </ng-template>
+  <ng-template #tabSkills>
+    <nz-badge [nzDot]="tabMissing('skills')"><span class="tab-label">Навыки</span></nz-badge>
+  </ng-template>
+  <ng-template #tabPortfolio>
+    <nz-badge [nzDot]="tabMissing('portfolio')">
+      <span class="tab-label">Портфолио</span>
+    </nz-badge>
+  </ng-template>
+  <ng-template #tabContacts>
+    <nz-badge [nzDot]="tabMissing('contacts')"><span class="tab-label">Контакты</span></nz-badge>
+  </ng-template>
+  <ng-template #tabPublish>
+    <nz-badge [nzDot]="tabMissing('publish')">
+      <span class="tab-label">Публикация</span>
+    </nz-badge>
+  </ng-template>
 
   @if (error()) {
   <nz-alert
@@ -497,23 +125,54 @@
   />
   }
 
+  <!-- «Выйти» на телефоне вынесен из закреплённой панели вниз контента:
+         рядом с «Сохранить» его слишком легко задеть пальцем. -->
+  <div class="content-logout">
+    <button nz-button nzDanger nzSize="large" type="button" (click)="logout()">
+      Выйти из аккаунта
+    </button>
+  </div>
+
   <div class="actions">
-    <button nz-button nzDanger type="button" (click)="logout()">Выйти</button>
+    <button class="desktop-only" nz-button nzDanger nzSize="large" type="button" (click)="logout()">
+      Выйти
+    </button>
     @if (p.is_published) {
-      <button nz-button nzType="default" type="button" [nzLoading]="saving()" (click)="save(false)">
-        Сохранить
-      </button>
-      <button nz-button nzDanger type="button" [nzLoading]="saving()" (click)="unpublish()">
-        Снять с публикации
-      </button>
+    <button
+      nz-button
+      nzType="primary"
+      nzSize="large"
+      type="button"
+      [nzLoading]="saving()"
+      (click)="save(false)"
+    >
+      Сохранить
+    </button>
+    <button
+      nz-button
+      nzDanger
+      nzSize="large"
+      type="button"
+      [nzLoading]="saving()"
+      (click)="unpublish()"
+    >
+      Снять с публикации
+    </button>
     } @else {
-      <!-- До первой публикации одна кнопка делает PATCH + publish.
-           Отдельный «Сохранить» не показываем — он бесполезен пока
-           нет публичного состояния, юзеры пугались двух «совершенно
-           одинаковых» CTA и публиковали невольно вторую копию. -->
-      <button nz-button nzType="primary" type="button" [nzLoading]="saving()" (click)="save(true)">
-        {{ p.moderation_status === 'rejected' ? 'Отправить на повторную проверку' : 'Опубликовать' }}
-      </button>
+    <!-- До первой публикации одна кнопка делает PATCH + publish.
+             Отдельный «Сохранить» не показываем — он бесполезен пока
+             нет публичного состояния, юзеры пугались двух «совершенно
+             одинаковых» CTA и публиковали невольно вторую копию. -->
+    <button
+      nz-button
+      nzType="primary"
+      nzSize="large"
+      type="button"
+      [nzLoading]="saving()"
+      (click)="save(true)"
+    >
+      {{ p.moderation_status === 'rejected' ? 'Отправить на повторную проверку' : 'Опубликовать' }}
+    </button>
     }
   </div>
   } @else {

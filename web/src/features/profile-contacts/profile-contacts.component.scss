@@ -1,0 +1,47 @@
+@use 'editor' as editor;
+
+:host {
+  display: block;
+}
+
+.inline-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Соцсети — grid, не CSS-columns: multicol на телефоне режет поля пополам.
+.social-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 16px 18px;
+}
+
+.social-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .social-field-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    color: var(--text);
+
+    .ic {
+      font-size: 17px;
+      line-height: 1;
+    }
+  }
+
+  .hint {
+    font-size: 14px;
+  }
+}
+
+@include editor.blocks;

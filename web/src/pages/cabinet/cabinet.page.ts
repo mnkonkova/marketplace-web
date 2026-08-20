@@ -1,7 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
+  HostListener,
   OnDestroy,
   OnInit,
   computed,
@@ -9,18 +9,16 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzBadgeModule } from 'ng-zorro-antd/badge';
+import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { EMPTY, Observable, firstValueFrom, forkJoin, of, throwError, timer } from 'rxjs';
+import { NzModalService } from 'ng-zorro-antd/modal';
+import { EMPTY, Observable, firstValueFrom, forkJoin, of, throwError } from 'rxjs';
 import { catchError, finalize, timeout } from 'rxjs/operators';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { MeUser } from '@entities/auth/model/auth.types';
@@ -32,76 +30,76 @@ import {
   ProfileCheckResult,
   UploadURLResponse,
 } from '@entities/me/model/me.types';
+import { ProfileForm, emptyProfileForm, emptySocialLinks } from '@entities/me/model/profile-form';
 import { CategoryApi } from '@entities/category/api/category.api';
 import { Category, Skill } from '@entities/category/model/category.types';
 import { ProductionApi } from '@entities/production/api/production.api';
 import { Production } from '@entities/production/model/production.types';
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import { ApiErrorBody, apiErrorMessage } from '@shared/api/api-error';
+import { resizeImageToBlob } from '@shared/image/resize';
 import { groupCategoriesByType } from '@shared/lib/category-groups';
+import {
+  PROFILE_TAB_IDS,
+  ProfileTabId,
+  completenessChecks,
+  missingWeightByTab,
+} from '@shared/lib/profile-completeness';
+import { specialistHandle } from '@shared/lib/specialist-link';
+import { validateRate } from '@shared/lib/rate-validation';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { NzModalService } from 'ng-zorro-antd/modal';
 import {
   isEmailUnverifiedError,
   openEmailUnverifiedDialog,
 } from '@features/auth/lib/open-email-unverified-dialog';
-import {
-  PortfolioUploadDialog,
-  PortfolioUploadDialogData,
-  PortfolioUploadDialogResult,
-} from '@features/portfolio-upload/portfolio-upload.dialog';
-import {
-  PhotoSetUploadDialog,
-  PhotoSetUploadDialogData,
-  PhotoSetUploadDialogResult,
-} from '@features/portfolio-upload/photoset-upload.dialog';
-import { resizeImageToBlob } from '@shared/image/resize';
-import { SOCIAL_NETWORKS, SocialKey } from '@shared/lib/social-links';
-import { ProfileShareComponent } from '@features/profile-share/profile-share.component';
+import { SOCIAL_NETWORKS } from '@shared/lib/social-links';
 import { CompletenessIndicatorComponent } from '@widgets/completeness-indicator/completeness-indicator.component';
+import { ProfileBasicComponent } from '@features/profile-basic/profile-basic.component';
+import { ProfileContactsComponent } from '@features/profile-contacts/profile-contacts.component';
+import { ProfilePortfolioComponent } from '@features/profile-portfolio/profile-portfolio.component';
+import { ProfilePublishComponent } from '@features/profile-publish/profile-publish.component';
+import { ProfileSkillsComponent } from '@features/profile-skills/profile-skills.component';
 
-function emptySocialLinks(): Record<SocialKey, string> {
-  // Все 9 ключей с пустыми значениями. Нужно чтобы ngModel мог писать
-  // через `form.social_links[key]` без undefined-проблем.
-  return SOCIAL_NETWORKS.reduce(
-    (acc, n) => {
-      acc[n.key] = '';
-      return acc;
-    },
-    {} as Record<SocialKey, string>,
-  );
+interface TabDef {
+  id: ProfileTabId;
+  label: string;
 }
 
-interface ProfileForm {
-  display_name: string;
-  bio: string;
-  avatar_url?: string;
-  city: string;
-  rate_min: number | null;
-  rate_max: number | null;
-  currency: string;
-  contact_email: string;
-  contact_phone: string;
-  social_links: Record<SocialKey, string>;
-  updated_at?: string;
-}
+const TABS: TabDef[] = [
+  { id: 'basic', label: 'Основное' },
+  { id: 'skills', label: 'Навыки' },
+  { id: 'portfolio', label: 'Портфолио' },
+  { id: 'contacts', label: 'Контакты' },
+  { id: 'publish', label: 'Публикация' },
+];
 
+/**
+ * Редактор профиля специалиста `/me`.
+ *
+ * Раньше был одной вертикальной простынёй; сейчас — пять вкладок
+ * (`features/profile-*`) под общей шапкой (баннер модерации + прогресс
+ * заполненности) и общей sticky-панелью действий.
+ *
+ * Состояние формы намеренно осталось на странице: вкладки её только
+ * отображают. Так переключение табов ничего не теряет, сохранение
+ * остаётся одним PATCH'ем, и не появляется второго стора.
+ */
 @Component({
   selector: 'app-cabinet-page',
   standalone: true,
   imports: [
-    FormsModule,
     NzSpinModule,
     NzButtonModule,
-    NzInputModule,
-    NzTagModule,
     NzAlertModule,
-    NzSelectModule,
-    NzIconModule,
-    DragDropModule,
+    NzBadgeModule,
+    NzTabsModule,
     AppHeaderComponent,
-    ProfileShareComponent,
     CompletenessIndicatorComponent,
+    ProfileBasicComponent,
+    ProfileSkillsComponent,
+    ProfilePortfolioComponent,
+    ProfileContactsComponent,
+    ProfilePublishComponent,
   ],
   templateUrl: './cabinet.page.html',
   styleUrl: './cabinet.page.scss',
@@ -114,6 +112,8 @@ export class CabinetPage implements OnInit, OnDestroy {
 
   private readonly router = inject(Router);
 
+  private readonly route = inject(ActivatedRoute);
+
   private readonly categoryApi = inject(CategoryApi);
 
   private readonly productionApi = inject(ProductionApi);
@@ -124,38 +124,31 @@ export class CabinetPage implements OnInit, OnDestroy {
 
   private readonly sessionStorage = window.sessionStorage;
 
+  public readonly tabs = TABS;
+
+  /**
+   * Активная вкладка живёт в query-параметре: ссылка `/me?tab=portfolio`
+   * и перезагрузка страницы должны открывать то же место.
+   */
+  private readonly queryParams = toSignal(this.route.queryParamMap, { initialValue: null });
+
+  public readonly tab = computed<ProfileTabId>(() => {
+    const raw = this.queryParams()?.get('tab') ?? '';
+    return (PROFILE_TAB_IDS as string[]).includes(raw) ? (raw as ProfileTabId) : 'basic';
+  });
+
+  public readonly tabIndex = computed(() => {
+    const i = TABS.findIndex((t) => t.id === this.tab());
+    return i < 0 ? 0 : i;
+  });
+
   public readonly checkLoading = signal(false);
 
   public readonly user = signal<MeUser | null>(null);
 
   public readonly profile = signal<MeProfile | null>(null);
 
-  public readonly shareRef = viewChild<ProfileShareComponent>('share');
-
-  public onUsernameChange(newUsername: string): void {
-    // newUsername уже trimmed+lowercased в child. "" = сброс.
-    const ref = this.shareRef();
-    this.meRepo
-      .patchProfileFull({
-        username: newUsername,
-        updated_at: this.profile()?.updated_at,
-      })
-      .subscribe({
-        next: (p) => {
-          this.applyProfile(p);
-          ref?.onSaveSuccess();
-          this.msg.success(newUsername ? 'Username сохранён' : 'Username сброшен');
-        },
-        error: (err) => {
-          const msg = err?.error?.message || 'Не удалось сохранить username';
-          ref?.onSaveError(msg);
-          // Дублируем тостом, чтобы юзер заметил ошибку даже если форма
-          // ниже скролла (на узких экранах). 409 username_taken — самый
-          // частый кейс, должен явно сигналиться.
-          this.msg.error(msg, { nzDuration: 5000 });
-        },
-      });
-  }
+  public readonly publishRef = viewChild<ProfilePublishComponent>('publishTab');
 
   public readonly categories = signal<Category[]>([]);
 
@@ -182,13 +175,16 @@ export class CabinetPage implements OnInit, OnDestroy {
   // Очищаем после ngOnDestroy или когда form.avatar_url приходит из БД.
   public readonly localAvatarUrl = signal<string | null>(null);
 
+  // Ре-рендер аватара по сигналу: form — обычный объект, за его полями
+  // сигналы не следят, поэтому после uploadAvatar дёргаем этот счётчик.
+  private readonly avatarVersion = signal(0);
+
   // displayedAvatarUrl — что показывать в <img>. Приоритет локальному
   // blob (свежий выбор) → потом form.avatar_url из БД/PATCH-ответа.
-  public readonly displayedAvatarUrl = computed(
-    () => this.localAvatarUrl() || this.form.avatar_url,
-  );
-
-  public readonly avatarBusy = computed(() => this.avatarUploading());
+  public readonly displayedAvatarUrl = computed(() => {
+    this.avatarVersion();
+    return this.localAvatarUrl() || this.form.avatar_url;
+  });
 
   public readonly error = signal('');
 
@@ -204,37 +200,33 @@ export class CabinetPage implements OnInit, OnDestroy {
   public readonly productions = signal<Production[]>([]);
 
   // Выбор: '' — не выбрано, 'freelance' — фриланс, иначе UUID продакшена.
-  // Двусторонняя ngModel-привязка идёт через productionSelectedValue ниже.
   public readonly productionSelected = signal<string>('');
 
-  public get productionSelectedValue(): string {
-    return this.productionSelected();
-  }
-
-  public set productionSelectedValue(v: string) {
-    this.productionSelected.set(v);
-  }
-
-  public form: ProfileForm = {
-    display_name: '',
-    bio: '',
-    city: '',
-    rate_min: null,
-    rate_max: null,
-    currency: 'RUB',
-    contact_email: '',
-    contact_phone: '',
-    social_links: emptySocialLinks(),
-  };
-
-  // Список соцсетей для шаблона (рендер inputs).
-  public readonly socialNetworks = SOCIAL_NETWORKS;
+  public form: ProfileForm = emptyProfileForm();
 
   public readonly tools = computed(() => this.recommendedSkills());
 
   public readonly platforms = computed(() => this.platformSkills());
 
   public readonly categoryGroups = computed(() => groupCategoriesByType(this.categories()));
+
+  /**
+   * Сколько процентов «недобрано» на каждой вкладке. Из этого рисуется
+   * точка-бейдж на заголовке таба: список «Что добавить (+%)» из шапки
+   * иначе не подсказывает, куда идти.
+   */
+  public readonly missingByTab = computed(() =>
+    missingWeightByTab(completenessChecks(this.profile(), this.portfolio())),
+  );
+
+  public readonly publicUrl = computed(() => {
+    const p = this.profile();
+    if (!p) return '';
+    return `/specialist/${specialistHandle({ username: p.username, user_id: p.user_id })}`;
+  });
+
+  /** Снимок сохранённого состояния — для «есть несохранённые изменения». */
+  private savedSnapshot = '';
 
   public ngOnInit(): void {
     if (!this.auth.isLoggedIn()) {
@@ -250,13 +242,54 @@ export class CabinetPage implements OnInit, OnDestroy {
     if (local) URL.revokeObjectURL(local);
   }
 
+  // === Вкладки ===
+
+  public onTabIndexChange(index: number): void {
+    const next = TABS[index]?.id ?? 'basic';
+    if (next === this.tab()) return;
+    // replaceUrl: вкладки — не история навигации, «назад» должен уводить
+    // со страницы, а не перебирать пять табов.
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: next === 'basic' ? null : next },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  public tabMissing(id: ProfileTabId): boolean {
+    return this.missingByTab()[id] > 0;
+  }
+
+  // === Несохранённые изменения ===
+
+  private snapshot(): string {
+    return JSON.stringify({
+      form: this.form,
+      categories: [...this.selectedCategories()],
+      primary: this.primaryCategory(),
+      skills: [...this.selectedSkills()].sort(),
+      production: this.productionSelected(),
+    });
+  }
+
+  /** true — в форме есть правки, которых нет на сервере. */
+  public hasUnsavedChanges(): boolean {
+    if (!this.profile()) return false;
+    return this.savedSnapshot !== '' && this.snapshot() !== this.savedSnapshot;
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  public onBeforeUnload(ev: BeforeUnloadEvent): void {
+    if (!this.hasUnsavedChanges()) return;
+    ev.preventDefault();
+    // Chrome требует непустой returnValue, текст всё равно свой показать нельзя.
+    ev.returnValue = '';
+  }
+
   public logout(): void {
     this.auth.clear();
     this.router.navigate(['/']);
-  }
-
-  public categoryTitle(code: string): string {
-    return this.categories().find((c) => c.code === code)?.title ?? code;
   }
 
   public toggleCategory(code: string): void {
@@ -274,8 +307,7 @@ export class CabinetPage implements OnInit, OnDestroy {
     this.refreshRecommendedSkills();
   }
 
-  public setPrimary(code: string, ev: Event): void {
-    ev.stopPropagation();
+  public setPrimary(code: string): void {
     const next = new Set(this.selectedCategories());
     const added = !next.has(code);
     next.add(code);
@@ -291,27 +323,63 @@ export class CabinetPage implements OnInit, OnDestroy {
     this.selectedSkills.set(next);
   }
 
+  public onUsernameChange(newUsername: string): void {
+    // newUsername уже trimmed+lowercased в child. "" = сброс.
+    const ref = this.publishRef();
+    this.meRepo
+      .patchProfileFull({
+        username: newUsername,
+        updated_at: this.profile()?.updated_at,
+      })
+      .subscribe({
+        next: (p) => {
+          this.applyProfile(p);
+          ref?.onSaveSuccess();
+          this.msg.success(newUsername ? 'Username сохранён' : 'Username сброшен');
+        },
+        error: (err) => {
+          const msg = err?.error?.message || 'Не удалось сохранить username';
+          ref?.onSaveError(msg);
+          // Дублируем тостом, чтобы юзер заметил ошибку даже если форма
+          // ниже скролла (на узких экранах). 409 username_taken — самый
+          // частый кейс, должен явно сигналиться.
+          this.msg.error(msg, { nzDuration: 5000 });
+        },
+      });
+  }
+
+  // === Портфолио (список принадлежит странице, операции — вкладке) ===
+
+  public onPortfolioItemsChange(items: PortfolioItem[]): void {
+    this.portfolio.set(items);
+  }
+
+  public onPortfolioReload(): void {
+    this.loadPortfolio();
+  }
+
   public save(publish = false): void {
     this.error.set('');
     this.check.set(null);
     if (!this.form.display_name.trim()) {
       this.error.set('Имя/название не может быть пустым.');
+      this.goToTab('basic');
       return;
     }
-    if (
-      this.form.rate_min != null &&
-      this.form.rate_max != null &&
-      this.form.rate_min > this.form.rate_max
-    ) {
-      this.error.set('Ставка «от» больше «до».');
+    const rate = validateRate(this.form.rate_min, this.form.rate_max, this.form.currency);
+    if (rate.error) {
+      this.error.set(rate.error);
+      this.goToTab('basic');
       return;
     }
     if (publish && !this.selectedCategories().size) {
       this.error.set('Выберите хотя бы одну категорию перед публикацией.');
+      this.goToTab('skills');
       return;
     }
     if (publish && !this.form.bio.trim()) {
       this.error.set('Заполните описание перед публикацией.');
+      this.goToTab('basic');
       return;
     }
     this.saving.set(true);
@@ -328,8 +396,10 @@ export class CabinetPage implements OnInit, OnDestroy {
       currency: (this.form.currency || 'RUB').trim().toUpperCase(),
       contact_email: this.form.contact_email.trim(),
       contact_phone: this.form.contact_phone.trim(),
-      rate_min: this.form.rate_min ?? null,
-      rate_max: this.form.rate_max ?? null,
+      // Нормализованные значения: 0 и пустое уезжают как null, иначе на
+      // публичной выходило «от 0 ₽».
+      rate_min: rate.min,
+      rate_max: rate.max,
       skills: { skill_ids: [...this.selectedSkills()] },
       social_links: this.form.social_links,
       updated_at: this.sessionStorage.getItem('updated_at') ?? undefined,
@@ -417,13 +487,11 @@ export class CabinetPage implements OnInit, OnDestroy {
     const input = event.target as HTMLInputElement;
     const original = input.files?.[0];
     // input.value уже сбрасывается на (click) до открытия picker'а
-    // (см. cabinet.page.html). Не сбрасываем тут — иначе change event
-    // вернёт пустой files на следующем рендере у некоторых iOS-версий.
+    // (см. profile-basic.component.html). Не сбрасываем тут — иначе change
+    // event вернёт пустой files на следующем рендере у некоторых iOS-версий.
     if (!original) return;
     // Принимаем любой image/* (включая HEIC от iPhone-камеры) — canvas
     // в resizeImageToBlob сам декодирует то что браузер умеет открыть.
-    // Если браузер не может декодить — fileToHtmlImage кинет ошибку,
-    // поймаем в catch и покажем toast.
     if (!original.type.startsWith('image/')) {
       this.msg.error('Аватар: ожидается картинка (jpg, png, webp, heic)', {
         nzDuration: 6000,
@@ -458,6 +526,7 @@ export class CabinetPage implements OnInit, OnDestroy {
         resized,
       );
       this.form.avatar_url = publicURL;
+      this.avatarVersion.update((v) => v + 1);
       this.msg.success('Аватар загружен. Нажмите «Сохранить», чтобы применить.');
     } catch (err) {
       this.error.set(`Не удалось загрузить аватар: ${(err as Error).message}`);
@@ -474,284 +543,8 @@ export class CabinetPage implements OnInit, OnDestroy {
     const local = this.localAvatarUrl();
     if (local) URL.revokeObjectURL(local);
     this.localAvatarUrl.set(null);
+    this.avatarVersion.update((v) => v + 1);
     this.msg.info('Аватар будет очищен после сохранения профиля.');
-  }
-
-  public readonly portfolioDragOver = signal(false);
-
-  // Inline-edit для title/description портфолио-айтема (video или photoset).
-  // editingItemId — id текущего открытого редактора (null = ничего не редактируется).
-  public readonly editingItemId = signal<string | null>(null);
-  public editTitle = '';
-  public editDescription = '';
-  public readonly savingMeta = signal(false);
-
-  public readonly maxPhotosPerSet = 10;
-
-  // Скрытый input для append-фото — на него триггерим клик когда юзер жмёт
-  // «+ Фото» в карточке photo-set'а. Запоминаем target item для onChange.
-  public readonly appendPhotosInput = viewChild<ElementRef<HTMLInputElement>>('appendPhotosInput');
-  private appendTargetItemId: string | null = null;
-
-  public pickAppendPhotos(item: PortfolioItem): void {
-    this.appendTargetItemId = item.id;
-    this.appendPhotosInput()?.nativeElement.click();
-  }
-
-  public async onAppendPhotosPicked(ev: Event): Promise<void> {
-    const input = ev.target as HTMLInputElement;
-    const files = Array.from(input.files ?? []);
-    input.value = '';
-    const itemId = this.appendTargetItemId;
-    this.appendTargetItemId = null;
-    if (!itemId || files.length === 0) return;
-    const item = this.portfolio().find((p) => p.id === itemId);
-    if (!item) return;
-    const room = this.maxPhotosPerSet - (item.images?.length || 0);
-    if (room <= 0) {
-      this.msg.warning(`Максимум ${this.maxPhotosPerSet} фото на кейс — удалите лишние`);
-      return;
-    }
-    const toUpload = files.slice(0, room);
-    if (files.length > room) {
-      this.msg.warning(`Можно добавить ещё ${room} — лишние пропущены`);
-    }
-    // Параллельный upload каждого файла → массив PortfolioPhotoRef → POST.
-    this.savingMeta.set(true);
-    try {
-      const refs = await Promise.all(
-        toUpload.map(async (f) => {
-          const { file: resized, width, height } = await resizeImageToBlob(f, 1920, 0.85);
-          const presign = await firstValueFrom(this.meRepo.presignAvatarUpload(resized));
-          await putFileToPresignedUrl(presign.upload_url, resized);
-          return { image_url: presign.public_url, width, height };
-        }),
-      );
-      const res = await firstValueFrom(this.meRepo.appendPortfolioImages(itemId, refs));
-      this.portfolio.update((items) =>
-        items.map((p) =>
-          p.id === itemId
-            ? {
-                ...p,
-                images: res.images,
-                thumbnail_url: res.images[0]?.image_url || p.thumbnail_url,
-                updated_at: res.updated_at, // sync optimistic-lock snapshot
-              }
-            : p,
-        ),
-      );
-      this.refreshProfileUpdatedAt();
-      this.msg.success(`Добавлено ${refs.length} фото`);
-    } catch (err) {
-      this.msg.error(apiErrorMessage((err as { error?: ApiErrorBody })?.error ?? null, 'Не удалось добавить фото'));
-    } finally {
-      this.savingMeta.set(false);
-    }
-  }
-
-  public onReorderImages(item: PortfolioItem, ev: CdkDragDrop<unknown>): void {
-    if (!item.images || ev.previousIndex === ev.currentIndex) return;
-    const reordered = [...item.images];
-    moveItemInArray(reordered, ev.previousIndex, ev.currentIndex);
-    // Оптимистично применяем на фронте — пользователь видит мгновенный отклик.
-    this.portfolio.update((items) =>
-      items.map((p) =>
-        p.id === item.id
-          ? { ...p, images: reordered, thumbnail_url: reordered[0].image_url }
-          : p,
-      ),
-    );
-    this.meRepo.reorderPortfolioImages(item.id, reordered.map((i) => i.id)).subscribe({
-      next: (res) => {
-        // Бэк может перенумеровать sort_order и обновляет parent.updated_at —
-        // синхронизируем и то, и другое (иначе следующий PATCH meta = 409).
-        this.portfolio.update((items) =>
-          items.map((p) =>
-            p.id === item.id
-              ? {
-                  ...p,
-                  images: res.images,
-                  thumbnail_url: res.images[0]?.image_url || p.thumbnail_url,
-                  updated_at: res.updated_at,
-                }
-              : p,
-          ),
-        );
-        this.refreshProfileUpdatedAt();
-      },
-      error: (err) => {
-        // Откатываем — перезагружаем с сервера.
-        this.loadPortfolio();
-        this.msg.error(apiErrorMessage(err?.error ?? null, 'Не удалось изменить порядок'));
-      },
-    });
-  }
-
-  public startEditMeta(item: PortfolioItem): void {
-    this.editingItemId.set(item.id);
-    this.editTitle = item.title || '';
-    this.editDescription = item.description || '';
-  }
-
-  public cancelEditMeta(): void {
-    this.editingItemId.set(null);
-  }
-
-  public saveEditMeta(item: PortfolioItem): void {
-    const title = this.editTitle.trim();
-    const description = this.editDescription.trim();
-    if (!title) {
-      this.msg.error('Название не может быть пустым');
-      return;
-    }
-    if (title === (item.title || '') && description === (item.description || '')) {
-      // Ничего не изменилось — закрываем без запроса.
-      this.editingItemId.set(null);
-      return;
-    }
-    this.savingMeta.set(true);
-    this.meRepo
-      .updatePortfolioMeta(item.id, { title, description, updated_at: item.updated_at })
-      .pipe(
-        catchError((err) => {
-          this.savingMeta.set(false);
-          const m = apiErrorMessage(err.error, 'Не удалось сохранить');
-          this.msg.error(m);
-          return EMPTY;
-        }),
-      )
-      .subscribe((updated) => {
-        this.savingMeta.set(false);
-        this.portfolio.update((items) =>
-          items.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
-        );
-        this.editingItemId.set(null);
-        this.refreshProfileUpdatedAt();
-        this.msg.success('Сохранено');
-      });
-  }
-
-  public onPortfolioDragEnter(ev: DragEvent): void {
-    if (!ev.dataTransfer?.types.includes('Files')) return;
-    ev.preventDefault();
-    this.portfolioDragOver.set(true);
-  }
-
-  public onPortfolioDragOver(ev: DragEvent): void {
-    if (!ev.dataTransfer?.types.includes('Files')) return;
-    ev.preventDefault();
-    ev.dataTransfer.dropEffect = 'copy';
-  }
-
-  public onPortfolioDragLeave(ev: DragEvent): void {
-    // dragleave срабатывает и на детях — игнорим если ушли на ребёнка
-    const related = ev.relatedTarget as Node | null;
-    if (related && (ev.currentTarget as HTMLElement).contains(related)) return;
-    this.portfolioDragOver.set(false);
-  }
-
-  public onPortfolioDrop(ev: DragEvent): void {
-    ev.preventDefault();
-    this.portfolioDragOver.set(false);
-    this.routeFiles(Array.from(ev.dataTransfer?.files ?? []));
-  }
-
-  public onPortfolioPicked(ev: Event): void {
-    const input = ev.target as HTMLInputElement;
-    const files = Array.from(input.files ?? []);
-    input.value = '';
-    this.routeFiles(files);
-  }
-
-  // routeFiles — единая логика «куда дальше» по типу файлов:
-  //   • все картинки → photo-set (диалог с авто-добавленными файлами)
-  //   • первый файл — видео → video-upload (берём только этот файл; остальные
-  //     видео-айтемы заводятся как отдельные работы, batch не предусмотрен)
-  //   • смешано (фото + видео) → берём фото как photo-set + warning что
-  //     видео нужно отдельной загрузкой (избегаем потери информации без
-  //     явной отметки юзеру)
-  private routeFiles(files: File[]): void {
-    if (files.length === 0) return;
-    const isImage = (f: File) => /^image\//.test(f.type) || /\.(heic|heif)$/i.test(f.name);
-    const isVideo = (f: File) => /^video\//.test(f.type) || /\.(mp4|mov|m4v)$/i.test(f.name);
-
-    const images = files.filter(isImage);
-    const videos = files.filter(isVideo);
-
-    if (images.length > 0 && videos.length === 0) {
-      this.openPhotoSetDialog(images);
-      return;
-    }
-    if (videos.length > 0 && images.length === 0) {
-      if (videos.length > 1) {
-        this.msg.warning('Видео загружаются по одному. Открываю первое — остальные загрузите следующими.');
-      }
-      this.openUploadDialog(videos[0]);
-      return;
-    }
-    if (images.length > 0 && videos.length > 0) {
-      this.msg.warning('Видео и фото нельзя в одну загрузку. Открыл фото-кейс — видео загрузите отдельно.');
-      this.openPhotoSetDialog(images);
-      return;
-    }
-    // Ничего не распознано
-    this.msg.error('Поддерживаются только видео (MP4/MOV) и фото (JPG/PNG/WEBP/HEIC).');
-  }
-
-  public openUploadDialog(initialFile?: File): void {
-    const ref = this.modalService.create<
-      PortfolioUploadDialog,
-      PortfolioUploadDialogData,
-      PortfolioUploadDialogResult | null
-    >({
-      nzTitle: 'Новое видео в портфолио',
-      nzContent: PortfolioUploadDialog,
-      nzFooter: null,
-      nzWidth: 560,
-      nzClassName: 'portfolio-upload-modal',
-      nzMaskClosable: false,
-      nzData: {
-        categories: this.categories(),
-        primaryCategory: this.primaryCategory(),
-        selectedCategoryCodes: [...this.selectedCategories()],
-        initialFile,
-      },
-    });
-    ref.afterClose.subscribe((res: PortfolioUploadDialogResult | null | undefined) => {
-      if (res?.created) {
-        this.loadPortfolio();
-        this.refreshProfileUpdatedAt();
-        this.msg.success('Видео добавлено');
-      }
-    });
-  }
-
-  public openPhotoSetDialog(initialFiles?: File[]): void {
-    const ref = this.modalService.create<
-      PhotoSetUploadDialog,
-      PhotoSetUploadDialogData,
-      PhotoSetUploadDialogResult | null
-    >({
-      nzTitle: 'Новый фото-кейс',
-      nzContent: PhotoSetUploadDialog,
-      nzFooter: null,
-      nzWidth: 640,
-      nzClassName: 'portfolio-upload-modal',
-      nzMaskClosable: false,
-      nzData: {
-        categories: this.categories(),
-        primaryCategory: this.primaryCategory(),
-        selectedCategoryCodes: [...this.selectedCategories()],
-        initialFiles,
-      },
-    });
-    ref.afterClose.subscribe((res: PhotoSetUploadDialogResult | null | undefined) => {
-      if (res?.created) {
-        this.loadPortfolio();
-        this.refreshProfileUpdatedAt();
-        this.msg.success('Фото-кейс добавлен');
-      }
-    });
   }
 
   // refreshProfileUpdatedAt — синхронизирует optimistic-lock snapshot после
@@ -763,17 +556,15 @@ export class CabinetPage implements OnInit, OnDestroy {
   //   2. BumpModerationToPendingIfApprovedInTx — если спец approved, любой
   //      portfolio-change переводит в pending_review (+ бампает updated_at).
   // Без рефреша следующий PATCH /me/profile получит 409 conflict.
-  private refreshProfileUpdatedAt(): void {
+  public refreshProfileUpdatedAt(): void {
     this.meRepo.getProfile().subscribe({
       next: (p) => {
         this.setUpdatedAt(p.updated_at);
         // Обновляем ТАКЖЕ signal profile.updated_at — иначе onUsernameChange /
-        // saveProfile берут устаревший snapshot из this.profile() и получают
+        // save берут устаревший snapshot из this.profile() и получают
         // 409 «объект изменён». applyProfile() не используем чтобы не
         // перезатереть form-state (юзер мог что-то печатать в полях).
-        this.profile.update((cur) =>
-          cur ? { ...cur, updated_at: p.updated_at } : cur,
-        );
+        this.profile.update((cur) => (cur ? { ...cur, updated_at: p.updated_at } : cur));
       },
       error: () => {
         // Не критично: на следующем save юзер получит 409 и страница
@@ -782,72 +573,9 @@ export class CabinetPage implements OnInit, OnDestroy {
     });
   }
 
-  public deletePortfolio(id: string): void {
-    this.meRepo
-      .deletePortfolio(id)
-      .pipe(
-        catchError((err) => {
-          this.error.set(apiErrorMessage(err.error, 'Не удалось удалить видео'));
-          return EMPTY;
-        }),
-      )
-      .subscribe(() => {
-        this.portfolio.update((items) => items.filter((p) => p.id !== id));
-        this.refreshProfileUpdatedAt();
-        this.msg.success('Видео удалено');
-      });
-  }
-
-  // Удалить одно фото из photo-set'а. Бэк автоматически снесёт сам сет,
-  // если в нём не осталось фото — поэтому удаляем из portfolio локально
-  // либо обновляем images-массив.
-  public deletePhotoSetImage(item: PortfolioItem, imageId: string): void {
-    this.meRepo
-      .deletePortfolioImage(imageId)
-      .pipe(
-        catchError((err) => {
-          this.error.set(apiErrorMessage(err.error, 'Не удалось удалить фото'));
-          return EMPTY;
-        }),
-      )
-      .subscribe(() => {
-        const remaining = (item.images ?? []).filter((i) => i.id !== imageId);
-        if (remaining.length === 0) {
-          this.portfolio.update((items) => items.filter((p) => p.id !== item.id));
-          this.refreshProfileUpdatedAt();
-          this.msg.success('Сет удалён — последнее фото было удалено');
-          return;
-        }
-        // Полностью перезагружаем portfolio: backend обновляет
-        // portfolio_items.updated_at при изменении cover'а, без перезагрузки
-        // фронт держал бы stale snapshot → следующий PATCH meta = 409.
-        // loadPortfolio() возвращает свежие updated_at для всех items.
-        this.loadPortfolio();
-        this.refreshProfileUpdatedAt();
-        this.msg.success('Фото удалено');
-      });
-  }
-
-  public togglePortfolioCategory(item: PortfolioItem, code: string): void {
-    const next = new Set(item.category_codes ?? []);
-    if (next.has(code)) next.delete(code);
-    else next.add(code);
-    this.meRepo
-      .updatePortfolioCategories(item.id, [...next])
-      .pipe(
-        catchError((err) => {
-          this.error.set(apiErrorMessage(err.error, 'Не удалось обновить категории видео'));
-          return EMPTY;
-        }),
-      )
-      .subscribe((updated) => {
-        this.portfolio.update((items) => items.map((p) => (p.id === updated.id ? updated : p)));
-        // SetPortfolioCategories на бэке проходит через
-        // BumpModerationToPendingIfApprovedInTx (для approved-спецов) — это
-        // меняет specialist_profiles.updated_at. Без refresh следующий
-        // PATCH /me/profile получит 409.
-        this.refreshProfileUpdatedAt();
-      });
+  private goToTab(id: ProfileTabId): void {
+    const index = TABS.findIndex((t) => t.id === id);
+    if (index >= 0) this.onTabIndexChange(index);
   }
 
   private loadAll(): void {
@@ -879,9 +607,9 @@ export class CabinetPage implements OnInit, OnDestroy {
         timeout({
           each: 15000,
           with: () =>
-            throwError(
-              () => ({ error: { message: 'Сервер не отвечает 15 секунд. Обновите страницу.' } }),
-            ),
+            throwError(() => ({
+              error: { message: 'Сервер не отвечает 15 секунд. Обновите страницу.' },
+            })),
         }),
         catchError((err) => {
           this.error.set(apiErrorMessage(err?.error, 'Не удалось загрузить профиль'));
@@ -940,22 +668,28 @@ export class CabinetPage implements OnInit, OnDestroy {
       contact_phone: p.contact_phone ?? '',
       social_links: social,
     };
+    this.avatarVersion.update((v) => v + 1);
     this.selectedCategories.set(new Set(p.categories ?? []));
     this.primaryCategory.set(p.primary_category || p.categories?.[0] || '');
     this.selectedSkills.set(new Set(p.skill_ids ?? []));
     this.productionSelected.set(p.is_freelance ? 'freelance' : (p.production_id ?? ''));
-    this.refreshRecommendedSkills();
+    this.savedSnapshot = this.snapshot();
+    this.refreshRecommendedSkills(true);
   }
 
   // Подгружает рекомендованные навыки под выбранные категории и подрезает
   // selectedSkills: если убрали категорию, навыки которой больше нигде не
   // встречаются, они исчезнут из чипов — нельзя оставлять их выбранными
   // в сохраняемом наборе. Платформы не трогаем — они всегда разрешены.
-  private refreshRecommendedSkills(): void {
+  //
+  // rebaseline=true — вызов сразу после загрузки профиля: подрезка навыков
+  // не должна выглядеть как «пользователь что-то поменял».
+  private refreshRecommendedSkills(rebaseline = false): void {
     const codes = [...this.selectedCategories()];
     if (codes.length === 0) {
       this.recommendedSkills.set([]);
       this.pruneSelectedSkills(new Set());
+      if (rebaseline) this.savedSnapshot = this.snapshot();
       return;
     }
     forkJoin(codes.map((c) => this.categoryApi.skills({ category: c }))).subscribe((lists) => {
@@ -971,6 +705,7 @@ export class CabinetPage implements OnInit, OnDestroy {
       }
       this.recommendedSkills.set(merged);
       this.pruneSelectedSkills(new Set(merged.map((s) => s.id)));
+      if (rebaseline) this.savedSnapshot = this.snapshot();
     });
   }
 
@@ -983,7 +718,6 @@ export class CabinetPage implements OnInit, OnDestroy {
     }
     if (next.size !== current.size) this.selectedSkills.set(next);
   }
-
 
   private publish(): void {
     this.meRepo
@@ -1028,4 +762,3 @@ export class CabinetPage implements OnInit, OnDestroy {
     );
   }
 }
-

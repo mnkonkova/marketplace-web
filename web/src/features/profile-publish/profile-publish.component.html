@@ -1,0 +1,37 @@
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Статус публикации</h2>
+      <p>Где сейчас профиль и что видят клиенты.</p>
+    </div>
+  </div>
+
+  <div class="status-row" [class]="'tone-' + status().tone">
+    <span class="dot" aria-hidden="true"></span>
+    <div>
+      <strong>{{ status().title }}</strong>
+      <p class="hint">{{ status().text }}</p>
+    </div>
+  </div>
+
+  <a class="preview-link" [href]="publicUrl()" target="_blank" rel="noopener">
+    <span nz-icon nzType="eye" nzTheme="outline"></span>
+    Как видят клиенты
+  </a>
+</section>
+
+<section class="panel">
+  <app-profile-share
+    #share
+    [username]="profile().username || ''"
+    [userId]="profile().user_id"
+    [displayName]="profile().display_name"
+    (usernameChange)="usernameChange.emit($event)"
+  />
+  @if (!profile().is_published) {
+    <p class="hint">
+      Username можно занять уже сейчас — ссылка начнёт открываться для клиентов после публикации и
+      одобрения.
+    </p>
+  }
+</section>

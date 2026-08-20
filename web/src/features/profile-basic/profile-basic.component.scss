@@ -1,0 +1,188 @@
+@use 'editor' as editor;
+@use 'layout';
+
+:host {
+  display: block;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: clamp(20px, 2.4vw, 36px);
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.avatar-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.avatar-preview {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 160px;
+  height: 160px;
+  border-radius: 34px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 56px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+
+  img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &.is-uploading {
+    filter: brightness(0.55);
+    cursor: progress;
+  }
+
+  &.is-disabled {
+    pointer-events: none;
+  }
+}
+
+// label-styled-as-nz-button. Используем label вместо <button> чтобы клик
+// нативно открывал ассоциированный input[file] на iOS Safari (там
+// программный .click() иногда отваливается после 1-го picker'а).
+.avatar-pick-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+
+  &:hover {
+    background: var(--surface-hover);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  &.is-disabled {
+    pointer-events: none;
+    opacity: 0.65;
+    cursor: progress;
+  }
+}
+
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: inherit;
+  color: #fff;
+  font-size: 32px;
+
+  span[nz-icon] {
+    display: inline-flex;
+    animation: spin 0.9s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 1.2vw, 20px);
+  min-width: 0;
+}
+
+// Ставка от / до / валюта — одна сетка, поля одинаковой высоты. Валюта
+// уже: это код из трёх букв, а не сумма.
+.inline-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 96px;
+  gap: 12px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rate-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rate-preview {
+  color: var(--text);
+}
+
+.bio-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bio-preview {
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.check-panel {
+  border-color: rgba(32, 161, 148, 0.28);
+
+  &.rejected {
+    border-color: rgba(255, 122, 122, 0.35);
+  }
+
+  ul {
+    margin: 0 0 8px;
+    padding-left: 20px;
+    color: var(--text-muted);
+  }
+}
+
+.check-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  color: var(--text-muted);
+}
+
+// Инклуд последним: внутри есть вложенные @media, а декларации после
+// вложенного правила — deprecated в Sass (mixed-decls).
+@include editor.blocks;

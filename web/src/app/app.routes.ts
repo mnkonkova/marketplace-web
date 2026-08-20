@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { requireRole } from '@shared/guards/role.guard';
+import { unsavedChangesGuard } from '@shared/guards/unsaved-changes.guard';
 
 export const routes: Routes = [
   {
@@ -48,6 +49,9 @@ export const routes: Routes = [
   },
   {
     path: 'me',
+    // Форма сохраняется по кнопке, поэтому уход со страницы с правками
+    // подтверждается модалкой (см. unsavedChangesGuard).
+    canDeactivate: [unsavedChangesGuard],
     loadComponent: () => import('@pages/cabinet/cabinet.page').then((m) => m.CabinetPage),
   },
   // Клиентские страницы: проверка не по role, а просто isLoggedIn — бэк

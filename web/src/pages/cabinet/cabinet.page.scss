@@ -1,244 +1,70 @@
 @use '../../assets/size' as *;
+@use 'breakpoints' as bp;
+@use 'layout';
+
+// Оболочка редактора: шапка (баннер + прогресс), табы, sticky-панель.
+// Содержимое вкладок живёт в features/profile-* и стилизуется там.
 .cabinet {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 32px clamp(16px, 5vw, 64px) 96px;
+  // Базовый кегль страницы флюидный: на широком мониторе вместе с ним
+  // растут подписи, хинты и поля, а не только контейнер.
+  font-size: layout.$fluid-editor-body;
+  // Запас снизу под sticky-панель — иначе она перекрывает последние поля.
+  padding-block: clamp(20px, 2.4vw, 36px) 132px;
 
-  h1 {
-    margin: 6px 0 12px;
-    font-size: clamp(34px, 6vw, 64px);
-    line-height: 0.95;
-  }
-
-  h2,
-  h3,
-  p {
-    margin-top: 0;
-  }
+  // Инклуд последним: он несёт вложенный @media, а декларации после
+  // вложенного правила — deprecated в Sass (mixed-decls).
+  @include layout.editor-container;
 }
 
-.hero,
-.panel,
-.actions {
-  border: 1px solid var(--border);
-  background: var(--surface);
+.cabinet-head {
+  margin-bottom: clamp(16px, 1.6vw, 24px);
 }
 
-.hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 18px;
-  padding: clamp(24px, 5vw, 44px);
-  border-radius: $default-radius;
+.moderation-banner {
+  margin-bottom: 16px;
 
-  p {
-    max-width: 620px;
-    color: var(--text-muted);
+  .reject-reason {
+    margin: 0 0 8px;
+    padding: 8px 12px;
+    background: rgba(255, 77, 79, 0.08);
+    border-left: 3px solid #ff4d4f;
+    border-radius: 4px;
+    font-weight: 500;
   }
 }
 
-.eyebrow {
-  color: var(--accent);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
+.cabinet-tabs {
+  // Полоса вкладок липнет под шапкой: на длинной вкладке «Портфолио»
+  // иначе не видно, где ты находишься.
+  ::ng-deep .ant-tabs-nav {
+    margin-bottom: clamp(16px, 1.6vw, 24px);
+  }
 
-.status {
-  align-self: flex-start;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--text-muted);
-  white-space: nowrap;
+  // Телефон: вкладки уезжают горизонтальным скроллом, а не переносятся
+  // в две строки и не растягивают страницу вбок.
+  ::ng-deep .ant-tabs-nav-wrap {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
 
-  &.is-published {
-    border-color: rgba(32, 161, 148, 0.45);
-    color: var(--accent);
+  ::ng-deep .ant-tabs-nav-wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  ::ng-deep .ant-tabs-tab {
+    min-height: 44px;
+    padding: 10px 4px;
+    font-size: clamp(15px, 0.4vw + 14px, 17px);
+  }
+
+  // Точка «здесь незаполнено» не должна прижиматься к тексту вплотную.
+  .tab-label {
+    padding-right: 6px;
   }
 }
 
-.panel {
+.cabinet-error {
   margin-top: 16px;
-  padding: clamp(18px, 3vw, 28px);
-  border-radius: $default-radius;
-}
-
-.panel-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-
-  h2 {
-    margin-bottom: 4px;
-  }
-
-  p {
-    color: var(--text-muted);
-    font-size: 14px;
-  }
-}
-
-.profile-grid {
-  display: grid;
-  grid-template-columns: 160px 1fr;
-  gap: 24px;
-}
-
-.avatar-column {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.avatar-preview,
-.thumb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--accent);
-  font-weight: 800;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-}
-
-// Аватарка отдельно — абсолют + inset для гарантии чтобы iOS не оставлял
-// серую полоску. Только для .avatar-preview img, чтобы не сломать .thumb
-// (у которого нет position:relative — там img уйдёт в полэкрана).
-.avatar-preview {
-  isolation: isolate;
-
-  img {
-    position: absolute;
-    inset: 0;
-  }
-}
-
-.avatar-preview {
-  position: relative;
-  width: 160px;
-  height: 160px;
-  border-radius: 34px;
-  font-size: 56px;
-  cursor: pointer;
-  transition: filter 0.15s ease;
-
-  &.is-uploading {
-    filter: brightness(0.55);
-    cursor: progress;
-  }
-
-  &.is-disabled {
-    pointer-events: none;
-  }
-}
-
-// label-styled-as-nz-button. Используем label вместо <button> чтобы клик
-// нативно открывал ассоциированный input[file] на iOS Safari (там
-// программный .click() иногда отваливается после 1-го picker'а).
-.avatar-pick-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 16px;
-  height: 32px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 14px;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-
-  &:hover {
-    background: var(--surface-hover);
-    border-color: rgba(255, 255, 255, 0.16);
-  }
-
-  &.is-disabled {
-    pointer-events: none;
-    opacity: 0.65;
-    cursor: progress;
-  }
-}
-
-.avatar-overlay {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(0, 0, 0, 0.35);
-  border-radius: inherit;
-  color: #fff;
-  font-size: 32px;
-
-  // Крутим иконку — ng-zorro у nzType="loading" уже даёт анимацию, но на
-  // некоторых билдах класса .anticon-spin может не быть. Явно вращаем для
-  // гарантии (особенно важно на iOS Safari где CSS animation иногда лагает
-  // на сложных слоях — задаём simple transform-rotation).
-  span[nz-icon] {
-    display: inline-flex;
-    animation: spin 0.9s linear infinite;
-  }
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.fields {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.inline-fields {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-
-  &.two {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.hidden-file {
-  // display:none на iOS Safari иногда блокирует .click() (зависит от
-  // версии). Делаем «визуально скрытым», но кликабельным программно.
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-}
-
-.hint {
-  color: var(--text-muted);
-  font-size: 14px;
 }
 
 .alert {
@@ -256,524 +82,16 @@ label {
   border-radius: 8px;
   color: var(--text);
   cursor: pointer;
+
   &:hover {
     border-color: var(--accent);
   }
 }
 
-.pick-type {
-  margin: 20px 0 10px;
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-
-  &:first-of-type {
-    margin-top: 0;
-  }
-}
-
-.pick-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
-}
-
-.cat-pick {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 132px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: $default-radius;
-  background: rgba(255, 255, 255, 0.03);
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-
-  &.is-on {
-    border-color: rgba(32, 161, 148, 0.55);
-    background: rgba(32, 161, 148, 0.1);
-  }
-
-  &.is-primary .primary-action {
-    color: var(--accent);
-  }
-}
-
-.cat-title {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.cat-desc {
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.primary-action {
-  margin-top: auto;
-  color: var(--text-dim);
-  font-size: 11px;
-  text-transform: uppercase;
-}
-
-.skill-block + .skill-block {
-  margin-top: 18px;
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chip {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-muted);
-  padding: 7px 11px;
-  cursor: pointer;
-
-  &.small {
-    padding: 5px 9px;
-    font-size: 12px;
-  }
-
-  &.is-on {
-    border-color: rgba(32, 161, 148, 0.5);
-    background: rgba(32, 161, 148, 0.16);
-    color: var(--accent);
-  }
-}
-
-.check-panel {
-  border-color: rgba(32, 161, 148, 0.28);
-
-  &.rejected {
-    border-color: rgba(255, 122, 122, 0.35);
-  }
-}
-
-.check-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 0;
-  color: var(--text-muted);
-}
-
-.portfolio-cta {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
-.dropzone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 32px 20px;
-  border: 2px dashed var(--border);
-  border-radius: 10px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-
-  &:hover,
-  &:focus-visible {
-    border-color: var(--accent);
-    outline: none;
-  }
-
-  &.is-drag {
-    border-color: var(--accent);
-    background: rgba(32, 161, 148, 0.08);
-  }
-
-  strong {
-    font-size: 15px;
-  }
-
-  p {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 13px;
-  }
-}
-
-.dz-icon {
-  font-size: 32px;
-  line-height: 1;
-}
-
-.camera-btn {
+// «Выйти» вне закреплённой панели — только на телефоне.
+.content-logout {
   display: none;
-  align-self: flex-start;
-}
-
-@media (pointer: coarse) {
-  .camera-btn {
-    display: inline-flex;
-  }
-}
-
-
-.portfolio-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.portfolio-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr); // minmax(0,1fr) — без него grid
-  // отдаёт второй колонке min-content от внутреннего grid'а thumbnails,
-  // и она расширяется outside parent → визуально «лезет» на cover слева.
-  gap: 14px;
-  align-items: start;
-  padding: 14px 14px 14px 14px;
-  padding-right: 100px; // место под row-actions, чтобы текст не подтекал
-  border: 1px solid var(--border);
-  border-radius: $default-radius;
-  background: rgba(255, 255, 255, 0.03);
-
-  // Photo-set: без большой обложки слева → одна колонка на всю ширину.
-  &.is-photoset {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.item-title {
-  display: block;
-  font-size: 15px;
-  line-height: 1.3;
-  word-break: break-word;
-}
-
-// Блок action-кнопок в правом верхнем углу карточки. На desktop появляется
-// при hover'е на ряд (минимизирует визуальный шум). На тачах всегда виден
-// и крупнее — pointer:coarse не имеет hover.
-.row-actions {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: flex;
-  gap: 6px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.portfolio-row:hover .row-actions,
-.portfolio-row:focus-within .row-actions {
-  opacity: 1;
-}
-
-.row-action {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  color: var(--text);
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition:
-    background 0.12s,
-    border-color 0.12s,
-    color 0.12s;
-
-  &:hover {
-    background: var(--surface-hover);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  &.delete:hover {
-    border-color: rgba(255, 80, 80, 0.5);
-    color: #ff7a7a;
-  }
-}
-
-// На тач-устройствах нет hover'a → переносим row-actions ПОД контент карточки,
-// чтобы не съедать место у title/thumbnails и не накладываться. На desktop
-// остаются плавающими в правом-верхнем (появляются на hover).
-@media (pointer: coarse) {
-  .portfolio-row {
-    padding: 12px;
-    padding-right: 12px; // отменяем десктопный clearance справа
-  }
-
-  .row-actions {
-    position: static;
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-    margin-top: 10px;
-    gap: 10px;
-    opacity: 1;
-  }
-
-  .row-action {
-    width: 44px;
-    height: 44px;
-    font-size: 18px;
-  }
-}
-
-// Очень узкие экраны: thumb колонка чуть уже, чтобы текст не сдавливался.
-@media (max-width: 480px) {
-  .portfolio-row {
-    grid-template-columns: 72px minmax(0, 1fr);
-
-    &.is-photoset {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-
-  .row-actions {
-    position: static;
-    margin-top: 10px;
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-    opacity: 1;
-  }
-}
-
-.thumb {
-  position: relative;
-  width: 96px;
-  height: 128px;
-  border-radius: $default-radius;
-  overflow: hidden;
-  background: #1a1a1a;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-}
-
-@media (max-width: 480px) {
-  .thumb {
-    width: 72px;
-    height: 96px;
-  }
-}
-
-// Счётчик «+N» поверх первого фото photo-set'а в правом-нижнем углу.
-.thumb-counter {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  padding: 2px 6px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.hint-inline {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-// Соцсети в кабинете — 2-3 колонки grid, каждое поле = иконка+label+input+hint.
-.social-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px 16px;
-}
-
-.social-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  .social-field-head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--text);
-
-    .ic {
-      font-size: 16px;
-      line-height: 1;
-    }
-  }
-
-  .hint {
-    font-size: 11px;
-    color: var(--text-muted);
-  }
-}
-
-// Inline-edit title/description в карточке портфолио — поля и actions.
-.edit-title,
-.edit-desc {
-  width: 100%;
-  margin-bottom: 6px;
-}
-
-.edit-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-// Сетка миниатюр photo-set'а внутри карточки портфолио. Каждая ячейка —
-// квадрат с кнопкой × в углу. cdkDrag даёт DnD reorder.
-.photoset-thumbs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-  gap: 6px;
-  margin-top: 6px;
-}
-
-// На тачах ровно 3 плитки в ряду — крупно, удобно тапать на ×,
-// видно содержимое фото. Карточка photo-set'а full-width на тачах
-// (см. .portfolio-row.is-photoset), плиток помещается красиво.
-@media (pointer: coarse) {
-  .photoset-thumbs {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-}
-
-.photoset-thumb {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #111;
-  cursor: grab;
-
-  &:active {
-    cursor: grabbing;
-  }
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    pointer-events: none;
-  }
-
-  // DnD preview (плавающая миниатюра при перетаскивании)
-  &.cdk-drag-preview {
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-    z-index: 1500;
-  }
-
-  &.cdk-drag-placeholder {
-    opacity: 0.3;
-  }
-}
-
-// Анимация спадения остальных миниатюр когда сосед перетаскивается.
-.cdk-drag-animating {
-  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
-}
-
-.photoset-thumbs.cdk-drop-list-dragging .photoset-thumb:not(.cdk-drag-placeholder) {
-  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
-}
-
-.photoset-thumb-add {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  aspect-ratio: 1;
-  border: 2px dashed var(--border);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-muted);
-  font-size: 11px;
-  cursor: pointer;
-
-  .plus {
-    font-size: 22px;
-    line-height: 1;
-  }
-
-  &:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-}
-
-.photoset-thumb-remove {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.78);
-  color: #fff;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-
-  &:hover {
-    background: rgba(255, 60, 60, 0.85);
-  }
-}
-
-// На тачах bump'аем до 32px — палец нормально попадает (Apple HIG: ≥44pt,
-// Material: ≥48dp; 32 — компромисс на маленькой превьюшке).
-@media (pointer: coarse) {
-  .photoset-thumb-remove {
-    width: 32px;
-    height: 32px;
-    font-size: 22px;
-    top: 6px;
-    right: 6px;
-  }
-}
-
-.portfolio-main {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0; // защита от расширения за пределы 1fr-колонки.
-
-  a {
-    color: var(--accent);
-  }
-
-  p {
-    color: var(--text-muted);
-  }
-}
-
-.muted {
-  color: var(--text-muted);
-}
-
-.cabinet-error {
-  margin-top: 16px;
+  margin-top: 24px;
 }
 
 .actions {
@@ -785,40 +103,30 @@ label {
   gap: 10px;
   margin-top: 16px;
   padding: 14px;
+  // safe-area: на iPhone нижняя полоса-индикатор перекрывала кнопки.
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  border: 1px solid var(--border);
   border-radius: $default-radius;
+  background: var(--surface);
   backdrop-filter: blur(16px);
 }
 
-.moderation-banner {
-  margin-bottom: 16px;
-
-  .reject-reason {
-    margin: 0 0 8px;
-    padding: 8px 12px;
-    background: rgba(255, 77, 79, 0.08);
-    border-left: 3px solid #ff4d4f;
-    border-radius: 4px;
-    font-weight: 500;
-  }
-}
-
-@media (max-width: 760px) {
-  .hero,
-  .panel-head,
-  .actions {
-    flex-direction: column;
+@media (max-width: bp.$touch) {
+  .content-logout {
+    display: block;
   }
 
-  .profile-grid,
-  .inline-fields,
-  .inline-fields.two {
-    grid-template-columns: 1fr;
+  // В закреплённой панели остаются только «Сохранить» и «Снять с публикации».
+  .actions .desktop-only {
+    display: none;
   }
-  // .portfolio-row — собственный responsive (see @media 480px ниже).
-  // На touch'ах оставляем thumb видимым (96/72px колонка), стек делает только
-  // row-actions через position:static.
 
   .actions {
     align-items: stretch;
+    justify-content: stretch;
+
+    button {
+      flex: 1 1 auto;
+    }
   }
 }

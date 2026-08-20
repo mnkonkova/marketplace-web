@@ -1,0 +1,288 @@
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Портфолио</h2>
+      <p>Видео и фото появятся в ленте и на странице профиля, когда он опубликован.</p>
+    </div>
+    <div class="head-side">
+      <span class="muted">{{ items().length }} работ</span>
+      @if (publicUrl()) {
+        <a class="preview-link" [href]="publicUrl()" target="_blank" rel="noopener">
+          <span nz-icon nzType="eye" nzTheme="outline"></span>
+          Как видят клиенты
+        </a>
+      }
+    </div>
+  </div>
+
+  <div class="upload-row">
+    <div
+      class="dropzone"
+      [class.is-drag]="dragOver()"
+      (dragenter)="onDragEnter($event)"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+      (click)="portfolioFile.click()"
+      role="button"
+      tabindex="0"
+    >
+      <div class="dz-icon">📹🖼</div>
+      <strong>Перетащите видео или фото — или выберите файлы</strong>
+      <p>
+        Видео: MP4/MOV до 200 МБ → один ролик в ленте.<br />
+        Фото: JPG/PNG/WEBP/HEIC, 1–10 шт → карусель в ленте.
+      </p>
+      <input
+        #portfolioFile
+        type="file"
+        class="hidden-file"
+        accept="video/mp4,video/quicktime,image/jpeg,image/png,image/webp,image/heic,image/heif"
+        multiple
+        (change)="onFilesPicked($event)"
+      />
+    </div>
+
+    <!-- Опциональный горизонтальный шоурил. Отдельного поля в API нет:
+         шоурил — это закреплённая промо-работа формата 16:9, публичная
+         страница сама ставит её широким баннером вместо вертикали. -->
+    <div class="showreel-slot" [class.is-filled]="showreel()">
+      <div class="showreel-head">
+        <strong>Монтажный шоурил (горизонтальный)</strong>
+        <span class="badge optional">необязательно</span>
+      </div>
+      @if (showreel(); as s) {
+        <p class="hint">
+          Сейчас баннером стоит «{{ s.title || 'без названия' }}» — горизонтальная промо-работа.
+          Загрузите другой файл, чтобы заменить.
+        </p>
+      } @else {
+        <p class="hint">
+          Если загрузить смонтированный ролик 16:9, он встанет широким баннером сверху публичной
+          страницы. Без него флагманом будет выбранная промо-работа (вертикаль с размытым фоном).
+        </p>
+      }
+      <button nz-button nzSize="large" type="button" (click)="showreelFile.click()">
+        {{ showreel() ? 'Заменить шоурил' : 'Загрузить шоурил' }}
+      </button>
+      <input
+        #showreelFile
+        type="file"
+        class="hidden-file"
+        accept="video/mp4,video/quicktime"
+        (change)="onShowreelPicked($event)"
+      />
+    </div>
+
+    <button
+      class="camera-btn"
+      nz-button
+      nzType="default"
+      nzSize="large"
+      type="button"
+      (click)="portfolioCamera.click(); $event.stopPropagation()"
+    >
+      📷 Снять на камеру
+    </button>
+    <input
+      #portfolioCamera
+      type="file"
+      class="hidden-file"
+      accept="video/*"
+      capture="environment"
+      (change)="onFilesPicked($event)"
+    />
+    <!-- Скрытый input для добавления фото в существующий photo-set.
+         Используется из любого item — target itemId запоминаем в TS. -->
+    <input
+      #appendPhotosInput
+      type="file"
+      class="hidden-file"
+      accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+      multiple
+      (change)="onAppendPhotosPicked($event)"
+    />
+  </div>
+
+  <div class="portfolio-list">
+    @for (item of items(); track item.id) {
+      <article class="portfolio-row" [class.is-featured]="item.is_featured">
+        <div class="thumb">
+          @if (poster(item); as src) {
+            <img
+              [src]="src"
+              alt=""
+              loading="lazy"
+              appMeasureAspect
+              (measured)="onMeasured(item, $event)"
+            />
+          } @else {
+            <span class="thumb-empty">{{ item.kind === 'image' ? '🖼' : '▶' }}</span>
+          }
+          @if (duration(item); as d) {
+            <span class="thumb-duration">{{ d }}</span>
+          }
+        </div>
+
+        <div class="portfolio-main">
+          <div class="badges">
+            @if (item.is_featured) {
+              <span class="badge promo">★ Промо</span>
+            }
+            @if (formatBadge(item); as fmt) {
+              <span class="badge format" title="Формат определяется из файла и не редактируется">
+                {{ fmt }}
+              </span>
+            } @else {
+              <span class="badge format is-dim">формат определяется…</span>
+            }
+            @if (item.kind === 'image') {
+              <span class="badge">Фото-кейс · {{ item.images?.length || 0 }}</span>
+            }
+          </div>
+
+          @if (editingItemId() === item.id) {
+            <label class="edit-field">
+              Название
+              <input
+                nz-input
+                nzSize="large"
+                [(ngModel)]="editTitle"
+                maxlength="200"
+                placeholder="Как назвать работу для клиента"
+              />
+            </label>
+            <label class="edit-field">
+              Описание
+              <textarea
+                nz-input
+                rows="2"
+                [(ngModel)]="editDescription"
+                maxlength="1000"
+                placeholder="Необязательно"
+              ></textarea>
+            </label>
+            <div class="edit-actions">
+              <button nz-button nzSize="large" (click)="cancelEditMeta()" [disabled]="savingMeta()">
+                Отмена
+              </button>
+              <button
+                nz-button
+                nzSize="large"
+                nzType="primary"
+                (click)="saveEditMeta(item)"
+                [nzLoading]="savingMeta()"
+              >
+                Сохранить
+              </button>
+            </div>
+          } @else {
+            <strong class="item-title">{{ item.title || '(без названия)' }}</strong>
+            @if (item.description) {
+              <p class="item-desc">{{ item.description }}</p>
+            }
+          }
+
+          @if (item.kind === 'video' && item.video_url) {
+            <a [href]="item.video_url" target="_blank" rel="noopener">открыть видео ↗</a>
+            <p class="hint cover-hint">
+              Обложка — кадр со 2-й секунды ролика. Нужен другой кадр — перезалейте ролик.
+              <!-- TODO(backend): PATCH /me/portfolio/{id} принимает только
+                   title/description. Для выбора другого кадра или своей
+                   обложки нужен thumbnail_url в PortfolioPatchInput —
+                   presigned-аплоад картинки (/me/uploads/image) уже есть. -->
+            </p>
+          } @else if (item.kind === 'image') {
+            <p class="hint cover-hint">
+              Обложка — первое фото. Перетащите другое на первое место, чтобы сменить.
+            </p>
+            <div
+              class="photoset-thumbs"
+              cdkDropList
+              cdkDropListOrientation="mixed"
+              (cdkDropListDropped)="onReorderImages(item, $event)"
+            >
+              @for (img of item.images || []; track img.id) {
+                <div class="photoset-thumb" cdkDrag>
+                  <img [src]="img.image_url" [alt]="item.title" loading="lazy" draggable="false" />
+                  <button
+                    type="button"
+                    class="photoset-thumb-remove"
+                    (click)="deletePhotoSetImage(item, img.id)"
+                    aria-label="Удалить фото"
+                    title="Удалить фото"
+                  >
+                    ×
+                  </button>
+                </div>
+              }
+              @if ((item.images?.length || 0) < maxPhotosPerSet) {
+                <button
+                  type="button"
+                  class="photoset-thumb-add"
+                  (click)="pickAppendPhotos(item)"
+                  [attr.aria-label]="'Добавить фото в кейс'"
+                  title="Добавить фото"
+                >
+                  <span class="plus">+</span>
+                  <span class="lbl">Фото</span>
+                </button>
+              }
+            </div>
+          }
+
+          <div class="chips">
+            @for (code of profileCategoryList(); track code) {
+              <button
+                type="button"
+                class="chip small"
+                [class.is-on]="item.category_codes.includes(code)"
+                (click)="toggleItemCategory(item, code)"
+              >
+                {{ categoryTitle(code) }}
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (editingItemId() !== item.id) {
+          <div class="row-actions">
+            <button
+              type="button"
+              class="promo-btn"
+              [class.is-on]="item.is_featured"
+              [disabled]="featuredBusyId() === item.id"
+              (click)="toggleFeatured(item)"
+              [attr.aria-pressed]="item.is_featured"
+              [title]="
+                item.is_featured ? 'Снять промо' : 'Сделать промо — работа встанет флагманом сверху'
+              "
+            >
+              ★ {{ item.is_featured ? 'Промо' : 'Сделать промо' }}
+            </button>
+            <button
+              type="button"
+              class="row-action edit"
+              (click)="startEditMeta(item)"
+              aria-label="Редактировать"
+              title="Редактировать"
+            >
+              <span aria-hidden="true">✎</span>
+            </button>
+            <button
+              type="button"
+              class="row-action delete"
+              (click)="deleteItem(item)"
+              aria-label="Удалить"
+              title="Удалить"
+            >
+              <span nz-icon nzType="delete" nzTheme="outline"></span>
+            </button>
+          </div>
+        }
+      </article>
+    } @empty {
+      <p class="hint">Добавьте первый ролик или фото-кейс — появится в кабинете и ленте.</p>
+    }
+  </div>
+</section>

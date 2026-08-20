@@ -1,0 +1,140 @@
+@use 'layout';
+
+// Общие блоки редактора профиля. Вкладки `/me` — это пять standalone-
+// компонентов со scoped-стилями, и каждая карточка/подпись/чип должны
+// выглядеть одинаково во всех пяти. Держим правила одним миксином, а не
+// копипастой: раньше «панель» была описана в одном cabinet.page.scss, и
+// при разрезании на компоненты она бы разъехалась.
+//
+// Подключение: `@use 'editor' as editor;` + `@include editor.blocks;`
+@mixin blocks {
+  .panel {
+    padding: clamp(18px, 2vw, 28px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+
+    & + .panel {
+      margin-top: clamp(16px, 1.6vw, 24px);
+    }
+  }
+
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+
+    h2 {
+      margin: 0 0 4px;
+      font-size: clamp(19px, 1vw + 15px, 22px);
+    }
+
+    p {
+      margin: 0;
+      max-width: 62ch;
+      color: var(--text-muted);
+      font-size: clamp(14px, 0.3vw + 13px, 15px);
+    }
+
+    @media (max-width: 720px) {
+      flex-direction: column;
+    }
+  }
+
+  h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+  }
+
+  // Подпись поля. 15px вместо 12px: на десктопе прежний кегль читался
+  // как служебный шум, а это единственное, что объясняет поле.
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    color: var(--text-muted);
+    font-size: layout.$fluid-editor-label;
+  }
+
+  .hint {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: clamp(14px, 0.25vw + 13px, 15px);
+    line-height: 1.45;
+  }
+
+  .err {
+    margin: 0;
+    color: #ff7a7a;
+    font-size: clamp(14px, 0.25vw + 13px, 15px);
+  }
+
+  .warn {
+    margin: 0;
+    color: #ffba59;
+    font-size: clamp(14px, 0.25vw + 13px, 15px);
+  }
+
+  // Измеримые поля не растягиваем на всю ширину контейнера — длинная
+  // строка ввода читается хуже, чем короткая.
+  .field-limit {
+    max-width: layout.$form-field-max;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-muted);
+    font-size: 15px;
+    cursor: pointer;
+
+    &.small {
+      min-height: 36px;
+      padding: 6px 11px;
+      font-size: 13px;
+    }
+
+    // Выбранное — изумрудно-зелёный акцент темы.
+    &.is-on {
+      border-color: rgba(32, 161, 148, 0.5);
+      background: rgba(32, 161, 148, 0.16);
+      color: var(--accent);
+    }
+  }
+
+  .hidden-file {
+    // display:none на iOS Safari иногда блокирует .click() (зависит от
+    // версии). Делаем «визуально скрытым», но кликабельным программно.
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  // Тач: любая кликабельная мелочь — минимум 44px, зазор между соседними
+  // кнопками ≥8px (см. .row-actions в портфолио).
+  @media (pointer: coarse) {
+    .chip {
+      min-height: 40px;
+    }
+
+    .chip.small {
+      min-height: 40px;
+    }
+  }
+}

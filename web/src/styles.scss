@@ -197,6 +197,25 @@ h6 {
   }
 }
 
+/* Тач-таргеты редактора профиля (/me). Внутренности ng-zorro (селект,
+   инпут, кнопка, вкладка) собираются в чужих шаблонах — из scoped-стилей
+   компонента до них не дотянуться, поэтому правило глобальное и заужено
+   классом страницы. Apple HIG: минимум 44pt. */
+@media (pointer: coarse) {
+  .cabinet {
+    .ant-input,
+    .ant-btn,
+    .ant-select-selector,
+    .ant-tabs-tab {
+      min-height: 44px !important;
+    }
+
+    textarea.ant-input {
+      min-height: 88px !important;
+    }
+  }
+}
+
 .ant-picker {
   background: var(--surface) !important;
   border-color: var(--border) !important;

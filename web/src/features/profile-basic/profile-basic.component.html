@@ -1,0 +1,231 @@
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Профиль</h2>
+      <p>Это видит клиент в шапке вашей публичной страницы.</p>
+    </div>
+  </div>
+
+  <div class="profile-grid">
+    <div class="avatar-column">
+      <input
+        #avatarFile
+        id="avatarFileInput"
+        type="file"
+        class="hidden-file"
+        accept="image/*"
+        (click)="$any($event.target).value = ''"
+        (change)="avatarPicked.emit($event)"
+      />
+      <label
+        for="avatarFileInput"
+        class="avatar-preview"
+        [class.has-image]="avatarUrl()"
+        [class.is-uploading]="avatarUploading()"
+        [class.is-disabled]="avatarUploading()"
+      >
+        @if (avatarUrl(); as src) {
+          <img [src]="src" alt="" decoding="async" />
+        } @else {
+          <span>{{ (f.display_name || '?').slice(0, 1) }}</span>
+        }
+        @if (avatarUploading()) {
+          <div class="avatar-overlay" role="status" aria-label="Загрузка аватара">
+            <span nz-icon nzType="loading" nzTheme="outline"></span>
+          </div>
+        }
+      </label>
+      <div class="avatar-actions">
+        <label
+          for="avatarFileInput"
+          class="avatar-pick-btn"
+          [class.is-disabled]="avatarUploading()"
+        >
+          @if (avatarUploading()) {
+            <span nz-icon nzType="loading" nzTheme="outline"></span>
+          }
+          Загрузить аватар
+        </label>
+        @if (f.avatar_url || avatarUrl()) {
+          <button nz-button nzSize="large" type="button" (click)="avatarCleared.emit()">
+            Очистить
+          </button>
+        }
+      </div>
+      <p class="hint">
+        JPG, PNG, WEBP или HEIC. Любой размер до 50 МБ — автоматически уменьшим до 512 px. После
+        загрузки нажмите «Сохранить».
+      </p>
+    </div>
+
+    <div class="fields">
+      <label class="field-limit">
+        Имя / название
+        <input nz-input nzSize="large" [(ngModel)]="f.display_name" name="display_name" />
+      </label>
+
+      <label class="field-limit">
+        Город
+        <input
+          nz-input
+          nzSize="large"
+          [(ngModel)]="f.city"
+          name="city"
+          placeholder="Ваш город или «удалённо»"
+        />
+      </label>
+
+      <div class="field-limit">
+        <label>
+          Где вы работаете
+          <nz-select
+            nzSize="large"
+            [(ngModel)]="productionValue"
+            name="production"
+            nzPlaceHolder="Выберите вариант"
+          >
+            <nz-option nzValue="" nzLabel="— не выбрано —"></nz-option>
+            <nz-option nzValue="freelance" nzLabel="Фрилансер"></nz-option>
+            @for (pr of productions(); track pr.id) {
+              <nz-option [nzValue]="pr.id" [nzLabel]="pr.name"></nz-option>
+            }
+          </nz-select>
+        </label>
+        <p class="hint">Фрилансер или один из продакшенов. Сохранится вместе с профилем.</p>
+      </div>
+
+      <div class="rate-block field-limit">
+        <div class="inline-fields">
+          <label>
+            Ставка от
+            <input
+              nz-input
+              nzSize="large"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              placeholder="напр. 30000"
+              [(ngModel)]="f.rate_min"
+              name="rate_min"
+            />
+          </label>
+          <label>
+            Ставка до
+            <input
+              nz-input
+              nzSize="large"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              placeholder="можно не заполнять"
+              [(ngModel)]="f.rate_max"
+              name="rate_max"
+            />
+          </label>
+          <label>
+            Валюта
+            <input nz-input nzSize="large" [(ngModel)]="f.currency" name="currency" />
+          </label>
+        </div>
+        @if (rate(); as r) {
+          @if (r.error) {
+            <p class="err">{{ r.error }}</p>
+          } @else if (r.warning) {
+            <p class="warn">{{ r.warning }}</p>
+          }
+          <p class="hint">
+            Клиент увидит: <strong class="rate-preview">{{ r.preview }}</strong>
+          </p>
+        }
+        <p class="hint">
+          Ноль и пустое поле — это «не указано», а не «работаю за 0 ₽». Одна нижняя граница даёт «от
+          N ₽», обе — вилку.
+        </p>
+      </div>
+
+      <label class="field-limit">
+        Описание — «О себе»
+        <textarea
+          nz-input
+          rows="9"
+          [(ngModel)]="f.bio"
+          name="bio"
+          placeholder="Кто вы, с чем помогаете, чем отличаетесь. Переносы строк сохраняются: строки со «✅» или «—» станут списком."
+        ></textarea>
+      </label>
+      <div class="bio-meta field-limit">
+        <span class="hint">{{ bioLength() }} символов · для 100% нужно от 100</span>
+        <button nz-button nzSize="large" type="button" (click)="bioPreview.set(!bioPreview())">
+          {{ bioPreview() ? 'Скрыть превью' : 'Как это увидит клиент' }}
+        </button>
+      </div>
+      @if (bioPreview()) {
+        <div class="bio-preview field-limit">
+          @if (f.bio.trim()) {
+            <app-rich-bio [text]="f.bio" />
+          } @else {
+            <p class="hint">Пока пусто — на публичной странице блок «О себе» не появится.</p>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="panel check-panel" [class.rejected]="check() && !check()!.ok">
+  <div class="panel-head check-head">
+    <div>
+      <h2>Проверка профиля</h2>
+      <p>
+        AI-подсказки по имени и описанию перед публикацией. Текст не переписываем — только советы.
+      </p>
+    </div>
+    <button
+      nz-button
+      nzType="default"
+      nzSize="large"
+      type="button"
+      (click)="checkRequested.emit()"
+      [nzLoading]="checkLoading()"
+    >
+      Проверить bio
+    </button>
+  </div>
+
+  @if (check(); as c) {
+    @if (c.name) {
+      <div class="check-row">
+        <strong>Имя: {{ c.name.ok ? 'OK' : 'нужно доработать' }} · {{ c.name.score }}/100</strong>
+        @if (c.name.suggestion) {
+          <span>{{ c.name.suggestion }}</span>
+        }
+      </div>
+      @if (c.name.reasons?.length) {
+        <ul>
+          @for (reason of c.name.reasons; track reason) {
+            <li>{{ reason }}</li>
+          }
+        </ul>
+      }
+    }
+    @if (c.bio) {
+      <div class="check-row">
+        <strong
+          >Описание: {{ c.bio.ok ? 'OK' : 'нужно доработать' }} · {{ c.bio.score }}/100</strong
+        >
+        @if (c.bio.suggestion) {
+          <span>{{ c.bio.suggestion }}</span>
+        }
+      </div>
+      @if (c.bio.reasons?.length) {
+        <ul>
+          @for (reason of c.bio.reasons; track reason) {
+            <li>{{ reason }}</li>
+          }
+        </ul>
+      }
+    }
+  } @else {
+    <p class="hint">Нажмите «Проверить bio», чтобы получить рекомендации.</p>
+  }
+</section>

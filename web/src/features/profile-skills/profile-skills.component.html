@@ -1,0 +1,98 @@
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Роли</h2>
+      <p>
+        Выберите одну или несколько. Звёздочка задаёт основную — именно она стоит первой на
+        публичной странице.
+      </p>
+    </div>
+  </div>
+
+  @if (selectedList().length) {
+    <div class="selected-roles">
+      <span class="selected-roles-head">Клиент увидит:</span>
+      <div class="chips">
+        @for (role of selectedList(); track role.code; let i = $index) {
+          <span class="chip small is-on" [class.is-faded]="i >= 3">
+            @if (role.isPrimary) {
+              <span class="star" aria-hidden="true">★</span>
+            }
+            {{ role.title }}
+          </span>
+        }
+      </div>
+      @if (hiddenRolesCount() > 0) {
+        <p class="hint">
+          Первые три роли видны сразу, остальные {{ hiddenRolesCount() }} — под «ещё
+          {{ hiddenRolesCount() }}». Чем длиннее список, тем сильнее он читается как «берусь за
+          всё»: первые роли важнее.
+        </p>
+      }
+    </div>
+  }
+
+  @for (group of categoryGroups(); track group.type) {
+    <h3 class="pick-type">{{ group.type }}</h3>
+    <div class="pick-grid">
+      @for (cat of group.categories; track cat.code) {
+        <button
+          type="button"
+          class="cat-pick"
+          [class.is-on]="selectedCategories().has(cat.code)"
+          [class.is-primary]="primaryCategory() === cat.code && selectedCategories().has(cat.code)"
+          (click)="categoryToggled.emit(cat.code)"
+        >
+          <span class="cat-title">{{ cat.title }}</span>
+          <span class="cat-desc">{{ cat.description }}</span>
+          <span class="primary-action" (click)="setPrimary(cat.code, $event)">★ основная</span>
+        </button>
+      }
+    </div>
+  }
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Навыки</h2>
+      <p>Выбранные подсвечены зелёным. Инструменты подтягиваются под выбранные роли.</p>
+    </div>
+  </div>
+
+  <div class="skill-block">
+    <h3>Инструменты и форматы</h3>
+    @if (tools().length) {
+      <div class="chips">
+        @for (skill of tools(); track skill.id) {
+          <button
+            type="button"
+            class="chip"
+            [class.is-on]="selectedSkills().has(skill.id)"
+            (click)="skillToggled.emit(skill.id)"
+          >
+            {{ skill.title }}
+          </button>
+        }
+      </div>
+    } @else {
+      <p class="hint">Выберите роль выше — под неё подтянутся инструменты.</p>
+    }
+  </div>
+
+  <div class="skill-block">
+    <h3>Платформы</h3>
+    <div class="chips">
+      @for (skill of platforms(); track skill.id) {
+        <button
+          type="button"
+          class="chip"
+          [class.is-on]="selectedSkills().has(skill.id)"
+          (click)="skillToggled.emit(skill.id)"
+        >
+          {{ skill.title }}
+        </button>
+      }
+    </div>
+  </div>
+</section>
