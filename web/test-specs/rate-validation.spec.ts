@@ -1,4 +1,4 @@
-import { MAX_RATE_SPREAD, MAX_REASONABLE_RATE, validateRate } from '@shared/lib/rate-validation';
+import { MAX_REASONABLE_RATE, validateRate } from '@shared/lib/rate-validation';
 
 describe('validateRate — цена в редакторе профиля', () => {
   it('пустая цена не ошибка, но клиент увидит «по договорённости»', () => {
@@ -41,16 +41,6 @@ describe('validateRate — цена в редакторе профиля', () =>
 
   // «100 000–100 000 000 ₽» — реальный случай с публичной. Верхняя граница
   // там ещё и выше потолка, поэтому проверяем оба сообщения по отдельности.
-  it('абсурдно широкий диапазон не сохраняется', () => {
-    expect(validateRate(100000, 5000000).error).toContain('Диапазон слишком широкий');
-    expect(validateRate(100000, 100000000).error).not.toBeNull();
-  });
-
-  it(`кратность ровно ${MAX_RATE_SPREAD}× ещё допустима`, () => {
-    expect(validateRate(10000, 10000 * MAX_RATE_SPREAD).error).toBeNull();
-    expect(validateRate(10000, 10000 * MAX_RATE_SPREAD + 1).error).not.toBeNull();
-  });
-
   it('ставка выше разумного потолка — опечатка, блокируем', () => {
     expect(validateRate(MAX_REASONABLE_RATE + 1, null).error).toContain('лишний ноль');
   });

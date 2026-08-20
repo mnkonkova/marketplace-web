@@ -7,13 +7,6 @@ import { formatPublicRate } from './format';
  */
 export const MAX_REASONABLE_RATE = 10_000_000;
 
-/**
- * Максимальная кратность «до»/«от». Тот же порог, по которому публичная
- * страница схлопывает вилку до «от N ₽» (formatPublicRate). Здесь он нужен
- * раньше — чтобы такая вилка вообще не сохранялась.
- */
-export const MAX_RATE_SPREAD = 10;
-
 export interface RateValidation {
   /** Сообщение, блокирующее сохранение. null — можно сохранять. */
   error: string | null;
@@ -67,14 +60,9 @@ export function validateRate(
     return { ...base, error: 'Ставка «от» больше, чем «до».' };
   }
 
-  if (min != null && max != null && max / min > MAX_RATE_SPREAD) {
-    return {
-      ...base,
-      error:
-        `Диапазон слишком широкий: «до» больше «от» в ${Math.round(max / min)} раз. ` +
-        'Клиенту такая вилка ничего не говорит — сузьте или оставьте только «от».',
-    };
-  }
+  // Кратность «до»/«от» намеренно НЕ ограничиваем. Широкая вилка — обычное
+  // дело: монтажёр берёт и правку за пять тысяч, и проект за сто. Лишний
+  // ноль ловится потолком MAX_REASONABLE_RATE, а этого достаточно.
 
   const typedZero =
     (rawMin != null && Number.isFinite(rawMin) && rawMin === 0) ||
