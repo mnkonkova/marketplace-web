@@ -204,3 +204,36 @@ describe('SpecialistProfilePage — роли в шапке', () => {
     expect(page.hiddenRolesCount()).toBe(0);
   });
 });
+
+// Ссылка-визитка: при заданном shareBaseUrl ведёт на воркер превью, иначе —
+// на текущий origin. См. комментарий в environments/environment.ts.
+describe('SpecialistProfilePage shareUrl', () => {
+  const build = (profile: { username?: string; user_id: string }, base: string) => {
+    const handle = profile.username || profile.user_id;
+    const trimmed = base?.replace(/\/+$/, '');
+    if (trimmed) return `${trimmed}/s/${handle}`;
+    return `https://wayprmarket.ru/specialist/${handle}`;
+  };
+
+  it('без базы ведёт на основной домен', () => {
+    expect(build({ username: 'foxxmary', user_id: 'u-1' }, '')).toBe(
+      'https://wayprmarket.ru/specialist/foxxmary',
+    );
+  });
+
+  it('с базой ведёт на воркер', () => {
+    expect(build({ username: 'foxxmary', user_id: 'u-1' }, 'https://p.example')).toBe(
+      'https://p.example/s/foxxmary',
+    );
+  });
+
+  it('лишний слэш в базе не удваивается', () => {
+    expect(build({ username: 'foxxmary', user_id: 'u-1' }, 'https://p.example/')).toBe(
+      'https://p.example/s/foxxmary',
+    );
+  });
+
+  it('без username подставляется id', () => {
+    expect(build({ user_id: 'u-42' }, 'https://p.example')).toBe('https://p.example/s/u-42');
+  });
+});

@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { environment } from '../../environments/environment';
 import { Meta, Title } from '@angular/platform-browser';
 import { DatePipe } from '@angular/common';
 import { BackLinkComponent } from '@shared/nav/back-link.component';
@@ -136,11 +137,21 @@ export class SpecialistProfilePage implements OnInit {
     this.rolesExpanded() ? this.allRoles() : this.visibleRoles(),
   );
 
-  /** Публичный адрес страницы: красивый handle, если специалист его выбрал. */
+  /**
+   * Публичный адрес страницы: красивый handle, если специалист его выбрал.
+   *
+   * При заданном environment.shareBaseUrl ссылка ведёт на воркер превью
+   * (/s/<handle>), который редиректит человека сюда же, а боту отдаёт
+   * og-мету с проксированной картинкой. Подробности — в environment.ts.
+   */
   public readonly shareUrl = computed(() => {
     const p = this.profile();
-    if (!p || typeof window === 'undefined') return '';
-    return `${window.location.origin}/specialist/${p.username || p.user_id}`;
+    if (!p) return '';
+    const handle = p.username || p.user_id;
+    const base = environment.shareBaseUrl?.replace(/\/+$/, '');
+    if (base) return `${base}/s/${handle}`;
+    if (typeof window === 'undefined') return '';
+    return `${window.location.origin}/specialist/${handle}`;
   });
 
   /** Обложка для предпросмотра ссылки и og:image. */
