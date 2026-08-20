@@ -632,3 +632,39 @@ h6 {
     }
   }
 }
+
+/* === Кабинет /me: поля ввода по макету =====================================
+   Определяем один раз глобально под .cabinet, а не миксином в каждой из пяти
+   вкладок: пять копий одного и того же CSS вылезали за бюджет сборки и ничего
+   не добавляли — селекторы всё равно одинаковые. */
+.cabinet {
+  input[nz-input],
+  textarea[nz-input],
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-input-number {
+    border: 1px solid var(--border-strong) !important;
+    border-radius: 10px !important;
+    background: var(--bg-elevated) !important;
+    color: var(--text) !important;
+    font-size: 17px !important;
+  }
+
+  input[nz-input],
+  .ant-input {
+    padding: 12px 14px !important;
+  }
+
+  input[nz-input]::placeholder,
+  textarea[nz-input]::placeholder {
+    color: var(--text-dim);
+  }
+
+  .ant-input-affix-wrapper:focus-within,
+  input[nz-input]:focus,
+  textarea[nz-input]:focus {
+    border-color: var(--cta) !important;
+    box-shadow: none !important;
+  }
+}

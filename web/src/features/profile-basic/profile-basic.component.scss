@@ -7,7 +7,7 @@
 
 .profile-grid {
   display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
+  grid-template-columns: clamp(180px, 15vw, 240px) minmax(0, 1fr);
   gap: clamp(20px, 2.4vw, 36px);
 
   @media (max-width: 720px) {
@@ -28,17 +28,20 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  width: 160px;
-  height: 160px;
-  border-radius: 34px;
+  // Резиновый, как в макете: ширина колонки, квадрат, радиус 22px. Прежние
+  // фиксированные 160px на широком мониторе выглядели марочкой.
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  border-radius: 22px;
+  border: 1px solid var(--border-strong);
   // Плейсхолдер — спокойный градиент с инициалами. Кликабельна ВСЯ плитка,
   // а не только бейдж-камера: две отдельные кнопки под аватаром читались
   // как форма, хотя это одно действие.
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
-  color: var(--text-muted);
+  background: linear-gradient(160deg, #2b313a, #12151a);
+  color: #c6ccd4;
   font-weight: 700;
-  font-size: 48px;
-  letter-spacing: 1px;
+  font-size: 34px;
   cursor: pointer;
   transition: filter 0.15s ease;
 
@@ -94,7 +97,7 @@
 // уже: это код из трёх букв, а не сумма.
 .inline-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr 96px;
+  grid-template-columns: 1fr 1fr 140px;
   gap: 12px;
 
   @media (max-width: 720px) {

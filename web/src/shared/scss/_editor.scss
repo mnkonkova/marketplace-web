@@ -8,10 +8,11 @@
 //
 // Подключение: `@use 'editor' as editor;` + `@include editor.blocks;`
 @mixin blocks {
+  // Карточка макета: .card{border-radius:14px;padding:20px 22px}
   .panel {
-    padding: clamp(18px, 2vw, 28px);
+    padding: 20px 22px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 14px;
     background: var(--surface);
 
     & + .panel {
@@ -43,8 +44,8 @@
   }
 
   h3 {
-    margin: 0 0 10px;
-    font-size: 16px;
+    margin: 0 0 5px;
+    font-size: 18px;
   }
 
   // Подпись поля. 15px вместо 12px: на десктопе прежний кегль читался
@@ -59,7 +60,7 @@
 
   .hint {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-dim);
     font-size: clamp(14px, 0.25vw + 13px, 15px);
     line-height: 1.45;
   }
@@ -156,5 +157,32 @@
   .ic-pencil {
     width: 20px;
     height: 20px;
+  }
+}
+
+// Чипы навыков по макету: пилюли 999px, 9px 15px, 15.5px. Выбранные —
+// зелёные (роли коралловые), чтобы два разных выбора не путались.
+@mixin chips {
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+
+  .chip {
+    min-height: 40px;
+    padding: 9px 15px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    font-size: 15.5px;
+    cursor: pointer;
+
+    &.is-on {
+      border-color: #1f6f57;
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
   }
 }

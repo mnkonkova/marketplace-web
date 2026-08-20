@@ -59,22 +59,24 @@
   gap: 8px;
   min-height: 132px;
   padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--surface-hover);
   color: inherit;
   text-align: left;
   cursor: pointer;
 
+  transition: 0.14s;
+
   &:hover {
-    border-color: rgba(255, 255, 255, 0.18);
+    border-color: #3a4049;
   }
 
   // Выбранная роль — коралловая, как CTA: это то же «да, беру», что и на
   // кнопках. Зелёный оставлен навыкам, чтобы состояния не путались.
   &.is-on {
     border-color: var(--cta);
-    background: linear-gradient(180deg, rgba(255, 94, 58, 0.1), rgba(255, 94, 58, 0.02));
+    background: linear-gradient(180deg, rgba(240, 85, 60, 0.1), rgba(240, 85, 60, 0.02));
   }
 }
 
@@ -110,12 +112,13 @@
   gap: 4px;
   align-self: flex-start;
   margin-top: auto;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-muted);
-  font-size: 13px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12.5px;
 
   svg {
     width: 13px;
@@ -155,3 +158,12 @@
 }
 
 @include editor.blocks;
+@include editor.chips;
+
+// На тач-экранах пилюля вырастает до 44px: в макете 36px рассчитаны на мышь.
+@media (hover: none) {
+  .primary-action {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+}
