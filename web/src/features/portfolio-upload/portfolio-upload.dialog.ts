@@ -447,7 +447,17 @@ export class PortfolioUploadDialog implements OnDestroy {
 
 /** Имя файла из камеры — мусор. Возвращает '' если осмысленного title не вышло. */
 function deriveHumanTitle(filename: string): string {
-  const base = filename.replace(/\.[^.]+$/, '').trim();
+  let base = filename.replace(/\.[^.]+$/, '').trim();
+  // UUID и хвост хеша внутри имени: на публичной из-за них выводилось
+  // «Sample 20s — 3ddc7a95-0629-4af6-…». Вырезаем ДО остальных проверок,
+  // чтобы осмысленная часть имени не потерялась вместе с мусорной.
+  base = base
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ' ')
+    .replace(/(^|[\s_\-–—])[0-9a-f]{12,}(?=$|[\s_\-–—])/gi, ' ')
+    // Осиротевшие разделители по краям («Sample 20s — » → «Sample 20s»).
+    .replace(/[\s_\-–—]+/g, ' ')
+    .replace(/^[\s\-–—_]+|[\s\-–—_]+$/g, '')
+    .trim();
   if (!base || base.length < 3) return '';
   // DSC_0042, IMG-1234, MVI0001, VID20240101, GOPR1234, P_0001, DSCF1234
   if (/^(dsc|dscf|img|mvi|vid|mov|gopr|gh|p)[-_ ]?\d+/i.test(base)) return '';

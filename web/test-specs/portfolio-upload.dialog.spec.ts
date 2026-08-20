@@ -120,6 +120,22 @@ describe('PortfolioUploadDialog', () => {
         expect(d.title()).toBe('');
       }
     });
+
+    // На публичной из-за этого выводилось «Sample 20s — 3ddc7a95-0629-…»:
+    // имя файла с UUID уезжало в title как есть.
+    it('UUID в имени файла вырезается, осмысленная часть остаётся', () => {
+      const d = setup();
+      meRepo.presignPortfolioUpload.and.returnValue(throwError(() => new Error('stop')));
+      pickFile(d, makeFile('Sample 20s - 3ddc7a95-0629-4af6-9c53-4b1f2a0d9e77.mp4'));
+      expect(d.title()).toBe('Sample 20s');
+    });
+
+    it('имя из одного UUID не подставляется вовсе', () => {
+      const d = setup();
+      meRepo.presignPortfolioUpload.and.returnValue(throwError(() => new Error('stop')));
+      pickFile(d, makeFile('3ddc7a95-0629-4af6-9c53-4b1f2a0d9e77.mp4'));
+      expect(d.title()).toBe('');
+    });
   });
 
   describe('toggleCategory', () => {

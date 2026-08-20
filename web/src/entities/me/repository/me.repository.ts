@@ -151,6 +151,19 @@ export class MeRepository {
     });
   }
 
+  /**
+   * Закрепить работу как промо (флагман публичной страницы) либо снять
+   * закрепление. Закреплённая всегда одна: при featured=true бэк снимает
+   * флаг с предыдущей в той же транзакции (partial unique index, миграция
+   * 00028) — фронту достаточно одного запроса, radio-логика на сервере.
+   */
+  public setPortfolioFeatured(id: string, featured: boolean): Observable<PortfolioItem> {
+    return this.http.put<PortfolioItem>(
+      `${this.api}/me/portfolio/${encodeURIComponent(id)}/featured`,
+      { featured },
+    );
+  }
+
   public updatePortfolioCategories(id: string, codes: string[]): Observable<PortfolioItem> {
     return this.http.put<PortfolioItem>(
       `${this.api}/me/portfolio/${encodeURIComponent(id)}/categories`,
