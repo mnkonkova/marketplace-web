@@ -703,6 +703,12 @@ h6 {
   /* Кнопки без явного типа тоже приходят с ant-овским rgba(0,0,0,.85).
      Исключаем primary/danger — там цвет осмысленный (белый на коралловом,
      красный у опасных), и перебивать его нельзя. */
+  /* Единая форма кнопок кабинета: скругление 10px из макета. «Загрузить
+     шоурил» выбивалась именно этим — ant давал ей своё скругление. */
+  .ant-btn {
+    border-radius: 10px;
+  }
+
   .ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-background-ghost) {
     color: var(--text);
     /* И фон: у части кнопок он оставался белым из светлой темы ant, а текст
@@ -830,5 +836,35 @@ h6 {
   .tick svg {
     width: 14px;
     height: 14px;
+  }
+}
+
+/* Выпадающие меню кабинета (теги работы, действия «⋯»). Рендерятся в
+   оверлее ВНЕ .cabinet, поэтому селекторы глобальные — но привязаны к
+   собственным классам, чтобы не перекрасить меню всего сайта. */
+.ant-dropdown .tag-menu,
+.ant-dropdown .item-menu {
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.7);
+
+  .ant-dropdown-menu-item {
+    // Без min-width длинные роли («Видеоредактор / режиссёр монтажа»)
+    // переносились на две строки и меню выглядело рваным.
+    min-width: 210px;
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 15px;
+    white-space: nowrap;
+  }
+
+  .ant-dropdown-menu-item:hover {
+    background: var(--surface-hover);
+  }
+
+  .ant-dropdown-menu-item-danger {
+    color: var(--danger) !important;
   }
 }

@@ -556,6 +556,9 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  // Одинаковая высота у всех пилюль ряда: кнопка-плюс была выше обычных
+  // тегов, и строка выглядела рваной, особенно на телефоне.
+  min-height: 28px;
   padding: 3px 10px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
@@ -571,7 +574,7 @@
 }
 
 .wtag-edit {
-  min-height: 26px;
+  min-height: 28px;
   color: var(--text-dim);
   font-family: inherit;
   cursor: pointer;
@@ -587,10 +590,20 @@
   }
 }
 
-// Тач: пилюля-плюс дорастает до нормального тач-таргета.
+// Тач: растут ВСЕ пилюли ряда, а не только кнопка-плюс — иначе теги и
+// кнопка разной высоты, и ряд смотрится неровным.
 @media (hover: none) and (pointer: coarse) {
+  .wtags {
+    gap: 8px;
+  }
+
+  .wtag {
+    min-height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
   .wtag-edit {
-    min-height: 40px;
     padding: 0 14px;
   }
 }

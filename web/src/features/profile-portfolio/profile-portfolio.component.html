@@ -249,6 +249,7 @@
               class="wtag wtag-edit"
               nz-dropdown
               nzTrigger="click"
+              [nzClickHide]="false"
               [nzDropdownMenu]="tagMenu"
               [attr.aria-label]="'Изменить теги работы'"
             >
@@ -317,7 +318,7 @@
               </svg>
             </button>
             <nz-dropdown-menu #itemMenu="nzDropdownMenu">
-              <ul nz-menu>
+              <ul nz-menu class="item-menu">
                 <li nz-menu-item (click)="startEditMeta(item)">Редактировать</li>
                 <li nz-menu-item nzDanger (click)="deleteItem(item)">Удалить</li>
               </ul>
