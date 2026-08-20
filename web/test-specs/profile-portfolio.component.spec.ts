@@ -156,3 +156,34 @@ describe('ProfilePortfolioComponent — шоурил', () => {
     expect(cmp.showreel()).toBeNull();
   });
 });
+
+
+// Работа без тегов молча выпадает из подборок по категориям: лента
+// фильтрует по category_codes. Поэтому последний тег снять нельзя.
+describe('ProfilePortfolioComponent — последний тег', () => {
+  it('единственный выбранный тег помечен как неснимаемый', () => {
+    const { cmp } = setup([]);
+    const item = work('a', { category_codes: ['editing'] });
+    expect(cmp.isLastTag(item, 'editing')).toBeTrue();
+  });
+
+  it('когда тегов несколько — снимать можно любой', () => {
+    const { cmp } = setup([]);
+    const item = work('a', { category_codes: ['editing', 'smm'] });
+    expect(cmp.isLastTag(item, 'editing')).toBeFalse();
+    expect(cmp.isLastTag(item, 'smm')).toBeFalse();
+  });
+
+  it('невыбранный тег не считается последним', () => {
+    const { cmp } = setup([]);
+    const item = work('a', { category_codes: ['editing'] });
+    expect(cmp.isLastTag(item, 'smm')).toBeFalse();
+  });
+
+  it('попытка снять последний тег не уходит в API', () => {
+    const { cmp, meRepo } = setup([]);
+    const item = work('a', { category_codes: ['editing'] });
+    cmp.toggleItemCategory(item, 'editing');
+    expect(meRepo.updatePortfolioCategories).not.toHaveBeenCalled();
+  });
+});

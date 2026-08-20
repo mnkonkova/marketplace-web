@@ -263,7 +263,16 @@
             <nz-dropdown-menu #tagMenu="nzDropdownMenu">
               <ul nz-menu class="tag-menu">
                 @for (code of profileCategoryList(); track code) {
-                  <li nz-menu-item (click)="toggleItemCategory(item, code)">
+                  <li
+                    nz-menu-item
+                    [nzDisabled]="isLastTag(item, code)"
+                    [title]="
+                      isLastTag(item, code)
+                        ? 'Хотя бы один тег нужен: без тегов работа не попадёт в подборки'
+                        : ''
+                    "
+                    (click)="toggleItemCategory(item, code)"
+                  >
                     <span class="tick" [class.is-on]="item.category_codes.includes(code)">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                         <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />

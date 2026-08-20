@@ -598,7 +598,26 @@ export class ProfilePortfolioComponent {
       });
   }
 
+  /**
+   * Последний оставшийся тег снять нельзя: лента фильтрует работы по
+   * category_codes через terms, и работа без тегов молча выпадает из всех
+   * подборок по категориям. В общей ленте и на странице специалиста она
+   * при этом видна — заметить пропажу почти невозможно.
+   *
+   * Это защита в интерфейсе; API пустой список пока принимает.
+   * TODO(backend): SetPortfolioCategories должен отдавать ErrInvalidInput
+   * на пустой codes — тогда правило будет держаться и мимо фронта.
+   */
+  public isLastTag(item: PortfolioItem, code: string): boolean {
+    const codes = item.category_codes ?? [];
+    return codes.length === 1 && codes[0] === code;
+  }
+
   public toggleItemCategory(item: PortfolioItem, code: string): void {
+    if (this.isLastTag(item, code)) {
+      this.msg.info('Оставьте хотя бы один тег — иначе работа не попадёт в подборки по категориям');
+      return;
+    }
     const next = new Set(item.category_codes ?? []);
     if (next.has(code)) next.delete(code);
     else next.add(code);
