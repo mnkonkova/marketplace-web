@@ -1,4 +1,11 @@
 @use 'editor' as editor;
+
+/* Полоса прокрутки резервирует место всегда: вкладки кабинета разной
+   высоты, и при переключении скроллбар то появлялся, то исчезал — ширина
+   страницы прыгала на его толщину, и это читалось как рывок. */
+html {
+  scrollbar-gutter: stable;
+}
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 :root {
@@ -866,5 +873,109 @@ h6 {
 
   .ant-dropdown-menu-item-danger {
     color: var(--danger) !important;
+  }
+}
+
+/* Шторка тегов: тёмная, со скруглённым верхом. Рендерится в оверлее вне
+   .cabinet, поэтому селекторы глобальные. */
+.ant-drawer-bottom .ant-drawer-content {
+  border-radius: 18px 18px 0 0;
+  background: var(--surface);
+}
+
+.ant-drawer-bottom .ant-drawer-header {
+  display: none;
+}
+
+/* Содержимое шторки тегов — в оверлее вне компонента, поэтому глобально.
+   Заодно снимает нагрузку с бюджета profile-portfolio.component.scss. */
+
+/* Содержимое шторки тегов рендерится в оверлее ВНЕ компонента, поэтому
+   scoped-стили до него всё равно не достают. Заодно снимает нагрузку с
+   бюджета profile-portfolio.component.scss. */
+// Шторка тегов на телефоне: строки-переключатели во всю ширину, галочка
+// слева. Выпадашка у правого края экрана прижималась к границе, и часть
+// пунктов уезжала под палец.
+.sheet-note {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.tag-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  text-align: left;
+
+  .tick {
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    color: var(--accent);
+    opacity: 0;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  &.is-on {
+    border-color: #1f6f57;
+    background: var(--accent-dim);
+
+    .tick {
+      opacity: 1;
+    }
+  }
+
+  // Последний тег снять нельзя — строка глушится, но остаётся видимой.
+  &:disabled {
+    opacity: 0.55;
+  }
+}
+
+// Ручка шторки: сама полоска плюс заголовок. Крестика нет — закрывается
+// смахиванием вниз или тапом по затемнению.
+.sheet-grip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 14px;
+  // Жест обрабатываем сами, иначе браузер начнёт прокручивать содержимое.
+  touch-action: none;
+  cursor: grab;
+
+  span {
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border-strong);
+  }
+
+  strong {
+    font-size: 16px;
   }
 }

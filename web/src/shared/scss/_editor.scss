@@ -50,7 +50,8 @@
 
   // Подпись поля. 15px вместо 12px: на десктопе прежний кегль читался
   // как служебный шум, а это единственное, что объясняет поле.
-  label {
+  label,
+  .pseudo-label {
     display: flex;
     flex-direction: column;
     gap: 7px;

@@ -76,8 +76,13 @@
       </label>
 
       <div class="field-limit">
-        <label>
-          Где вы работаете
+        <!--
+          Не <label>: клик по нему браузер пересылает внутрь ещё раз, и
+          nz-select открывался и тут же закрывался — поле выглядело
+          некликабельным. Для кастомных контролов подпись — обычный span.
+        -->
+        <div class="pseudo-label">
+          <span>Где вы работаете</span>
           <nz-select
             nzSize="large"
             [(ngModel)]="productionValue"
@@ -90,7 +95,7 @@
               <nz-option [nzValue]="pr.id" [nzLabel]="pr.name"></nz-option>
             }
           </nz-select>
-        </label>
+        </div>
         <p class="hint">Фрилансер или один из продакшенов. Сохранится вместе с профилем.</p>
       </div>
 

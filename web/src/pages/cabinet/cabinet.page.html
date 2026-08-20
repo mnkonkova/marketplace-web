@@ -49,6 +49,9 @@
     <app-completeness-indicator [profile]="p" [portfolio]="portfolio()" />
   </header>
 
+  <!-- nzAnimated=false: ng-zorro пытается анимировать display, а он не
+       анимируется — отсюда рывок при переключении на десктопе и заметная
+       задержка на телефоне. -->
   <nz-tabset
     class="cabinet-tabs"
     [nzSelectedIndex]="tabIndex()"

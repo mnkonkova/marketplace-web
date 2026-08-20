@@ -13,6 +13,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -63,6 +64,7 @@ const MAX_PHOTOS_PER_SET = 10;
     NzIconModule,
     NzInputModule,
     NzDropDownModule,
+    NzDrawerModule,
   ],
   templateUrl: './profile-portfolio.component.html',
   styleUrl: './profile-portfolio.component.scss',
@@ -145,6 +147,74 @@ export class ProfilePortfolioComponent {
   });
 
   public readonly profileCategoryList = computed(() => [...this.profileCategories()]);
+
+  /**
+   * Тач-экран определяем один раз: на телефоне список тегов открывается
+   * нижней шторкой, а не выпадающим меню. Выпадашка у правого края экрана
+   * прижимается к границе и половина пунктов уезжает под палец.
+   */
+  public readonly isTouch = signal(
+    typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(hover: none) and (pointer: coarse)').matches,
+  );
+
+  /** id работы, у которой открыта шторка тегов. null — шторка закрыта. */
+  public readonly tagSheetId = signal<string | null>(null);
+
+  public readonly tagSheetItem = computed(() => {
+    const id = this.tagSheetId();
+    return id ? (this.items().find((i) => i.id === id) ?? null) : null;
+  });
+
+  public openTagSheet(item: PortfolioItem): void {
+    this.tagSheetId.set(item.id);
+  }
+
+  public closeTagSheet(): void {
+    this.tagSheetId.set(null);
+    this.sheetShift = 0;
+  }
+
+  // === Смахивание шторки ===
+  //
+  // Крестик на телефоне — лишний прицел: шторку закрывают жестом вниз, как
+  // в системных меню. Тянем саму панель ng-zorro (её обёртку в оверлее),
+  // чтобы жест был с обратной связью, а не «дёрнул — угадал».
+
+  private sheetStartY = 0;
+
+  private sheetShift = 0;
+
+  private sheetPanel(): HTMLElement | null {
+    return document.querySelector('.ant-drawer-content-wrapper');
+  }
+
+  public onSheetTouchStart(ev: TouchEvent): void {
+    this.sheetStartY = ev.touches[0].clientY;
+    this.sheetShift = 0;
+    const panel = this.sheetPanel();
+    if (panel) panel.style.transition = 'none';
+  }
+
+  public onSheetTouchMove(ev: TouchEvent): void {
+    // Тянем только вниз: вверх шторка не растёт.
+    const dy = Math.max(0, ev.touches[0].clientY - this.sheetStartY);
+    this.sheetShift = dy;
+    const panel = this.sheetPanel();
+    if (panel) panel.style.transform = `translateY(${dy}px)`;
+  }
+
+  public onSheetTouchEnd(): void {
+    const panel = this.sheetPanel();
+    if (panel) {
+      panel.style.transition = '';
+      panel.style.transform = '';
+    }
+    // 90px — примерно треть высоты шторки: случайным движением не закроешь.
+    if (this.sheetShift > 90) this.closeTagSheet();
+    this.sheetShift = 0;
+  }
 
   /** Сколько тегов показываем на карточке до «ещё N». */
   private static readonly VISIBLE_TAGS = 3;

@@ -244,45 +244,63 @@
             @if (hiddenTagCount(item); as more) {
               <span class="wtag wtag-more" [title]="hiddenTagTitles(item)">ещё {{ more }}</span>
             }
-            <button
-              type="button"
-              class="wtag wtag-edit"
-              nz-dropdown
-              nzTrigger="click"
-              [nzClickHide]="false"
-              [nzDropdownMenu]="tagMenu"
-              [attr.aria-label]="'Изменить теги работы'"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14" stroke-linecap="round" />
-              </svg>
-              @if (!item.category_codes.length) {
-                Теги
-              }
-            </button>
-            <nz-dropdown-menu #tagMenu="nzDropdownMenu">
-              <ul nz-menu class="tag-menu">
-                @for (code of profileCategoryList(); track code) {
-                  <li
-                    nz-menu-item
-                    [nzDisabled]="isLastTag(item, code)"
-                    [title]="
-                      isLastTag(item, code)
-                        ? 'Хотя бы один тег нужен: без тегов работа не попадёт в подборки'
-                        : ''
-                    "
-                    (click)="toggleItemCategory(item, code)"
-                  >
-                    <span class="tick" [class.is-on]="item.category_codes.includes(code)">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                        <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </span>
-                    {{ categoryTitle(code) }}
-                  </li>
+            <!-- На тач-экране список открывается нижней шторкой: выпадашка
+                 у правого края прижимается к границе экрана. -->
+            @if (isTouch()) {
+              <button
+                type="button"
+                class="wtag wtag-edit"
+                (click)="openTagSheet(item)"
+                [attr.aria-label]="'Изменить теги работы'"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+                </svg>
+                @if (!item.category_codes.length) {
+                  Теги
                 }
-              </ul>
-            </nz-dropdown-menu>
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="wtag wtag-edit"
+                nz-dropdown
+                nzTrigger="click"
+                [nzClickHide]="false"
+                [nzDropdownMenu]="tagMenu"
+                [attr.aria-label]="'Изменить теги работы'"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+                </svg>
+                @if (!item.category_codes.length) {
+                  Теги
+                }
+              </button>
+              <nz-dropdown-menu #tagMenu="nzDropdownMenu">
+                <ul nz-menu class="tag-menu">
+                  @for (code of profileCategoryList(); track code) {
+                    <li
+                      nz-menu-item
+                      [nzDisabled]="isLastTag(item, code)"
+                      [title]="
+                        isLastTag(item, code)
+                          ? 'Хотя бы один тег нужен: без тегов работа не попадёт в подборки'
+                          : ''
+                      "
+                      (click)="toggleItemCategory(item, code)"
+                    >
+                      <span class="tick" [class.is-on]="item.category_codes.includes(code)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                          <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </span>
+                      {{ categoryTitle(code) }}
+                    </li>
+                  }
+                </ul>
+              </nz-dropdown-menu>
+            }
           </div>
         </div>
 
@@ -347,6 +365,54 @@
     Для выбора другого кадра или своей обложки нужен thumbnail_url в
     PortfolioPatchInput — presigned-аплоад (/me/uploads/image) уже есть.
   -->
+  @if (isTouch() && tagSheetItem(); as sheetItem) {
+    <nz-drawer
+      [nzVisible]="true"
+      nzPlacement="bottom"
+      [nzClosable]="false"
+      [nzHeight]="'auto'"
+      [nzBodyStyle]="{ padding: '0 16px 20px' }"
+      (nzOnClose)="closeTagSheet()"
+    >
+      <ng-container *nzDrawerContent>
+        <!-- Полоска-ручка: за неё шторку тянут вниз, чтобы закрыть. -->
+        <div
+          class="sheet-grip"
+          (touchstart)="onSheetTouchStart($event)"
+          (touchmove)="onSheetTouchMove($event)"
+          (touchend)="onSheetTouchEnd()"
+          (touchcancel)="onSheetTouchEnd()"
+        >
+          <span></span>
+          <strong>Теги работы</strong>
+        </div>
+        <p class="sheet-note">
+          Теги решают, в какие подборки попадёт работа. Хотя бы один нужен обязательно.
+        </p>
+        <ul class="tag-sheet">
+          @for (code of profileCategoryList(); track code) {
+            <li>
+              <button
+                type="button"
+                class="tag-sheet-row"
+                [class.is-on]="sheetItem.category_codes.includes(code)"
+                [disabled]="isLastTag(sheetItem, code)"
+                (click)="toggleItemCategory(sheetItem, code)"
+              >
+                <span class="tick">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+                {{ categoryTitle(code) }}
+              </button>
+            </li>
+          }
+        </ul>
+      </ng-container>
+    </nz-drawer>
+  }
+
   @if (items().length) {
     <p class="hint list-note">
       Обложка видео — кадр со 2-й секунды, у фото-кейса — первое фото. Чтобы сменить: для видео
