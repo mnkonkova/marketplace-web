@@ -15,5 +15,5 @@ export const environment = {
    * Формат значения: 'https://<воркер>' без слэша на конце. Путь /s/<handle>
    * добавляется в specialist-profile.page.ts.
    */
-  shareBaseUrl: '',
+  shareBaseUrl: 'https://wayprmarket.online',
 };
