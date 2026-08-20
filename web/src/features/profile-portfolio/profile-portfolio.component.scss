@@ -1,4 +1,3 @@
-@use 'editor' as editor;
 
 :host {
   display: block;
@@ -153,25 +152,25 @@
 
 .thumb {
   position: relative;
-  width: 120px;
-  aspect-ratio: 3 / 4;
-  border-radius: 8px;
+  flex: 0 0 auto;
   overflow: hidden;
-  background: #1a1a1a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-dim);
+  // Размеры из макета: вертикаль 92x140, горизонт 170x96. Прежние крупные
+  // превью растягивали строку, а полезного в них было столько же.
+  width: 92px;
+  height: 140px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+
+  &.is-horizontal {
+    width: 170px;
+    height: 96px;
+  }
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: block;
-  }
-
-  @media (max-width: 720px) {
-    width: 96px;
   }
 }
 
@@ -270,14 +269,15 @@
 // Действия карточки. Всегда видимы (на тачах hover'а нет), зазор ≥8px,
 // каждая кнопка ≥44px — по ✎/🗑 промахивались.
 .row-actions {
+  // Промо и «⋯» — на одной линии. Колонкой они вставали друг под друга, и
+  // «Сделать промо» переставала читаться как цельная кнопка.
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
-  align-items: stretch;
+  align-items: center;
 
   @media (max-width: 720px) {
     grid-column: 1 / -1;
-    flex-direction: row;
     flex-wrap: wrap;
     justify-content: flex-end;
     margin-top: 4px;
@@ -466,7 +466,6 @@
   }
 }
 
-@include editor.blocks;
 
 // Иконка звезды внутри промо-пилюли: inline-SVG вместо глифа ★, который
 // в разных шрифтах рисуется разной ширины и ломал выравнивание ряда.
@@ -499,4 +498,47 @@
     background: var(--surface-hover);
     color: var(--text);
   }
+}
+
+// Формат поверх обложки — как в макете.
+.thumb-format {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #dfe3e8;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+// Теги работы — приглушённые пилюли, а не зелёные чипы: зелёный в кабинете
+// означает «выбрано», а тег работы ничего не выбирает.
+.portfolio-row .chips .chip,
+.portfolio-row .wtag {
+  padding: 3px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.item-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.open-video {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.list-note {
+  margin-top: 14px;
 }

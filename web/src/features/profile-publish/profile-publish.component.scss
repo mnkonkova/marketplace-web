@@ -1,4 +1,3 @@
-@use 'editor' as editor;
 
 :host {
   display: block;
@@ -66,4 +65,3 @@
   }
 }
 
-@include editor.blocks;

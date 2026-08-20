@@ -177,13 +177,27 @@ export class ProfilePortfolioComponent {
    * бэке, клиентский замер как фолбэк) и вручную не редактируется: плитка
    * публичной страницы читает ровно это же значение.
    */
+  /** Горизонтальная работа — обложка шире и ниже (170x96 против 92x140). */
+  public isHorizontal(item: PortfolioItem): boolean {
+    const r = this.ratio(item);
+    return r != null && orientationOf(r) === 'horizontal';
+  }
+
   public formatBadge(item: PortfolioItem): string {
     const r = this.ratio(item);
     if (r == null) return '';
-    const label = aspectLabel(r);
+    // Только соотношение: словом «вертикаль» бейдж не помещался на обложку
+    // 92px и переносился на две строки. Ориентация и так видна по картинке.
+    return aspectLabel(r);
+  }
+
+  /** Полная подпись формата — в title, для тех, кому нужно словами. */
+  public formatTitle(item: PortfolioItem): string {
+    const r = this.ratio(item);
+    if (r == null) return '';
     const kind = orientationOf(r);
     const human = kind === 'horizontal' ? 'горизонт' : kind === 'square' ? 'квадрат' : 'вертикаль';
-    return `${label} · ${human}`;
+    return `${aspectLabel(r)} · ${human} — формат определяется из файла`;
   }
 
   // === Промо-работа ===

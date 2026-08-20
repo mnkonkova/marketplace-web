@@ -139,7 +139,6 @@
   margin-top: 22px;
 }
 
-@include editor.blocks;
 @include editor.chips;
 
 // На тач-экранах пилюля вырастает до 44px: в макете 36px рассчитаны на мышь.

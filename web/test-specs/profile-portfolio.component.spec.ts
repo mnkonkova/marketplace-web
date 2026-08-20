@@ -102,11 +102,28 @@ describe('ProfilePortfolioComponent — промо-работа', () => {
 });
 
 describe('ProfilePortfolioComponent — формат из файла', () => {
+  // Бейдж лежит поверх обложки шириной 66-92px, поэтому в нём только
+  // соотношение: со словом «вертикаль» он переносился на две строки.
+  // Словесная подпись осталась в title.
   it('бейдж строится по aspect с бэка, вручную формат не задаётся', () => {
     const { cmp } = setup([]);
-    expect(cmp.formatBadge(work('a', { aspect: '16:9' }))).toBe('16:9 · горизонт');
-    expect(cmp.formatBadge(work('b', { aspect: '9:16' }))).toBe('9:16 · вертикаль');
-    expect(cmp.formatBadge(work('c', { aspect: '1:1' }))).toBe('1:1 · квадрат');
+    expect(cmp.formatBadge(work('a', { aspect: '16:9' }))).toBe('16:9');
+    expect(cmp.formatBadge(work('b', { aspect: '9:16' }))).toBe('9:16');
+    expect(cmp.formatBadge(work('c', { aspect: '1:1' }))).toBe('1:1');
+  });
+
+  it('в title формата — словесная подпись', () => {
+    const { cmp } = setup([]);
+    expect(cmp.formatTitle(work('a', { aspect: '16:9' }))).toContain('горизонт');
+    expect(cmp.formatTitle(work('b', { aspect: '9:16' }))).toContain('вертикаль');
+    expect(cmp.formatTitle(work('c'))).toBe('');
+  });
+
+  it('горизонтальная работа помечается для широкой обложки', () => {
+    const { cmp } = setup([]);
+    expect(cmp.isHorizontal(work('a', { aspect: '16:9' }))).toBeTrue();
+    expect(cmp.isHorizontal(work('b', { aspect: '9:16' }))).toBeFalse();
+    expect(cmp.isHorizontal(work('c'))).toBeFalse();
   });
 
   it('без aspect формат неизвестен, пока клиент не измерил кадр', () => {
@@ -117,7 +134,7 @@ describe('ProfilePortfolioComponent — формат из файла', () => {
 
     cmp.onMeasured(item, 16 / 9);
     expect(cmp.orientation(item)).toBe('horizontal');
-    expect(cmp.formatBadge(item)).toBe('16:9 · горизонт');
+    expect(cmp.formatBadge(item)).toBe('16:9');
   });
 });
 

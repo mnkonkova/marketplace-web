@@ -107,7 +107,14 @@
   <div class="portfolio-list">
     @for (item of items(); track item.id) {
       <article class="portfolio-row" [class.is-featured]="item.is_featured">
-        <div class="thumb">
+        <div class="thumb" [class.is-horizontal]="isHorizontal(item)">
+          <!-- Формат — бейджем поверх обложки: в строке рядом с названием он
+               смешивался с тегами работы и читался как ещё один тег. -->
+          @if (formatBadge(item); as fmt) {
+            <span class="thumb-format" [title]="formatTitle(item)">
+              {{ fmt }}
+            </span>
+          }
           @if (poster(item); as src) {
             <img
               [src]="src"
@@ -126,23 +133,8 @@
 
         <div class="portfolio-main">
           <div class="badges">
-            @if (item.is_featured) {
-              <span class="badge promo"
-                ><svg class="ic-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path
-                    d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"
-                  />
-                </svg>
-                Промо</span
-              >
-            }
-            @if (formatBadge(item); as fmt) {
-              <span class="badge format" title="Формат определяется из файла и не редактируется">
-                {{ fmt }}
-              </span>
-            } @else {
-              <span class="badge format is-dim">формат определяется…</span>
-            }
+            <!-- «Промо» бейджем не дублируем: состояние видно по пилюле в
+                 строке действий и по рамке карточки. -->
             @if (item.kind === 'image') {
               <span class="badge">Фото-кейс · {{ item.images?.length || 0 }}</span>
             }
@@ -191,18 +183,10 @@
           }
 
           @if (item.kind === 'video' && item.video_url) {
-            <a [href]="item.video_url" target="_blank" rel="noopener">открыть видео ↗</a>
-            <p class="hint cover-hint">
-              Обложка — кадр со 2-й секунды ролика. Нужен другой кадр — перезалейте ролик.
-              <!-- TODO(backend): PATCH /me/portfolio/{id} принимает только
-                   title/description. Для выбора другого кадра или своей
-                   обложки нужен thumbnail_url в PortfolioPatchInput —
-                   presigned-аплоад картинки (/me/uploads/image) уже есть. -->
-            </p>
+            <a class="open-video" [href]="item.video_url" target="_blank" rel="noopener"
+              >открыть видео ↗</a
+            >
           } @else if (item.kind === 'image') {
-            <p class="hint cover-hint">
-              Обложка — первое фото. Перетащите другое на первое место, чтобы сменить.
-            </p>
             <div
               class="photoset-thumbs"
               cdkDropList
@@ -314,4 +298,18 @@
       <p class="hint">Добавьте первый ролик или фото-кейс — появится в кабинете и ленте.</p>
     }
   </div>
+
+  <!--
+    Подсказка про обложку одна на весь список: раньше она повторялась под
+    каждой работой и превращала список в простыню одинакового текста.
+    TODO(backend): PATCH /me/portfolio/{id} принимает только title/description.
+    Для выбора другого кадра или своей обложки нужен thumbnail_url в
+    PortfolioPatchInput — presigned-аплоад (/me/uploads/image) уже есть.
+  -->
+  @if (items().length) {
+    <p class="hint list-note">
+      Обложка видео — кадр со 2-й секунды, у фото-кейса — первое фото. Чтобы сменить: для видео
+      перезалейте ролик, для фото перетащите нужный кадр на первое место.
+    </p>
+  }
 </section>

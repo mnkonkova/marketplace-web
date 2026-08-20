@@ -1,3 +1,4 @@
+@use 'editor' as editor;
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 :root {
@@ -692,6 +693,20 @@ h6 {
    белесый фон и почти чёрный текст, на тёмной странице это выбитое пятно.
    Цвета — из макета (.banner: rgba(47,123,220,.12) + рамка #274b6e). */
 .cabinet {
+  /* Корень всей «чёрный текст не читается»: ant ставит на .ant-tabs
+     color: rgba(0,0,0,.85), и КАЖДЫЙ элемент внутри вкладок наследует его.
+     Читались только те места, где цвет прописан явно. */
+  .ant-tabs {
+    color: var(--text);
+  }
+
+  /* Кнопки без явного типа тоже приходят с ant-овским rgba(0,0,0,.85).
+     Исключаем primary/danger — там цвет осмысленный (белый на коралловом,
+     красный у опасных), и перебивать его нельзя. */
+  .ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-background-ghost) {
+    color: var(--text);
+  }
+
   .ant-alert {
     border-radius: 14px !important;
     padding: 16px 20px !important;
@@ -725,4 +740,62 @@ h6 {
   .ant-alert-error .ant-alert-icon {
     color: #e0604e !important;
   }
+}
+
+/* Телефонная карточка работы. Держим здесь, а не в component.scss: файл
+   вкладки «Портфолио» и без того на пределе бюджета сборки, а селекторы
+   всё равно уникальны для кабинета. */
+.cabinet {
+  // ── Телефон: карточка работы по mobile_cabinet.html ────────────────────
+  @media (max-width: 720px) {
+    .thumb {
+      width: 66px;
+      height: 100px;
+
+      &.is-horizontal {
+        width: 112px;
+        height: 63px;
+      }
+    }
+
+    .thumb-format {
+      top: 5px;
+      left: 5px;
+      padding: 1px 5px;
+      font-size: 9px;
+    }
+
+    .portfolio-row {
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .item-title {
+      font-size: 14px;
+    }
+
+    .portfolio-row .chips .chip {
+      padding: 2px 8px;
+      font-size: 11px;
+    }
+
+    // Промо и «⋯» остаются в одной строке; «⋯» прижата вправо.
+    .row-actions {
+      gap: 8px;
+      justify-content: flex-start;
+    }
+
+    .row-more {
+      width: 40px;
+      height: 40px;
+      margin-left: auto;
+    }
+  }
+}
+
+/* Общие блоки редактора — один раз на весь кабинет. Раньше миксин
+   подключался в каждой из пяти вкладок и давал пять копий одного CSS:
+   «Портфолио» из-за этого стабильно вылезала за бюджет сборки. */
+.cabinet {
+  @include editor.blocks;
 }

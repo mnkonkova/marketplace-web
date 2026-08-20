@@ -96,6 +96,23 @@ export const SOCIAL_NETWORKS: readonly SocialNetwork[] = [
 ];
 
 /** Приводит произвольный ввод юзера к кликабельному https-URL'у. */
+/**
+ * Срезает начало ссылки, скопированной из адресной строки без схемы:
+ * «t.me/user», «www.instagram.com/user/» → «user». Без этого такое значение
+ * приклеивалось к нашему префиксу и выходило https://t.me/t.me/user.
+ */
+function stripHost(value: string, ...hosts: string[]): string {
+  let v = value.replace(/^\/+/, '');
+  for (const host of hosts) {
+    const re = new RegExp(`^(?:www\\.)?${host.replace(/\./g, '\\.')}/+`, 'i');
+    if (re.test(v)) {
+      v = v.replace(re, '');
+      break;
+    }
+  }
+  return v.replace(/\/+$/, '');
+}
+
 export function socialLinkURL(key: SocialKey, raw: string): string | null {
   const v = (raw ?? '').trim();
   if (!v) return null;
@@ -105,9 +122,9 @@ export function socialLinkURL(key: SocialKey, raw: string): string | null {
 
   switch (key) {
     case 'telegram': {
-      // @handle или просто handle → https://t.me/handle
-      const h = v.replace(/^@/, '');
-      return `https://t.me/${h}`;
+      // @handle, handle, t.me/handle, telegram.me/handle → https://t.me/handle
+      const h = stripHost(v, 't.me', 'telegram.me').replace(/^@/, '');
+      return h ? `https://t.me/${h}` : null;
     }
     case 'whatsapp': {
       // Телефон → https://wa.me/<digits>. Только цифры (убираем + - пробелы).
@@ -116,32 +133,32 @@ export function socialLinkURL(key: SocialKey, raw: string): string | null {
       return `https://wa.me/${digits}`;
     }
     case 'vk': {
-      const h = v.replace(/^@/, '').replace(/^vk\.com\//, '');
-      return `https://vk.com/${h}`;
+      const h = stripHost(v, 'vk.com', 'm.vk.com').replace(/^@/, '');
+      return h ? `https://vk.com/${h}` : null;
     }
     case 'youtube': {
       // @channel / channel / youtube.com/@... → https://youtube.com/@channel
-      let h = v.replace(/^youtube\.com\//, '').replace(/^www\.youtube\.com\//, '');
+      let h = stripHost(v, 'youtube.com', 'm.youtube.com', 'youtu.be');
       if (!h.startsWith('@') && !h.startsWith('channel/') && !h.startsWith('c/')) {
         h = '@' + h;
       }
       return `https://youtube.com/${h}`;
     }
     case 'instagram': {
-      const h = v.replace(/^@/, '');
-      return `https://instagram.com/${h}`;
+      const h = stripHost(v, 'instagram.com').replace(/^@/, '');
+      return h ? `https://instagram.com/${h}` : null;
     }
     case 'tiktok': {
-      const h = v.replace(/^@/, '');
-      return `https://tiktok.com/@${h}`;
+      const h = stripHost(v, 'tiktok.com').replace(/^@/, '');
+      return h ? `https://tiktok.com/@${h}` : null;
     }
     case 'behance': {
-      const h = v.replace(/^behance\.net\//, '');
-      return `https://behance.net/${h}`;
+      const h = stripHost(v, 'behance.net');
+      return h ? `https://behance.net/${h}` : null;
     }
     case 'dribbble': {
-      const h = v.replace(/^dribbble\.com\//, '');
-      return `https://dribbble.com/${h}`;
+      const h = stripHost(v, 'dribbble.com');
+      return h ? `https://dribbble.com/${h}` : null;
     }
     case 'website': {
       // Без схемы — добавляем https://

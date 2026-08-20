@@ -261,3 +261,54 @@
     border-color: #3a4049;
   }
 }
+
+// ── Телефон: вкладки-пилюли ────────────────────────────────────────────
+// В mobile_cabinet.html таб-бар устроен принципиально иначе, чем на
+// десктопе: не подчёркивание, а горизонтальный ряд пилюль, активная —
+// белая с чёрным текстом. Подчёркивание на узком экране почти не видно,
+// поэтому макет и разошёлся с нашей реализацией.
+@media (max-width: bp.$touch) {
+  .cabinet-tabs {
+    ::ng-deep .ant-tabs-nav::before {
+      border-bottom: none;
+    }
+
+    ::ng-deep .ant-tabs-nav-list {
+      gap: 8px;
+      padding: 2px 0 4px;
+    }
+
+    ::ng-deep .ant-tabs-tab {
+      min-height: 44px;
+      margin: 0 !important;
+      padding: 0 16px;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      background: var(--bg-elevated);
+      font-size: 13.5px;
+      white-space: nowrap;
+    }
+
+    ::ng-deep .ant-tabs-tab-active {
+      border-color: var(--text);
+      background: var(--text);
+    }
+
+    ::ng-deep .ant-tabs-tab-active .ant-tabs-tab-btn,
+    ::ng-deep .ant-tabs-tab-active .ant-badge {
+      color: #000 !important;
+      font-weight: 600;
+    }
+
+    // Подчёркивание пилюлям не нужно — активная выделена заливкой.
+    ::ng-deep .ant-tabs-ink-bar {
+      display: none;
+    }
+
+    // Кнопка «ещё» от ng-zorro не нужна: ряд и так скроллится вбок, а она
+    // дублирует список и выглядит шестой вкладкой.
+    ::ng-deep .ant-tabs-nav-more {
+      display: none;
+    }
+  }
+}
