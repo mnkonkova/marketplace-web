@@ -45,23 +45,66 @@
       </p>
     </div>
   </div>
-  <div class="social-grid">
-    @for (net of socialNetworks; track net.key) {
-      <label class="social-field">
-        <span class="social-field-head">
-          <span class="ic" aria-hidden="true">{{ net.icon }}</span>
-          <span>{{ net.label }}</span>
-        </span>
-        <input
-          nz-input
-          nzSize="large"
-          [(ngModel)]="f.social_links[net.key]"
-          [name]="'social_' + net.key"
-          [placeholder]="net.placeholder"
-          maxlength="200"
-        />
-        <span class="hint">{{ net.hint }}</span>
-      </label>
+  <!--
+    Список «канал + значение» вместо фиксированной сетки полей. Пишем в те же
+    social_links, поэтому контракт сохранения не меняется: строка = ключ с
+    непустым значением, удаление строки = очистка ключа.
+  -->
+  <div class="contact-list">
+    @for (row of rows(); track row.key) {
+      <div
+        class="crow"
+        [class.is-swiping]="swipingKey() === row.key"
+        (touchstart)="onTouchStart($event, row.key)"
+        (touchmove)="onTouchMove($event)"
+        (touchend)="onTouchEnd(row.key)"
+      >
+        <div class="crow-front" [style.transform]="rowShift(row.key)">
+          <select
+            class="crow-channel"
+            [ngModel]="row.key"
+            [name]="'channel_' + row.key"
+            (ngModelChange)="changeChannel(row.key, $event)"
+            [attr.aria-label]="'Канал связи'"
+          >
+            @for (net of channelOptions(row.key); track net.key) {
+              <option [value]="net.key">{{ net.label }}</option>
+            }
+          </select>
+          <input
+            nz-input
+            nzSize="large"
+            class="crow-value"
+            [ngModel]="f.social_links[row.key]"
+            [name]="'social_' + row.key"
+            (ngModelChange)="setValue(row.key, $event)"
+            [placeholder]="placeholderFor(row.key)"
+            maxlength="200"
+          />
+          <!-- Крестик — только на десктопе; на тач-экранах строка смахивается. -->
+          <button
+            class="crow-remove"
+            type="button"
+            [attr.aria-label]="'Удалить канал'"
+            (click)="removeRow(row.key)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
     }
   </div>
+
+  <p class="swipe-hint">Смахните строку влево, чтобы удалить.</p>
+
+  @if (availableChannels().length) {
+    <button class="add-contact" type="button" (click)="addRow()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+      </svg>
+      Добавить контакт
+    </button>
+  }
 </section>

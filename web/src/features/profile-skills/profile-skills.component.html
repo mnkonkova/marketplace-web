@@ -16,7 +16,11 @@
         @for (role of selectedList(); track role.code; let i = $index) {
           <span class="chip small is-on" [class.is-faded]="i >= 3">
             @if (role.isPrimary) {
-              <span class="star" aria-hidden="true">★</span>
+              <svg class="ic-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"
+                />
+              </svg>
             }
             {{ role.title }}
           </span>
@@ -45,11 +49,41 @@
         >
           <span class="cat-title">{{ cat.title }}</span>
           <span class="cat-desc">{{ cat.description }}</span>
-          <span class="primary-action" (click)="setPrimary(cat.code, $event)">★ основная</span>
+          <!--
+            Тумблер главной роли доступен только у выбранных: на невыбранных
+            он глушится в CSS (opacity + pointer-events). Раньше «★ основная»
+            висела на каждой карточке и читалась как «все роли главные».
+          -->
+          <span
+            class="primary-action"
+            [class.is-main]="primaryCategory() === cat.code"
+            (click)="setPrimary(cat.code, $event)"
+          >
+            @if (primaryCategory() === cat.code) {
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"
+                />
+              </svg>
+              Главная
+            } @else {
+              Сделать главной
+            }
+          </span>
         </button>
       }
     </div>
   }
+
+  <!-- Итог под сеткой: какая роль уедет на публичную первой. -->
+  <p class="primary-summary">
+    Главная роль:
+    @if (primaryTitle()) {
+      <strong>{{ primaryTitle() }}</strong>
+    } @else {
+      <span class="muted">не выбрана</span>
+    }
+  </p>
 </section>
 
 <section class="panel">

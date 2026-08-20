@@ -27,31 +27,31 @@
         @if (avatarUrl(); as src) {
           <img [src]="src" alt="" decoding="async" />
         } @else {
-          <span>{{ (f.display_name || '?').slice(0, 1) }}</span>
+          <span class="avatar-initials">{{ initials() }}</span>
         }
         @if (avatarUploading()) {
           <div class="avatar-overlay" role="status" aria-label="Загрузка аватара">
             <span nz-icon nzType="loading" nzTheme="outline"></span>
           </div>
         }
+        <!-- Подсказка только на десктопе: на тач-экранах hover не случается. -->
+        <span class="avatar-hover" aria-hidden="true">Изменить фото</span>
+        <!-- Бейдж-камера: подсказывает, что вся плитка — кнопка загрузки. -->
+        <span class="avatar-cam" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M3 9a2 2 0 0 1 2-2h2l1.5-2h7L17 7h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+              stroke-linejoin="round"
+            />
+            <circle cx="12" cy="13" r="3.2" />
+          </svg>
+        </span>
       </label>
-      <div class="avatar-actions">
-        <label
-          for="avatarFileInput"
-          class="avatar-pick-btn"
-          [class.is-disabled]="avatarUploading()"
-        >
-          @if (avatarUploading()) {
-            <span nz-icon nzType="loading" nzTheme="outline"></span>
-          }
-          Загрузить аватар
-        </label>
-        @if (f.avatar_url || avatarUrl()) {
-          <button nz-button nzSize="large" type="button" (click)="avatarCleared.emit()">
-            Очистить
-          </button>
-        }
-      </div>
+      @if (f.avatar_url || avatarUrl()) {
+        <button class="avatar-remove" type="button" (click)="avatarCleared.emit()">
+          Удалить фото
+        </button>
+      }
       <p class="hint">
         JPG, PNG, WEBP или HEIC. Любой размер до 50 МБ — автоматически уменьшим до 512 px. После
         загрузки нажмите «Сохранить».

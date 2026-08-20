@@ -138,3 +138,23 @@
     }
   }
 }
+
+// Инлайновые иконки кабинета. Раньше на их месте стояли глифы (★ ✎ × ＋):
+// они рисуются шрифтом, поэтому меняли ширину от платформы к платформе и
+// разъезжались в рядах кнопок. SVG предсказуем и красится currentColor.
+.ic-star,
+.ic-close,
+.ic-pencil {
+  width: 18px;
+  height: 18px;
+  vertical-align: -3px;
+}
+
+@media (hover: none) {
+  .ic-star,
+  .ic-close,
+  .ic-pencil {
+    width: 20px;
+    height: 20px;
+  }
+}

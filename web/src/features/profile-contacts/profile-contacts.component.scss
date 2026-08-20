@@ -15,33 +15,131 @@
 }
 
 // Соцсети — grid, не CSS-columns: multicol на телефоне режет поля пополам.
-.social-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
-  gap: 16px 18px;
-}
-
-.social-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-
-  .social-field-head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 15px;
-    color: var(--text);
-
-    .ic {
-      font-size: 17px;
-      line-height: 1;
-    }
-  }
-
-  .hint {
-    font-size: 14px;
-  }
-}
 
 @include editor.blocks;
+
+// Список каналов. Воздуха между строками намеренно много: раньше каретки
+// селектов и крестики стояли вплотную и на телефоне попасть было нечем.
+.contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.crow {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.crow-front {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg-elevated);
+  transition: transform 0.18s ease;
+}
+
+// Во время свайпа анимация переноса не нужна — палец ведёт строку сам.
+.crow.is-swiping .crow-front {
+  transition: none;
+}
+
+// Селект по ширине названия канала: растянутый на всю строку уводил каретку
+// к правому краю, и она читалась как отдельный элемент управления.
+.crow-channel {
+  flex: 0 0 auto;
+  width: 150px;
+  min-width: 0;
+  height: 48px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+}
+
+.crow-value {
+  flex: 1;
+  min-width: 0;
+}
+
+.crow-remove {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover {
+    border-color: rgba(255, 100, 112, 0.4);
+    color: var(--danger);
+  }
+}
+
+.swipe-hint {
+  display: none;
+  margin: 6px 0 12px 4px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.add-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+
+  svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+}
+
+// Тач: крестик убираем — строка удаляется свайпом влево, как в почте.
+@media (hover: none) {
+  .crow-remove {
+    display: none;
+  }
+
+  .swipe-hint {
+    display: block;
+  }
+
+  .crow-front {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .crow-channel {
+    width: 100%;
+  }
+
+  .crow-value {
+    flex: 1 1 100%;
+  }
+}

@@ -6,8 +6,14 @@
   <!-- Username editor. Read mode: prefix /specialist/ muted, username — accent. -->
   @if (!editing()) {
     <div class="username-view">
-      <div class="url-display" (click)="startEdit()" role="button" tabindex="0"
-           [class.is-empty]="!username()" title="Нажмите чтобы изменить">
+      <div
+        class="url-display"
+        (click)="startEdit()"
+        role="button"
+        tabindex="0"
+        [class.is-empty]="!username()"
+        title="Нажмите чтобы изменить"
+      >
         <span class="url-host">{{ host() }}</span>
         <span class="url-prefix">/specialist/</span>
         @if (username()) {
@@ -15,12 +21,21 @@
         } @else {
           <span class="url-handle is-placeholder">придумайте_username</span>
         }
-        <span class="url-edit-icon" aria-hidden="true">✎</span>
+        <svg
+          class="ic-pencil"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <path d="M4 20h4L20 8l-4-4L4 16z" stroke-linejoin="round" />
+        </svg>
       </div>
       @if (!username()) {
         <p class="hint warn">
-          Сейчас ссылка идёт по UUID — некрасиво и нечитаемо. Придумайте username,
-          чтобы клиенты получали короткую ссылку.
+          Сейчас ссылка идёт по UUID — некрасиво и нечитаемо. Придумайте username, чтобы клиенты
+          получали короткую ссылку.
         </p>
       }
     </div>
@@ -86,7 +101,18 @@
 @if (showQR()) {
   <div class="qr-modal" (click)="closeQR($event)" role="dialog" aria-modal="true">
     <div class="qr-modal-card" (click)="$event.stopPropagation()">
-      <button class="qr-close" (click)="showQR.set(false)" aria-label="Закрыть">×</button>
+      <button class="qr-close" (click)="showQR.set(false)" aria-label="Закрыть">
+        <svg
+          class="ic-close"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+        </svg>
+      </button>
       <h4>{{ displayName() || 'Профиль' }}</h4>
       <canvas #qrCanvas width="280" height="280" aria-label="QR-код профиля"></canvas>
       <p class="qr-url">{{ shareURL() }}</p>

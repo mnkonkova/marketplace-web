@@ -6,3 +6,7 @@ node_modules/
 .idea/
 .vscode/
 .claude/settings.local.json
+
+# Референсы вёрстки кабинета — присланы вручную, в сборку не идут.
+desktop_cabinet.html
+mobile_cabinet.html

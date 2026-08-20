@@ -285,6 +285,11 @@
 }
 
 .promo-btn {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -462,3 +467,36 @@
 }
 
 @include editor.blocks;
+
+// Иконка звезды внутри промо-пилюли: inline-SVG вместо глифа ★, который
+// в разных шрифтах рисуется разной ширины и ломал выравнивание ряда.
+.promo-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+// Единая кнопка действий вместо пары ✎/🗑. Тач-таргет 44px и отступ от
+// промо, чтобы не промахиваться пальцем.
+.row-more {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+}

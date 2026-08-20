@@ -127,7 +127,14 @@
         <div class="portfolio-main">
           <div class="badges">
             @if (item.is_featured) {
-              <span class="badge promo">★ Промо</span>
+              <span class="badge promo"
+                ><svg class="ic-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path
+                    d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"
+                  />
+                </svg>
+                Промо</span
+              >
             }
             @if (formatBadge(item); as fmt) {
               <span class="badge format" title="Формат определяется из файла и не редактируется">
@@ -212,7 +219,16 @@
                     aria-label="Удалить фото"
                     title="Удалить фото"
                   >
-                    ×
+                    <svg
+                      class="ic-close"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      aria-hidden="true"
+                    >
+                      <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+                    </svg>
                   </button>
                 </div>
               }
@@ -258,26 +274,39 @@
                 item.is_featured ? 'Снять промо' : 'Сделать промо — работа встанет флагманом сверху'
               "
             >
-              ★ {{ item.is_featured ? 'Промо' : 'Сделать промо' }}
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"
+                />
+              </svg>
+              {{ item.is_featured ? 'Промо' : 'Сделать промо' }}
             </button>
+            <!--
+              Редактирование и удаление собраны под «⋯»: рядом с промо они
+              переносили её на вторую строку, и кнопка выглядела сломанной.
+              Одно меню — промо всегда цельная и на одной вертикали.
+            -->
             <button
               type="button"
-              class="row-action edit"
-              (click)="startEditMeta(item)"
-              aria-label="Редактировать"
-              title="Редактировать"
+              class="row-more"
+              nz-dropdown
+              nzTrigger="click"
+              [nzDropdownMenu]="itemMenu"
+              aria-label="Действия с работой"
+              title="Действия"
             >
-              <span aria-hidden="true">✎</span>
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="5" cy="12" r="1.8" />
+                <circle cx="12" cy="12" r="1.8" />
+                <circle cx="19" cy="12" r="1.8" />
+              </svg>
             </button>
-            <button
-              type="button"
-              class="row-action delete"
-              (click)="deleteItem(item)"
-              aria-label="Удалить"
-              title="Удалить"
-            >
-              <span nz-icon nzType="delete" nzTheme="outline"></span>
-            </button>
+            <nz-dropdown-menu #itemMenu="nzDropdownMenu">
+              <ul nz-menu>
+                <li nz-menu-item (click)="startEditMeta(item)">Редактировать</li>
+                <li nz-menu-item nzDanger (click)="deleteItem(item)">Удалить</li>
+              </ul>
+            </nz-dropdown-menu>
           </div>
         }
       </article>

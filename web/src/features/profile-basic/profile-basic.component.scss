@@ -21,12 +21,6 @@
   gap: 10px;
 }
 
-.avatar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .avatar-preview {
   position: relative;
   isolation: isolate;
@@ -37,10 +31,14 @@
   width: 160px;
   height: 160px;
   border-radius: 34px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--accent);
-  font-weight: 800;
-  font-size: 56px;
+  // Плейсхолдер — спокойный градиент с инициалами. Кликабельна ВСЯ плитка,
+  // а не только бейдж-камера: две отдельные кнопки под аватаром читались
+  // как форма, хотя это одно действие.
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 48px;
+  letter-spacing: 1px;
   cursor: pointer;
   transition: filter 0.15s ease;
 
@@ -60,38 +58,6 @@
 
   &.is-disabled {
     pointer-events: none;
-  }
-}
-
-// label-styled-as-nz-button. Используем label вместо <button> чтобы клик
-// нативно открывал ассоциированный input[file] на iOS Safari (там
-// программный .click() иногда отваливается после 1-го picker'а).
-.avatar-pick-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 15px;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-
-  &:hover {
-    background: var(--surface-hover);
-    border-color: rgba(255, 255, 255, 0.16);
-  }
-
-  &.is-disabled {
-    pointer-events: none;
-    opacity: 0.65;
-    cursor: progress;
   }
 }
 
@@ -186,3 +152,66 @@
 // Инклуд последним: внутри есть вложенные @media, а декларации после
 // вложенного правила — deprecated в Sass (mixed-decls).
 @include editor.blocks;
+
+.avatar-initials {
+  user-select: none;
+}
+
+// Подсказка при наведении — только там, где наведение бывает.
+.avatar-hover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+@media (hover: hover) {
+  .avatar-preview:hover .avatar-hover {
+    opacity: 1;
+  }
+}
+
+.avatar-cam {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: var(--cta);
+  color: #fff;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// «Удалить фото» — текст-ссылка, но с полноценным тач-таргетом: мелкую
+// подпись на телефоне не попасть пальцем.
+.avatar-remove {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 6px 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--danger);
+  }
+}

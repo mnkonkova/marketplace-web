@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -40,6 +40,17 @@ export class ProfileBasicComponent {
 
   /** Что рисовать в кружке аватара: свежий blob: или сохранённый URL. */
   public readonly avatarUrl = input<string | undefined>('');
+
+  /**
+   * Инициалы для плейсхолдера аватара. Раньше на месте фото был коллаж из
+   * тегов навыков — он выглядел как сломанная вёрстка, а не как «фото нет».
+   */
+  public readonly initials = computed(() => {
+    const name = (this.form().display_name ?? '').trim();
+    if (!name) return '?';
+    const words = name.split(/\s+/).filter(Boolean).slice(0, 2);
+    return words.map((w) => w[0].toUpperCase()).join('');
+  });
 
   public readonly avatarUploading = input(false);
 

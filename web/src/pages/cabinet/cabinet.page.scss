@@ -51,13 +51,56 @@
     display: none;
   }
 
-  ::ng-deep .ant-tabs-tab {
-    min-height: 44px;
-    padding: 10px 4px;
-    font-size: clamp(15px, 0.4vw + 14px, 17px);
+  // Вкладки рисуем сами, а не наследуем дефолт ng-zorro: глобальное правило
+  // красит активную в --accent (бирюзовый), и на тёмном фоне ряд читается
+  // как строка синих ссылок, а не как таб-бар. Разделитель под всем баром +
+  // коралловая линия под активной — единственные визуальные опоры.
+  ::ng-deep .ant-tabs-nav::before {
+    border-bottom: 1px solid var(--border);
   }
 
-  // Точка «здесь незаполнено» не должна прижиматься к тексту вплотную.
+  ::ng-deep .ant-tabs-tab {
+    min-height: 44px;
+    padding: 13px 18px;
+    font-size: clamp(16px, 1.1vw, 18px);
+    font-weight: 500;
+    // Без этого ряд выделяется мышью и выглядит как случайно выделенный текст.
+    user-select: none;
+  }
+
+  ::ng-deep .ant-tabs-tab .ant-tabs-tab-btn {
+    color: var(--text-muted) !important;
+  }
+
+  ::ng-deep .ant-tabs-tab:hover .ant-tabs-tab-btn {
+    color: var(--text) !important;
+  }
+
+  ::ng-deep .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: var(--text) !important;
+    font-weight: 600;
+  }
+
+  // Подчёркивание активной вкладки — коралловое, а не акцентное.
+  ::ng-deep .ant-tabs-ink-bar {
+    background: var(--cta) !important;
+    height: 2px !important;
+    border-radius: 2px;
+  }
+
+  // Точка «здесь незаполнено»: коралловая, с воздухом от текста. На активной
+  // вкладке не нужна — пользователь уже здесь и видит, чего не хватает.
+  ::ng-deep .ant-badge-dot {
+    background: var(--cta) !important;
+    box-shadow: none !important;
+    width: 6px;
+    height: 6px;
+  }
+
+  ::ng-deep .ant-tabs-tab-active .ant-badge-dot {
+    display: none;
+  }
+
   .tab-label {
     padding-right: 6px;
   }

@@ -62,6 +62,13 @@ export class ProfileSkillsComponent {
     }));
   });
 
+  /** Название главной роли для строки-итога под сеткой. */
+  public readonly primaryTitle = computed(() => {
+    const primary = this.primaryCategory();
+    if (!primary || !this.selectedCategories().has(primary)) return '';
+    return this.categories().find((c) => c.code === primary)?.title ?? '';
+  });
+
   /** Первые три роли — то, что реально увидит клиент; остальные под «ещё N». */
   public readonly hiddenRolesCount = computed(() => Math.max(0, this.selectedList().length - 3));
 
