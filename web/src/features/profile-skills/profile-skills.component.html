@@ -9,31 +9,17 @@
     </div>
   </div>
 
-  @if (selectedList().length) {
-    <div class="selected-roles">
-      <span class="selected-roles-head">Клиент увидит:</span>
-      <div class="chips">
-        @for (role of selectedList(); track role.code; let i = $index) {
-          <span class="chip small is-on" [class.is-faded]="i >= 3">
-            @if (role.isPrimary) {
-              <svg class="ic-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path
-                  d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"
-                />
-              </svg>
-            }
-            {{ role.title }}
-          </span>
-        }
-      </div>
-      @if (hiddenRolesCount() > 0) {
-        <p class="hint">
-          Первые три роли видны сразу, остальные {{ hiddenRolesCount() }} — под «ещё
-          {{ hiddenRolesCount() }}». Чем длиннее список, тем сильнее он читается как «берусь за
-          всё»: первые роли важнее.
-        </p>
-      }
-    </div>
+  <!--
+    Превью «Клиент увидит: …» убрано: оно повторяло сетку ролей строкой ниже,
+    и на вкладке было два одинаковых списка. Главная роль и так видна по
+    коралловой пилюле, а итог по ней есть под сеткой.
+  -->
+  @if (hiddenRolesCount() > 0) {
+    <p class="hint roles-hint">
+      Первые три роли видны клиенту сразу, остальные {{ hiddenRolesCount() }} — под «ещё
+      {{ hiddenRolesCount() }}». Чем длиннее список, тем сильнее он читается как «берусь за всё»:
+      первые роли важнее.
+    </p>
   }
 
   @for (group of categoryGroups(); track group.type) {

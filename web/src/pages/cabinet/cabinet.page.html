@@ -13,8 +13,23 @@
       nzType="info"
       nzShowIcon
       nzMessage="Профиль на проверке у админа"
-      nzDescription="Обычно занимает до 24 часов. После одобрения вы появитесь в каталоге и ленте. Если внесёте правки, проверка начнётся заново."
+      [nzDescription]="pendingDesc"
     />
+    <ng-template #pendingDesc>
+      <p class="banner-text">
+        Обычно занимает до 24 часов. После одобрения вы появитесь в каталоге и ленте. Если внесёте
+        правки, проверка начнётся заново.
+      </p>
+      <!-- Действие живёт здесь, а не отдельной панелью во вкладке «Публикация»:
+           там оно повторяло этот же текст, только через полстраницы. -->
+      <a class="banner-action" [href]="publicUrl()" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z" stroke-linejoin="round" />
+          <circle cx="12" cy="12" r="2.6" />
+        </svg>
+        Как видят клиенты
+      </a>
+    </ng-template>
     } @if (p.moderation_status === 'rejected') {
     <nz-alert
       class="moderation-banner"
@@ -125,8 +140,8 @@
   />
   }
 
-  <!-- «Выйти» на телефоне вынесен из закреплённой панели вниз контента:
-         рядом с «Сохранить» его слишком легко задеть пальцем. -->
+  <!-- «Выйти» вынесен из закреплённой панели вниз контента на всех ширинах:
+         рядом с «Сохранить» его слишком легко задеть — и мышью, и пальцем. -->
   <div class="content-logout">
     <button nz-button nzDanger nzSize="large" type="button" (click)="logout()">
       Выйти из аккаунта
@@ -134,11 +149,19 @@
   </div>
 
   <div class="actions">
-    <button class="desktop-only" nz-button nzDanger nzSize="large" type="button" (click)="logout()">
-      Выйти
-    </button>
     @if (p.is_published) {
     <button
+      class="act-ghost"
+      nz-button
+      nzSize="large"
+      type="button"
+      [nzLoading]="saving()"
+      (click)="unpublish()"
+    >
+      Снять с публикации
+    </button>
+    <button
+      class="act-save"
       nz-button
       nzType="primary"
       nzSize="large"
@@ -148,22 +171,13 @@
     >
       Сохранить
     </button>
-    <button
-      nz-button
-      nzDanger
-      nzSize="large"
-      type="button"
-      [nzLoading]="saving()"
-      (click)="unpublish()"
-    >
-      Снять с публикации
-    </button>
     } @else {
     <!-- До первой публикации одна кнопка делает PATCH + publish.
              Отдельный «Сохранить» не показываем — он бесполезен пока
              нет публичного состояния, юзеры пугались двух «совершенно
              одинаковых» CTA и публиковали невольно вторую копию. -->
     <button
+      class="act-save"
       nz-button
       nzType="primary"
       nzSize="large"

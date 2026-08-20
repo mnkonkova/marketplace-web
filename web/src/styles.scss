@@ -668,3 +668,61 @@ h6 {
     box-shadow: none !important;
   }
 }
+
+/* Инлайновые иконки кабинета. Размер задаём глобально: часть вкладок не
+   подключает миксин editor.blocks, и SVG без width/height растягивался на
+   весь контейнер — карандаш у поля username занимал пол-экрана. */
+.cabinet {
+  .ic-star,
+  .ic-close,
+  .ic-pencil {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    vertical-align: -3px;
+  }
+
+  svg:not([width]):not([height]) {
+    max-width: 24px;
+    max-height: 24px;
+  }
+}
+
+/* Баннеры модерации в кабинете. nz-alert приходит со светлой темой ant:
+   белесый фон и почти чёрный текст, на тёмной странице это выбитое пятно.
+   Цвета — из макета (.banner: rgba(47,123,220,.12) + рамка #274b6e). */
+.cabinet {
+  .ant-alert {
+    border-radius: 14px !important;
+    padding: 16px 20px !important;
+  }
+
+  .ant-alert-info {
+    border: 1px solid #274b6e !important;
+    background: rgba(47, 123, 220, 0.12) !important;
+  }
+
+  .ant-alert-error {
+    border: 1px solid #4a2b28 !important;
+    background: rgba(224, 96, 78, 0.12) !important;
+  }
+
+  .ant-alert-message {
+    color: var(--text) !important;
+    font-size: 17px !important;
+  }
+
+  .ant-alert-description,
+  .ant-alert-description p {
+    color: var(--text-muted) !important;
+    font-size: 15px !important;
+  }
+
+  .ant-alert-info .ant-alert-icon {
+    color: #bcd4ef !important;
+  }
+
+  .ant-alert-error .ant-alert-icon {
+    color: #e0604e !important;
+  }
+}

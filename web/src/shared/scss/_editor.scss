@@ -151,7 +151,7 @@
   vertical-align: -3px;
 }
 
-@media (hover: none) {
+@media (hover: none) and (pointer: coarse) {
   .ic-star,
   .ic-close,
   .ic-pencil {

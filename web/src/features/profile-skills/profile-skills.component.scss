@@ -4,24 +4,6 @@
   display: block;
 }
 
-.selected-roles {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.selected-roles-head {
-  color: var(--text-dim);
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 // Роли за пределами первых трёх приглушаем: на публичной они спрятаны
 // под «ещё N», и это должно быть видно уже здесь.
 .chip.is-faded {
@@ -161,9 +143,13 @@
 @include editor.chips;
 
 // На тач-экранах пилюля вырастает до 44px: в макете 36px рассчитаны на мышь.
-@media (hover: none) {
+@media (hover: none) and (pointer: coarse) {
   .primary-action {
     min-height: 44px;
     padding: 10px 14px;
   }
+}
+
+.roles-hint {
+  margin: 0 0 18px;
 }

@@ -11,7 +11,8 @@
   // холодном почти-чёрном (--bg #060a0c) и бирюзовом акценте, и менять их
   // ради кабинета значило бы перекрасить заодно ленту, поиск и публичную
   // страницу. Здесь же нужен ровно макет — кораллового CTA и его фонов.
-  --bg: #0b0c0e;
+  // --bg НЕ переопределяем: фон должен совпадать с остальным сайтом, иначе
+  // на стыке с шапкой и подвалом видна полоса другого оттенка.
   --bg-elevated: #111316; // --bg-2 в макете: фон полей и вторичных кнопок
   --surface: #15181c; // --card
   --surface-hover: #191d22; // --card-2
@@ -24,9 +25,6 @@
   --cta-hover: #ff6a52;
   --accent: #2fbd8f;
   --accent-dim: rgba(47, 189, 143, 0.1);
-
-  // Фон свой, иначе на стыке с общесайтовым почти-чёрным видна полоса.
-  background: var(--bg);
 
   // Базовый кегль страницы флюидный: на широком мониторе вместе с ним
   // растут подписи, хинты и поля, а не только контейнер.
@@ -95,6 +93,14 @@
     color: var(--text-muted) !important;
   }
 
+  // nz-badge красит своё содержимое в rgba(0,0,0,.85) — на тёмном фоне это
+  // почти чёрный, и подписи вкладок пропадали. Цвет должен наследоваться от
+  // кнопки вкладки, иначе бейдж перебивает её изнутри.
+  ::ng-deep .ant-tabs-tab .ant-badge,
+  ::ng-deep .ant-tabs-tab .ant-badge .tab-label {
+    color: inherit !important;
+  }
+
   ::ng-deep .ant-tabs-tab:hover .ant-tabs-tab-btn {
     color: var(--text) !important;
   }
@@ -154,9 +160,10 @@
   }
 }
 
-// «Выйти» вне закреплённой панели — только на телефоне.
+// «Выйти» живёт внизу контента на всех ширинах: в закреплённой панели он
+// стоял вплотную к «Сохранить», и промахнуться было легко и дорого.
 .content-logout {
-  display: none;
+  display: block;
   margin-top: 24px;
 }
 
@@ -178,15 +185,6 @@
 }
 
 @media (max-width: bp.$touch) {
-  .content-logout {
-    display: block;
-  }
-
-  // В закреплённой панели остаются только «Сохранить» и «Снять с публикации».
-  .actions .desktop-only {
-    display: none;
-  }
-
   .actions {
     align-items: stretch;
     justify-content: stretch;
@@ -194,5 +192,72 @@
     button {
       flex: 1 1 auto;
     }
+  }
+}
+
+// Панель действий строго по макету: главная кнопка коралловая и стоит
+// справа, вспомогательные приглушены. Раньше «Сохранить» была зелёной
+// (акцент сайта), а «Выйти» и «Снять с публикации» — ярко-красными: три
+// кричащие кнопки в ряд, и ни одна не читалась как основная.
+.cabinet .actions {
+  ::ng-deep .act-save {
+    border-color: var(--cta) !important;
+    background: var(--cta) !important;
+    color: #fff !important;
+
+    &:hover {
+      border-color: var(--cta-hover) !important;
+      background: var(--cta-hover) !important;
+    }
+  }
+
+  ::ng-deep .act-ghost {
+    border: 1px solid var(--border-strong) !important;
+    background: var(--bg-elevated) !important;
+    color: var(--text) !important;
+
+    &:hover {
+      border-color: #3a4049 !important;
+    }
+  }
+
+  ::ng-deep .act-danger {
+    border: 1px solid #4a2b28 !important;
+    background: var(--bg-elevated) !important;
+    color: #e0604e !important;
+  }
+}
+
+// Телефон: «Сохранить» вдвое шире прочих — как в mobile_cabinet.html.
+@media (max-width: bp.$touch) {
+  .cabinet .actions ::ng-deep .act-save {
+    flex: 2 1 auto;
+  }
+}
+
+.banner-text {
+  margin: 0 0 10px;
+}
+
+// «Как видят клиенты» плашкой прямо в баннере проверки.
+.banner-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 15px;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    border-color: #3a4049;
   }
 }

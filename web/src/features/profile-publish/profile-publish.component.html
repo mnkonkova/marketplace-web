@@ -1,25 +1,8 @@
-<section class="panel">
-  <div class="panel-head">
-    <div>
-      <h2>Статус публикации</h2>
-      <p>Где сейчас профиль и что видят клиенты.</p>
-    </div>
-  </div>
-
-  <div class="status-row" [class]="'tone-' + status().tone">
-    <span class="dot" aria-hidden="true"></span>
-    <div>
-      <strong>{{ status().title }}</strong>
-      <p class="hint">{{ status().text }}</p>
-    </div>
-  </div>
-
-  <a class="preview-link" [href]="publicUrl()" target="_blank" rel="noopener">
-    <span nz-icon nzType="eye" nzTheme="outline"></span>
-    Как видят клиенты
-  </a>
-</section>
-
+<!--
+  Панель «Статус публикации» убрана: она слово в слово повторяла баннер в
+  шапке, который виден на всех вкладках. Кнопка «Как видят клиенты» переехала
+  туда же — там она рядом с текстом про проверку, а не через экран от него.
+-->
 <section class="panel">
   <app-profile-share
     #share
