@@ -365,9 +365,15 @@
     Для выбора другого кадра или своей обложки нужен thumbnail_url в
     PortfolioPatchInput — presigned-аплоад (/me/uploads/image) уже есть.
   -->
-  @if (isTouch() && tagSheetItem(); as sheetItem) {
+  <!--
+    Шторка смонтирована всегда и управляется только видимостью. Раньше она
+    жила внутри @if по найденной работе: список на миг обновлялся после
+    переключения тега, работа не находилась, шторка уничтожалась и
+    создавалась заново — это и было дёрганье.
+  -->
+  @if (isTouch()) {
     <nz-drawer
-      [nzVisible]="true"
+      [nzVisible]="tagSheetId() !== null"
       nzPlacement="bottom"
       [nzClosable]="false"
       [nzHeight]="'auto'"
@@ -375,40 +381,42 @@
       (nzOnClose)="closeTagSheet()"
     >
       <ng-container *nzDrawerContent>
-        <!-- Полоска-ручка: за неё шторку тянут вниз, чтобы закрыть. -->
-        <div
-          class="sheet-grip"
-          (touchstart)="onSheetTouchStart($event)"
-          (touchmove)="onSheetTouchMove($event)"
-          (touchend)="onSheetTouchEnd()"
-          (touchcancel)="onSheetTouchEnd()"
-        >
-          <span></span>
-          <strong>Теги работы</strong>
-        </div>
-        <p class="sheet-note">
-          Теги решают, в какие подборки попадёт работа. Хотя бы один нужен обязательно.
-        </p>
-        <ul class="tag-sheet">
-          @for (code of profileCategoryList(); track code) {
-            <li>
-              <button
-                type="button"
-                class="tag-sheet-row"
-                [class.is-on]="sheetItem.category_codes.includes(code)"
-                [disabled]="isLastTag(sheetItem, code)"
-                (click)="toggleItemCategory(sheetItem, code)"
-              >
-                <span class="tick">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                    <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </span>
-                {{ categoryTitle(code) }}
-              </button>
-            </li>
-          }
-        </ul>
+        @if (tagSheetItem(); as sheetItem) {
+          <!-- Полоска-ручка: за неё шторку тянут вниз, чтобы закрыть. -->
+          <div
+            class="sheet-grip"
+            (touchstart)="onSheetTouchStart($event)"
+            (touchmove)="onSheetTouchMove($event)"
+            (touchend)="onSheetTouchEnd()"
+            (touchcancel)="onSheetTouchEnd()"
+          >
+            <span></span>
+            <strong>Теги работы</strong>
+          </div>
+          <p class="sheet-note">
+            Теги решают, в какие подборки попадёт работа. Хотя бы один нужен обязательно.
+          </p>
+          <ul class="tag-sheet">
+            @for (code of profileCategoryList(); track code) {
+              <li>
+                <button
+                  type="button"
+                  class="tag-sheet-row"
+                  [class.is-on]="sheetItem.category_codes.includes(code)"
+                  [disabled]="isLastTag(sheetItem, code)"
+                  (click)="toggleItemCategory(sheetItem, code)"
+                >
+                  <span class="tick">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                      <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  {{ categoryTitle(code) }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
       </ng-container>
     </nz-drawer>
   }
