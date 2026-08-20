@@ -44,13 +44,13 @@ describe('ProfileBasicComponent — вкладка «Основное»', () => 
     expect(text(fixture, '.err')).toBe('Ставка «от» больше, чем «до».');
   });
 
-  it('превью «о себе» показывает список из строк с галочками', () => {
-    const fixture = setup({ ...emptyProfileForm(), bio: '✅ Монтаж\n✅ Цвет' });
-    fixture.componentInstance.bioPreview.set(true);
-    fixture.detectChanges();
-    const items = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.bio-preview li'),
-    ).map((li) => li.textContent?.trim());
-    expect(items).toEqual(['Монтаж', 'Цвет']);
+  // Превью «о себе» убрано из вкладки: оно дублировало общий просмотр
+  // страницы из баннера. Разбор ✅-строк остался в RichBioComponent, у него
+  // свои тесты — здесь проверяем только, что кнопки больше нет.
+  it('кнопки превью «о себе» на вкладке нет', () => {
+    const fixture = setup({ ...emptyProfileForm(), bio: '✅ Монтаж' });
+    const html = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(html).not.toContain('Как это увидит клиент');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.bio-preview')).toBeNull();
   });
 });

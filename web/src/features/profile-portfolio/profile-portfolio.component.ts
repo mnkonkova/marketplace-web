@@ -146,6 +146,25 @@ export class ProfilePortfolioComponent {
 
   public readonly profileCategoryList = computed(() => [...this.profileCategories()]);
 
+  /** Сколько тегов показываем на карточке до «ещё N». */
+  private static readonly VISIBLE_TAGS = 3;
+
+  public shownTags(item: PortfolioItem): string[] {
+    return (item.category_codes ?? []).slice(0, ProfilePortfolioComponent.VISIBLE_TAGS);
+  }
+
+  public hiddenTagCount(item: PortfolioItem): number {
+    return Math.max(0, (item.category_codes?.length ?? 0) - ProfilePortfolioComponent.VISIBLE_TAGS);
+  }
+
+  /** Спрятанные теги — в title, чтобы не открывать меню ради подглядывания. */
+  public hiddenTagTitles(item: PortfolioItem): string {
+    return (item.category_codes ?? [])
+      .slice(ProfilePortfolioComponent.VISIBLE_TAGS)
+      .map((c) => this.categoryTitle(c))
+      .join(', ');
+  }
+
   public categoryTitle(code: string): string {
     return this.categoryTitles()[code] ?? code;
   }

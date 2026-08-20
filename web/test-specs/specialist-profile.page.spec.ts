@@ -237,3 +237,26 @@ describe('SpecialistProfilePage shareUrl', () => {
     expect(build({ user_id: 'u-42' }, 'https://p.example')).toBe('https://p.example/s/u-42');
   });
 });
+
+// Ссылка «Поделиться» должна быть одна и та же везде: и в карточке кабинета,
+// и на публичной странице. Раньше карточка собирала её из window.location и
+// копировала адрес основного домена, мимо воркера превью.
+describe('publicShareUrl', () => {
+  it('с базой воркера ведёт на /s/<handle>', () => {
+    const base = 'https://wayprmarket.online';
+    const build = (b: string, handle: string) => {
+      const trimmed = b?.replace(/\/+$/, '');
+      return trimmed ? `${trimmed}/s/${handle}` : `https://wayprmarket.ru/specialist/${handle}`;
+    };
+    expect(build(base, 'foxxmary')).toBe('https://wayprmarket.online/s/foxxmary');
+    expect(build(base + '/', 'foxxmary')).toBe('https://wayprmarket.online/s/foxxmary');
+  });
+
+  it('без базы — обычный адрес текущего домена', () => {
+    const build = (b: string, handle: string) => {
+      const trimmed = b?.replace(/\/+$/, '');
+      return trimmed ? `${trimmed}/s/${handle}` : `https://wayprmarket.ru/specialist/${handle}`;
+    };
+    expect(build('', 'u-1')).toBe('https://wayprmarket.ru/specialist/u-1');
+  });
+});

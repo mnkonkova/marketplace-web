@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { publicShareUrl, specialistHandle } from '@shared/lib/specialist-link';
 import { environment } from '../../environments/environment';
 import { Meta, Title } from '@angular/platform-browser';
 import { DatePipe } from '@angular/common';
@@ -147,11 +148,7 @@ export class SpecialistProfilePage implements OnInit {
   public readonly shareUrl = computed(() => {
     const p = this.profile();
     if (!p) return '';
-    const handle = p.username || p.user_id;
-    const base = environment.shareBaseUrl?.replace(/\/+$/, '');
-    if (base) return `${base}/s/${handle}`;
-    if (typeof window === 'undefined') return '';
-    return `${window.location.origin}/specialist/${handle}`;
+    return publicShareUrl(specialistHandle({ username: p.username, user_id: p.user_id }));
   });
 
   /** Обложка для предпросмотра ссылки и og:image. */

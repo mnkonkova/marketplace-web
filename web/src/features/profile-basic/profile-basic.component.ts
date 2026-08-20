@@ -9,7 +9,6 @@ import { ProfileForm } from '@entities/me/model/profile-form';
 import { ProfileCheckResult } from '@entities/me/model/me.types';
 import { Production } from '@entities/production/model/production.types';
 import { RateValidation, validateRate } from '@shared/lib/rate-validation';
-import { RichBioComponent } from '@shared/ui/rich-bio/rich-bio.component';
 
 /**
  * Вкладка «Основное»: аватар, имя, город, работодатель, ставка, «о себе»
@@ -23,14 +22,7 @@ import { RichBioComponent } from '@shared/ui/rich-bio/rich-bio.component';
 @Component({
   selector: 'app-profile-basic',
   standalone: true,
-  imports: [
-    FormsModule,
-    NzButtonModule,
-    NzIconModule,
-    NzInputModule,
-    NzSelectModule,
-    RichBioComponent,
-  ],
+  imports: [FormsModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule],
   templateUrl: './profile-basic.component.html',
   styleUrl: './profile-basic.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -72,7 +64,6 @@ export class ProfileBasicComponent {
   public readonly productionChange = output<string>();
 
   /** Мини-превью «как отрендерится на публичной» — по кнопке, не всегда. */
-  public readonly bioPreview = signal(false);
 
   /**
    * Короткий алиас для шаблона: `[(ngModel)]="f.city"`. Через `form().city`

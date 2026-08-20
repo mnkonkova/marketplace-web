@@ -19,6 +19,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import * as QRCode from 'qrcode';
 import { copyToClipboard } from '@shared/lib/clipboard';
+import { publicShareUrl } from '@shared/lib/specialist-link';
 
 @Component({
   selector: 'app-profile-share',
@@ -49,14 +50,18 @@ export class ProfileShareComponent implements AfterViewInit {
 
   private readonly msg = inject(NzMessageService);
 
-  public readonly host = computed(() =>
-    typeof window !== 'undefined' ? window.location.host : '',
+  public readonly shareURL = computed(() =>
+    publicShareUrl(this.username().trim() || this.userId()),
   );
 
-  public readonly shareURL = computed(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const handle = this.username().trim() || this.userId();
-    return `${origin}/specialist/${handle}`;
+  /** Хост из той же ссылки, что копируется, а не из адресной строки. */
+  public readonly host = computed(() => {
+    const url = this.shareURL();
+    try {
+      return new URL(url).host;
+    } catch {
+      return '';
+    }
   });
 
   public readonly canNativeShare = signal(false);

@@ -705,6 +705,16 @@ h6 {
      красный у опасных), и перебивать его нельзя. */
   .ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-background-ghost) {
     color: var(--text);
+    /* И фон: у части кнопок он оставался белым из светлой темы ant, а текст
+       на них — светлый. «Загрузить шоурил» был белым прямоугольником с
+       невидимой надписью. */
+    border-color: var(--border-strong);
+    background: var(--bg-elevated);
+  }
+
+  .ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-background-ghost):hover {
+    border-color: #3a4049;
+    background: var(--surface-hover);
   }
 
   .ant-alert {
@@ -798,4 +808,27 @@ h6 {
    «Портфолио» из-за этого стабильно вылезала за бюджет сборки. */
 .cabinet {
   @include editor.blocks;
+}
+
+/* Меню тегов работы: галочка слева, невыбранные — просто пустое место. */
+.cabinet .tag-menu,
+.ant-dropdown .tag-menu {
+  .tick {
+    display: inline-grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    color: var(--accent);
+    opacity: 0;
+  }
+
+  .tick.is-on {
+    opacity: 1;
+  }
+
+  .tick svg {
+    width: 14px;
+    height: 14px;
+  }
 }

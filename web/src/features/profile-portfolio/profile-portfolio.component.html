@@ -231,17 +231,48 @@
             </div>
           }
 
-          <div class="chips">
-            @for (code of profileCategoryList(); track code) {
-              <button
-                type="button"
-                class="chip small"
-                [class.is-on]="item.category_codes.includes(code)"
-                (click)="toggleItemCategory(item, code)"
-              >
-                {{ categoryTitle(code) }}
-              </button>
+          <!--
+            Теги работы: показываем ВЫБРАННЫЕ, а остальные прячем в меню.
+            Раньше под каждой работой лежал полный список ролей профиля
+            кнопками — у специалиста с десятком ролей это была стена чипов,
+            повторённая столько раз, сколько работ в портфолио.
+          -->
+          <div class="wtags">
+            @for (code of shownTags(item); track code) {
+              <span class="wtag">{{ categoryTitle(code) }}</span>
             }
+            @if (hiddenTagCount(item); as more) {
+              <span class="wtag wtag-more" [title]="hiddenTagTitles(item)">ещё {{ more }}</span>
+            }
+            <button
+              type="button"
+              class="wtag wtag-edit"
+              nz-dropdown
+              nzTrigger="click"
+              [nzDropdownMenu]="tagMenu"
+              [attr.aria-label]="'Изменить теги работы'"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+              </svg>
+              @if (!item.category_codes.length) {
+                Теги
+              }
+            </button>
+            <nz-dropdown-menu #tagMenu="nzDropdownMenu">
+              <ul nz-menu class="tag-menu">
+                @for (code of profileCategoryList(); track code) {
+                  <li nz-menu-item (click)="toggleItemCategory(item, code)">
+                    <span class="tick" [class.is-on]="item.category_codes.includes(code)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    {{ categoryTitle(code) }}
+                  </li>
+                }
+              </ul>
+            </nz-dropdown-menu>
           </div>
         </div>
 

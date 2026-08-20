@@ -153,21 +153,15 @@
           placeholder="Кто вы, с чем помогаете, чем отличаетесь. Переносы строк сохраняются: строки со «✅» или «—» станут списком."
         ></textarea>
       </label>
+      <!--
+        Кнопка «Как это увидит клиент» убрана: превью «О себе» дублировало
+        общий просмотр страницы, который висит в баннере наверху и виден с
+        любой вкладки. Два разных «посмотреть глазами клиента» в одном
+        экране только путали.
+      -->
       <div class="bio-meta field-limit">
         <span class="hint">{{ bioLength() }} символов · для 100% нужно от 100</span>
-        <button nz-button nzSize="large" type="button" (click)="bioPreview.set(!bioPreview())">
-          {{ bioPreview() ? 'Скрыть превью' : 'Как это увидит клиент' }}
-        </button>
       </div>
-      @if (bioPreview()) {
-        <div class="bio-preview field-limit">
-          @if (f.bio.trim()) {
-            <app-rich-bio [text]="f.bio" />
-          } @else {
-            <p class="hint">Пока пусто — на публичной странице блок «О себе» не появится.</p>
-          }
-        </div>
-      }
     </div>
   </div>
 </section>

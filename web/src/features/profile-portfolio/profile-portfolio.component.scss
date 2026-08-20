@@ -1,4 +1,3 @@
-
 :host {
   display: block;
 }
@@ -466,7 +465,6 @@
   }
 }
 
-
 // Иконка звезды внутри промо-пилюли: inline-SVG вместо глифа ★, который
 // в разных шрифтах рисуется разной ширины и ломал выравнивание ряда.
 .promo-btn svg {
@@ -541,4 +539,58 @@
 
 .list-note {
   margin-top: 14px;
+}
+
+// Теги работы: компактные пилюли + кнопка-плюс, открывающая меню со всеми
+// ролями профиля. Полный список кнопками под каждой работой превращался в
+// стену, стоило специалисту выбрать больше трёх ролей.
+.wtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.wtag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.wtag-more {
+  border-style: dashed;
+  cursor: default;
+}
+
+.wtag-edit {
+  min-height: 26px;
+  color: var(--text-dim);
+  font-family: inherit;
+  cursor: pointer;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  &:hover {
+    border-color: #3a4049;
+    color: var(--text);
+  }
+}
+
+// Тач: пилюля-плюс дорастает до нормального тач-таргета.
+@media (hover: none) and (pointer: coarse) {
+  .wtag-edit {
+    min-height: 40px;
+    padding: 0 14px;
+  }
 }
