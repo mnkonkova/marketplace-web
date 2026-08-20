@@ -17,14 +17,7 @@ import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
 import { ProjectCartDialogComponent, ProjectCartStore } from '@features/project-cart';
 import { scrollToAnchorWhenReady } from '@shared/lib/scroll-to-anchor';
 
-type NavItem =
-  | 'home'
-  | 'production'
-  | 'promotion'
-  | 'search'
-  | 'cabinet'
-  | 'manager'
-  | 'admin';
+type NavItem = 'home' | 'production' | 'promotion' | 'search' | 'cabinet' | 'manager' | 'admin';
 type HomeSection = 'production' | 'promotion';
 
 @Component({
@@ -81,6 +74,12 @@ export class AppHeaderComponent implements OnInit {
   public logout(): void {
     this.auth.clear();
     void this.router.navigateByUrl('/');
+  }
+
+  /** Выход из мобильного меню: сначала закрыть шторку, потом уходить. */
+  public logoutFromMenu(): void {
+    this.closeMenu();
+    this.logout();
   }
 
   public readonly menuOpen = signal(false);
@@ -200,5 +199,4 @@ export class AppHeaderComponent implements OnInit {
     const hash = this.router.url.split('#')[1] ?? '';
     return hash.split('?')[0];
   }
-
 }

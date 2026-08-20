@@ -36,38 +36,46 @@
       >
         Продвижение
       </button>
-      <a routerLink="/search" [class.is-active]="activeNav() === 'search'">
-        Все специалисты
-      </a>
+      <a routerLink="/search" [class.is-active]="activeNav() === 'search'"> Все специалисты </a>
     </nav>
 
     <div class="header-actions">
       @if (isLoggedIn()) {
         @if (showManagerCabinet()) {
-          <a
-            routerLink="/manager/board"
-            class="link"
-            [class.is-active]="activeNav() === 'manager'"
-          >
+          <a routerLink="/manager/board" class="link" [class.is-active]="activeNav() === 'manager'">
             Менеджер
           </a>
         }
         @if (showAdminCabinet()) {
-          <a
-            routerLink="/admin/projects"
-            class="link"
-            [class.is-active]="activeNav() === 'admin'"
-          >
+          <a routerLink="/admin/projects" class="link" [class.is-active]="activeNav() === 'admin'">
             Админ
           </a>
         }
-        <a
-          [routerLink]="cabinetLink()"
-          class="link"
-          [class.is-active]="activeNav() === 'cabinet'"
-        >
+        <a [routerLink]="cabinetLink()" class="link" [class.is-active]="activeNav() === 'cabinet'">
           Кабинет
         </a>
+        <!--
+          Выход живёт в шапке, а не в кабинете: там он стоял отдельной
+          красной кнопкой под контентом и перетягивал внимание на самое
+          редкое действие. В шапке его и ищут.
+        -->
+        <button
+          type="button"
+          class="link logout-link"
+          (click)="logout()"
+          title="Выйти из аккаунта"
+          aria-label="Выйти из аккаунта"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 17l5-5-5-5" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M20 12H9" stroke-linecap="round" />
+            <path
+              d="M12 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
       } @else {
         <button type="button" class="link" (click)="openAuth()">Войти</button>
         <button nz-button nzType="default" class="cta cta-secondary" (click)="openAuth(1)">
@@ -111,11 +119,7 @@
       >
         Продвижение
       </button>
-      <a
-        routerLink="/search"
-        [class.is-active]="activeNav() === 'search'"
-        (click)="closeMenu()"
-      >
+      <a routerLink="/search" [class.is-active]="activeNav() === 'search'" (click)="closeMenu()">
         Все специалисты
       </a>
       @if (isLoggedIn()) {
@@ -147,10 +151,11 @@
         >
           Кабинет
         </a>
-      } @else {
-        <button type="button" class="mobile-nav-item" (click)="openAuthFromMenu()">
-          Войти
+        <button type="button" class="mobile-nav-item is-muted" (click)="logoutFromMenu()">
+          Выйти из аккаунта
         </button>
+      } @else {
+        <button type="button" class="mobile-nav-item" (click)="openAuthFromMenu()">Войти</button>
       }
     </nav>
   }
