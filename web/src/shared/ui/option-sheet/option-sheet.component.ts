@@ -1,8 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ViewEncapsulation,
   effect,
+  inject,
   input,
   output,
 } from '@angular/core';
@@ -58,13 +60,54 @@ export class OptionSheetComponent {
 
   public readonly closed = output<void>();
 
+  /** Позиция страницы на момент открытия — чтобы вернуть её ровно. */
+  private lockedY = 0;
+
+  /**
+   * Блокировка фона под листом.
+   *
+   * WebKit (Safari и Chrome на iPhone — это один движок) не удерживает
+   * прокрутку ни overflow:hidden на html, ни touch-action. Единственный
+   * надёжный способ — увести body в position:fixed со сдвигом на текущую
+   * позицию. Возврат делаем синхронно в том же кадре, поэтому рывка, каким
+   * его делает CDK, здесь нет.
+   */
+  private lockBackground(): void {
+    this.lockedY = window.scrollY;
+    const b = document.body.style;
+    b.position = 'fixed';
+    b.top = `-${this.lockedY}px`;
+    b.left = '0';
+    b.right = '0';
+    b.width = '100%';
+  }
+
+  private unlockBackground(): void {
+    const b = document.body.style;
+    if (b.position !== 'fixed') return;
+    b.position = '';
+    b.top = '';
+    b.left = '';
+    b.right = '';
+    b.width = '';
+    window.scrollTo(0, this.lockedY);
+  }
+
   public constructor() {
+    // Если уйти со страницы с открытым листом, body остался бы fixed и
+    // страница «зависла» бы без прокрутки.
+    inject(DestroyRef).onDestroy(() => this.unlockBackground());
+
     // Ловушка фокуса ng-zorro при открытии ставит фокус на первый доступный
     // элемент — а это выбранный пункт где-нибудь в середине списка. Браузер
     // подкручивает к нему контейнер, и лист открывается «отлистанным».
     // Возвращаем список в начало: человек должен видеть его сверху.
     effect(() => {
-      if (!this.open()) return;
+      if (!this.open()) {
+        this.unlockBackground();
+        return;
+      }
+      this.lockBackground();
       // Два кадра: первый — пока ng-zorro строит панель, второй — после того
       // как ловушка фокуса уже дёрнула прокрутку.
       requestAnimationFrame(() =>
