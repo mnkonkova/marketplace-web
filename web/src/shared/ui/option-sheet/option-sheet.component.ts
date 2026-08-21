@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ViewEncapsulation,
+  effect,
   input,
   output,
 } from '@angular/core';
@@ -57,6 +58,24 @@ export class OptionSheetComponent {
 
   public readonly closed = output<void>();
 
+  public constructor() {
+    // Ловушка фокуса ng-zorro при открытии ставит фокус на первый доступный
+    // элемент — а это выбранный пункт где-нибудь в середине списка. Браузер
+    // подкручивает к нему контейнер, и лист открывается «отлистанным».
+    // Возвращаем список в начало: человек должен видеть его сверху.
+    effect(() => {
+      if (!this.open()) return;
+      // Два кадра: первый — пока ng-zorro строит панель, второй — после того
+      // как ловушка фокуса уже дёрнула прокрутку.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const list = document.querySelector<HTMLElement>('.ant-drawer-open .opt-list');
+          if (list) list.scrollTop = 0;
+        }),
+      );
+    });
+  }
+
   private startY = 0;
 
   private shift = 0;
@@ -67,11 +86,6 @@ export class OptionSheetComponent {
    * и глобальный поиск всегда возвращал первую — тянулась и уезжала чужая.
    */
   private panel: HTMLElement | null = null;
-
-  /** Прокручиваемый список внутри листа, если жест начался на нём. */
-  private list: HTMLElement | null = null;
-
-  private lastY = 0;
 
   private dragging = false;
 
@@ -102,10 +116,20 @@ export class OptionSheetComponent {
 
   public onDragStart(ev: TouchEvent): void {
     const target = ev.target as HTMLElement | null;
-    this.list = (target?.closest('.opt-list') as HTMLElement | null) ?? null;
+    const list = target?.closest('.opt-list') as HTMLElement | null;
+
+    // Если список реально длиннее листа — жест его, и прокручивает его
+    // браузер. Забирать прокрутку себе я пробовал: она идёт рывками, без
+    // инерции, и это читается как «всё дёргается». В обычном случае (роли
+    // помещаются целиком) список не прокручивается, и смахивание работает
+    // с любой точки, включая сам список.
+    if (list && list.scrollHeight > list.clientHeight) {
+      this.dragging = false;
+      return;
+    }
+
     this.panel = target?.closest('.ant-drawer-content-wrapper') ?? null;
     this.startY = ev.touches[0].clientY;
-    this.lastY = this.startY;
     this.shift = 0;
     this.dragging = true;
     if (this.panel) this.panel.style.transition = 'none';
@@ -113,28 +137,8 @@ export class OptionSheetComponent {
 
   public onDragMove(ev: TouchEvent): void {
     if (!this.dragging) return;
-    const y = ev.touches[0].clientY;
-    const delta = y - this.lastY;
-    this.lastY = y;
-
-    // Прокрутку списка ведём сами. Отдать её браузеру нельзя: тогда он
-    // забирает жест целиком, и смахивание с области списка переставало
-    // закрывать лист. Панель двигаем только когда список уже вверху и палец
-    // идёт вниз — обычное поведение нижних листов.
-    const list = this.list;
-    if (list && (list.scrollTop > 0 || delta < 0)) {
-      const before = list.scrollTop;
-      list.scrollTop = before - delta;
-      // Список действительно прокрутился — значит жест был про него.
-      if (list.scrollTop !== before) {
-        this.startY = y;
-        this.shift = 0;
-        if (this.panel) this.panel.style.transform = '';
-        return;
-      }
-    }
-
-    const dy = y - this.startY;
+    const dy = ev.touches[0].clientY - this.startY;
+    // Тянем только вниз: движение вверх отдаём странице.
     if (dy <= 0) return;
     this.shift = dy;
     // Пока тянем лист — фон стоять на месте: на iOS overflow:hidden на html
@@ -156,7 +160,6 @@ export class OptionSheetComponent {
       this.panel.style.transform = '';
     }
     this.panel = null;
-    this.list = null;
     this.shift = 0;
     this.dragging = false;
   }
