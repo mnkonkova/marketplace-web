@@ -979,3 +979,17 @@ h6 {
     font-size: 16px;
   }
 }
+
+/* Блокировка прокрутки под шторками и модалками.
+   CDK по умолчанию делает html position:fixed с отрицательным top —
+   страница мгновенно «уезжает» в ноль при открытии и возвращается при
+   закрытии, что видно как рывок фона. Прокрутку блокируем overflow'ом, а
+   позицию не трогаем: !important нужен, потому что CDK ставит свои
+   значения инлайном. */
+html.cdk-global-scrollblock {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  width: auto !important;
+  overflow: hidden !important;
+}

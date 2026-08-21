@@ -160,7 +160,10 @@
   .crow-front {
     grid-template-columns: max-content 1fr;
     gap: 8px;
-    background: var(--bg);
+    // Фон строки — цвет КАРТОЧКИ, а не страницы: с --bg получалась чёрная
+    // полоса поверх более светлой панели. Непрозрачный он нужен, чтобы при
+    // свайпе прятать «Удалить», выезжающее из-под строки.
+    background: var(--surface);
   }
 
   .crow-channel {
