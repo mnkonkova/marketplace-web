@@ -6,6 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -49,6 +50,8 @@ export class AuthDialogComponent {
   private readonly auth = inject(AuthSessionStore);
 
   private readonly msg = inject(NzMessageService);
+
+  private readonly router = inject(Router);
 
   public readonly modal = inject(NzModalRef);
 
@@ -204,6 +207,10 @@ export class AuthDialogComponent {
       .subscribe(() => {
         this.msg.success('Аккаунт создан');
         this.modal.destroy(true);
+        // Специалиста ведём в мастер профиля: без имени, ролей и работ он в
+        // ленте не появится, а собирать это в пустом кабинете люди бросают.
+        // Заказчику мастер не нужен — он остаётся там, откуда пришёл.
+        if (v.kind === 'specialist') void this.router.navigate(['/start']);
       });
   }
 }

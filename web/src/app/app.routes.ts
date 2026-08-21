@@ -7,6 +7,7 @@ export const routes: Routes = [
   // Мастер собирает те же данные и тем же API, что и кабинет.
   {
     path: 'start',
+    canActivate: [requireRole('specialist')],
     loadComponent: () => import('@pages/onboarding/onboarding.page').then((m) => m.OnboardingPage),
   },
   {
