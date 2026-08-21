@@ -65,7 +65,13 @@
   // в две строки и не растягивают страницу вбок.
   ::ng-deep .ant-tabs-nav-wrap {
     overflow-x: auto;
+    // iOS: инерционная прокрутка ленты вкладок.
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    // Крайние пилюли не липнут к краю при доводке scrollIntoView.
+    scroll-padding-inline: 12px;
+    // Горизонтальный жест — ленте, вертикальный — странице.
+    touch-action: pan-x;
   }
 
   ::ng-deep .ant-tabs-nav-wrap::-webkit-scrollbar {
@@ -177,6 +183,7 @@
 
 .actions {
   position: sticky;
+  background: linear-gradient(180deg, rgba(11, 12, 14, 0), var(--bg) 30%);
   bottom: 0;
   z-index: 5;
   display: flex;
@@ -189,7 +196,8 @@
   border: 1px solid var(--border);
   border-radius: $default-radius;
   background: var(--surface);
-  backdrop-filter: blur(16px);
+  // backdrop-filter убран: на iOS размытие пересчитывается на каждом кадре
+  // прокрутки и даёт заметные рывки. Вместо него — градиент, как в макете.
 }
 
 @media (max-width: bp.$touch) {

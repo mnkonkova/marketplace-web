@@ -12,8 +12,9 @@
   // ограничено тем же контейнером, что и тело страницы. Иначе на широком
   // мониторе логотип и меню липнут к краям, а контент идёт по центру.
   border-bottom: 1px solid var(--border);
-  background: rgba(8, 12, 14, 0.85);
-  backdrop-filter: blur(12px);
+  background: #080c0e;
+  // Без backdrop-filter: на iOS размытие пересчитывается на каждом кадре
+  // прокрутки — шапка липкая, поэтому это било по всему сайту.
 }
 
 .header {
@@ -135,7 +136,8 @@
   padding: 8px 12px 12px;
   border-bottom: 1px solid var(--border);
   background: rgba(8, 12, 14, 0.97);
-  backdrop-filter: blur(12px);
+  // Без backdrop-filter: на iOS размытие пересчитывается на каждом кадре
+  // прокрутки — шапка липкая, поэтому это било по всему сайту.
 
   a,
   .mobile-nav-item {
