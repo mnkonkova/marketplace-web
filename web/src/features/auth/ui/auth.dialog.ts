@@ -164,6 +164,12 @@ export class AuthDialogComponent {
       });
   }
 
+  /** Из входа — в мастер: там развилка по роли и сбор профиля. */
+  public goRegister(): void {
+    this.modal.destroy();
+    void this.router.navigate(['/start']);
+  }
+
   public register(): void {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();

@@ -324,3 +324,15 @@
 }
 
 @include editor.blocks;
+
+// Ссылка «Войти» прямо в подсказке шага с почтой.
+.link-inline {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

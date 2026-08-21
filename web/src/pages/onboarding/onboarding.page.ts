@@ -29,6 +29,7 @@ import {
 
 /** Шаги мастера специалиста. Роль выбирается до них, на нулевом экране. */
 const STEPS = [
+  { id: 'account', label: 'Аккаунт', skippable: false },
   { id: 'who', label: 'Кто вы', skippable: false },
   { id: 'skills', label: 'Навыки', skippable: false },
   { id: 'work', label: 'Первая работа', skippable: true },
@@ -93,6 +94,13 @@ export class OnboardingPage {
 
   public readonly avatarUploading = signal(false);
 
+  // Учётные данные держим до шага «Кто вы»: регистрация требует имя, а его
+  // спрашивают там. Отдельным окном форму больше не показываем — она часть
+  // мастера, первым шагом.
+  public readonly email = signal('');
+
+  public readonly password = signal('');
+
   public readonly categories = signal<Category[]>([]);
 
   public readonly productions = signal<Production[]>([]);
@@ -120,6 +128,11 @@ export class OnboardingPage {
 
   /** Первый шаг требует имя и хотя бы одну роль — без них профиля нет. */
   public readonly canGoNext = computed(() => {
+    if (this.step() === 'account') {
+      // Формат письма проверяем мягко, длину пароля не дублируем: минимум
+      // знает бэкенд и вернёт понятную ошибку.
+      return /.+@.+\..+/.test(this.email().trim()) && this.password().length > 0;
+    }
     if (this.step() !== 'who') return true;
     return this.form().display_name.trim().length > 0 && this.selectedCategories().size > 0;
   });
@@ -147,22 +160,53 @@ export class OnboardingPage {
     this.form.update((f) => ({ ...f, [key]: value }));
   }
 
+  /** Уже есть аккаунт — обычный вход, дальше мастер продолжится с шага 2. */
+  public openLogin(): void {
+    const ref = this.modal.create({
+      nzContent: AuthDialogComponent,
+      nzFooter: null,
+      nzWidth: 'min(420px, 92vw)',
+      nzData: { initialTab: 0 },
+    });
+    ref.afterClose.subscribe(() => {
+      if (this.auth.isLoggedIn()) this.stepIndex.set(1);
+    });
+  }
+
   public startSpecialist(): void {
-    // Мастер сохраняет профиль через /me/*, поэтому без аккаунта дальше
-    // развилки идти некуда: сначала регистрация, потом первый шаг.
-    if (!this.auth.isLoggedIn()) {
-      const ref = this.modal.create({
-        nzContent: AuthDialogComponent,
-        nzFooter: null,
-        nzWidth: 'min(420px, 92vw)',
-        nzData: { initialTab: 1, initialKind: 'specialist', source: 'onboarding' },
-      });
-      ref.afterClose.subscribe(() => {
-        if (this.auth.isLoggedIn()) this.stepIndex.set(0);
-      });
+    this.stepIndex.set(0);
+  }
+
+  /**
+   * Аккаунт создаём молча на переходе с шага «Кто вы»: почта и пароль уже
+   * введены первым шагом, имя — вторым, а это всё, что нужно бэкенду.
+   * Отдельное окно регистрации поверх мастера сбивало с толку — человек уже
+   * заполнял анкету и не понимал, откуда взялась форма.
+   */
+  private ensureAccount(done: () => void): void {
+    if (this.auth.isLoggedIn()) {
+      done();
       return;
     }
-    this.stepIndex.set(0);
+    this.saving.set(true);
+    this.auth
+      .register({
+        email: this.email().trim(),
+        password: this.password(),
+        display_name: this.form().display_name.trim(),
+        kind: 'specialist',
+        source: 'onboarding',
+      })
+      .pipe(
+        catchError((err) => {
+          this.error.set(apiErrorMessage(err?.error, 'Не удалось создать аккаунт'));
+          // Возвращаем на шаг с почтой: обычно занят email или слаб пароль.
+          this.stepIndex.set(0);
+          return EMPTY;
+        }),
+        finalize(() => this.saving.set(false)),
+      )
+      .subscribe(() => done());
   }
 
   public goClient(): void {
@@ -226,6 +270,15 @@ export class OnboardingPage {
   public onAvatarPicked(ev: Event): void {
     const file = (ev.target as HTMLInputElement).files?.[0];
     if (!file) return;
+    // Файл уходит в наш S3 через presign — без аккаунта его некуда класть.
+    if (!this.auth.isLoggedIn()) {
+      this.ensureAccount(() => this.uploadAvatar(file));
+      return;
+    }
+    this.uploadAvatar(file);
+  }
+
+  private uploadAvatar(file: File): void {
     this.avatarUploading.set(true);
     this.meRepo
       .presignAvatarUpload(file)
@@ -248,6 +301,10 @@ export class OnboardingPage {
 
   /** Загрузчик работы — тот же диалог, что в кабинете. */
   public addWork(): void {
+    if (!this.auth.isLoggedIn()) {
+      this.ensureAccount(() => this.addWork());
+      return;
+    }
     const ref = this.modal.create<
       PortfolioUploadDialog,
       PortfolioUploadDialogData,
@@ -284,6 +341,10 @@ export class OnboardingPage {
    * уходят одной транзакцией под общим updated_at.
    */
   private saveProfile(done: () => void): void {
+    if (!this.auth.isLoggedIn()) {
+      this.ensureAccount(() => this.saveProfile(done));
+      return;
+    }
     const f = this.form();
     const rate = validateRate(f.rate_min, f.rate_max, f.currency);
     if (rate.error) {

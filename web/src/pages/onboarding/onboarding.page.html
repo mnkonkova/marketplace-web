@@ -54,7 +54,47 @@
       } }
     </div>
 
-    @switch (step()) { @case ('who') {
+    @switch (step()) { @case ('account') {
+    <h1>Создайте аккаунт</h1>
+    <p class="sub">
+      Почта нужна, чтобы вы могли вернуться к профилю и получать заявки от клиентов.
+    </p>
+
+    <div class="who-fields">
+      <label>
+        Email
+        <input
+          nz-input
+          nzSize="large"
+          type="email"
+          autocomplete="email"
+          [ngModel]="email()"
+          (ngModelChange)="email.set($event)"
+          name="email"
+          placeholder="you@example.com"
+        />
+      </label>
+
+      <label>
+        Пароль
+        <input
+          nz-input
+          nzSize="large"
+          type="password"
+          autocomplete="new-password"
+          [ngModel]="password()"
+          (ngModelChange)="password.set($event)"
+          name="password"
+          placeholder="Не короче 8 символов"
+        />
+      </label>
+
+      <p class="hint">
+        Аккаунт создастся на следующем шаге, когда вы укажете имя. Уже зарегистрированы?
+        <button type="button" class="link-inline" (click)="openLogin()">Войти</button>
+      </p>
+    </div>
+    } @case ('who') {
     <h1>Расскажите о себе</h1>
     <p class="sub">Это увидит клиент в шапке вашей страницы.</p>
 

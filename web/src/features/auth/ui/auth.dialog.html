@@ -1,139 +1,109 @@
-<nz-tabset [nzSelectedIndex]="tab()">
-  <nz-tab nzTitle="Вход" (nzClick)="tab.set(0)">
-    @if (!forgotMode()) {
-    <form nz-form [formGroup]="loginForm" (ngSubmit)="login()">
-      <nz-form-item>
-        <nz-form-control>
-          <input nz-input formControlName="login" placeholder="Email" />
-        </nz-form-control>
-      </nz-form-item>
-      <nz-form-item>
-        <nz-form-control>
-          <nz-form-item>
-            <nz-form-control>
-              <nz-input-group [nzSuffix]="suffixTemplate">
-                <input
-                  [type]="passwordVisible ? 'text' : 'password'"
-                  nz-input
-                  placeholder="Пароль"
-                  formControlName="password"
-                />
-              </nz-input-group>
-              <ng-template #suffixTemplate>
-                <span
-                  nz-icon
-                  class="ant-input-password-icon"
-                  [nzType]="passwordVisible ? 'eye-invisible' : 'eye'"
-                  (click)="passwordVisible = !passwordVisible"
-                ></span>
-              </ng-template>
-            </nz-form-control>
-          </nz-form-item>
-        </nz-form-control>
-      </nz-form-item>
-      <div class="auth-forgot-row">
-        <button type="button" class="auth-forgot-link" (click)="openForgot()">
-          Забыли пароль?
-        </button>
-      </div>
-      <button
-        nz-button
-        nzType="primary"
-        nzBlock
-        [nzLoading]="loading()"
-        [disabled]="loginForm.invalid"
-      >
-        Войти
-      </button>
-    </form>
-    } @else {
-    <form nz-form [formGroup]="forgotForm" (ngSubmit)="submitForgot()">
-      @if (!forgotSent()) {
-      <p class="auth-forgot-hint">
-        Введите email от аккаунта — пришлём ссылку для сброса пароля.
-      </p>
-      <nz-form-item>
-        <nz-form-control>
-          <input nz-input formControlName="email" placeholder="Email" type="email" />
-        </nz-form-control>
-      </nz-form-item>
-      <button
-        nz-button
-        nzType="primary"
-        nzBlock
-        [nzLoading]="loading()"
-        [disabled]="forgotForm.invalid"
-      >
-        Прислать ссылку
-      </button>
-      } @else {
-      <p class="auth-forgot-hint">
-        Если такой email зарегистрирован — мы отправили на него письмо со ссылкой. Она
-        действует 1 час.
-      </p>
-      }
-      <div class="auth-forgot-row">
-        <button type="button" class="auth-forgot-link" (click)="cancelForgot()">
-          ← Назад ко входу
-        </button>
-      </div>
-    </form>
-    }
-  </nz-tab>
-  <nz-tab nzTitle="Регистрация" (nzClick)="tab.set(1)">
-    <form nz-form [formGroup]="registerForm" (ngSubmit)="register()">
-      <nz-form-item>
-        <nz-form-control
-          [nzValidateStatus]="registerForm.controls.display_name"
-          nzErrorTip="Укажите имя"
-        >
-          <input nz-input formControlName="display_name" placeholder="Имя *" />
-        </nz-form-control>
-      </nz-form-item>
-      <nz-form-item>
-        <nz-form-control
-          [nzValidateStatus]="registerForm.controls.email"
-          [nzErrorTip]="emailErrorTpl"
-        >
-          <input nz-input formControlName="email" placeholder="Email *" />
-        </nz-form-control>
-        <ng-template #emailErrorTpl let-control>
-          @if (control.hasError('required')) { Укажите email }
-          @else if (control.hasError('email')) { Email указан неверно }
-          @else if (control.hasError('backend')) { {{ control.getError('backend') }} }
-        </ng-template>
-      </nz-form-item>
-      <nz-form-item>
-        <nz-form-control
-          [nzValidateStatus]="registerForm.controls.kind"
-          nzErrorTip="Выберите тип аккаунта"
-        >
-          <div class="auth-field-label">Тип аккаунта *</div>
-          <!-- Подпись под названием роли, а не только название: «клиент» и
+<!--
+  Вкладок больше нет: регистрация живёт в мастере (/start), где спрашивают
+  роль и сразу собирают профиль. Диалог показывает ровно то, за чем его
+  открыли — вход или форму регистрации, которую вызывает сам мастер.
+-->
+@if (tab() === 1) {
+<form nz-form [formGroup]="registerForm" (ngSubmit)="register()">
+  <nz-form-item>
+    <nz-form-control
+      [nzValidateStatus]="registerForm.controls.display_name"
+      nzErrorTip="Укажите имя"
+    >
+      <input nz-input formControlName="display_name" placeholder="Имя *" />
+    </nz-form-control>
+  </nz-form-item>
+  <nz-form-item>
+    <nz-form-control [nzValidateStatus]="registerForm.controls.email" [nzErrorTip]="emailErrorTpl">
+      <input nz-input formControlName="email" placeholder="Email *" />
+    </nz-form-control>
+    <ng-template #emailErrorTpl let-control>
+      @if (control.hasError('required')) { Укажите email } @else if (control.hasError('email')) {
+      Email указан неверно } @else if (control.hasError('backend')) { {{ control.getError('backend')
+      }} }
+    </ng-template>
+  </nz-form-item>
+  <nz-form-item>
+    <nz-form-control
+      [nzValidateStatus]="registerForm.controls.kind"
+      nzErrorTip="Выберите тип аккаунта"
+    >
+      <div class="auth-field-label">Тип аккаунта *</div>
+      <!-- Подпись под названием роли, а не только название: «клиент» и
                «специалист» — это про то, кем человек себя считает, а выбрать
                ему надо по тому, что он собирается делать. -->
-          <nz-radio-group formControlName="kind" class="auth-kind-group">
-            <label nz-radio-button nzValue="client">
-              <span class="kind-name">Клиент</span>
-              <span class="kind-hint">заказываю проекты</span>
-            </label>
-            <label nz-radio-button nzValue="specialist">
-              <span class="kind-name">Специалист</span>
-              <span class="kind-hint">создаю проекты</span>
-            </label>
-          </nz-radio-group>
-        </nz-form-control>
-      </nz-form-item>
+      <nz-radio-group formControlName="kind" class="auth-kind-group">
+        <label nz-radio-button nzValue="client">
+          <span class="kind-name">Клиент</span>
+          <span class="kind-hint">заказываю проекты</span>
+        </label>
+        <label nz-radio-button nzValue="specialist">
+          <span class="kind-name">Специалист</span>
+          <span class="kind-hint">создаю проекты</span>
+        </label>
+      </nz-radio-group>
+    </nz-form-control>
+  </nz-form-item>
+  <nz-form-item>
+    <nz-form-control
+      [nzValidateStatus]="registerForm.controls.password"
+      nzErrorTip="Укажите пароль"
+    >
+      <nz-input-group [nzSuffix]="suffixTemplate">
+        <input
+          [type]="passwordVisible ? 'text' : 'password'"
+          nz-input
+          placeholder="Пароль *"
+          formControlName="password"
+        />
+      </nz-input-group>
+      <ng-template #suffixTemplate>
+        <span
+          nz-icon
+          class="ant-input-password-icon"
+          [nzType]="passwordVisible ? 'eye-invisible' : 'eye'"
+          (click)="passwordVisible = !passwordVisible"
+        ></span>
+      </ng-template>
+    </nz-form-control>
+  </nz-form-item>
+
+  @if (registerBackendError(); as err) {
+  <div class="auth-backend-error" role="alert">{{ err }}</div>
+  }
+  <button nz-button nzType="primary" nzBlock [nzLoading]="loading()">Создать аккаунт</button>
+  <!-- Согласие стоит ПОД кнопкой и без чекбокса: акцепт по оферте — это
+           действие (создание аккаунта и размещение ресурсов), а не галочка.
+           Ссылки открываются в новой вкладке: диалог живёт в модалке, и
+           обычный переход увёл бы человека со страницы, потеряв форму.
+
+           Ветки по роли больше нет: оферта стала частью соглашения, и
+           денежные условия внутри него адресованы Специалистам — Клиент,
+           приняв документ, обязательств по ним не несёт. Это сказано в
+           самом тексте, а не решается тем, какую ссылку мы показали. -->
+  <p class="auth-consent">
+    Нажимая «Создать аккаунт», вы соглашаетесь с
+    <a href="/terms" target="_blank" rel="noopener">соглашением и офертой</a>
+    и
+    <a href="/privacy" target="_blank" rel="noopener">политикой конфиденциальности</a>.
+  </p>
+</form>
+} @else { @if (!forgotMode()) {
+<form nz-form [formGroup]="loginForm" (ngSubmit)="login()">
+  <nz-form-item>
+    <nz-form-control>
+      <input nz-input formControlName="login" placeholder="Email" />
+    </nz-form-control>
+  </nz-form-item>
+  <nz-form-item>
+    <nz-form-control>
       <nz-form-item>
-        <nz-form-control
-          [nzValidateStatus]="registerForm.controls.password"
-          nzErrorTip="Укажите пароль"
-        >
+        <nz-form-control>
           <nz-input-group [nzSuffix]="suffixTemplate">
             <input
               [type]="passwordVisible ? 'text' : 'password'"
               nz-input
-              placeholder="Пароль *"
+              placeholder="Пароль"
               formControlName="password"
             />
           </nz-input-group>
@@ -147,28 +117,48 @@
           </ng-template>
         </nz-form-control>
       </nz-form-item>
+    </nz-form-control>
+  </nz-form-item>
+  <div class="auth-forgot-row">
+    <button type="button" class="auth-forgot-link" (click)="openForgot()">Забыли пароль?</button>
+  </div>
+  <button nz-button nzType="primary" nzBlock [nzLoading]="loading()" [disabled]="loginForm.invalid">
+    Войти
+  </button>
+</form>
+} @else {
+<form nz-form [formGroup]="forgotForm" (ngSubmit)="submitForgot()">
+  @if (!forgotSent()) {
+  <p class="auth-forgot-hint">Введите email от аккаунта — пришлём ссылку для сброса пароля.</p>
+  <nz-form-item>
+    <nz-form-control>
+      <input nz-input formControlName="email" placeholder="Email" type="email" />
+    </nz-form-control>
+  </nz-form-item>
+  <button
+    nz-button
+    nzType="primary"
+    nzBlock
+    [nzLoading]="loading()"
+    [disabled]="forgotForm.invalid"
+  >
+    Прислать ссылку
+  </button>
+  } @else {
+  <p class="auth-forgot-hint">
+    Если такой email зарегистрирован — мы отправили на него письмо со ссылкой. Она действует 1 час.
+  </p>
+  }
+  <div class="auth-forgot-row">
+    <button type="button" class="auth-forgot-link" (click)="cancelForgot()">
+      ← Назад ко входу
+    </button>
+  </div>
+</form>
+}
 
-      @if (registerBackendError(); as err) {
-      <div class="auth-backend-error" role="alert">{{ err }}</div>
-      }
-      <button nz-button nzType="primary" nzBlock [nzLoading]="loading()">
-        Создать аккаунт
-      </button>
-      <!-- Согласие стоит ПОД кнопкой и без чекбокса: акцепт по оферте — это
-           действие (создание аккаунта и размещение ресурсов), а не галочка.
-           Ссылки открываются в новой вкладке: диалог живёт в модалке, и
-           обычный переход увёл бы человека со страницы, потеряв форму.
-
-           Ветки по роли больше нет: оферта стала частью соглашения, и
-           денежные условия внутри него адресованы Специалистам — Клиент,
-           приняв документ, обязательств по ним не несёт. Это сказано в
-           самом тексте, а не решается тем, какую ссылку мы показали. -->
-      <p class="auth-consent">
-        Нажимая «Создать аккаунт», вы соглашаетесь с
-        <a href="/terms" target="_blank" rel="noopener">соглашением и офертой</a>
-        и
-        <a href="/privacy" target="_blank" rel="noopener">политикой конфиденциальности</a>.
-      </p>
-    </form>
-  </nz-tab>
-</nz-tabset>
+<p class="auth-switch">
+  Нет аккаунта?
+  <button type="button" class="auth-forgot-link" (click)="goRegister()">Зарегистрироваться</button>
+</p>
+}
