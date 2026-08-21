@@ -78,8 +78,11 @@
         </button>
       } @else {
         <button type="button" class="link" (click)="openAuth()">Войти</button>
-        <button nz-button nzType="default" class="cta cta-secondary" (click)="openAuth(1)">
-          Я специалист
+        <!-- Регистрация ведёт в мастер: там развилка «заказчик / специалист»
+             и сбор профиля. Прежняя кнопка «Я специалист» выбирала роль за
+             человека, хотя заказчиков среди новых не меньше. -->
+        <button nz-button nzType="default" class="cta cta-secondary" (click)="goRegister()">
+          Регистрация
         </button>
       }
       @if (showCreateProjectCTA()) {
@@ -156,6 +159,9 @@
         </button>
       } @else {
         <button type="button" class="mobile-nav-item" (click)="openAuthFromMenu()">Войти</button>
+        <button type="button" class="mobile-nav-item" (click)="goRegisterFromMenu()">
+          Регистрация
+        </button>
       }
     </nav>
   }

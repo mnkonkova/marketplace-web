@@ -5,9 +5,10 @@ import { unsavedChangesGuard } from '@shared/guards/unsaved-changes.guard';
 export const routes: Routes = [
   // Онбординг: развилка «заказчик / специалист» и мастер профиля.
   // Мастер собирает те же данные и тем же API, что и кабинет.
+  // Публичный: с лендингов сюда приходят ещё не зарегистрированными, а
+  // ?role=specialist пропускает развилку — роль уже выбрана кнопкой.
   {
     path: 'start',
-    canActivate: [requireRole('specialist')],
     loadComponent: () => import('@pages/onboarding/onboarding.page').then((m) => m.OnboardingPage),
   },
   {

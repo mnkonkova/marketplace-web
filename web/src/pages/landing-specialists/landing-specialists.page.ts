@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { Title, Meta } from '@angular/platform-browser';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
@@ -19,17 +20,19 @@ export class LandingSpecialistsPage implements OnInit {
   private readonly meta = inject(Meta);
   private readonly modal = inject(NzModalService);
 
+  private readonly router = inject(Router);
+
   // Открывает AuthDialog на вкладке «Регистрация» с уже выбранным
   // типом аккаунта = specialist. Категорию юзер выбирает в кабинете
   // при первом заходе в /me/specialist — на лендинге сокращаем воронку
   // до одного клика.
+  /**
+   * С лендинга специалистов роль уже выбрана кнопкой, поэтому ведём сразу
+   * в мастер с ?role=specialist — он пропускает развилку и, если человек
+   * ещё без аккаунта, сам открывает регистрацию.
+   */
   public openRegisterSpecialist(): void {
-    this.modal.create({
-      nzContent: AuthDialogComponent,
-      nzFooter: null,
-      nzWidth: 'min(420px, 92vw)',
-      nzData: { initialTab: 1, initialKind: 'specialist' },
-    });
+    void this.router.navigate(['/start'], { queryParams: { role: 'specialist' } });
   }
 
   // «Что вы получаете» для спецов. Один пункт помечен beta = true —

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { EMPTY, catchError, finalize } from 'rxjs';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -13,6 +13,8 @@ import { ProfileForm, emptyProfileForm } from '@entities/me/model/profile-form';
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import { ProductionApi } from '@entities/production/api/production.api';
 import { Production } from '@entities/production/model/production.types';
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
+import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
 import { apiErrorMessage } from '@shared/api/api-error';
 import { groupCategoriesByType } from '@shared/lib/category-groups';
 import { validateRate } from '@shared/lib/rate-validation';
@@ -74,6 +76,10 @@ export class OnboardingPage {
 
   private readonly router = inject(Router);
 
+  private readonly route = inject(ActivatedRoute);
+
+  private readonly auth = inject(AuthSessionStore);
+
   public readonly steps = STEPS;
 
   /** null — ещё на экране выбора роли. */
@@ -119,6 +125,15 @@ export class OnboardingPage {
   });
 
   public constructor() {
+    // С лендинга приходят с уже выбранной ролью — развилку показывать
+    // незачем. Заказчику мастер не нужен вовсе: ему в каталог.
+    const role = this.route.snapshot.queryParamMap.get('role');
+    if (role === 'client') {
+      void this.router.navigate(['/search']);
+      return;
+    }
+    if (role === 'specialist') this.startSpecialist();
+
     this.categoryApi.list().subscribe((items) => this.categories.set(items));
     this.productionApi.listActive().subscribe((r) => this.productions.set(r.items));
     this.categoryApi.skills({ kind: 'platform' }).subscribe((items) => this.platforms.set(items));
@@ -133,6 +148,20 @@ export class OnboardingPage {
   }
 
   public startSpecialist(): void {
+    // Мастер сохраняет профиль через /me/*, поэтому без аккаунта дальше
+    // развилки идти некуда: сначала регистрация, потом первый шаг.
+    if (!this.auth.isLoggedIn()) {
+      const ref = this.modal.create({
+        nzContent: AuthDialogComponent,
+        nzFooter: null,
+        nzWidth: 'min(420px, 92vw)',
+        nzData: { initialTab: 1, initialKind: 'specialist', source: 'onboarding' },
+      });
+      ref.afterClose.subscribe(() => {
+        if (this.auth.isLoggedIn()) this.stepIndex.set(0);
+      });
+      return;
+    }
     this.stepIndex.set(0);
   }
 

@@ -127,7 +127,23 @@ export class AppHeaderComponent implements OnInit {
     });
   }
 
+  /** Регистрация — через мастер: он же спрашивает роль и собирает профиль. */
+  public goRegister(): void {
+    void this.router.navigate(['/start']);
+  }
+
+  public goRegisterFromMenu(): void {
+    this.closeMenu();
+    this.goRegister();
+  }
+
   public openProject(): void {
+    // Незарегистрированному корзина проекта бесполезна: заявку некому
+    // привязать. Ведём в мастер — там он заводит аккаунт и возвращается.
+    if (!this.isLoggedIn()) {
+      void this.router.navigate(['/start']);
+      return;
+    }
     this.modal.create({
       nzContent: ProjectCartDialogComponent,
       nzFooter: null,
