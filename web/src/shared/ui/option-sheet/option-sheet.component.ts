@@ -68,6 +68,11 @@ export class OptionSheetComponent {
    */
   private panel: HTMLElement | null = null;
 
+  /** Прокручиваемый список внутри листа, если жест начался на нём. */
+  private list: HTMLElement | null = null;
+
+  private lastY = 0;
+
   private dragging = false;
 
   public isOn(value: string): boolean {
@@ -97,11 +102,10 @@ export class OptionSheetComponent {
 
   public onDragStart(ev: TouchEvent): void {
     const target = ev.target as HTMLElement | null;
-    const list = target?.closest('.opt-list') as HTMLElement | null;
-    if (list && list.scrollTop > 0) return;
-
+    this.list = (target?.closest('.opt-list') as HTMLElement | null) ?? null;
     this.panel = target?.closest('.ant-drawer-content-wrapper') ?? null;
     this.startY = ev.touches[0].clientY;
+    this.lastY = this.startY;
     this.shift = 0;
     this.dragging = true;
     if (this.panel) this.panel.style.transition = 'none';
@@ -109,12 +113,32 @@ export class OptionSheetComponent {
 
   public onDragMove(ev: TouchEvent): void {
     if (!this.dragging) return;
-    const dy = ev.touches[0].clientY - this.startY;
-    // Тянем только вниз: движение вверх отдаём странице.
+    const y = ev.touches[0].clientY;
+    const delta = y - this.lastY;
+    this.lastY = y;
+
+    // Прокрутку списка ведём сами. Отдать её браузеру нельзя: тогда он
+    // забирает жест целиком, и смахивание с области списка переставало
+    // закрывать лист. Панель двигаем только когда список уже вверху и палец
+    // идёт вниз — обычное поведение нижних листов.
+    const list = this.list;
+    if (list && (list.scrollTop > 0 || delta < 0)) {
+      const before = list.scrollTop;
+      list.scrollTop = before - delta;
+      // Список действительно прокрутился — значит жест был про него.
+      if (list.scrollTop !== before) {
+        this.startY = y;
+        this.shift = 0;
+        if (this.panel) this.panel.style.transform = '';
+        return;
+      }
+    }
+
+    const dy = y - this.startY;
     if (dy <= 0) return;
     this.shift = dy;
-    // Пока действительно тянем лист — запрещаем прокрутку фона: на iOS
-    // overflow:hidden на html её не удерживает, и страница ехала под листом.
+    // Пока тянем лист — фон стоять на месте: на iOS overflow:hidden на html
+    // прокрутку не удерживает.
     ev.preventDefault();
     if (this.panel) this.panel.style.transform = `translateY(${dy}px)`;
   }
@@ -132,6 +156,7 @@ export class OptionSheetComponent {
       this.panel.style.transform = '';
     }
     this.panel = null;
+    this.list = null;
     this.shift = 0;
     this.dragging = false;
   }
