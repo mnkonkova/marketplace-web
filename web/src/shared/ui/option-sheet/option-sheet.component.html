@@ -1,0 +1,47 @@
+<nz-drawer
+  [nzVisible]="open()"
+  nzPlacement="bottom"
+  [nzClosable]="false"
+  [nzHeight]="'auto'"
+  [nzBodyStyle]="{ padding: '0 16px 20px' }"
+  (nzOnClose)="close()"
+>
+  <ng-container *nzDrawerContent>
+    <!-- Полоска-ручка: за неё шторку тянут вниз, чтобы закрыть. -->
+    <div
+      class="opt-grip"
+      (touchstart)="onGripStart($event)"
+      (touchmove)="onGripMove($event)"
+      (touchend)="onGripEnd()"
+      (touchcancel)="onGripEnd()"
+    >
+      <span></span>
+      <strong>{{ title() }}</strong>
+    </div>
+
+    @if (note()) {
+      <p class="opt-note">{{ note() }}</p>
+    }
+
+    <ul class="opt-list">
+      @for (opt of options(); track opt.value) {
+        <li>
+          <button
+            type="button"
+            class="opt-row"
+            [class.is-on]="isOn(opt.value)"
+            [disabled]="!!opt.locked"
+            (click)="choose(opt)"
+          >
+            <span class="opt-tick" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            {{ opt.label }}
+          </button>
+        </li>
+      }
+    </ul>
+  </ng-container>
+</nz-drawer>

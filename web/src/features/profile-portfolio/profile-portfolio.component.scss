@@ -607,3 +607,28 @@
     padding: 0 14px;
   }
 }
+
+// Иконки дропзоны и пустой обложки — SVG, а не шрифтовые эмодзи.
+.dz-icon {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-muted);
+
+  svg {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+.thumb-empty svg {
+  width: 24px;
+  height: 24px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.camera-btn svg {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}

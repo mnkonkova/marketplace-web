@@ -83,18 +83,37 @@
         -->
         <div class="pseudo-label">
           <span>Где вы работаете</span>
-          <nz-select
-            nzSize="large"
-            [(ngModel)]="productionValue"
-            name="production"
-            nzPlaceHolder="Выберите вариант"
-          >
-            <nz-option nzValue="" nzLabel="— не выбрано —"></nz-option>
-            <nz-option nzValue="freelance" nzLabel="Фрилансер"></nz-option>
-            @for (pr of productions(); track pr.id) {
-              <nz-option [nzValue]="pr.id" [nzLabel]="pr.name"></nz-option>
-            }
-          </nz-select>
+          <!-- На телефоне — та же шторка, что у тегов и канала связи:
+               выпадающий список ng-zorro у края экрана неудобен пальцем. -->
+          @if (isTouch()) {
+            <button type="button" class="sheet-trigger" (click)="productionSheet.set(true)">
+              {{ productionLabel() }}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+            <app-option-sheet
+              [open]="productionSheet()"
+              title="Где вы работаете"
+              [options]="productionOptions()"
+              [selected]="[productionValue]"
+              (picked)="productionValue = $event"
+              (closed)="productionSheet.set(false)"
+            />
+          } @else {
+            <nz-select
+              nzSize="large"
+              [(ngModel)]="productionValue"
+              name="production"
+              nzPlaceHolder="Выберите вариант"
+            >
+              <nz-option nzValue="" nzLabel="— не выбрано —"></nz-option>
+              <nz-option nzValue="freelance" nzLabel="Фрилансер"></nz-option>
+              @for (pr of productions(); track pr.id) {
+                <nz-option [nzValue]="pr.id" [nzLabel]="pr.name"></nz-option>
+              }
+            </nz-select>
+          }
         </div>
         <p class="hint">Фрилансер или один из продакшенов. Сохранится вместе с профилем.</p>
       </div>

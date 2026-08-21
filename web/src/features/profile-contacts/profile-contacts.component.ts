@@ -4,6 +4,8 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 
 import { ProfileForm } from '@entities/me/model/profile-form';
 import { SOCIAL_NETWORKS, SocialKey } from '@shared/lib/social-links';
+import { isTouchDevice } from '@shared/lib/touch';
+import { OptionSheetComponent, SheetOption } from '@shared/ui/option-sheet/option-sheet.component';
 
 /** Насколько нужно смахнуть строку, чтобы она удалилась. */
 const SWIPE_DELETE_PX = 96;
@@ -23,7 +25,7 @@ const SWIPE_LOCK_PX = 10;
 @Component({
   selector: 'app-profile-contacts',
   standalone: true,
-  imports: [FormsModule, NzInputModule],
+  imports: [FormsModule, NzInputModule, OptionSheetComponent],
   templateUrl: './profile-contacts.component.html',
   styleUrl: './profile-contacts.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,6 +51,32 @@ export class ProfileContactsComponent {
   private startY = 0;
 
   private locked: 'x' | 'y' | null = null;
+
+  public readonly isTouch = signal(isTouchDevice());
+
+  /** Канал, для которого открыта шторка. null — шторка закрыта. */
+  public readonly channelSheetFor = signal<SocialKey | null>(null);
+
+  public readonly channelSheetOptions = computed<SheetOption[]>(() => {
+    const current = this.channelSheetFor();
+    return current
+      ? this.channelOptions(current).map((n) => ({ value: n.key, label: n.label }))
+      : [];
+  });
+
+  public channelLabel(key: SocialKey): string {
+    return SOCIAL_NETWORKS.find((n) => n.key === key)?.label ?? key;
+  }
+
+  public openChannelSheet(key: SocialKey): void {
+    this.channelSheetFor.set(key);
+  }
+
+  public onChannelPicked(next: string): void {
+    const from = this.channelSheetFor();
+    if (from) this.changeChannel(from, next as SocialKey);
+    this.channelSheetFor.set(null);
+  }
 
   public get f(): ProfileForm {
     return this.form();

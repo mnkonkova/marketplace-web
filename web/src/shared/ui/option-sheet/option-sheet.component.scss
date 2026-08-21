@@ -1,0 +1,93 @@
+// Без инкапсуляции: содержимое живёт в оверлее ng-zorro (см. комментарий в
+// компоненте), поэтому классы с префиксом opt-.
+
+.ant-drawer-bottom .ant-drawer-content {
+  border-radius: 18px 18px 0 0;
+  background: var(--surface);
+}
+
+.ant-drawer-bottom .ant-drawer-header {
+  display: none;
+}
+
+.opt-grip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 14px;
+  // Жест обрабатываем сами, иначе браузер начнёт прокручивать содержимое.
+  touch-action: none;
+  cursor: grab;
+
+  span {
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border-strong, rgba(255, 255, 255, 0.16));
+  }
+
+  strong {
+    color: var(--text);
+    font-size: 16px;
+  }
+}
+
+.opt-note {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.opt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.opt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
+  border-radius: 12px;
+  background: var(--bg-elevated, #111316);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  text-align: left;
+
+  &.is-on {
+    border-color: #1f6f57;
+    background: rgba(47, 189, 143, 0.1);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+  }
+}
+
+.opt-tick {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--accent, #2fbd8f);
+  opacity: 0;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.opt-row.is-on .opt-tick {
+  opacity: 1;
+}

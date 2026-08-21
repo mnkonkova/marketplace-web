@@ -27,7 +27,19 @@
       role="button"
       tabindex="0"
     >
-      <div class="dz-icon">📹🖼</div>
+      <!-- Иконки дропзоны: inline-SVG вместо эмодзи — те рисуются шрифтом
+           системы и на разных платформах разного размера и цвета. -->
+      <div class="dz-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="2.5" y="6" width="13" height="12" rx="2.5" />
+          <path d="M15.5 10.5l5-3v9l-5-3z" stroke-linejoin="round" />
+        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+          <circle cx="8.5" cy="10" r="1.8" />
+          <path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5" stroke-linejoin="round" />
+        </svg>
+      </div>
       <strong>Перетащите видео или фото — или выберите файлы</strong>
       <p>
         Видео: MP4/MOV до 200 МБ → один ролик в ленте.<br />
@@ -82,7 +94,20 @@
       type="button"
       (click)="portfolioCamera.click(); $event.stopPropagation()"
     >
-      📷 Снять на камеру
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path
+          d="M3 9a2 2 0 0 1 2-2h2l1.5-2h7L17 7h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+          stroke-linejoin="round"
+        />
+        <circle cx="12" cy="13" r="3.2" />
+      </svg>
+      Снять на камеру
     </button>
     <input
       #portfolioCamera
@@ -124,7 +149,19 @@
               (measured)="onMeasured(item, $event)"
             />
           } @else {
-            <span class="thumb-empty">{{ item.kind === 'image' ? '🖼' : '▶' }}</span>
+            <span class="thumb-empty" aria-hidden="true">
+              @if (item.kind === 'image') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+                  <circle cx="8.5" cy="10" r="1.8" />
+                  <path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5" stroke-linejoin="round" />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              }
+            </span>
           }
           @if (duration(item); as d) {
             <span class="thumb-duration">{{ d }}</span>
@@ -365,60 +402,18 @@
     Для выбора другого кадра или своей обложки нужен thumbnail_url в
     PortfolioPatchInput — presigned-аплоад (/me/uploads/image) уже есть.
   -->
-  <!--
-    Шторка смонтирована всегда и управляется только видимостью. Раньше она
-    жила внутри @if по найденной работе: список на миг обновлялся после
-    переключения тега, работа не находилась, шторка уничтожалась и
-    создавалась заново — это и было дёрганье.
-  -->
+  <!-- Общая шторка выбора: та же, что у продакшена и канала связи. -->
   @if (isTouch()) {
-    <nz-drawer
-      [nzVisible]="tagSheetId() !== null"
-      nzPlacement="bottom"
-      [nzClosable]="false"
-      [nzHeight]="'auto'"
-      [nzBodyStyle]="{ padding: '0 16px 20px' }"
-      (nzOnClose)="closeTagSheet()"
-    >
-      <ng-container *nzDrawerContent>
-        @if (tagSheetItem(); as sheetItem) {
-          <!-- Полоска-ручка: за неё шторку тянут вниз, чтобы закрыть. -->
-          <div
-            class="sheet-grip"
-            (touchstart)="onSheetTouchStart($event)"
-            (touchmove)="onSheetTouchMove($event)"
-            (touchend)="onSheetTouchEnd()"
-            (touchcancel)="onSheetTouchEnd()"
-          >
-            <span></span>
-            <strong>Теги работы</strong>
-          </div>
-          <p class="sheet-note">
-            Теги решают, в какие подборки попадёт работа. Хотя бы один нужен обязательно.
-          </p>
-          <ul class="tag-sheet">
-            @for (code of profileCategoryList(); track code) {
-              <li>
-                <button
-                  type="button"
-                  class="tag-sheet-row"
-                  [class.is-on]="sheetItem.category_codes.includes(code)"
-                  [disabled]="isLastTag(sheetItem, code)"
-                  (click)="toggleItemCategory(sheetItem, code)"
-                >
-                  <span class="tick">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </span>
-                  {{ categoryTitle(code) }}
-                </button>
-              </li>
-            }
-          </ul>
-        }
-      </ng-container>
-    </nz-drawer>
+    <app-option-sheet
+      [open]="tagSheetId() !== null"
+      title="Теги работы"
+      note="Теги решают, в какие подборки попадёт работа. Хотя бы один нужен обязательно."
+      [options]="tagOptions()"
+      [selected]="tagSheetItem()?.category_codes ?? []"
+      [multiple]="true"
+      (picked)="onTagPicked($event)"
+      (closed)="closeTagSheet()"
+    />
   }
 
   @if (items().length) {

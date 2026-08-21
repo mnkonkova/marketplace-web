@@ -284,6 +284,25 @@
     ::ng-deep .ant-tabs-nav-list {
       gap: 8px;
       padding: 2px 0 4px;
+      // Пилюли прилипают к краю прокрутки: без этого лента останавливалась
+      // на половине вкладки, и обрез выглядел случайным.
+      scroll-snap-type: x proximity;
+    }
+
+    ::ng-deep .ant-tabs-tab {
+      scroll-snap-align: start;
+    }
+
+    // Края растворяются, а не обрубаются: там, где лента уходит за экран,
+    // пилюли плавно гаснут.
+    ::ng-deep .ant-tabs-nav-wrap {
+      mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 14px,
+        #000 calc(100% - 14px),
+        transparent 100%
+      );
     }
 
     ::ng-deep .ant-tabs-tab {
