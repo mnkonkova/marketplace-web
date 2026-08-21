@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { NzIconModule } from 'ng-zorro-antd/icon';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+
+import { RolePickerComponent } from '@shared/ui/role-picker/role-picker.component';
+import { SkillPickerComponent } from '@shared/ui/skill-picker/skill-picker.component';
 
 import { Category, Skill } from '@entities/category/model/category.types';
 import { CategoryTypeGroup } from '@shared/lib/category-groups';
@@ -15,7 +17,7 @@ import { CategoryTypeGroup } from '@shared/lib/category-groups';
 @Component({
   selector: 'app-profile-skills',
   standalone: true,
-  imports: [NzIconModule],
+  imports: [RolePickerComponent, SkillPickerComponent],
   templateUrl: './profile-skills.component.html',
   styleUrl: './profile-skills.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,40 +42,4 @@ export class ProfileSkillsComponent {
   public readonly primarySet = output<string>();
 
   public readonly skillToggled = output<string>();
-
-  /**
-   * Порядок такой же, как на публичной: основная роль первой, остальные —
-   * как их вернёт бэк (ORDER BY is_primary DESC, sort_order, title).
-   */
-  public readonly selectedList = computed(() => {
-    const selected = this.selectedCategories();
-    const primary = this.primaryCategory();
-    const titles = new Map(this.categories().map((c) => [c.code, c.title]));
-    const codes = [...selected];
-    codes.sort((a, b) => {
-      if (a === primary) return -1;
-      if (b === primary) return 1;
-      return (titles.get(a) ?? a).localeCompare(titles.get(b) ?? b, 'ru');
-    });
-    return codes.map((code) => ({
-      code,
-      title: titles.get(code) ?? code,
-      isPrimary: code === primary,
-    }));
-  });
-
-  /** Название главной роли для строки-итога под сеткой. */
-  public readonly primaryTitle = computed(() => {
-    const primary = this.primaryCategory();
-    if (!primary || !this.selectedCategories().has(primary)) return '';
-    return this.categories().find((c) => c.code === primary)?.title ?? '';
-  });
-
-  /** Первые три роли — то, что реально увидит клиент; остальные под «ещё N». */
-  public readonly hiddenRolesCount = computed(() => Math.max(0, this.selectedList().length - 3));
-
-  public setPrimary(code: string, ev: Event): void {
-    ev.stopPropagation();
-    this.primarySet.emit(code);
-  }
 }

@@ -1,0 +1,203 @@
+<main class="onb">
+  @if (stepIndex() === null) {
+  <!-- Нулевой экран: развилка. Заказчику мастер не нужен — ему в каталог. -->
+  <section class="onb-card role-choice">
+    <h1>Кто вы?</h1>
+    <p class="sub">От этого зависит, что мы покажем дальше.</p>
+
+    <div class="role-grid">
+      <button type="button" class="role-pick c1" (click)="goClient()">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <path
+              d="M5 21V4h9v17M14 9h5v12M8 8h2M8 12h2M8 16h2M17 13h1M17 17h1"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        <b>Я заказчик</b>
+        <p>Ищу команду под рекламу — быстрый путь в каталог и проект.</p>
+      </button>
+
+      <button type="button" class="role-pick c2" (click)="startSpecialist()">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path
+              d="M4 9h16v11H4V9zM4 9l1.4-4 3.6 1M9 6l3.6 1M13.4 7l3.6 1L19 9"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        <b>Я специалист</b>
+        <p>Соберу профиль и портфолио за пару шагов и появлюсь в ленте.</p>
+      </button>
+    </div>
+  </section>
+  } @else {
+  <section class="onb-card">
+    <!-- Индикатор шагов: пройденные зелёные, текущий белый. -->
+    <div class="steps">
+      @for (s of steps; track s.id; let i = $index) {
+      <div class="s" [class.done]="i < stepIndex()!" [class.cur]="i === stepIndex()">
+        <span class="n">
+          @if (i < stepIndex()!) {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          } @else { {{ i + 1 }} }
+        </span>
+        <span class="lab">{{ s.label }}</span>
+      </div>
+      @if (!$last) {
+      <span class="bar" [class.done]="i < stepIndex()!"></span>
+      } }
+    </div>
+
+    @switch (step()) { @case ('who') {
+    <h1>Расскажите о себе</h1>
+    <p class="sub">Это увидит клиент в шапке вашей страницы.</p>
+
+    <div class="who-grid">
+      <app-avatar-picker
+        [url]="form().avatar_url"
+        [uploading]="avatarUploading()"
+        [name]="form().display_name"
+        hint="JPG, PNG, WEBP или HEIC — уменьшим до 512 px."
+        (picked)="onAvatarPicked($event)"
+        (cleared)="clearAvatar()"
+      />
+
+      <div class="who-fields">
+        <label>
+          Имя или название
+          <input
+            nz-input
+            nzSize="large"
+            [ngModel]="form().display_name"
+            (ngModelChange)="setField('display_name', $event)"
+            name="display_name"
+            maxlength="120"
+            placeholder="Как вас представить клиенту"
+          />
+        </label>
+
+        <label>
+          Город
+          <input
+            nz-input
+            nzSize="large"
+            [ngModel]="form().city"
+            (ngModelChange)="setField('city', $event)"
+            name="city"
+            maxlength="120"
+            placeholder="Ваш город или «удалённо»"
+          />
+        </label>
+      </div>
+    </div>
+
+    <!-- Карточки ролей — тот же компонент, что во вкладке «Навыки». -->
+    <app-role-picker
+      [categoryGroups]="categoryGroups()"
+      [categories]="categories()"
+      [selectedCategories]="selectedCategories()"
+      [primaryCategory]="primaryCategory()"
+      (toggled)="toggleCategory($event)"
+      (primarySet)="setPrimary($event)"
+    />
+    } @case ('skills') {
+    <h1>Навыки</h1>
+    <p class="sub">Инструменты подтянулись под выбранные роли. Отметьте свои.</p>
+    <!-- Чипы — тот же компонент, что в кабинете. -->
+    <app-skill-picker
+      [tools]="tools()"
+      [platforms]="platforms()"
+      [selectedSkills]="selectedSkills()"
+      (toggled)="toggleSkill($event)"
+    />
+    } @case ('work') {
+    <h1>Первая работа</h1>
+    <p class="sub">
+      Ролик или фото-кейс. Можно пропустить и добавить позже — но профиль с работой открывают
+      заметно чаще.
+    </p>
+
+    @if (portfolio().length) {
+    <ul class="work-list">
+      @for (item of portfolio(); track item.id) {
+      <li>
+        <span class="tick" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+        {{ item.title || 'Без названия' }}
+      </li>
+      }
+    </ul>
+    }
+
+    <!-- Загрузчик — тот же диалог, что в кабинете. -->
+    <button type="button" class="btn ghost" (click)="addWork()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+      </svg>
+      {{ portfolio().length ? 'Добавить ещё' : 'Загрузить работу' }}
+    </button>
+    } @case ('about') {
+    <h1>Пара слов о себе</h1>
+    <p class="sub">Кто вы, с чем помогаете, чем отличаетесь.</p>
+    <label class="about-field">
+      Описание
+      <textarea
+        nz-input
+        rows="6"
+        [ngModel]="form().bio"
+        (ngModelChange)="setField('bio', $event)"
+        name="bio"
+        maxlength="4000"
+        placeholder="Переносы строк сохраняются: строки со «✅» или «—» станут списком."
+      ></textarea>
+    </label>
+    <p class="hint">{{ bioLength() }} символов · для 100% нужно от 100</p>
+    } @case ('done') {
+    <h1 class="center">Профиль почти готов</h1>
+    <p class="sub center">
+      Осталось нажать «Опубликовать» в кабинете — после проверки админом вы появитесь в каталоге и
+      ленте.
+    </p>
+    <ul class="summary">
+      <li>
+        <b>{{ form().display_name || 'Без имени' }}</b>{{ form().city ? ', ' + form().city : '' }}
+      </li>
+      <li>Ролей: {{ selectedCategories().size }}</li>
+      <li>Навыков: {{ selectedSkills().size }}</li>
+      <li>Работ: {{ portfolio().length }}</li>
+    </ul>
+    } } @if (error()) {
+    <p class="err">{{ error() }}</p>
+    }
+
+    <div class="nav">
+      <button type="button" class="btn ghost" (click)="back()">← Назад</button>
+      @if (steps[stepIndex()!].skippable) {
+      <button type="button" class="btn link" (click)="skip()">Пропустить</button>
+      }
+      <span class="spacer"></span>
+      @if (step() === 'done') {
+      <button type="button" class="btn primary" (click)="goToCabinet()">Перейти в кабинет</button>
+      } @else {
+      <button
+        type="button"
+        class="btn primary"
+        [disabled]="!canGoNext() || saving()"
+        (click)="next()"
+      >
+        {{ saving() ? 'Сохраняем…' : 'Далее' }}
+      </button>
+      }
+    </div>
+  </section>
+  }
+</main>

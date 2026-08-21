@@ -3,6 +3,12 @@ import { requireRole } from '@shared/guards/role.guard';
 import { unsavedChangesGuard } from '@shared/guards/unsaved-changes.guard';
 
 export const routes: Routes = [
+  // Онбординг: развилка «заказчик / специалист» и мастер профиля.
+  // Мастер собирает те же данные и тем же API, что и кабинет.
+  {
+    path: 'start',
+    loadComponent: () => import('@pages/onboarding/onboarding.page').then((m) => m.OnboardingPage),
+  },
   {
     path: '',
     loadComponent: () => import('@pages/main/main.page').then((m) => m.MainPage),
@@ -78,14 +84,12 @@ export const routes: Routes = [
   {
     path: 'manager',
     canActivate: [requireRole('manager', 'admin')],
-    loadComponent: () =>
-      import('@pages/manager/inbox/inbox.page').then((m) => m.ManagerInboxPage),
+    loadComponent: () => import('@pages/manager/inbox/inbox.page').then((m) => m.ManagerInboxPage),
   },
   {
     path: 'manager/board',
     canActivate: [requireRole('manager', 'admin')],
-    loadComponent: () =>
-      import('@pages/manager/board/board.page').then((m) => m.ManagerBoardPage),
+    loadComponent: () => import('@pages/manager/board/board.page').then((m) => m.ManagerBoardPage),
   },
   {
     path: 'manager/projects/:id',
@@ -110,8 +114,7 @@ export const routes: Routes = [
   {
     path: 'admin/users',
     canActivate: [requireRole('admin')],
-    loadComponent: () =>
-      import('@pages/admin/users/users.page').then((m) => m.AdminUsersPage),
+    loadComponent: () => import('@pages/admin/users/users.page').then((m) => m.AdminUsersPage),
   },
   {
     path: 'admin/pipelines',
@@ -134,8 +137,7 @@ export const routes: Routes = [
   {
     path: 'admin/board',
     canActivate: [requireRole('admin')],
-    loadComponent: () =>
-      import('@pages/admin/board/board.page').then((m) => m.AdminBoardPage),
+    loadComponent: () => import('@pages/admin/board/board.page').then((m) => m.AdminBoardPage),
   },
   {
     path: 'admin/dashboard',

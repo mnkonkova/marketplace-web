@@ -1,0 +1,47 @@
+<div class="avatar-column">
+  <input
+    #avatarFile
+    [id]="inputId"
+    type="file"
+    class="hidden-file"
+    accept="image/*"
+    (click)="$any($event.target).value = ''"
+    (change)="picked.emit($event)"
+  />
+  <label
+    [attr.for]="inputId"
+    class="avatar-preview"
+    [class.has-image]="url()"
+    [class.is-uploading]="uploading()"
+    [class.is-disabled]="uploading()"
+  >
+    @if (url(); as src) {
+      <img [src]="src" alt="" decoding="async" />
+    } @else {
+      <span class="avatar-initials">{{ initials() }}</span>
+    }
+    @if (uploading()) {
+      <div class="avatar-overlay" role="status" aria-label="Загрузка аватара">
+        <span nz-icon nzType="loading" nzTheme="outline"></span>
+      </div>
+    }
+    <!-- Подсказка только на десктопе: на тач-экранах hover не случается. -->
+    <span class="avatar-hover" aria-hidden="true">Изменить фото</span>
+    <!-- Бейдж-камера: подсказывает, что вся плитка — кнопка загрузки. -->
+    <span class="avatar-cam" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path
+          d="M3 9a2 2 0 0 1 2-2h2l1.5-2h7L17 7h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+          stroke-linejoin="round"
+        />
+        <circle cx="12" cy="13" r="3.2" />
+      </svg>
+    </span>
+  </label>
+  @if (url()) {
+    <button class="avatar-remove" type="button" (click)="cleared.emit()">Удалить фото</button>
+  }
+  @if (hint()) {
+    <p class="hint">{{ hint() }}</p>
+  }
+</div>

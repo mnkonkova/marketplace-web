@@ -14,105 +14,21 @@
     и на вкладке было два одинаковых списка. Главная роль и так видна по
     коралловой пилюле, а итог по ней есть под сеткой.
   -->
-  @if (hiddenRolesCount() > 0) {
-    <p class="hint roles-hint">
-      Первые три роли видны клиенту сразу, остальные {{ hiddenRolesCount() }} — под «ещё
-      {{ hiddenRolesCount() }}». Чем длиннее список, тем сильнее он читается как «берусь за всё»:
-      первые роли важнее.
-    </p>
-  }
-
-  @for (group of categoryGroups(); track group.type) {
-    <h3 class="pick-type">{{ group.type }}</h3>
-    <div class="pick-grid">
-      @for (cat of group.categories; track cat.code) {
-        <button
-          type="button"
-          class="cat-pick"
-          [class.is-on]="selectedCategories().has(cat.code)"
-          [class.is-primary]="primaryCategory() === cat.code && selectedCategories().has(cat.code)"
-          (click)="categoryToggled.emit(cat.code)"
-        >
-          <span class="cat-title">{{ cat.title }}</span>
-          <span class="cat-desc">{{ cat.description }}</span>
-          <!--
-            Тумблер главной роли доступен только у выбранных: на невыбранных
-            он глушится в CSS (opacity + pointer-events). Раньше «★ основная»
-            висела на каждой карточке и читалась как «все роли главные».
-          -->
-          <span
-            class="primary-action"
-            [class.is-main]="primaryCategory() === cat.code"
-            (click)="setPrimary(cat.code, $event)"
-          >
-            @if (primaryCategory() === cat.code) {
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path
-                  d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"
-                />
-              </svg>
-              Главная
-            } @else {
-              Сделать главной
-            }
-          </span>
-        </button>
-      }
-    </div>
-  }
-
-  <!-- Итог под сеткой: какая роль уедет на публичную первой. -->
-  <p class="primary-summary">
-    Главная роль:
-    @if (primaryTitle()) {
-      <strong>{{ primaryTitle() }}</strong>
-    } @else {
-      <span class="muted">не выбрана</span>
-    }
-  </p>
+  <!-- Карточки ролей — общий компонент: тот же в мастере регистрации. -->
+  <app-role-picker
+    [categoryGroups]="categoryGroups()"
+    [categories]="categories()"
+    [selectedCategories]="selectedCategories()"
+    [primaryCategory]="primaryCategory()"
+    (toggled)="categoryToggled.emit($event)"
+    (primarySet)="primarySet.emit($event)"
+  />
 </section>
 
-<section class="panel">
-  <div class="panel-head">
-    <div>
-      <h2>Навыки</h2>
-      <p>Выбранные подсвечены зелёным. Инструменты подтягиваются под выбранные роли.</p>
-    </div>
-  </div>
-
-  <div class="skill-block">
-    <h3>Инструменты и форматы</h3>
-    @if (tools().length) {
-      <div class="chips">
-        @for (skill of tools(); track skill.id) {
-          <button
-            type="button"
-            class="chip"
-            [class.is-on]="selectedSkills().has(skill.id)"
-            (click)="skillToggled.emit(skill.id)"
-          >
-            {{ skill.title }}
-          </button>
-        }
-      </div>
-    } @else {
-      <p class="hint">Выберите роль выше — под неё подтянутся инструменты.</p>
-    }
-  </div>
-
-  <div class="skill-block">
-    <h3>Платформы</h3>
-    <div class="chips">
-      @for (skill of platforms(); track skill.id) {
-        <button
-          type="button"
-          class="chip"
-          [class.is-on]="selectedSkills().has(skill.id)"
-          (click)="skillToggled.emit(skill.id)"
-        >
-          {{ skill.title }}
-        </button>
-      }
-    </div>
-  </div>
-</section>
+<!-- Чипы навыков — общий компонент: тот же в мастере регистрации. -->
+<app-skill-picker
+  [tools]="tools()"
+  [platforms]="platforms()"
+  [selectedSkills]="selectedSkills()"
+  (toggled)="skillToggled.emit($event)"
+/>

@@ -7,6 +7,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { OptionSheetComponent, SheetOption } from '@shared/ui/option-sheet/option-sheet.component';
 import { isTouchDevice } from '@shared/lib/touch';
+import { AvatarPickerComponent } from '@shared/ui/avatar-picker/avatar-picker.component';
 
 import { ProfileForm } from '@entities/me/model/profile-form';
 import { ProfileCheckResult } from '@entities/me/model/me.types';
@@ -32,6 +33,7 @@ import { RateValidation, validateRate } from '@shared/lib/rate-validation';
     NzInputModule,
     NzSelectModule,
     OptionSheetComponent,
+    AvatarPickerComponent,
   ],
   templateUrl: './profile-basic.component.html',
   styleUrl: './profile-basic.component.scss',
@@ -42,35 +44,6 @@ export class ProfileBasicComponent {
 
   /** Что рисовать в кружке аватара: свежий blob: или сохранённый URL. */
   public readonly avatarUrl = input<string | undefined>('');
-
-  /**
-   * Инициалы для плейсхолдера аватара. Раньше на месте фото был коллаж из
-   * тегов навыков — он выглядел как сломанная вёрстка, а не как «фото нет».
-   */
-  public readonly isTouch = signal(isTouchDevice());
-
-  public readonly productionSheet = signal(false);
-
-  /** Пункты шторки продакшена: те же варианты, что и в nz-select. */
-  public readonly productionOptions = computed<SheetOption[]>(() => [
-    { value: '', label: '— не выбрано —' },
-    { value: 'freelance', label: 'Фрилансер' },
-    ...this.productions().map((pr) => ({ value: pr.id, label: pr.name })),
-  ]);
-
-  public productionLabel(): string {
-    return (
-      this.productionOptions().find((o) => o.value === this.productionValue)?.label ??
-      'Выберите вариант'
-    );
-  }
-
-  public readonly initials = computed(() => {
-    const name = (this.form().display_name ?? '').trim();
-    if (!name) return '?';
-    const words = name.split(/\s+/).filter(Boolean).slice(0, 2);
-    return words.map((w) => w[0].toUpperCase()).join('');
-  });
 
   public readonly avatarUploading = input(false);
 
@@ -98,6 +71,24 @@ export class ProfileBasicComponent {
    * тоже собралось бы, но геттер читается лучше и не зовёт сигнал по разу
    * на каждое поле.
    */
+  public readonly isTouch = signal(isTouchDevice());
+
+  public readonly productionSheet = signal(false);
+
+  /** Пункты шторки продакшена: те же варианты, что и в nz-select. */
+  public readonly productionOptions = computed<SheetOption[]>(() => [
+    { value: '', label: '— не выбрано —' },
+    { value: 'freelance', label: 'Фрилансер' },
+    ...this.productions().map((pr) => ({ value: pr.id, label: pr.name })),
+  ]);
+
+  public productionLabel(): string {
+    return (
+      this.productionOptions().find((o) => o.value === this.productionValue)?.label ??
+      'Выберите вариант'
+    );
+  }
+
   public get f(): ProfileForm {
     return this.form();
   }

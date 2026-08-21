@@ -7,56 +7,15 @@
   </div>
 
   <div class="profile-grid">
-    <div class="avatar-column">
-      <input
-        #avatarFile
-        id="avatarFileInput"
-        type="file"
-        class="hidden-file"
-        accept="image/*"
-        (click)="$any($event.target).value = ''"
-        (change)="avatarPicked.emit($event)"
-      />
-      <label
-        for="avatarFileInput"
-        class="avatar-preview"
-        [class.has-image]="avatarUrl()"
-        [class.is-uploading]="avatarUploading()"
-        [class.is-disabled]="avatarUploading()"
-      >
-        @if (avatarUrl(); as src) {
-          <img [src]="src" alt="" decoding="async" />
-        } @else {
-          <span class="avatar-initials">{{ initials() }}</span>
-        }
-        @if (avatarUploading()) {
-          <div class="avatar-overlay" role="status" aria-label="Загрузка аватара">
-            <span nz-icon nzType="loading" nzTheme="outline"></span>
-          </div>
-        }
-        <!-- Подсказка только на десктопе: на тач-экранах hover не случается. -->
-        <span class="avatar-hover" aria-hidden="true">Изменить фото</span>
-        <!-- Бейдж-камера: подсказывает, что вся плитка — кнопка загрузки. -->
-        <span class="avatar-cam" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path
-              d="M3 9a2 2 0 0 1 2-2h2l1.5-2h7L17 7h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
-              stroke-linejoin="round"
-            />
-            <circle cx="12" cy="13" r="3.2" />
-          </svg>
-        </span>
-      </label>
-      @if (f.avatar_url || avatarUrl()) {
-        <button class="avatar-remove" type="button" (click)="avatarCleared.emit()">
-          Удалить фото
-        </button>
-      }
-      <p class="hint">
-        JPG, PNG, WEBP или HEIC. Любой размер до 50 МБ — автоматически уменьшим до 512 px. После
-        загрузки нажмите «Сохранить».
-      </p>
-    </div>
+    <!-- Аватар — общий компонент: тот же в мастере регистрации. -->
+    <app-avatar-picker
+      [url]="avatarUrl()"
+      [uploading]="avatarUploading()"
+      [name]="f.display_name"
+      hint="JPG, PNG, WEBP или HEIC. Любой размер до 50 МБ — автоматически уменьшим до 512 px. После загрузки нажмите «Сохранить»."
+      (picked)="avatarPicked.emit($event)"
+      (cleared)="avatarCleared.emit()"
+    />
 
     <div class="fields">
       <label class="field-limit">

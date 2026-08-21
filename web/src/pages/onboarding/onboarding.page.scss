@@ -1,0 +1,326 @@
+@use 'editor' as editor;
+@use 'breakpoints' as bp;
+
+// Мастер регистрации. Палитра и геометрия — как в кабинете и в макетах
+// desktop_registration.html / mobile_registration.html.
+.onb {
+  --bg: #0b0c0e;
+  --bg-elevated: #111316;
+  --surface: #15181c;
+  --surface-hover: #181c22;
+  --border: #23272d;
+  --border-strong: #2c313a;
+  --text: #f2f4f6;
+  --text-muted: #9aa3ad;
+  --text-dim: #6b7280;
+  --cta: #f0553c;
+  --cta-hover: #ff6a52;
+  --accent: #2fbd8f;
+  --accent-dim: rgba(47, 189, 143, 0.1);
+
+  display: flex;
+  justify-content: center;
+  padding: clamp(20px, 4vw, 56px) clamp(16px, 4vw, 32px) 120px;
+  color: var(--text);
+  font-size: clamp(16px, 0.4vw + 15px, 17px);
+}
+
+// Центрированная панель: на широком мониторе растёт, но не расплывается —
+// длинная строка читается хуже короткой.
+.onb-card {
+  width: 100%;
+  max-width: 780px;
+
+  @media (min-width: 1600px) {
+    max-width: 900px;
+  }
+
+  h1 {
+    margin: 0 0 6px;
+    font-size: clamp(22px, 1.4vw + 16px, 30px);
+  }
+
+  .sub {
+    margin: 0 0 22px;
+    color: var(--text-muted);
+    font-size: clamp(14px, 0.3vw + 13px, 16px);
+  }
+
+  .center {
+    text-align: center;
+  }
+}
+
+// ── Экран выбора роли ──────────────────────────────────────────────────
+.role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+
+  @media (max-width: bp.$touch) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.role-pick {
+  padding: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: var(--bg-elevated);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.15s;
+
+  .ic {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 16px;
+    border-radius: 15px;
+
+    svg {
+      width: 26px;
+      height: 26px;
+    }
+  }
+
+  &.c1 .ic {
+    background: rgba(240, 85, 60, 0.14);
+    color: var(--cta);
+  }
+
+  &.c2 .ic {
+    background: rgba(47, 189, 143, 0.14);
+    color: var(--accent);
+  }
+
+  b {
+    font-size: 19px;
+  }
+
+  p {
+    margin: 6px 0 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  &:hover {
+    border-color: #3a4049;
+    transform: translateY(-2px);
+  }
+}
+
+// ── Индикатор шагов ────────────────────────────────────────────────────
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 26px;
+
+  .s {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .n {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 700;
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+  }
+
+  .s.done .n {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #04120c;
+  }
+
+  .s.cur .n {
+    border-color: var(--text);
+    background: var(--text);
+    color: #000;
+  }
+
+  .lab {
+    color: var(--text-dim);
+    font-size: 13.5px;
+  }
+
+  .s.cur .lab {
+    color: var(--text);
+  }
+
+  .bar {
+    flex: 1;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--border-strong);
+
+    &.done {
+      background: #1f6f57;
+    }
+  }
+
+  // Телефон: подписи шагов не помещаются — остаются только кружки.
+  @media (max-width: bp.$touch) {
+    .lab {
+      display: none;
+    }
+  }
+}
+
+// ── Шаг «Кто вы» ───────────────────────────────────────────────────────
+.who-grid {
+  display: grid;
+  grid-template-columns: clamp(150px, 14vw, 200px) minmax(0, 1fr);
+  gap: clamp(18px, 2.4vw, 32px);
+  align-items: start;
+  margin-bottom: 26px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.who-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 660px;
+}
+
+// ── Шаг «Первая работа» ────────────────────────────────────────────────
+.work-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #1f6f57;
+    border-radius: 12px;
+    background: var(--accent-dim);
+  }
+
+  .tick {
+    display: inline-grid;
+    place-items: center;
+    color: var(--accent);
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+
+.about-field {
+  max-width: 660px;
+}
+
+.summary {
+  margin: 0 auto;
+  padding: 18px 20px;
+  max-width: 420px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  list-style: none;
+
+  li + li {
+    margin-top: 8px;
+    color: var(--text-muted);
+  }
+}
+
+// ── Навигация ──────────────────────────────────────────────────────────
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+
+  .spacer {
+    flex: 1;
+  }
+
+  // Телефон: панель прижата к низу экрана, с учётом «дома» iPhone.
+  @media (max-width: bp.$touch) {
+    position: sticky;
+    bottom: 0;
+    margin-inline: calc(-1 * clamp(16px, 4vw, 32px));
+    padding: 12px clamp(16px, 4vw, 32px) max(12px, env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(11, 12, 14, 0), var(--bg) 24%);
+  }
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 13px 22px;
+  border: none;
+  border-radius: 11px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &.primary {
+    background: var(--cta);
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: var(--cta-hover);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &.ghost {
+    border: 1px solid var(--border-strong);
+    background: var(--bg-elevated);
+    color: var(--text);
+  }
+
+  &.link {
+    background: none;
+    color: var(--text-muted);
+  }
+}
+
+@include editor.blocks;

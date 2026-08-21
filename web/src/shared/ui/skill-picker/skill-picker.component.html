@@ -1,0 +1,44 @@
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Навыки</h2>
+      <p>Выбранные подсвечены зелёным. Инструменты подтягиваются под выбранные роли.</p>
+    </div>
+  </div>
+
+  <div class="skill-block">
+    <h3>Инструменты и форматы</h3>
+    @if (tools().length) {
+      <div class="chips">
+        @for (skill of tools(); track skill.id) {
+          <button
+            type="button"
+            class="chip"
+            [class.is-on]="selectedSkills().has(skill.id)"
+            (click)="toggled.emit(skill.id)"
+          >
+            {{ skill.title }}
+          </button>
+        }
+      </div>
+    } @else {
+      <p class="hint">Выберите роль выше — под неё подтянутся инструменты.</p>
+    }
+  </div>
+
+  <div class="skill-block">
+    <h3>Платформы</h3>
+    <div class="chips">
+      @for (skill of platforms(); track skill.id) {
+        <button
+          type="button"
+          class="chip"
+          [class.is-on]="selectedSkills().has(skill.id)"
+          (click)="toggled.emit(skill.id)"
+        >
+          {{ skill.title }}
+        </button>
+      }
+    </div>
+  </div>
+</section>

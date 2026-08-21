@@ -1,0 +1,11 @@
+@use 'editor' as editor;
+
+// Стили чипов навыков — рядом с их разметкой, чтобы мастер регистрации
+// подключал компонент целиком, а не копировал оформление.
+
+.skill-block + .skill-block {
+  margin-top: 22px;
+}
+
+@include editor.blocks;
+@include editor.chips;

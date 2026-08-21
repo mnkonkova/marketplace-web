@@ -10,3 +10,5 @@ node_modules/
 # Референсы вёрстки кабинета — присланы вручную, в сборку не идут.
 desktop_cabinet.html
 mobile_cabinet.html
+desktop_registration.html
+mobile_registration.html
