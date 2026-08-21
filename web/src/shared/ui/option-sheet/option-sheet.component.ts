@@ -61,6 +61,15 @@ export class OptionSheetComponent {
 
   private shift = 0;
 
+  /**
+   * Панель ЭТОЙ шторки. Ищем от точки касания, а не через
+   * document.querySelector: шторок в DOM несколько (теги, продакшен, канал),
+   * и глобальный поиск всегда возвращал первую — тянулась и уезжала чужая.
+   */
+  private panel: HTMLElement | null = null;
+
+  private dragging = false;
+
   public isOn(value: string): boolean {
     return this.selected().includes(value);
   }
@@ -79,39 +88,51 @@ export class OptionSheetComponent {
   }
 
   // === Смахивание ===
-  // Крестика нет: шторку закрывают жестом вниз, как системные меню. Панель
-  // тянется за пальцем, чтобы жест был с обратной связью.
+  //
+  // Жест ловим на всей шторке, а не только на полоске-ручке: целиться в
+  // полоску пальцем неудобно, а закрывают лист привычным движением с любого
+  // места. Если содержимое прокручено — сначала докручиваем его вверх, и
+  // только от самого верха начинается перетаскивание, иначе список нельзя
+  // было бы листать.
 
-  private panel(): HTMLElement | null {
-    return document.querySelector('.ant-drawer-content-wrapper');
-  }
+  public onDragStart(ev: TouchEvent): void {
+    const target = ev.target as HTMLElement | null;
+    const list = target?.closest('.opt-list') as HTMLElement | null;
+    if (list && list.scrollTop > 0) return;
 
-  public onGripStart(ev: TouchEvent): void {
+    this.panel = target?.closest('.ant-drawer-content-wrapper') ?? null;
     this.startY = ev.touches[0].clientY;
     this.shift = 0;
-    const el = this.panel();
-    if (el) el.style.transition = 'none';
+    this.dragging = true;
+    if (this.panel) this.panel.style.transition = 'none';
   }
 
-  public onGripMove(ev: TouchEvent): void {
-    // Только вниз: вверх шторка не растёт.
-    this.shift = Math.max(0, ev.touches[0].clientY - this.startY);
-    const el = this.panel();
-    if (el) el.style.transform = `translateY(${this.shift}px)`;
+  public onDragMove(ev: TouchEvent): void {
+    if (!this.dragging) return;
+    const dy = ev.touches[0].clientY - this.startY;
+    // Тянем только вниз: движение вверх отдаём странице.
+    if (dy <= 0) return;
+    this.shift = dy;
+    // Пока действительно тянем лист — запрещаем прокрутку фона: на iOS
+    // overflow:hidden на html её не удерживает, и страница ехала под листом.
+    ev.preventDefault();
+    if (this.panel) this.panel.style.transform = `translateY(${dy}px)`;
   }
 
-  public onGripEnd(): void {
+  public onDragEnd(): void {
+    if (!this.dragging) return;
     const shouldClose = this.shift > SWIPE_CLOSE_PX;
     this.resetPanel();
     if (shouldClose) this.closed.emit();
   }
 
   private resetPanel(): void {
-    const el = this.panel();
-    if (el) {
-      el.style.transition = '';
-      el.style.transform = '';
+    if (this.panel) {
+      this.panel.style.transition = '';
+      this.panel.style.transform = '';
     }
+    this.panel = null;
     this.shift = 0;
+    this.dragging = false;
   }
 }

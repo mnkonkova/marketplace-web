@@ -246,14 +246,6 @@ export class CabinetPage implements OnInit, OnDestroy {
 
   public onTabIndexChange(index: number): void {
     const next = TABS[index]?.id ?? 'basic';
-    // Полоса вкладок на телефоне шире экрана: крайние («Контакты»,
-    // «Публикация») выбираются вслепую и остаются за краем. Доводим
-    // выбранную в видимую зону — только по горизонтали, страницу не трогаем.
-    queueMicrotask(() => {
-      document
-        .querySelector('.cabinet-tabs .ant-tabs-tab-active')
-        ?.scrollIntoView({ inline: 'center', block: 'nearest' });
-    });
     if (next === this.tab()) return;
     // replaceUrl: вкладки — не история навигации, «назад» должен уводить
     // со страницы, а не перебирать пять табов.

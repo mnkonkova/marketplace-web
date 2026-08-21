@@ -10,14 +10,20 @@
   display: none;
 }
 
+// Вся шторка — зона жеста. pan-y оставляет браузеру вертикальный жест до
+// того, как мы решим, что это перетаскивание листа.
+.opt-sheet {
+  touch-action: pan-y;
+  // Прокрутка не «протекает» на страницу за листом.
+  overscroll-behavior: contain;
+}
+
 .opt-grip {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   padding: 10px 0 14px;
-  // Жест обрабатываем сами, иначе браузер начнёт прокручивать содержимое.
-  touch-action: none;
   cursor: grab;
 
   span {
@@ -40,7 +46,12 @@
   line-height: 1.45;
 }
 
+// Длинный список (у специалиста бывает десяток ролей) прокручивается внутри
+// листа, а не растит его на весь экран.
 .opt-list {
+  max-height: 52vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 6px;
