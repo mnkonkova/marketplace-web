@@ -75,7 +75,8 @@ let slotSeq = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PhotoSetUploadDialog {
-  private readonly modalRef = inject<NzModalRef<PhotoSetUploadDialog, PhotoSetUploadDialogResult | null>>(NzModalRef);
+  private readonly modalRef =
+    inject<NzModalRef<PhotoSetUploadDialog, PhotoSetUploadDialogResult | null>>(NzModalRef);
   private readonly data = inject<PhotoSetUploadDialogData>(NZ_MODAL_DATA);
   private readonly meRepo = inject(MeRepository);
   private readonly msg = inject(NzMessageService);
@@ -203,7 +204,9 @@ export class PhotoSetUploadDialog {
   private async addFile(file: File): Promise<void> {
     if (file.size > MAX_BYTES_PER_FILE) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(0);
-      this.msg.error(`Файл ${sizeMB} МБ — слишком большой. До ${MAX_BYTES_PER_FILE / 1024 / 1024} МБ.`);
+      this.msg.error(
+        `Файл ${sizeMB} МБ — слишком большой. До ${MAX_BYTES_PER_FILE / 1024 / 1024} МБ.`,
+      );
       return;
     }
     const slot: PhotoSlot = {
@@ -217,11 +220,11 @@ export class PhotoSetUploadDialog {
     try {
       // Resize в canvas → baseline JPEG ≤1920px, ~250КБ. Решает HEIC/EXIF/iOS
       // progressive — те же причины что и для аватара.
-      const { file: resized, width, height } = await resizeImageToBlob(
-        file,
-        RESIZE_MAX,
-        RESIZE_QUALITY,
-      );
+      const {
+        file: resized,
+        width,
+        height,
+      } = await resizeImageToBlob(file, RESIZE_MAX, RESIZE_QUALITY);
       this.patchSlot(slot.id, { status: 'uploading', width, height });
       const presign = await firstValueFrom(this.meRepo.presignAvatarUpload(resized));
       await putFileToPresignedUrl(presign.upload_url, resized, {
@@ -242,9 +245,7 @@ export class PhotoSetUploadDialog {
   }
 
   private patchSlot(id: number, patch: Partial<PhotoSlot>): void {
-    this.slots.set(
-      this.slots().map((s) => (s.id === id ? { ...s, ...patch } : s)),
-    );
+    this.slots.set(this.slots().map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }
 
   public readonly accept = ACCEPT;

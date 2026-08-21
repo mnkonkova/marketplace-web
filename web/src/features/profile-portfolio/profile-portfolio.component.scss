@@ -127,12 +127,12 @@
 }
 
 .portfolio-row {
-  display: grid;
-  // minmax(0,1fr) — без него grid отдаёт колонке min-content внутренней
-  // сетки миниатюр, и она вылезает за карточку.
-  grid-template-columns: 120px minmax(0, 1fr) auto;
+  // Flex, а не grid с фиксированной первой колонкой: горизонтальная обложка
+  // (160px) шире прежних 120px и вылезала поверх поля «Название». Во flex
+  // широкая обложка просто ужимает тело карточки.
+  display: flex;
   gap: 16px;
-  align-items: start;
+  align-items: flex-start;
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -143,27 +143,40 @@
     background: rgba(32, 161, 148, 0.06);
   }
 
-  @media (max-width: 720px) {
-    grid-template-columns: 96px minmax(0, 1fr);
-    gap: 12px;
+  // На узкой ширине — в колонку: обложка сверху, поля под ней.
+  @media (max-width: 560px) {
+    flex-wrap: wrap;
   }
+}
+
+.portfolio-main {
+  // min-width: 0 обязателен, иначе длинное название не даёт колонке сжаться
+  // и карточка разъезжается по ширине.
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .thumb {
   position: relative;
   flex: 0 0 auto;
   overflow: hidden;
-  // Размеры из макета: вертикаль 92x140, горизонт 170x96. Прежние крупные
-  // превью растягивали строку, а полезного в них было столько же.
-  width: 92px;
-  height: 140px;
+  // Бокс по ориентации ролика (ffprobe width/height): вертикаль 88x132,
+  // горизонталь 160x90, квадрат 110x110. Один фиксированный вертикальный
+  // бокс резал горизонтальные кадры и врал о формате.
+  width: 88px;
+  height: 132px;
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   background: var(--bg-elevated);
 
   &.is-horizontal {
-    width: 170px;
-    height: 96px;
+    width: 160px;
+    height: 90px;
+  }
+
+  &.is-square {
+    width: 110px;
+    height: 110px;
   }
 
   img {

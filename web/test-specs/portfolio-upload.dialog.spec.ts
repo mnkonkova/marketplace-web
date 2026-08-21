@@ -96,24 +96,17 @@ describe('PortfolioUploadDialog', () => {
     });
   });
 
-  describe('title auto-derive', () => {
-    it('человекочитаемое имя файла подставляется в title', () => {
-      const d = setup();
-      meRepo.presignPortfolioUpload.and.returnValue(throwError(() => new Error('stop')));
-      pickFile(d, makeFile('Свадьба Анны.mp4'));
-      expect(d.title()).toBe('Свадьба Анны');
-    });
-
-    it('камерные имена (DSC_0042) НЕ подставляются — placeholder остаётся', () => {
-      const d = setup();
-      meRepo.presignPortfolioUpload.and.returnValue(throwError(() => new Error('stop')));
-      pickFile(d, makeFile('DSC_0042.mp4'));
-      expect(d.title()).toBe('');
-    });
-
-    it('IMG-1234 / MVI0001 / VID-12345678 — тоже не подставляются', () => {
-      const cases = ['IMG-1234.mp4', 'MVI0001.mp4', 'VID20240101.mp4'];
-      for (const fname of cases) {
+  // Имя файла в «Название» больше НЕ подставляется: оттуда на публичную
+  // страницу приезжали «Запись экрана 2026-08-20 в 14.55.13» и хвосты UUID.
+  // Название пишет человек — поле остаётся пустым с плейсхолдером.
+  describe('название работы', () => {
+    it('имя файла не попадает в title ни в каком виде', () => {
+      for (const fname of [
+        'Свадьба Анны.mp4',
+        'Запись экрана 2026-08-20 в 14.55.13.mov',
+        'DSC_0042.mp4',
+        'Sample 20s — 3ddc7a95-0629-4af6-9c1e-2b7f0a1d4e55.mp4',
+      ]) {
         const d = setup();
         meRepo.presignPortfolioUpload.and.returnValue(throwError(() => new Error('stop')));
         pickFile(d, makeFile(fname));
@@ -121,20 +114,18 @@ describe('PortfolioUploadDialog', () => {
       }
     });
 
-    // На публичной из-за этого выводилось «Sample 20s — 3ddc7a95-0629-…»:
-    // имя файла с UUID уезжало в title как есть.
-    it('UUID в имени файла вырезается, осмысленная часть остаётся', () => {
+    it('плейсхолдер подсказывает, что писать', () => {
       const d = setup();
       meRepo.presignPortfolioUpload.and.returnValue(throwError(() => new Error('stop')));
-      pickFile(d, makeFile('Sample 20s - 3ddc7a95-0629-4af6-9c53-4b1f2a0d9e77.mp4'));
-      expect(d.title()).toBe('Sample 20s');
+      pickFile(d, makeFile('Свадьба Анны.mp4'));
+      expect(d.titlePlaceholder()).toContain('Например');
     });
 
-    it('имя из одного UUID не подставляется вовсе', () => {
+    it('без названия сохранить нельзя', () => {
       const d = setup();
       meRepo.presignPortfolioUpload.and.returnValue(throwError(() => new Error('stop')));
-      pickFile(d, makeFile('3ddc7a95-0629-4af6-9c53-4b1f2a0d9e77.mp4'));
-      expect(d.title()).toBe('');
+      pickFile(d, makeFile('Свадьба Анны.mp4'));
+      expect(d.canSave()).toBeFalse();
     });
   });
 

@@ -132,7 +132,11 @@
   <div class="portfolio-list">
     @for (item of items(); track item.id) {
       <article class="portfolio-row" [class.is-featured]="item.is_featured">
-        <div class="thumb" [class.is-horizontal]="isHorizontal(item)">
+        <div
+          class="thumb"
+          [class.is-horizontal]="orientation(item) === 'horizontal'"
+          [class.is-square]="orientation(item) === 'square'"
+        >
           <!-- Формат — бейджем поверх обложки: в строке рядом с названием он
                смешивался с тегами работы и читался как ещё один тег. -->
           @if (formatBadge(item); as fmt) {

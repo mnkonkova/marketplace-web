@@ -53,19 +53,14 @@ export interface PortfolioUploadDialogResult {
 @Component({
   selector: 'app-portfolio-upload-dialog',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    NzInputModule,
-    NzButtonModule,
-    NzProgressModule,
-  ],
+  imports: [CommonModule, FormsModule, NzInputModule, NzButtonModule, NzProgressModule],
   templateUrl: './portfolio-upload.dialog.html',
   styleUrl: './portfolio-upload.dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PortfolioUploadDialog implements OnDestroy {
-  private readonly modalRef = inject<NzModalRef<PortfolioUploadDialog, PortfolioUploadDialogResult | null>>(NzModalRef);
+  private readonly modalRef =
+    inject<NzModalRef<PortfolioUploadDialog, PortfolioUploadDialogResult | null>>(NzModalRef);
   private readonly data = inject<PortfolioUploadDialogData>(NZ_MODAL_DATA);
   private readonly meRepo = inject(MeRepository);
 
@@ -173,9 +168,10 @@ export class PortfolioUploadDialog implements OnDestroy {
     this.file.set(f);
     this.previewUrl.set(URL.createObjectURL(f));
 
-    const suggested = deriveHumanTitle(f.name);
-    if (suggested) this.title.set(suggested);
-    else this.titlePlaceholder.set('Например: Реклама для бренда X');
+    // Имя файла в «Название» НЕ подставляем: оттуда на публичную страницу
+    // приезжали «Запись экрана 2026-08-20 в 14.55.13» и «Sample 20s —
+    // 3ddc7a95-…». Поле остаётся пустым с плейсхолдером — название работы
+    // пишет человек, а не файловая система.
 
     void this.startUpload(f);
   }
@@ -298,9 +294,7 @@ export class PortfolioUploadDialog implements OnDestroy {
             );
           },
           abort: async ({ key, uploadID }) => {
-            await firstValueFrom(
-              this.meRepo.multipartAbort({ key, upload_id: uploadID }),
-            );
+            await firstValueFrom(this.meRepo.multipartAbort({ key, upload_id: uploadID }));
           },
         },
         {
@@ -443,27 +437,6 @@ export class PortfolioUploadDialog implements OnDestroy {
     if (t) URL.revokeObjectURL(t);
     this.thumbnailPreviewUrl.set(null);
   }
-}
-
-/** Имя файла из камеры — мусор. Возвращает '' если осмысленного title не вышло. */
-function deriveHumanTitle(filename: string): string {
-  let base = filename.replace(/\.[^.]+$/, '').trim();
-  // UUID и хвост хеша внутри имени: на публичной из-за них выводилось
-  // «Sample 20s — 3ddc7a95-0629-4af6-…». Вырезаем ДО остальных проверок,
-  // чтобы осмысленная часть имени не потерялась вместе с мусорной.
-  base = base
-    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ' ')
-    .replace(/(^|[\s_\-–—])[0-9a-f]{12,}(?=$|[\s_\-–—])/gi, ' ')
-    // Осиротевшие разделители по краям («Sample 20s — » → «Sample 20s»).
-    .replace(/[\s_\-–—]+/g, ' ')
-    .replace(/^[\s\-–—_]+|[\s\-–—_]+$/g, '')
-    .trim();
-  if (!base || base.length < 3) return '';
-  // DSC_0042, IMG-1234, MVI0001, VID20240101, GOPR1234, P_0001, DSCF1234
-  if (/^(dsc|dscf|img|mvi|vid|mov|gopr|gh|p)[-_ ]?\d+/i.test(base)) return '';
-  if (/^[a-f0-9]{8,}$/i.test(base)) return ''; // hex hash
-  if (/^\d{8,}$/.test(base)) return ''; // timestamp-like
-  return base;
 }
 
 function formatBytes(bytes: number): string {
