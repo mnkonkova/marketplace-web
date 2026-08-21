@@ -192,7 +192,7 @@
       Описание
       <textarea
         nz-input
-        rows="6"
+        rows="10"
         [ngModel]="form().bio"
         (ngModelChange)="setField('bio', $event)"
         name="bio"
@@ -202,11 +202,34 @@
     </label>
     <p class="hint">{{ bioLength() }} символов · для 100% нужно от 100</p>
     } @case ('done') {
-    <h1 class="center">Профиль почти готов</h1>
+    <h1 class="center">Подтвердите почту</h1>
     <p class="sub center">
-      Осталось нажать «Опубликовать» в кабинете — после проверки админом вы появитесь в каталоге и
-      ленте.
+      Мы отправили письмо на <b>{{ email() || 'вашу почту' }}</b>. Перейдите по ссылке из него — без
+      подтверждения профиль не пройдёт проверку и не появится в каталоге.
     </p>
+
+    <div class="mail-note">
+      <span class="ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <rect x="3" y="5" width="18" height="14" rx="2.5" />
+          <path d="M3.5 7l8.5 6 8.5-6" stroke-linejoin="round" />
+        </svg>
+      </span>
+      <div>
+        <b>Письма нет?</b>
+        <p>Проверьте «Спам» и «Промоакции» — письма от новых отправителей часто уезжают туда.</p>
+        @if (resendState() === 'sent') {
+        <p class="ok">Отправили ещё раз.</p>
+        } @else if (resendState() === 'error') {
+        <p class="err">Не получилось отправить. Попробуйте через минуту.</p>
+        } @else {
+        <button type="button" class="link-inline" (click)="resendVerification()">
+          Отправить письмо ещё раз
+        </button>
+        }
+      </div>
+    </div>
+
     <ul class="summary">
       <li>
         <b>{{ form().display_name || 'Без имени' }}</b>{{ form().city ? ', ' + form().city : '' }}
@@ -215,9 +238,7 @@
       <li>Навыков: {{ selectedSkills().size }}</li>
       <li>Работ: {{ portfolio().length }}</li>
     </ul>
-    } } @if (error()) {
-    <p class="err">{{ error() }}</p>
-    }
+    } }
 
     <div class="nav">
       <button type="button" class="btn ghost" (click)="back()">← Назад</button>

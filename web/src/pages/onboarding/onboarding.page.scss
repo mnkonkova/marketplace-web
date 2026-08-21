@@ -336,3 +336,50 @@
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+// Блок «письма нет?» на финальном шаге.
+.mail-note {
+  display: flex;
+  gap: 14px;
+  margin: 0 auto 20px;
+  padding: 16px 18px;
+  max-width: 520px;
+  border: 1px solid #274b6e;
+  border-radius: 14px;
+  background: rgba(47, 123, 220, 0.12);
+
+  .ic {
+    flex: 0 0 auto;
+    color: #bcd4ef;
+
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .ok {
+    color: var(--accent);
+  }
+
+  .err {
+    color: var(--cta-hover);
+  }
+}
+
+// «О себе» — единственный шаг, где человек пишет много текста: поле должно
+// быть просторным, а не строкой в три ряда. Скругление как у карточек.
+.about-field textarea {
+  min-height: clamp(220px, 34vh, 340px);
+  padding: 16px 18px !important;
+  border-radius: 14px !important;
+  line-height: 1.6;
+  resize: vertical;
+}

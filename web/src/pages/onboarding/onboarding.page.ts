@@ -32,9 +32,11 @@ const STEPS = [
   { id: 'account', label: 'Аккаунт', skippable: false },
   { id: 'who', label: 'Кто вы', skippable: false },
   { id: 'skills', label: 'Навыки', skippable: false },
-  { id: 'work', label: 'Первая работа', skippable: true },
+  // Работа обязательна: без единого ролика специалиста не показывает ни
+  // лента, ни каталог — публиковать такой профиль бессмысленно.
+  { id: 'work', label: 'Первая работа', skippable: false },
   { id: 'about', label: 'О себе', skippable: true },
-  { id: 'done', label: 'Готово', skippable: false },
+  { id: 'done', label: 'Почта', skippable: false },
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
@@ -133,6 +135,7 @@ export class OnboardingPage {
       // знает бэкенд и вернёт понятную ошибку.
       return /.+@.+\..+/.test(this.email().trim()) && this.password().length > 0;
     }
+    if (this.step() === 'work') return this.portfolio().length > 0;
     if (this.step() !== 'who') return true;
     return this.form().display_name.trim().length > 0 && this.selectedCategories().size > 0;
   });
@@ -330,6 +333,21 @@ export class OnboardingPage {
 
   public finish(): void {
     this.saveProfile(() => void this.router.navigate(['/me']));
+  }
+
+  public readonly resendState = signal<'idle' | 'sent' | 'error'>('idle');
+
+  /** Письмо могло не дойти — даём отправить ещё раз, не выходя из мастера. */
+  public resendVerification(): void {
+    this.auth
+      .resendVerification()
+      .pipe(
+        catchError(() => {
+          this.resendState.set('error');
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => this.resendState.set('sent'));
   }
 
   public goToCabinet(): void {
