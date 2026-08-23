@@ -24,6 +24,42 @@
        выдаче: юзер сужает набор не возвращаясь наверх. -->
   <div class="filters-sticky">
     <div class="filters">
+      <!-- На тач-экранах вместо выпадающих списков — та же нижняя шторка,
+           что в кабинете: список у края экрана прижимается к границе, и
+           половина пунктов уезжает под палец. -->
+      @if (isTouch()) {
+      <button type="button" class="filters__select sheet-trigger" (click)="catSheet.set(true)">
+        {{ categories.length ? 'Специальность: ' + categories.length : 'Специальность' }}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+      <button type="button" class="filters__select sheet-trigger" (click)="skillSheet.set(true)">
+        {{ skills.length ? 'Навыки: ' + skills.length : 'Навыки' }}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+
+      <app-option-sheet
+        [open]="catSheet()"
+        title="Специальность"
+        [options]="categorySheetOptions()"
+        [selected]="categories"
+        [multiple]="true"
+        (picked)="toggleCategory($event)"
+        (closed)="catSheet.set(false)"
+      />
+      <app-option-sheet
+        [open]="skillSheet()"
+        title="Навыки"
+        [options]="skillSheetOptions()"
+        [selected]="skills"
+        [multiple]="true"
+        (picked)="toggleSkill($event)"
+        (closed)="skillSheet.set(false)"
+      />
+      } @else {
       <nz-select
         class="filters__select"
         nzMode="multiple"
@@ -33,7 +69,7 @@
         (ngModelChange)="onFiltersChange()"
       >
         @for (c of categoryOptions(); track c.code) {
-          <nz-option [nzValue]="c.code" [nzLabel]="c.title"></nz-option>
+        <nz-option [nzValue]="c.code" [nzLabel]="c.title"></nz-option>
         }
       </nz-select>
 
@@ -47,143 +83,123 @@
         (ngModelChange)="onFiltersChange()"
       >
         @for (s of skillOptions(); track s.slug) {
-          <nz-option [nzValue]="s.slug" [nzLabel]="s.title"></nz-option>
+        <nz-option [nzValue]="s.slug" [nzLabel]="s.title"></nz-option>
         }
       </nz-select>
+      }
     </div>
 
     <!-- Active filter chips — квик-удаление одного клика -->
     @if (categories.length || skills.length) {
-      <div class="active-chips">
-        @for (c of categories; track c) {
-          <button type="button" class="chip" (click)="removeCategory(c)">
-            {{ categoryTitle(c) }}
-            <span aria-hidden="true">×</span>
-          </button>
-        }
-        @for (s of skills; track s) {
-          <button type="button" class="chip" (click)="removeSkill(s)">
-            {{ skillTitle(s) }}
-            <span aria-hidden="true">×</span>
-          </button>
-        }
-        <button type="button" class="chip chip--clear" (click)="clearAll()">
-          Сбросить всё
-        </button>
-      </div>
+    <div class="active-chips">
+      @for (c of categories; track c) {
+      <button type="button" class="chip" (click)="removeCategory(c)">
+        {{ categoryTitle(c) }}
+        <span aria-hidden="true">×</span>
+      </button>
+      } @for (s of skills; track s) {
+      <button type="button" class="chip" (click)="removeSkill(s)">
+        {{ skillTitle(s) }}
+        <span aria-hidden="true">×</span>
+      </button>
+      }
+      <button type="button" class="chip chip--clear" (click)="clearAll()">Сбросить всё</button>
+    </div>
     }
   </div>
 
   <!-- Счётчик + результаты -->
   <div class="results-meta">
     @if (!loading() || items().length > 0) {
-      <!-- broadened — бэк не нашёл по тексту ничего и отдал всех подряд.
+    <!-- broadened — бэк не нашёл по тексту ничего и отдал всех подряд.
            Без этой плашки выдача выглядит как ошибка поиска: на «монтажер»
            первой карточкой шёл актёр. Счётчик «Найдено: N» в этом режиме
            не показываем — он относится не к запросу, а ко всей базе. -->
-      @if (broadened()) {
-        <div class="broadened-note" role="status">
-          <span nz-icon nzType="info-circle" nzTheme="outline"></span>
-          <span class="broadened-note__text">
-            По запросу <strong>«{{ broadenedQuery() }}»</strong> ничего не нашли —
-            показываем всех специалистов ({{ total() }}).
-          </span>
-          <button type="button" class="broadened-note__clear" (click)="clearQuery()">
-            Очистить запрос
-          </button>
-        </div>
-      } @else {
-        <span class="results-count">Найдено: <strong>{{ total() }}</strong></span>
-      }
-    }
+    @if (broadened()) {
+    <div class="broadened-note" role="status">
+      <span nz-icon nzType="info-circle" nzTheme="outline"></span>
+      <span class="broadened-note__text">
+        По запросу <strong>«{{ broadenedQuery() }}»</strong> ничего не нашли — показываем всех
+        специалистов ({{ total() }}).
+      </span>
+      <button type="button" class="broadened-note__clear" (click)="clearQuery()">
+        Очистить запрос
+      </button>
+    </div>
+    } @else {
+    <span class="results-count">Найдено: <strong>{{ total() }}</strong></span>
+    } }
   </div>
 
   @if (loading() && items().length === 0) {
-    <div class="results-loading"><nz-spin nzSize="large"></nz-spin></div>
+  <div class="results-loading"><nz-spin nzSize="large"></nz-spin></div>
   } @else if (error()) {
-    <nz-empty [nzNotFoundContent]="error()"></nz-empty>
+  <nz-empty [nzNotFoundContent]="error()"></nz-empty>
   } @else if (items().length === 0) {
-    <nz-empty
-      nzNotFoundContent="Ничего не нашли. Попробуйте смягчить фильтры или упростить запрос."
-    ></nz-empty>
+  <nz-empty
+    nzNotFoundContent="Ничего не нашли. Попробуйте смягчить фильтры или упростить запрос."
+  ></nz-empty>
   } @else {
-    <div class="cards">
-      @for (spec of items(); track spec.user_id) {
-        <article class="result-card" (click)="goProfile(spec)">
-          <div class="result-card__media">
-            <!-- Приоритет медиа: animated WebP > mp4 > avatar > placeholder.
+  <div class="cards">
+    @for (spec of items(); track spec.user_id) {
+    <article class="result-card" (click)="goProfile(spec)">
+      <div class="result-card__media">
+        <!-- Приоритет медиа: animated WebP > mp4 > avatar > placeholder.
                  WebP автоплей через <img> работает везде включая iOS LPM
                  и не съедает video-slot браузера (chrome soft-limit ≈75
                  конкурентных <video>). См. docs про animated_thumb в API. -->
-            @if (spec.preview_animated_url) {
-              <img
-                [src]="spec.preview_animated_url"
-                [alt]="spec.display_name"
-                loading="lazy"
-              />
-            } @else if (spec.preview_video_url) {
-              <video
-                [src]="spec.preview_video_url"
-                [poster]="spec.preview_thumb_url || null"
-                autoplay
-                muted
-                loop
-                playsinline
-                webkit-playsinline
-                preload="metadata"
-              ></video>
-            } @else if (spec.avatar_url) {
-              <img [src]="spec.avatar_url" [alt]="spec.display_name" />
-            } @else {
-              <div class="result-card__placeholder">
-                {{ spec.display_name.slice(0, 1) }}
-              </div>
-            }
-          </div>
-          <div class="result-card__body">
-            <div class="result-card__title">{{ spec.display_name }}</div>
-            <!-- headline — либо категория из активного фильтра (если у спеца
+        @if (spec.preview_animated_url) {
+        <img [src]="spec.preview_animated_url" [alt]="spec.display_name" loading="lazy" />
+        } @else if (spec.preview_video_url) {
+        <video
+          [src]="spec.preview_video_url"
+          [poster]="spec.preview_thumb_url || null"
+          autoplay
+          muted
+          loop
+          playsinline
+          webkit-playsinline
+          preload="metadata"
+        ></video>
+        } @else if (spec.avatar_url) {
+        <img [src]="spec.avatar_url" [alt]="spec.display_name" />
+        } @else {
+        <div class="result-card__placeholder">{{ spec.display_name.slice(0, 1) }}</div>
+        }
+      </div>
+      <div class="result-card__body">
+        <div class="result-card__title">{{ spec.display_name }}</div>
+        <!-- headline — либо категория из активного фильтра (если у спеца
                  есть), либо его primary. Так выдача по editor'у не выглядит
                  багом когда Анна с primary=smm попадает: карточка показывает
                  её «как Монтажёра», остальные категории серым — понятно
                  почему она матчит и что ещё умеет. -->
-            <div class="result-card__specialty">
-              <span class="result-card__specialty-primary">{{
-                categoryTitle(headlineCategory(spec))
-              }}</span>
-              @for (c of otherCategories(spec); track c) {
-                <span class="result-card__specialty-other">{{ categoryTitle(c) }}</span>
-              }
-            </div>
-            <button
-              type="button"
-              class="result-card__cta"
-              [class.is-in-project]="isInCart(spec.user_id)"
-              (click)="toggleCart(spec, $event)"
-            >
-              @if (isInCart(spec.user_id)) {
-                ✓ В проекте
-              } @else {
-                + В проект
-              }
-            </button>
-          </div>
-        </article>
-      }
-    </div>
-
-    @if (hasMore()) {
-      <div class="show-more">
+        <div class="result-card__specialty">
+          <span class="result-card__specialty-primary"
+            >{{ categoryTitle(headlineCategory(spec)) }}</span
+          >
+          @for (c of otherCategories(spec); track c) {
+          <span class="result-card__specialty-other">{{ categoryTitle(c) }}</span>
+          }
+        </div>
         <button
-          nz-button
-          nzType="default"
-          nzSize="large"
-          [nzLoading]="loading()"
-          (click)="showMore()"
+          type="button"
+          class="result-card__cta"
+          [class.is-in-project]="isInCart(spec.user_id)"
+          (click)="toggleCart(spec, $event)"
         >
-          Показать ещё
+          @if (isInCart(spec.user_id)) { ✓ В проекте } @else { + В проект }
         </button>
       </div>
+    </article>
     }
-  }
+  </div>
+
+  @if (hasMore()) {
+  <div class="show-more">
+    <button nz-button nzType="default" nzSize="large" [nzLoading]="loading()" (click)="showMore()">
+      Показать ещё
+    </button>
+  </div>
+  } }
 </main>

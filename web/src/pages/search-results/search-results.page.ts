@@ -14,6 +14,9 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+
+import { isTouchDevice } from '@shared/lib/touch';
+import { OptionSheetComponent, SheetOption } from '@shared/ui/option-sheet/option-sheet.component';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { Subject } from 'rxjs';
@@ -57,6 +60,7 @@ import { SEARCH_PLACEHOLDER_EXAMPLES, PLACEHOLDER_TIMING } from '@shared/lib/sea
     NzSpinModule,
     NzEmptyModule,
     AppHeaderComponent,
+    OptionSheetComponent,
   ],
   templateUrl: './search-results.page.html',
   styleUrl: './search-results.page.scss',
@@ -141,6 +145,35 @@ export class SearchResultsPage implements OnInit {
     this.q$.next(v);
   }
 
+  public readonly isTouch = signal(isTouchDevice());
+
+  public readonly catSheet = signal(false);
+
+  public readonly skillSheet = signal(false);
+
+  public readonly categorySheetOptions = computed<SheetOption[]>(() =>
+    this.categoryOptions().map((c) => ({ value: c.code, label: c.title })),
+  );
+
+  public readonly skillSheetOptions = computed<SheetOption[]>(() =>
+    this.skillOptions().map((sk) => ({ value: sk.slug, label: sk.title })),
+  );
+
+  /** Шторка отдаёт значение, накопление множественного выбора — на нас. */
+  public toggleCategory(code: string): void {
+    this.categories = this.categories.includes(code)
+      ? this.categories.filter((c) => c !== code)
+      : [...this.categories, code];
+    this.onFiltersChange();
+  }
+
+  public toggleSkill(slug: string): void {
+    this.skills = this.skills.includes(slug)
+      ? this.skills.filter((sk) => sk !== slug)
+      : [...this.skills, slug];
+    this.onFiltersChange();
+  }
+
   public onFiltersChange(): void {
     this.syncUrl();
   }
@@ -179,10 +212,7 @@ export class SearchResultsPage implements OnInit {
   }
 
   public goProfile(spec: SearchHit): void {
-    void this.router.navigate(
-      ['/specialist', specialistHandle(spec)],
-      withFromPage(this.router),
-    );
+    void this.router.navigate(['/specialist', specialistHandle(spec)], withFromPage(this.router));
   }
 
   public toggleCart(spec: SearchHit, ev: Event): void {
