@@ -20,11 +20,11 @@
         <strong>Контакты для связи</strong>
         <small>
           @if (contactsFilled()) {
-            <span class="status-ok">✓ заполнены</span>
-            <span class="status-sep">·</span>
-            <span class="preview">{{ contactsPreview() }}</span>
+          <span class="status-ok">✓ заполнены</span>
+          <span class="status-sep">·</span>
+          <span class="preview">{{ contactsPreview() }}</span>
           } @else {
-            <span class="status-warn">Не заполнены — менеджер не сможет связаться</span>
+          <span class="status-warn">Укажите телефон или Telegram — иначе менеджер не свяжется</span>
           }
         </small>
       </div>
@@ -33,104 +33,94 @@
       </span>
     </button>
     @if (contactsExpanded()) {
-      <div class="contacts-body">
-        <div class="contacts-grid">
-          <label class="contact-field">
-            <span class="field-icon">👤</span>
-            <span class="field-label">Имя</span>
-            <input nz-input [(ngModel)]="displayName" placeholder="Как к вам обращаться" />
-          </label>
-          <label class="contact-field">
-            <span class="field-icon">📞</span>
-            <span class="field-label">Телефон</span>
-            <input nz-input [(ngModel)]="phone" placeholder="+7 999 ..." />
-          </label>
-          <label class="contact-field">
-            <span class="field-icon">✈️</span>
-            <span class="field-label">Telegram</span>
-            <input nz-input [(ngModel)]="telegram" placeholder="@username" />
-          </label>
-        </div>
-        <div class="contacts-actions">
-          <span class="actions-hint">Заполните один раз — подтянется во все брифы автоматически</span>
-          <button
-            nz-button
-            nzType="primary"
-            [nzLoading]="contactsSaving()"
-            (click)="saveContacts()"
-          >
-            Сохранить
-          </button>
-        </div>
+    <div class="contacts-body">
+      <div class="contacts-grid">
+        <label class="contact-field">
+          <span class="field-icon">👤</span>
+          <span class="field-label">Имя</span>
+          <input nz-input [(ngModel)]="displayName" placeholder="Как к вам обращаться" />
+        </label>
+        <label class="contact-field">
+          <span class="field-icon">📞</span>
+          <span class="field-label">Телефон</span>
+          <input nz-input [(ngModel)]="phone" placeholder="+7 999 ..." />
+        </label>
+        <label class="contact-field">
+          <span class="field-icon">✈️</span>
+          <span class="field-label">Telegram</span>
+          <input nz-input [(ngModel)]="telegram" placeholder="@username" />
+        </label>
       </div>
+      <div class="contacts-actions">
+        <span class="actions-hint">Заполните один раз — подтянется во все брифы автоматически</span>
+        <button nz-button nzType="primary" [nzLoading]="contactsSaving()" (click)="saveContacts()">
+          Сохранить
+        </button>
+      </div>
+    </div>
     }
   </section>
 
   @if (loading()) {
-    <div class="center"><nz-spin nzSize="large"></nz-spin></div>
+  <div class="center"><nz-spin nzSize="large"></nz-spin></div>
   } @else if (projects().length === 0) {
-    <nz-empty nzNotFoundContent="Пока нет проектов"></nz-empty>
+  <nz-empty nzNotFoundContent="Пока нет проектов"></nz-empty>
   } @else {
-    <div class="cards">
-      @for (p of projects(); track p.id) {
-        <article
-          class="card"
-          [class.waiting]="p.display_status === 'waiting_action'"
-          [class.completed]="p.display_status === 'completed'"
-          (click)="open(p)"
-        >
-          <header class="card-head">
-            <nz-tag [nzColor]="color(p.display_status)">
-              {{ label(p.display_status) }}
-            </nz-tag>
-            <span class="progress-num">{{ p.progress | number: '1.0-0' }}%</span>
-          </header>
+  <div class="cards">
+    @for (p of projects(); track p.id) {
+    <article
+      class="card"
+      [class.waiting]="p.display_status === 'waiting_action'"
+      [class.completed]="p.display_status === 'completed'"
+      (click)="open(p)"
+    >
+      <header class="card-head">
+        <nz-tag [nzColor]="color(p.display_status)"> {{ label(p.display_status) }} </nz-tag>
+        <span class="progress-num">{{ p.progress | number: '1.0-0' }}%</span>
+      </header>
 
-          <h3>{{ p.title }}</h3>
+      <h3>{{ p.title }}</h3>
 
-          @if (projects().length > 1 && (p.specialist_primary_category || p.specialist_display_name)) {
-            <p class="spec-badge">
-              @if (p.specialist_primary_category) {
-                <span class="spec-cat">{{ p.specialist_primary_category }}</span>
-              }
-              @if (p.specialist_display_name) {
-                <span class="spec-name">· {{ p.specialist_display_name }}</span>
-              }
-            </p>
-          }
+      @if (projects().length > 1 && (p.specialist_primary_category || p.specialist_display_name)) {
+      <p class="spec-badge">
+        @if (p.specialist_primary_category) {
+        <span class="spec-cat">{{ p.specialist_primary_category }}</span>
+        } @if (p.specialist_display_name) {
+        <span class="spec-name">· {{ p.specialist_display_name }}</span>
+        }
+      </p>
+      } @if (p.current_step_title) {
+      <p class="cur">
+        <span class="cur-label">Сейчас:</span>
+        <strong>{{ p.current_step_title }}</strong>
+      </p>
+      }
 
-          @if (p.current_step_title) {
-            <p class="cur">
-              <span class="cur-label">Сейчас:</span>
-              <strong>{{ p.current_step_title }}</strong>
-            </p>
-          }
-
-          <nz-progress
-            [nzPercent]="p.progress"
-            nzSize="small"
-            [nzShowInfo]="false"
-            [nzStrokeColor]="
+      <nz-progress
+        [nzPercent]="p.progress"
+        nzSize="small"
+        [nzShowInfo]="false"
+        [nzStrokeColor]="
               p.display_status === 'waiting_action' ? '#f59e0b' :
               p.display_status === 'completed' ? '#10b981' :
               '#2dd4bf'
             "
-          ></nz-progress>
+      ></nz-progress>
 
-          <footer class="card-foot">
-            <span>
-              <span nz-icon nzType="calendar" nzTheme="outline"></span>
-              {{ p.created_at | date: 'd MMM y' }}
-            </span>
-            @if (p.budget) {
-              <span>
-                <span nz-icon nzType="dollar" nzTheme="outline"></span>
-                {{ p.budget | number }} ₽
-              </span>
-            }
-          </footer>
-        </article>
-      }
-    </div>
+      <footer class="card-foot">
+        <span>
+          <span nz-icon nzType="calendar" nzTheme="outline"></span>
+          {{ p.created_at | date: 'd MMM y' }}
+        </span>
+        @if (p.budget) {
+        <span>
+          <span nz-icon nzType="dollar" nzTheme="outline"></span>
+          {{ p.budget | number }} ₽
+        </span>
+        }
+      </footer>
+    </article>
+    }
+  </div>
   }
 </main>

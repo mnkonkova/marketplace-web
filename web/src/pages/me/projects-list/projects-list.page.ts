@@ -13,16 +13,10 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { FormsModule } from '@angular/forms';
 
-import {
-  ClientProfile,
-  ClientProfileApi,
-} from '@entities/me/api/client-profile.api';
+import { ClientProfile, ClientProfileApi } from '@entities/me/api/client-profile.api';
 import { ProjectApi } from '@entities/project/api/project.api';
 import { ProjectClientView } from '@entities/project/model/project.types';
-import {
-  PROJECT_STATUS_COLOR,
-  PROJECT_STATUS_LABEL,
-} from '@shared/lib/project-status';
+import { PROJECT_STATUS_COLOR, PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { withFromPage } from '@shared/nav/from-page';
 
@@ -73,20 +67,38 @@ export class ProjectsListPage {
   public readonly contactsExpanded = signal(false);
 
   // ngModel-friendly доступ
-  public get displayName(): string { return this.contacts().display_name; }
-  public set displayName(v: string) { this.contacts.set({ ...this.contacts(), display_name: v }); }
-  public get phone(): string { return this.contacts().phone; }
-  public set phone(v: string) { this.contacts.set({ ...this.contacts(), phone: v }); }
-  public get telegram(): string { return this.contacts().telegram; }
-  public set telegram(v: string) { this.contacts.set({ ...this.contacts(), telegram: v }); }
+  public get displayName(): string {
+    return this.contacts().display_name;
+  }
+  public set displayName(v: string) {
+    this.contacts.set({ ...this.contacts(), display_name: v });
+  }
+  public get phone(): string {
+    return this.contacts().phone;
+  }
+  public set phone(v: string) {
+    this.contacts.set({ ...this.contacts(), phone: v });
+  }
+  public get telegram(): string {
+    return this.contacts().telegram;
+  }
+  public set telegram(v: string) {
+    this.contacts.set({ ...this.contacts(), telegram: v });
+  }
 
   public toggleContacts(): void {
     this.contactsExpanded.set(!this.contactsExpanded());
   }
 
+  /**
+   * Контакты считаются заполненными, только если есть способ связаться:
+   * телефон или телеграм. Одного имени мало — раньше блок сворачивался и
+   * рапортовал «заполнены», а менеджер по такой заявке дозвониться не мог.
+   * Имя тем более подставляется из регистрации автоматически.
+   */
   public contactsFilled(): boolean {
     const c = this.contacts();
-    return !!(c.display_name || c.phone || c.telegram);
+    return !!(c.phone?.trim() || c.telegram?.trim());
   }
 
   public contactsPreview(): string {
@@ -97,21 +109,23 @@ export class ProjectsListPage {
   public saveContacts(): void {
     this.contactsSaving.set(true);
     const c = this.contacts();
-    this.profileApi.patch({
-      display_name: c.display_name,
-      phone: c.phone,
-      telegram: c.telegram,
-    }).subscribe({
-      next: (cp) => {
-        this.contacts.set(cp);
-        this.contactsSaving.set(false);
-        this.msg.success('Контакты сохранены');
-      },
-      error: () => {
-        this.contactsSaving.set(false);
-        this.msg.error('Не удалось сохранить');
-      },
-    });
+    this.profileApi
+      .patch({
+        display_name: c.display_name,
+        phone: c.phone,
+        telegram: c.telegram,
+      })
+      .subscribe({
+        next: (cp) => {
+          this.contacts.set(cp);
+          this.contactsSaving.set(false);
+          this.msg.success('Контакты сохранены');
+        },
+        error: () => {
+          this.contactsSaving.set(false);
+          this.msg.error('Не удалось сохранить');
+        },
+      });
   }
 
   public label(s: ProjectClientView['display_status']): string {
@@ -133,10 +147,9 @@ export class ProjectsListPage {
     this.profileApi.get().subscribe({
       next: (cp) => {
         this.contacts.set(cp);
-        // если ничего не заполнено — раскроем блок, чтобы клиент сразу видел
-        if (!cp.display_name && !cp.phone && !cp.telegram) {
-          this.contactsExpanded.set(true);
-        }
+        // Нет способа связи — раскрываем блок: заявка без телефона или
+        // телеграма для менеджера бесполезна.
+        if (!this.contactsFilled()) this.contactsExpanded.set(true);
       },
     });
   }
