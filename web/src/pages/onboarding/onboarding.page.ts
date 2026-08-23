@@ -26,7 +26,6 @@ import { isTouchDevice } from '@shared/lib/touch';
 import { validateRate } from '@shared/lib/rate-validation';
 import { AvatarPickerComponent } from '@shared/ui/avatar-picker/avatar-picker.component';
 import { RolePickerComponent } from '@shared/ui/role-picker/role-picker.component';
-import { SkillPickerComponent } from '@shared/ui/skill-picker/skill-picker.component';
 import { OptionSheetComponent, SheetOption } from '@shared/ui/option-sheet/option-sheet.component';
 import {
   PortfolioUploadDialog,
@@ -38,16 +37,28 @@ import {
 const STEPS = [
   { id: 'account', label: 'Аккаунт', skippable: false },
   { id: 'who', label: 'Кто вы', skippable: false },
-  { id: 'skills', label: 'Навыки', skippable: false },
   // Работа обязательна: без единого ролика специалиста не показывает ни
   // лента, ни каталог — публиковать такой профиль бессмысленно.
   { id: 'work', label: 'Первая работа', skippable: false },
-  { id: 'about', label: 'О себе', skippable: true },
   // Ник — последнее перед финалом: к этому моменту человек уже видел своё
-  // имя и роли, и придумать короткий адрес ему проще, чем на старте.
+  // имя и роли, и придумать короткий адрес ему проще, чем на старте. Плюс
+  // без ника ссылка на профиль выглядит как /specialist/<uuid> — а её
+  // подставляет «Бот Работ» в черновик отклика заказчику.
   { id: 'link', label: 'Ссылка', skippable: true },
-  { id: 'done', label: 'Почта', skippable: false },
+  { id: 'done', label: 'Готово', skippable: false },
 ] as const;
+
+// Двух шагов здесь больше нет, и это разные причины.
+//
+// «Навыки» уехали в кабинет целиком: публикация их не требует (см.
+// RevalidatePublishInTx на бэкенде — там имя, «о себе» и фриланс/продакшен),
+// а выбирать из длинного списка на старте утомительнее всего остального.
+//
+// «О себе» не уехало никуда — оно переехало на последний экран, к кнопке
+// «Отправить на проверку». Отдельным шагом оно было пропускаемым, и человек
+// узнавал о нём уже на финале, отказом публикации: поле при этом оставалось
+// на два экрана назад, и никто не подсказывал, что вернуться надо именно
+// туда. Теперь спрашиваем ровно там, где отсутствие текста мешает.
 
 type StepId = (typeof STEPS)[number]['id'];
 
@@ -80,7 +91,6 @@ function isUsernameTaken(err: { error?: ApiErrorBody | null }): boolean {
     AvatarPickerComponent,
     OptionSheetComponent,
     RolePickerComponent,
-    SkillPickerComponent,
   ],
   templateUrl: './onboarding.page.html',
   styleUrl: './onboarding.page.scss',
@@ -175,10 +185,6 @@ export class OnboardingPage {
 
   public readonly productions = signal<Production[]>([]);
 
-  public readonly tools = signal<Skill[]>([]);
-
-  public readonly platforms = signal<Skill[]>([]);
-
   public readonly selectedCategories = signal<Set<string>>(new Set());
 
   public readonly primaryCategory = signal('');
@@ -209,7 +215,14 @@ export class OnboardingPage {
       return u === '' || /^[a-z0-9_-]{3,30}$/.test(u);
     }
     if (this.step() !== 'who') return true;
-    return this.form().display_name.trim().length > 0 && this.selectedCategories().size > 0;
+    // Фриланс или продакшен — не украшение анкеты: без него публикация
+    // отвечает «выберите студию или отметьте „фрилансер“». Спрашиваем там,
+    // где стоит сам переключатель, а не отказом на последнем экране.
+    return (
+      this.form().display_name.trim().length > 0 &&
+      this.selectedCategories().size > 0 &&
+      this.productionSelected() !== ''
+    );
   });
 
   public constructor() {
@@ -232,7 +245,6 @@ export class OnboardingPage {
 
     this.categoryApi.list().subscribe((items) => this.categories.set(items));
     this.productionApi.listActive().subscribe((r) => this.productions.set(r.items));
-    this.categoryApi.skills({ kind: 'platform' }).subscribe((items) => this.platforms.set(items));
   }
 
   /**
@@ -383,7 +395,7 @@ export class OnboardingPage {
       this.saveProfile(() => this.stepIndex.set(i + 1));
       return;
     }
-    if (STEPS[i].id === 'skills' || STEPS[i].id === 'about' || STEPS[i].id === 'link') {
+    if (STEPS[i].id === 'link') {
       this.saveProfile(() => this.stepIndex.set(i + 1));
       return;
     }
@@ -405,19 +417,11 @@ export class OnboardingPage {
       if (!this.primaryCategory()) this.primaryCategory.set(code);
     }
     this.selectedCategories.set(next);
-    this.refreshTools();
   }
 
   public setPrimary(code: string): void {
     if (!this.selectedCategories().has(code)) return;
     this.primaryCategory.set(code);
-  }
-
-  public toggleSkill(id: string): void {
-    const next = new Set(this.selectedSkills());
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    this.selectedSkills.set(next);
   }
 
   public onAvatarPicked(ev: Event): void {
@@ -578,6 +582,9 @@ export class OnboardingPage {
 
   public readonly publishState = signal<'idle' | 'done'>('idle');
 
+  /** Текст «о себе», который уже лежит на сервере. */
+  private savedBio: string | null = null;
+
   /**
    * Отправка на проверку прямо из мастера.
    *
@@ -588,7 +595,17 @@ export class OnboardingPage {
    * Требует подтверждённой почты (auth/service.go), поэтому ошибку показываем
    * рядом — обычно это «подтвердите email».
    */
+  /** Пусто ли «о себе» — тогда предлагаем дописать прямо перед публикацией. */
+  public readonly bioMissing = computed(() => this.form().bio.trim().length === 0);
+
   public publish(): void {
+    // Описание необязательно, но если человек его тут дописал — сохраняем
+    // сами, перед публикацией: кнопки «Далее» на этом экране уже нет, и
+    // требовать от него лишнего действия не за что.
+    if (this.form().bio.trim() !== (this.savedBio ?? '')) {
+      this.saveProfile(() => this.publish());
+      return;
+    }
     this.saving.set(true);
     this.meRepo
       .publishProfile()
@@ -694,7 +711,7 @@ export class OnboardingPage {
       )
       .subscribe((p) => {
         this.sessionStorage.setItem('updated_at', p.updated_at);
-        this.refreshTools();
+        this.savedBio = p.bio ?? '';
         done();
       });
   }
@@ -727,11 +744,11 @@ export class OnboardingPage {
           social_links: { ...emptyProfileForm().social_links, ...(p.social_links ?? {}) },
         });
         this.username.set(p.username ?? '');
+        this.savedBio = p.bio ?? '';
         this.productionSelected.set(p.is_freelance ? 'freelance' : (p.production_id ?? ''));
         this.selectedCategories.set(new Set(p.categories ?? []));
         this.primaryCategory.set(p.primary_category ?? '');
         this.selectedSkills.set(new Set(p.skill_ids ?? []));
-        this.refreshTools();
       });
     this.loadPortfolio();
   }
@@ -743,14 +760,4 @@ export class OnboardingPage {
       .subscribe((items) => this.portfolio.set(items));
   }
 
-  /** Инструменты подтягиваются под выбранные роли — как в кабинете. */
-  private refreshTools(): void {
-    const codes = [...this.selectedCategories()];
-    if (!codes.length) {
-      this.tools.set([]);
-      return;
-    }
-    // Один запрос на все выбранные роли, а не по запросу на каждую.
-    this.categoryApi.skills({ categories: codes }).subscribe((items) => this.tools.set(items));
-  }
 }

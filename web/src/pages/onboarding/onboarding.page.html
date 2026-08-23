@@ -76,7 +76,7 @@
 
     <div class="who-fields">
       <label>
-        Email
+        Email*
         <input
           nz-input
           nzSize="large"
@@ -90,7 +90,7 @@
       </label>
 
       <label>
-        Пароль
+        Пароль*
         <input
           nz-input
           nzSize="large"
@@ -129,7 +129,7 @@
 
       <div class="who-fields">
         <label>
-          Имя или название
+          Имя или название*
           <input
             nz-input
             nzSize="large"
@@ -163,7 +163,7 @@
          поэтому здесь только выбор из готового: своей студии в мастере не
          создать, и обещать этого не надо. -->
     <div class="who-work">
-      <span class="pseudo-label">Как вы работаете</span>
+      <span class="pseudo-label">Как вы работаете*</span>
       @if (isTouch()) {
       <!-- На телефоне — шторка: выпадающий список ng-zorro у края экрана
            прижимается к границе, и половина пунктов уезжает под палец. -->
@@ -198,7 +198,10 @@
       <p class="hint">Клиент видит это в шапке профиля. Поменять можно в кабинете.</p>
     </div>
 
-    <!-- Карточки ролей — тот же компонент, что во вкладке «Навыки». -->
+    <!-- Карточки ролей — тот же компонент, что во вкладке «Навыки».
+         Звёздочка в подписи, а не внутри компонента: он же стоит в кабинете,
+         где обязательности нет — там роли уже выбраны. -->
+    <span class="pseudo-label roles-label">Ваши роли*</span>
     <app-role-picker
       [categoryGroups]="categoryGroups()"
       [categories]="categories()"
@@ -206,16 +209,6 @@
       [primaryCategory]="primaryCategory()"
       (toggled)="toggleCategory($event)"
       (primarySet)="setPrimary($event)"
-    />
-    } @case ('skills') {
-    <h1>Навыки</h1>
-    <p class="sub">Инструменты подтянулись под выбранные роли. Отметьте свои.</p>
-    <!-- Чипы — тот же компонент, что в кабинете. -->
-    <app-skill-picker
-      [tools]="tools()"
-      [platforms]="platforms()"
-      [selectedSkills]="selectedSkills()"
-      (toggled)="toggleSkill($event)"
     />
     } @case ('work') {
     <h1>Первая работа</h1>
@@ -256,22 +249,6 @@
       accept="video/mp4,video/quicktime"
       (change)="onWorkPicked($event)"
     />
-    } @case ('about') {
-    <h1>Пара слов о себе</h1>
-    <p class="sub">Кто вы, с чем помогаете, чем отличаетесь.</p>
-    <label class="about-field">
-      Описание
-      <textarea
-        nz-input
-        rows="10"
-        [ngModel]="form().bio"
-        (ngModelChange)="setField('bio', $event)"
-        name="bio"
-        maxlength="4000"
-        placeholder="Переносы строк сохраняются: строки со «✅» или «—» станут списком."
-      ></textarea>
-    </label>
-    <p class="hint">{{ bioLength() }} символов · для 100% нужно от 100</p>
     } @case ('link') {
     <h1>Придумайте короткую ссылку</h1>
     <p class="sub">
@@ -330,9 +307,31 @@
         <b>{{ form().display_name || 'Без имени' }}</b>{{ form().city ? ', ' + form().city : '' }}
       </li>
       <li>Ролей: {{ selectedCategories().size }}</li>
-      <li>Навыков: {{ selectedSkills().size }}</li>
       <li>Работ: {{ portfolio().length }}</li>
     </ul>
+
+    <!-- «О себе» — здесь, а не отдельным шагом, и без звёздочки: публикацию
+         оно не блокирует. Просьба сформулирована через то, что человек
+         получит, а не через то, чего у него не хватает: «заполнено на 60 %»
+         — это оценка, а не причина что-то делать. -->
+    @if (bioMissing()) {
+    <label class="about-field">
+      Пара слов о себе
+      <textarea
+        nz-input
+        rows="6"
+        [ngModel]="form().bio"
+        (ngModelChange)="setField('bio', $event)"
+        name="bio"
+        maxlength="4000"
+        placeholder="Кто вы, с чем помогаете, чем отличаетесь. Переносы строк сохраняются."
+      ></textarea>
+    </label>
+    <p class="hint">
+      Описание заказчик читает первым — по нему он решает, писать вам или
+      листать дальше. Можно дописать позже в кабинете.
+    </p>
+    }
 
     <!-- Публикация — отдельное действие: без неё профиля нет в каталоге, а
          человек после анкеты уверен, что закончил. -->

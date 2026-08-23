@@ -1066,6 +1066,10 @@ h6 {
 .cabinet,
 .onb,
 .client-register-modal,
-.results {
+.results,
+/* Диалог входа открывается из пяти мест, поэтому цепляемся к самому
+   компоненту, а не к nzClassName на каждом вызове. */
+app-auth-dialog {
   @include design.tokens;
+  @include design.ant-fields;
 }

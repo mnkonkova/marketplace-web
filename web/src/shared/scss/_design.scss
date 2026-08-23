@@ -163,3 +163,54 @@
   font-size: 15px;
   cursor: pointer;
 }
+
+// Поля ng-zorro на поверхностях дизайн-системы. Компоненты ant приходят со
+// своей светлой темой и скруглением 2px — на тёмном фоне это читается как
+// «поле не в стиле». Раньше правило было привязано к .cabinet, поэтому
+// мастер, окно заказчика и диалог входа оставались с дефолтом.
+@mixin ant-fields {
+  input[nz-input],
+  textarea[nz-input],
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-number,
+  .ant-select-selector,
+  .ant-picker {
+    border: 1px solid var(--border-strong) !important;
+    border-radius: var(--r-field) !important;
+    background: var(--bg-elevated) !important;
+    color: var(--text) !important;
+  }
+
+  input[nz-input],
+  .ant-input {
+    min-height: 44px;
+    padding: 12px 14px !important;
+    font-size: 16px !important;
+  }
+
+  .ant-select-selector {
+    min-height: 44px !important;
+  }
+
+  // Поле внутри обёртки с иконкой (пароль с «глазом») рамку и фон не
+  // получает: они уже есть у обёртки, а вложенная рамка со своим радиусом
+  // 2px рисовалась прямоугольником внутри скруглённого поля.
+  .ant-input-affix-wrapper > input.ant-input,
+  .ant-input-affix-wrapper > .ant-input {
+    min-height: auto;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  input[nz-input]::placeholder,
+  textarea[nz-input]::placeholder,
+  .ant-input::placeholder {
+    color: var(--text-dim);
+  }
+
+  .ant-btn {
+    border-radius: var(--r-btn);
+  }
+}
