@@ -87,6 +87,9 @@ export class OptionSheetComponent {
    */
   private panel: HTMLElement | null = null;
 
+  /** Прокручиваемый список под пальцем, если жест начался на нём. */
+  private list: HTMLElement | null = null;
+
   private dragging = false;
 
   public isOn(value: string): boolean {
@@ -118,15 +121,15 @@ export class OptionSheetComponent {
     const target = ev.target as HTMLElement | null;
     const list = target?.closest('.opt-list') as HTMLElement | null;
 
-    // Если список реально длиннее листа — жест его, и прокручивает его
-    // браузер. Забирать прокрутку себе я пробовал: она идёт рывками, без
-    // инерции, и это читается как «всё дёргается». В обычном случае (роли
-    // помещаются целиком) список не прокручивается, и смахивание работает
-    // с любой точки, включая сам список.
-    if (list && list.scrollHeight > list.clientHeight) {
+    // Длинный список прокручивает браузер — забирать это себе нельзя, своя
+    // прокрутка идёт рывками и без инерции. Но когда список уже вверху,
+    // тянуть вниз нечего, и жест наш: иначе при 15 ролях смахивание с
+    // области списка просто не работало, а это выглядит как поломка.
+    if (list && list.scrollHeight > list.clientHeight && list.scrollTop > 0) {
       this.dragging = false;
       return;
     }
+    this.list = list;
 
     this.panel = target?.closest('.ant-drawer-content-wrapper') ?? null;
     this.startY = ev.touches[0].clientY;
@@ -138,8 +141,11 @@ export class OptionSheetComponent {
   public onDragMove(ev: TouchEvent): void {
     if (!this.dragging) return;
     const dy = ev.touches[0].clientY - this.startY;
-    // Тянем только вниз: движение вверх отдаём странице.
-    if (dy <= 0) return;
+    // Вверх — отдаём списку: он прокрутится сам.
+    if (dy <= 0) {
+      if (this.list && this.list.scrollHeight > this.list.clientHeight) this.dragging = false;
+      return;
+    }
     this.shift = dy;
     // Пока тянем лист — фон стоять на месте: на iOS overflow:hidden на html
     // прокрутку не удерживает.
@@ -160,6 +166,7 @@ export class OptionSheetComponent {
       this.panel.style.transform = '';
     }
     this.panel = null;
+    this.list = null;
     this.shift = 0;
     this.dragging = false;
   }
