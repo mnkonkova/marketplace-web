@@ -137,6 +137,48 @@
       </div>
     </div>
 
+    <!-- Где работает: фрилансер или продакшен из списка. Спрашиваем здесь,
+         а не только в кабинете: без этого поля профиль считается
+         незаполненным, и человек узнавал об этом уже после мастера — на
+         экране «почему меня не публикуют». Продакшены заводит администрация,
+         поэтому здесь только выбор из готового: своей студии в мастере не
+         создать, и обещать этого не надо. -->
+    <div class="who-work">
+      <span class="pseudo-label">Как вы работаете</span>
+      @if (isTouch()) {
+      <!-- На телефоне — шторка: выпадающий список ng-zorro у края экрана
+           прижимается к границе, и половина пунктов уезжает под палец. -->
+      <button type="button" class="sheet-trigger" (click)="productionSheet.set(true)">
+        {{ productionLabel() }}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+      <app-option-sheet
+        [open]="productionSheet()"
+        title="Как вы работаете"
+        [options]="productionOptions()"
+        [selected]="[productionSelected()]"
+        (picked)="productionSelected.set($event)"
+        (closed)="productionSheet.set(false)"
+      />
+      } @else {
+      <nz-select
+        nzSize="large"
+        [ngModel]="productionSelected()"
+        (ngModelChange)="productionSelected.set($event)"
+        name="production"
+        nzPlaceHolder="Фрилансер или продакшен"
+      >
+        <nz-option nzValue="freelance" nzLabel="Фрилансер"></nz-option>
+        @for (pr of productions(); track pr.id) {
+        <nz-option [nzValue]="pr.id" [nzLabel]="pr.name"></nz-option>
+        }
+      </nz-select>
+      }
+      <p class="hint">Клиент видит это в шапке профиля. Поменять можно в кабинете.</p>
+    </div>
+
     <!-- Карточки ролей — тот же компонент, что во вкладке «Навыки». -->
     <app-role-picker
       [categoryGroups]="categoryGroups()"
@@ -178,13 +220,23 @@
     </ul>
     }
 
-    <!-- Загрузчик — тот же диалог, что в кабинете. -->
-    <button type="button" class="btn ghost" (click)="addWork()">
+    <!-- Загрузчик — тот же диалог, что в кабинете. На телефоне сначала
+         открывается медиатека, а окно с названием и тегами приезжает уже
+         поверх выбранного файла: иначе первый тап уходит в пустое окно, где
+         снова написано «выберите видео». -->
+    <button type="button" class="btn ghost" (click)="pickWork(workFile)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 5v14M5 12h14" stroke-linecap="round" />
       </svg>
       {{ portfolio().length ? 'Добавить ещё' : 'Загрузить работу' }}
     </button>
+    <input
+      #workFile
+      type="file"
+      class="hidden-file"
+      accept="video/mp4,video/quicktime"
+      (change)="onWorkPicked($event)"
+    />
     } @case ('about') {
     <h1>Пара слов о себе</h1>
     <p class="sub">Кто вы, с чем помогаете, чем отличаетесь.</p>

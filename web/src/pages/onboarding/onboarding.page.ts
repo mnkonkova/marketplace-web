@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EMPTY, catchError, finalize, firstValueFrom } from 'rxjs';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
 
@@ -21,10 +22,12 @@ import { apiErrorMessage } from '@shared/api/api-error';
 import { putFileToPresignedUrl } from '@entities/me/repository/me-upload';
 import { resizeImageToBlob } from '@shared/image/resize';
 import { groupCategoriesByType } from '@shared/lib/category-groups';
+import { isTouchDevice } from '@shared/lib/touch';
 import { validateRate } from '@shared/lib/rate-validation';
 import { AvatarPickerComponent } from '@shared/ui/avatar-picker/avatar-picker.component';
 import { RolePickerComponent } from '@shared/ui/role-picker/role-picker.component';
 import { SkillPickerComponent } from '@shared/ui/skill-picker/skill-picker.component';
+import { OptionSheetComponent, SheetOption } from '@shared/ui/option-sheet/option-sheet.component';
 import {
   PortfolioUploadDialog,
   PortfolioUploadDialogData,
@@ -65,7 +68,9 @@ type StepId = (typeof STEPS)[number]['id'];
   imports: [
     FormsModule,
     NzInputModule,
+    NzSelectModule,
     AvatarPickerComponent,
+    OptionSheetComponent,
     RolePickerComponent,
     SkillPickerComponent,
   ],
@@ -102,6 +107,33 @@ export class OnboardingPage {
   public readonly form = signal<ProfileForm>(emptyProfileForm());
 
   public readonly avatarUploading = signal(false);
+
+  // Где человек работает: '' — не выбрано, 'freelance' — фрилансер, иначе id
+  // продакшена. Спрашивается здесь, а не только в кабинете: без этого поля
+  // профиль считается незаполненным, и человек узнавал об этом уже после
+  // мастера — на экране «почему меня не публикуют».
+  //
+  // Продакшены заводит администрация, поэтому здесь только выбор из готового
+  // списка: своей студии в мастере не создать, и обещать этого не надо.
+
+  public readonly productionSelected = signal('');
+
+  public readonly productionSheet = signal(false);
+
+  /** Тач-экран: списки открываем шторкой, а не выпадающим меню. */
+  public readonly isTouch = signal(isTouchDevice());
+
+  public readonly productionOptions = computed<SheetOption[]>(() => [
+    { value: 'freelance', label: 'Фрилансер' },
+    ...this.productions().map((pr) => ({ value: pr.id, label: pr.name })),
+  ]);
+
+  public productionLabel(): string {
+    return (
+      this.productionOptions().find((o) => o.value === this.productionSelected())?.label ??
+      'Выберите вариант'
+    );
+  }
 
   /** blob-ссылка на ужатый файл: показываем ещё до ответа S3. */
   public readonly localAvatarUrl = signal<string | null>(null);
@@ -358,8 +390,39 @@ export class OnboardingPage {
     this.localAvatarUrl.set(null);
   }
 
+  /** Нажали «Загрузить работу».
+   *
+   *  На телефоне открываем медиатеку сразу, без промежуточного окна: там
+   *  первым экраном диалога всё равно стоит «выберите видео», то есть человек
+   *  делает два тапа вместо одного и первый — в пустоту. Форму с названием
+   *  показываем уже поверх выбранного файла.
+   *
+   *  Клик по input'у должен случиться в том же жесте, что и нажатие кнопки:
+   *  Safari разрешает открывать выбор файла только по живому действию
+   *  человека, и отложенный вызов молча ничего не сделает. Поэтому у
+   *  незалогиненных остаётся прежний путь — сперва аккаунт, потом диалог:
+   *  жест к этому моменту всё равно потерян.
+   */
+  public pickWork(input: HTMLInputElement): void {
+    if (!this.auth.isLoggedIn()) {
+      this.ensureAccount(() => this.addWork());
+      return;
+    }
+    if (isTouchDevice()) input.click();
+    else this.addWork();
+  }
+
+  public onWorkPicked(ev: Event): void {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // Сбрасываем значение сразу: иначе повторный выбор того же файла не
+    // считается изменением и change не приходит вовсе.
+    input.value = '';
+    if (file) this.addWork(file);
+  }
+
   /** Загрузчик работы — тот же диалог, что в кабинете. */
-  public addWork(): void {
+  public addWork(initialFile?: File): void {
     if (!this.auth.isLoggedIn()) {
       this.ensureAccount(() => this.addWork());
       return;
@@ -378,6 +441,7 @@ export class OnboardingPage {
         categories: this.categories(),
         selectedCategoryCodes: [...this.selectedCategories()],
         primaryCategory: this.primaryCategory(),
+        initialFile,
       },
     });
     // Диалог сам создаёт работу через API, поэтому список просто
@@ -446,6 +510,13 @@ export class OnboardingPage {
         social_links: f.social_links,
         // undefined = не трогать: пустую строку бэкенд понял бы как сброс.
         username: this.username().trim() || undefined,
+        // Где работает: 'freelance' → is_freelance, иначе id продакшена.
+        // XOR между ними держит бэкенд — включая одно, снимает другое.
+        ...(this.productionSelected() === 'freelance'
+          ? { is_freelance: true }
+          : this.productionSelected()
+            ? { production_id: this.productionSelected() }
+            : {}),
       })
       .pipe(
         catchError((err) => {
