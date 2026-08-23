@@ -22,16 +22,6 @@
   }
 }
 
-.cmp-percent {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--accent);
-
-  &.is-low {
-    color: #ffba59;
-  }
-}
-
 .cmp-bar {
   height: 8px;
   background: var(--bg-elevated);
@@ -47,30 +37,32 @@
   transition: width 0.4s cubic-bezier(0, 0, 0.2, 1);
 }
 
+// Список причин, а не список недостач. Название поля жирным — чтобы взгляд
+// нашёл, о чём речь; следом строка о том, что это меняет.
 .cmp-missing {
-  font-size: 12px;
-  color: var(--text-muted);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 
-  .cmp-missing-head {
-    display: block;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
+  li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-muted);
 
-  ul {
-    margin: 0;
-    padding-left: 0;
-    list-style: none;
-
-    li {
-      margin-bottom: 2px;
+    &:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
     }
   }
 
-  .muted {
-    color: var(--text-dim);
-    font-size: 11px;
+  b {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
   }
 }
 

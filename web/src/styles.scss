@@ -1069,7 +1069,11 @@ h6 {
 .results,
 /* Диалог входа открывается из пяти мест, поэтому цепляемся к самому
    компоненту, а не к nzClassName на каждом вызове. */
-app-auth-dialog {
+app-auth-dialog,
+/* Диалоги загрузки работы и фото-кейса: те же поля и кнопки, что везде. */
+app-portfolio-upload-dialog,
+app-photoset-upload-dialog,
+.portfolio-upload-modal {
   @include design.tokens;
   @include design.ant-fields;
 }

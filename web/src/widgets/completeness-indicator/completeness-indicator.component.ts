@@ -9,9 +9,16 @@ import {
 } from '@shared/lib/profile-completeness';
 
 /**
- * Прогресс заполненности профиля. Сами правила (пункты и веса) живут в
+ * Что ещё усилит профиль. Правила (пункты и веса) живут в
  * `@shared/lib/profile-completeness` — их читает ещё и страница `/me`,
  * чтобы пометить точкой вкладки с незаполненным.
+ *
+ * Раньше здесь стояло «Заполненность профиля — 60 %» и список того, чего не
+ * хватает, с процентами у каждого пункта. Это оценка и упрёк: человек и так
+ * знает, что не дописал, а «плюс пятнадцать процентов» не объясняет, зачем
+ * ему это. Поэтому цифры больше нет — осталась полоса (прогресс видно и без
+ * числа) и причина у каждого пункта: что изменится в карточке и в поведении
+ * заказчика. Причины описывают механику, а не выдуманную статистику.
  */
 @Component({
   selector: 'app-completeness-indicator',
@@ -20,25 +27,22 @@ import {
   template: `
     <div class="completeness" [class.is-full]="percent() === 100">
       <div class="cmp-head">
-        <strong>Заполненность профиля</strong>
-        <span class="cmp-percent" [class.is-low]="percent() < 60">
-          {{ percent() }}%
-        </span>
+        <strong>{{ missing().length ? 'Что усилит профиль' : 'Профиль собран полностью' }}</strong>
       </div>
       <div class="cmp-bar">
         <div class="cmp-bar-fill" [style.width.%]="percent()"></div>
       </div>
       @if (missing().length > 0) {
-        <div class="cmp-missing">
-          <span class="cmp-missing-head">Что добавить:</span>
-          <ul>
-            @for (m of missing(); track m.id) {
-              <li>— {{ m.label }} <span class="muted">(+{{ m.weight }}%)</span></li>
-            }
-          </ul>
-        </div>
+        <ul class="cmp-missing">
+          @for (m of missing(); track m.id) {
+            <li>
+              <b>{{ m.label }}</b>
+              <span>{{ m.gain }}</span>
+            </li>
+          }
+        </ul>
       } @else {
-        <p class="cmp-done">🎉 Профиль полностью готов — клиенты увидят максимум.</p>
+        <p class="cmp-done">Заказчик видит всё, что помогает выбрать: фото, работы, описание и цену.</p>
       }
     </div>
   `,

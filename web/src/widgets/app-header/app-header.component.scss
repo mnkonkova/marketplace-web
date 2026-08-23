@@ -1,4 +1,5 @@
 @use 'layout';
+@use 'breakpoints' as bp;
 :host {
   display: block;
   position: sticky;
@@ -116,8 +117,27 @@
   }
 }
 
+// CTA шапки. ng-zorro отдаёт кнопкам скругление 2px и высоту 32px, и на
+// телефоне «Регистрация» с «Создать проект» выглядели мелкими прямыми
+// плашками рядом со скруглённым бургером.
 .cta {
+  min-height: 40px;
+  padding-inline: 16px;
+  border-radius: var(--r-btn, 11px);
   font-weight: 600;
+}
+
+@media (max-width: bp.$touch) {
+  .cta {
+    // 44px — нижняя граница удобного тач-таргета, и текст перестаёт быть
+    // мельче остального интерфейса.
+    min-height: 44px;
+    padding-inline: 18px;
+    border-radius: 12px;
+    // !important: ng-zorro задаёт размер кнопки своим правилом с большей
+    // специфичностью, и текст оставался на 12px — мельче всего остального.
+    font-size: 15px !important;
+  }
 }
 
 .mobile-nav-backdrop,

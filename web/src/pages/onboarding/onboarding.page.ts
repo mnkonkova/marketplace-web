@@ -200,8 +200,6 @@ export class OnboardingPage {
     return i === null ? null : STEPS[i].id;
   });
 
-  public readonly bioLength = computed(() => this.form().bio.trim().length);
-
   /** Первый шаг требует имя и хотя бы одну роль — без них профиля нет. */
   public readonly canGoNext = computed(() => {
     if (this.step() === 'account') {
@@ -582,9 +580,6 @@ export class OnboardingPage {
 
   public readonly publishState = signal<'idle' | 'done'>('idle');
 
-  /** Текст «о себе», который уже лежит на сервере. */
-  private savedBio: string | null = null;
-
   /**
    * Отправка на проверку прямо из мастера.
    *
@@ -595,17 +590,7 @@ export class OnboardingPage {
    * Требует подтверждённой почты (auth/service.go), поэтому ошибку показываем
    * рядом — обычно это «подтвердите email».
    */
-  /** Пусто ли «о себе» — тогда предлагаем дописать прямо перед публикацией. */
-  public readonly bioMissing = computed(() => this.form().bio.trim().length === 0);
-
   public publish(): void {
-    // Описание необязательно, но если человек его тут дописал — сохраняем
-    // сами, перед публикацией: кнопки «Далее» на этом экране уже нет, и
-    // требовать от него лишнего действия не за что.
-    if (this.form().bio.trim() !== (this.savedBio ?? '')) {
-      this.saveProfile(() => this.publish());
-      return;
-    }
     this.saving.set(true);
     this.meRepo
       .publishProfile()
@@ -711,7 +696,6 @@ export class OnboardingPage {
       )
       .subscribe((p) => {
         this.sessionStorage.setItem('updated_at', p.updated_at);
-        this.savedBio = p.bio ?? '';
         done();
       });
   }
@@ -744,7 +728,6 @@ export class OnboardingPage {
           social_links: { ...emptyProfileForm().social_links, ...(p.social_links ?? {}) },
         });
         this.username.set(p.username ?? '');
-        this.savedBio = p.bio ?? '';
         this.productionSelected.set(p.is_freelance ? 'freelance' : (p.production_id ?? ''));
         this.selectedCategories.set(new Set(p.categories ?? []));
         this.primaryCategory.set(p.primary_category ?? '');
