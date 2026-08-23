@@ -770,7 +770,17 @@ export class CabinetPage implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Подрезка выбранных навыков под доступные для текущих ролей.
+   *
+   * Пустой набор считаем за «не знаю», а не «убрать всё»: осмысленной
+   * подрезки по пустому списку не бывает — это либо сбой запроса, либо
+   * рассинхрон версий, а вычищенные навыки уезжали прямо в сохранение.
+   * Законный пустой случай один — ролей не выбрано вовсе, он проверяется
+   * отдельно перед выходом.
+   */
   private pruneSelectedSkills(allowedRecommendedIds: Set<string>): void {
+    if (allowedRecommendedIds.size === 0 && this.selectedCategories().size > 0) return;
     const platformIds = new Set(this.platformSkills().map((s) => s.id));
     const current = this.selectedSkills();
     const next = new Set<string>();

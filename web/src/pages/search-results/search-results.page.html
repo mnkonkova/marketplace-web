@@ -158,16 +158,13 @@
           а ролик подгружается по наведению или тапу.
         -->
         <video
+          [appLazyVideo]="spec.preview_video_url"
           [poster]="spec.preview_thumb_url || null"
           muted
           loop
           playsinline
           webkit-playsinline
           preload="none"
-          [attr.data-src]="spec.preview_video_url"
-          (mouseenter)="playPreview($event)"
-          (touchstart)="playPreview($event)"
-          (mouseleave)="stopPreview($event)"
         ></video>
         } @else if (spec.avatar_url) {
         <img [src]="spec.avatar_url" [alt]="spec.display_name" />

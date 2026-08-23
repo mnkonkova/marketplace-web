@@ -16,6 +16,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { isTouchDevice } from '@shared/lib/touch';
+import { LazyVideoDirective } from '@shared/directives/lazy-video.directive';
 import { OptionSheetComponent, SheetOption } from '@shared/ui/option-sheet/option-sheet.component';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
@@ -61,6 +62,7 @@ import { SEARCH_PLACEHOLDER_EXAMPLES, PLACEHOLDER_TIMING } from '@shared/lib/sea
     NzEmptyModule,
     AppHeaderComponent,
     OptionSheetComponent,
+    LazyVideoDirective,
   ],
   templateUrl: './search-results.page.html',
   styleUrl: './search-results.page.scss',
@@ -172,29 +174,6 @@ export class SearchResultsPage implements OnInit {
       ? this.skills.filter((sk) => sk !== slug)
       : [...this.skills, slug];
     this.onFiltersChange();
-  }
-
-  /**
-   * Подгрузка превью по требованию.
-   *
-   * На выдаче до полусотни карточек, и autoplay на каждой означал загрузку
-   * всех роликов сразу — сотни мегабайт за один заход. Источник подставляем
-   * только когда карточку действительно смотрят.
-   */
-  public playPreview(ev: Event): void {
-    const video = ev.currentTarget as HTMLVideoElement;
-    const src = video.dataset['src'];
-    if (src && !video.src) video.src = src;
-    void video.play().catch(() => {
-      // Автовоспроизведение могли запретить — постер остаётся на месте.
-    });
-  }
-
-  public stopPreview(ev: Event): void {
-    const video = ev.currentTarget as HTMLVideoElement;
-    video.pause();
-    // Позицию сбрасываем, чтобы следующее наведение начинало ролик сначала.
-    video.currentTime = 0;
   }
 
   public onFiltersChange(): void {
