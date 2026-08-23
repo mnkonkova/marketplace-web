@@ -1,0 +1,72 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="cr">
+  <h2>Найдите команду под задачу</h2>
+  <p class="cr-sub">
+    Аккаунт нужен, чтобы заявка не потерялась и вы видели ответы команд в одном месте.
+  </p>
+
+  <label class="cr-field">
+    Как к вам обращаться
+    <input nz-input nzSize="large" formControlName="display_name" placeholder="Имя или компания" />
+  </label>
+
+  <label class="cr-field">
+    Email
+    <input
+      nz-input
+      nzSize="large"
+      type="email"
+      autocomplete="email"
+      formControlName="email"
+      placeholder="you@example.com"
+    />
+  </label>
+
+  <label class="cr-field">
+    Пароль
+    <input
+      nz-input
+      nzSize="large"
+      type="password"
+      autocomplete="new-password"
+      formControlName="password"
+      placeholder="Не короче 8 символов"
+    />
+  </label>
+
+  @if (backendError()) {
+  <p class="cr-err">{{ backendError() }}</p>
+  }
+
+  <button
+    nz-button
+    nzType="primary"
+    nzSize="large"
+    type="submit"
+    class="cr-submit"
+    [nzLoading]="loading()"
+  >
+    Найти команду
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  </button>
+
+  <div class="cr-links">
+    <span>
+      Уже есть аккаунт?
+      <button type="button" class="cr-link" (click)="openLogin()">Войти</button>
+    </span>
+    <button type="button" class="cr-link" (click)="goSpecialist()">
+      Я специалист, хочу профиль
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+  </div>
+</form>

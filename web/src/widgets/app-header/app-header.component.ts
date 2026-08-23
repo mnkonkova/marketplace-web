@@ -14,6 +14,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
+import { openClientRegister } from '@features/client-register/open-client-register';
 import { ProjectCartDialogComponent, ProjectCartStore } from '@features/project-cart';
 import { scrollToAnchorWhenReady } from '@shared/lib/scroll-to-anchor';
 
@@ -138,10 +139,13 @@ export class AppHeaderComponent implements OnInit {
   }
 
   public openProject(): void {
-    // Незарегистрированному корзина проекта бесполезна: заявку некому
-    // привязать. Ведём в мастер — там он заводит аккаунт и возвращается.
+    // Незарегистрированному корзина бесполезна: заявку некому привязать.
+    // Заказчику показываем окно регистрации, а не мастер — мастер про сбор
+    // профиля, которого у заказчика нет.
     if (!this.isLoggedIn()) {
-      void this.router.navigate(['/start']);
+      openClientRegister(this.modal).afterClose.subscribe((ok) => {
+        if (ok) this.openProject();
+      });
       return;
     }
     this.modal.create({

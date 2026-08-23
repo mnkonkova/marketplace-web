@@ -15,6 +15,7 @@ import { ProductionApi } from '@entities/production/api/production.api';
 import { Production } from '@entities/production/model/production.types';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
+import { openClientRegister } from '@features/client-register/open-client-register';
 import { apiErrorMessage } from '@shared/api/api-error';
 import { groupCategoriesByType } from '@shared/lib/category-groups';
 import { validateRate } from '@shared/lib/rate-validation';
@@ -145,7 +146,7 @@ export class OnboardingPage {
     // незачем. Заказчику мастер не нужен вовсе: ему в каталог.
     const role = this.route.snapshot.queryParamMap.get('role');
     if (role === 'client') {
-      void this.router.navigate(['/search']);
+      this.goClient();
       return;
     }
     if (role === 'specialist') this.startSpecialist();
@@ -213,7 +214,13 @@ export class OnboardingPage {
   }
 
   public goClient(): void {
-    void this.router.navigate(['/search']);
+    // Заказчику мастер не нужен: окно регистрации и сразу поиск. Уже
+    // вошедшего просто пускаем в каталог.
+    if (this.auth.isLoggedIn()) {
+      void this.router.navigate(['/search']);
+      return;
+    }
+    openClientRegister(this.modal);
   }
 
   public back(): void {

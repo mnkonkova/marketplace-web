@@ -6,7 +6,7 @@ import { NzModalService } from 'ng-zorro-antd/modal';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { SupportFooterComponent } from '@widgets/support-footer/support-footer.component';
 import { LandingHeroComponent } from '@widgets/landing-hero/landing-hero.component';
-import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
+import { openClientRegister } from '@features/client-register/open-client-register';
 import { LeadSubmitDialogComponent } from '@features/project-cart/ui/components/lead-submit/lead-submit.dialog';
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
@@ -43,14 +43,8 @@ export class LandingClientsPage implements OnInit {
   public openBriefWithWayprod(): void {
     if (!this.auth.isLoggedIn()) {
       this.msg.info('Зарегистрируйтесь — заявка появится в вашем кабинете');
-      const authRef = this.modal.create({
-        nzContent: AuthDialogComponent,
-        nzFooter: null,
-        nzWidth: 'min(420px, 92vw)',
-        // source=landing_clients → бэк авто-подтверждает email, юзер идёт
-        // сразу в форму брифа без клика по письму (см. auth/service.go).
-        nzData: { initialTab: 1, initialKind: 'client', source: 'landing_clients' },
-      });
+      // То же окно, что в шапке и на гейтах: у заказчика один вход в систему.
+      const authRef = openClientRegister(this.modal);
       // AuthDialog делает modal.destroy(true) при успешной регистрации /
       // логине (см. auth.dialog.ts). Ловим truthy result и продолжаем
       // цепочку. При отмене — result undefined, ничего не делаем.
@@ -110,7 +104,10 @@ export class LandingClientsPage implements OnInit {
       text: 'Модерация специалистов, контроль через менеджера, без обхода.',
     },
     { title: 'Контроль сроков', text: 'Этапы зафиксированы в сделке, менеджер ведёт календарь.' },
-    { title: 'Без рисков по деньгам', text: 'Оплата по этапам, выплата исполнителю после приёмки.' },
+    {
+      title: 'Без рисков по деньгам',
+      text: 'Оплата по этапам, выплата исполнителю после приёмки.',
+    },
   ];
 
   public ngOnInit(): void {

@@ -979,3 +979,43 @@ h6 {
     font-size: 16px;
   }
 }
+
+/* Окно регистрации заказчика. На телефоне раскрываем почти на весь экран:
+   в узкой модалке кнопка отправки прячется за клавиатурой, а это последний
+   шаг перед поиском — терять его нельзя. */
+.client-register-modal {
+  .ant-modal-content {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+  }
+
+  .ant-modal-body {
+    padding: clamp(20px, 3vw, 28px);
+  }
+}
+
+@media (max-width: 600px) {
+  .client-register-modal {
+    top: 0;
+    max-width: 100vw;
+    margin: 0;
+    padding-bottom: 0;
+
+    .ant-modal-content {
+      min-height: 100vh;
+      min-height: 100dvh;
+      border: none;
+      border-radius: 0;
+    }
+
+    .ant-modal-body {
+      /* Прокрутка внутри окна, а не всей страницы: фон под модалкой стоит,
+         а форма с открытой клавиатурой остаётся доступной. */
+      max-height: 100dvh;
+      overflow-y: auto;
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+      overscroll-behavior: contain;
+    }
+  }
+}
