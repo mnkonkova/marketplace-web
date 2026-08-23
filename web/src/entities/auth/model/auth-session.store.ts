@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, map } from 'rxjs';
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
 import { API_URL } from '@shared/api/api-url.token';
 import { AuthSession, LoginPayload, MeUser, RegisterPayload, TokenPair } from './auth.types';
@@ -89,6 +89,19 @@ export class AuthSessionStore {
     sessionStorage.clear();
   }
 
+  /**
+   * Свободен ли email. Нужен мастеру: регистрация происходит на шаг позже
+   * ввода почты, и без этой проверки человек узнавал о занятом адресе,
+   * заполнив половину анкеты.
+   */
+  public emailAvailable(email: string): Observable<boolean> {
+    return this.http
+      .get<{ available: boolean }>(`${this.api}/auth/email-available`, {
+        params: { email },
+      })
+      .pipe(map((r) => r.available));
+  }
+
   public register(payload: RegisterPayload): Observable<{ user_id: string; tokens: TokenPair }> {
     return this.http
       .post<{ user_id: string; tokens: TokenPair }>(`${this.api}/auth/register`, payload)
@@ -103,14 +116,12 @@ export class AuthSessionStore {
   }
 
   public login(payload: LoginPayload, kind?: string): Observable<TokenPair> {
-    return this.http
-      .post<TokenPair>(`${this.api}/auth/login`, payload)
-      .pipe(
-        tap((pair) => {
-          this.save(pair, kind);
-          this.fetchMe().subscribe();
-        }),
-      );
+    return this.http.post<TokenPair>(`${this.api}/auth/login`, payload).pipe(
+      tap((pair) => {
+        this.save(pair, kind);
+        this.fetchMe().subscribe();
+      }),
+    );
   }
 
   public refresh(): Observable<TokenPair> {
@@ -130,14 +141,12 @@ export class AuthSessionStore {
   // при переходе с verify-страницы (особенно если письмо открыли в другом
   // браузере где localStorage пуст).
   public verifyEmail(token: string): Observable<TokenPair> {
-    return this.http
-      .post<TokenPair>(`${this.api}/auth/verify-email`, { token })
-      .pipe(
-        tap((pair) => {
-          this.save(pair);
-          this.fetchMe().subscribe();
-        }),
-      );
+    return this.http.post<TokenPair>(`${this.api}/auth/verify-email`, { token }).pipe(
+      tap((pair) => {
+        this.save(pair);
+        this.fetchMe().subscribe();
+      }),
+    );
   }
 
   public resendVerification(): Observable<void> {

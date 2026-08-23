@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { EMPTY, catchError, finalize, firstValueFrom } from 'rxjs';
+import { EMPTY, catchError, finalize, firstValueFrom, of } from 'rxjs';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -252,7 +252,14 @@ export class OnboardingPage {
       nzData: { initialTab: 0 },
     });
     ref.afterClose.subscribe(() => {
-      if (this.auth.isLoggedIn()) this.stepIndex.set(1);
+      if (!this.auth.isLoggedIn()) return;
+      // Тот же случай, что и при открытии мастера с готовым аккаунтом:
+      // без загрузки профиля форма пустая. Затирания больше нет (пустые
+      // строки не отправляем), но навыки уходят полным списком — пустой
+      // набор стёр бы их все, — категории заменяются выбранными здесь, а
+      // шаг «Первая работа» требует загрузить работу заново.
+      this.loadExisting();
+      this.stepIndex.set(1);
     });
   }
 
@@ -343,6 +350,32 @@ export class OnboardingPage {
     // Профиль сохраняем на переходе с первого шага: дальше уже нужны
     // категории на сервере — от них зависят рекомендованные навыки и теги
     // работы. Тот же PATCH, что жмёт «Сохранить» в кабинете.
+    // Занятость почты проверяем здесь, а не при регистрации: она случается
+    // шагом позже, и человек узнавал о проблеме, уже заполнив анкету.
+    if (STEPS[i].id === 'account') {
+      this.saving.set(true);
+      this.auth
+        .emailAvailable(this.email().trim())
+        .pipe(
+          // Проверка — удобство, а не защита: если запрос не прошёл, пускаем
+          // дальше, занятый адрес всё равно поймает регистрация.
+          catchError(() => of(true)),
+          finalize(() => this.saving.set(false)),
+        )
+        .subscribe((free) => {
+          if (free) {
+            this.error.set('');
+            this.emailTaken.set(false);
+            this.stepIndex.set(i + 1);
+            return;
+          }
+          this.emailTaken.set(true);
+          this.error.set(
+            'На этот email уже есть аккаунт. Войдите в него или укажите другой адрес.',
+          );
+        });
+      return;
+    }
     if (STEPS[i].id === 'who') {
       this.saveProfile(() => this.stepIndex.set(i + 1));
       return;
@@ -609,9 +642,19 @@ export class OnboardingPage {
         categories: codes.length
           ? { codes, primary: this.primaryCategory() || codes[0] }
           : undefined,
-        skills: { skill_ids: [...this.selectedSkills()] },
+        // Пустой набор — это «ещё не выбирал», а не «убрать все»: набор
+        // уходит на сервер заменой целиком.
+        skills: this.selectedSkills().size ? { skill_ids: [...this.selectedSkills()] } : undefined,
         // undefined = не трогать: пустую строку бэкенд понял бы как сброс.
         username: this.username().trim() || undefined,
+        // Где работает: 'freelance' → is_freelance, иначе id продакшена.
+        // XOR между ними держит бэкенд — включая одно, снимает другое.
+        // Пустое значение не шлём: это «не выбрал», а не «снять».
+        ...(this.productionSelected() === 'freelance'
+          ? { is_freelance: true }
+          : this.productionSelected()
+            ? { production_id: this.productionSelected() }
+            : {}),
         // Оптимистическая блокировка, как в кабинете: без неё правки из
         // другой вкладки или от модерации затирались молча.
         updated_at: this.sessionStorage.getItem('updated_at') ?? undefined,
@@ -681,6 +724,7 @@ export class OnboardingPage {
           social_links: { ...emptyProfileForm().social_links, ...(p.social_links ?? {}) },
         });
         this.username.set(p.username ?? '');
+        this.productionSelected.set(p.is_freelance ? 'freelance' : (p.production_id ?? ''));
         this.selectedCategories.set(new Set(p.categories ?? []));
         this.primaryCategory.set(p.primary_category ?? '');
         this.selectedSkills.set(new Set(p.skill_ids ?? []));
