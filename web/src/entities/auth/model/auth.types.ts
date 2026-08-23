@@ -31,6 +31,12 @@ export interface LoginPayload {
 
 export interface MeUser {
   user_id: string;
+  /**
+   * Имя на уровне аккаунта. У заказчика это единственное имя: профиля
+   * (specialist_profiles) у него нет, а раньше введённое при регистрации
+   * просто терялось — кабинет встречал пустотой.
+   */
+  display_name: string;
   email?: string | null;
   phone?: string | null;
   kind: string;
