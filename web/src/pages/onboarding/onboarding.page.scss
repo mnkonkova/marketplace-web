@@ -465,3 +465,32 @@
   font-size: 15px;
   line-height: 1.45;
 }
+
+// Подсказка под полем: не ошибка, а счётчик — человек ещё печатает.
+.field-hint {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+// Публикация на финальном шаге.
+.publish-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+.publish-ok {
+  margin: 20px auto 0;
+  padding: 14px 16px;
+  max-width: 520px;
+  border: 1px solid #1f6f57;
+  border-radius: 14px;
+  background: var(--accent-dim);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.45;
+  text-align: center;
+}

@@ -51,6 +51,9 @@ const STEPS = [
 
 type StepId = (typeof STEPS)[number]['id'];
 
+/** Синхронизировано с auth/service.go: короче бэкенд не примет. */
+const MIN_PASSWORD = 8;
+
 /** 409 приходит и на занятый ник, и на устаревший updated_at — различаем. */
 function isUsernameTaken(err: { error?: ApiErrorBody | null }): boolean {
   return err?.error?.error === 'username_taken';
@@ -158,6 +161,13 @@ export class OnboardingPage {
   /** Публичный ник для адреса /specialist/<ник>. Пусто — останется UUID. */
   public readonly username = signal('');
 
+  /**
+   * Минимум пароля — 8 символов, как в auth/service.go. Правило продублировано
+   * намеренно: узнавать о нём после регистрации, на шаг позже, обидно. Считаем
+   * символы, а не байты — иначе кириллический пароль засчитывался бы вдвое.
+   */
+  public readonly passwordOk = computed(() => [...this.password()].length >= MIN_PASSWORD);
+
   /** Показать кнопку «Войти» рядом с ошибкой: адрес уже занят. */
   public readonly emailTaken = signal(false);
 
@@ -189,9 +199,7 @@ export class OnboardingPage {
   /** Первый шаг требует имя и хотя бы одну роль — без них профиля нет. */
   public readonly canGoNext = computed(() => {
     if (this.step() === 'account') {
-      // Формат письма проверяем мягко, длину пароля не дублируем: минимум
-      // знает бэкенд и вернёт понятную ошибку.
-      return /.+@.+\..+/.test(this.email().trim()) && this.password().length > 0;
+      return /.+@.+\..+/.test(this.email().trim()) && this.passwordOk();
     }
     if (this.step() === 'work') return this.portfolio().length > 0;
     if (this.step() === 'link') {
@@ -216,6 +224,11 @@ export class OnboardingPage {
       }
       if (role === 'specialist' && this.stepIndex() === null) this.startSpecialist();
     });
+
+    // Мастер открывают и с готовым аккаунтом: с лендинга, по прямой ссылке,
+    // после входа. Без загрузки профиля форма оставалась пустой, и первое же
+    // сохранение затирало на сервере фото, город и описание.
+    if (this.auth.isLoggedIn()) this.loadExisting();
 
     this.categoryApi.list().subscribe((items) => this.categories.set(items));
     this.productionApi.listActive().subscribe((r) => this.productions.set(r.items));
@@ -252,7 +265,9 @@ export class OnboardingPage {
   }
 
   public startSpecialist(): void {
-    this.stepIndex.set(0);
+    // Вошедшему шаг с почтой и паролем не нужен: он там ничего не может
+    // ввести осмысленно, а «Далее» без ввода заблокирована.
+    this.stepIndex.set(this.auth.isLoggedIn() ? 1 : 0);
   }
 
   /**
@@ -294,6 +309,12 @@ export class OnboardingPage {
         finalize(() => this.saving.set(false)),
       )
       .subscribe(() => {
+        // Профиль специалиста создаётся вместе с аккаунтом — забираем его
+        // updated_at, иначе первое же сохранение упрётся в 409.
+        this.meRepo
+          .getProfile()
+          .pipe(catchError(() => EMPTY))
+          .subscribe((p) => this.sessionStorage.setItem('updated_at', p.updated_at));
         this.flushPendingAvatar();
         done();
       });
@@ -312,7 +333,7 @@ export class OnboardingPage {
   public back(): void {
     const i = this.stepIndex();
     if (i === null) return;
-    if (i === 0) this.stepIndex.set(null);
+    if (i === 0 || (i === 1 && this.auth.isLoggedIn())) this.stepIndex.set(null);
     else this.stepIndex.set(i - 1);
   }
 
@@ -523,6 +544,32 @@ export class OnboardingPage {
       .subscribe(() => this.resendState.set('sent'));
   }
 
+  public readonly publishState = signal<'idle' | 'done'>('idle');
+
+  /**
+   * Отправка на проверку прямо из мастера.
+   *
+   * Без неё профиль остаётся неопубликованным: публикация — отдельное
+   * действие в кабинете, и человек, дошедший до конца анкеты, был уверен,
+   * что закончил, а в каталоге не появлялся.
+   *
+   * Требует подтверждённой почты (auth/service.go), поэтому ошибку показываем
+   * рядом — обычно это «подтвердите email».
+   */
+  public publish(): void {
+    this.saving.set(true);
+    this.meRepo
+      .publishProfile()
+      .pipe(
+        catchError((err: { error?: ApiErrorBody | null }) => {
+          this.error.set(apiErrorMessage(err?.error ?? null, 'Не удалось отправить на проверку'));
+          return EMPTY;
+        }),
+        finalize(() => this.saving.set(false)),
+      )
+      .subscribe(() => this.publishState.set('done'));
+  }
+
   public goToCabinet(): void {
     void this.router.navigate(['/me']);
   }
@@ -547,29 +594,27 @@ export class OnboardingPage {
     const codes = [...this.selectedCategories()];
     this.meRepo
       .patchProfileFull({
-        display_name: f.display_name.trim(),
-        bio: f.bio,
-        avatar_url: f.avatar_url?.trim() ?? '',
-        city: f.city.trim(),
+        // Пустые строки не отправляем: сервер понимает их как значение
+        // (avatar_url = COALESCE($4, avatar_url), "" — непустой указатель) и
+        // затирает то, что уже есть в профиле. undefined = «не трогать».
+        display_name: f.display_name.trim() || undefined,
+        bio: f.bio.trim() || undefined,
+        avatar_url: f.avatar_url?.trim() || undefined,
+        city: f.city.trim() || undefined,
         currency: (f.currency || 'RUB').trim().toUpperCase(),
-        contact_email: f.contact_email.trim(),
-        contact_phone: f.contact_phone.trim(),
+        contact_email: f.contact_email.trim() || undefined,
+        contact_phone: f.contact_phone.trim() || undefined,
         rate_min: rate.min,
         rate_max: rate.max,
         categories: codes.length
           ? { codes, primary: this.primaryCategory() || codes[0] }
           : undefined,
         skills: { skill_ids: [...this.selectedSkills()] },
-        social_links: f.social_links,
         // undefined = не трогать: пустую строку бэкенд понял бы как сброс.
         username: this.username().trim() || undefined,
-        // Где работает: 'freelance' → is_freelance, иначе id продакшена.
-        // XOR между ними держит бэкенд — включая одно, снимает другое.
-        ...(this.productionSelected() === 'freelance'
-          ? { is_freelance: true }
-          : this.productionSelected()
-            ? { production_id: this.productionSelected() }
-            : {}),
+        // Оптимистическая блокировка, как в кабинете: без неё правки из
+        // другой вкладки или от модерации затирались молча.
+        updated_at: this.sessionStorage.getItem('updated_at') ?? undefined,
       })
       .pipe(
         catchError((err: { status?: number; error?: ApiErrorBody | null }) => {
@@ -605,10 +650,43 @@ export class OnboardingPage {
         }),
         finalize(() => this.saving.set(false)),
       )
-      .subscribe(() => {
+      .subscribe((p) => {
+        this.sessionStorage.setItem('updated_at', p.updated_at);
         this.refreshTools();
         done();
       });
+  }
+
+  /**
+   * Подтягивает то, что уже есть в профиле. Иначе мастер и затирает данные, и
+   * требует загрузить работу заново у человека, у которого их уже десяток.
+   */
+  private loadExisting(): void {
+    this.meRepo
+      .getProfile()
+      .pipe(catchError(() => EMPTY))
+      .subscribe((p) => {
+        this.sessionStorage.setItem('updated_at', p.updated_at);
+        this.form.set({
+          ...emptyProfileForm(),
+          display_name: p.display_name ?? '',
+          bio: p.bio ?? '',
+          city: p.city ?? '',
+          avatar_url: p.avatar_url ?? '',
+          currency: p.currency || 'RUB',
+          rate_min: p.rate_min ?? null,
+          rate_max: p.rate_max ?? null,
+          contact_email: p.contact_email ?? '',
+          contact_phone: p.contact_phone ?? '',
+          social_links: { ...emptyProfileForm().social_links, ...(p.social_links ?? {}) },
+        });
+        this.username.set(p.username ?? '');
+        this.selectedCategories.set(new Set(p.categories ?? []));
+        this.primaryCategory.set(p.primary_category ?? '');
+        this.selectedSkills.set(new Set(p.skill_ids ?? []));
+        this.refreshTools();
+      });
+    this.loadPortfolio();
   }
 
   private loadPortfolio(): void {
