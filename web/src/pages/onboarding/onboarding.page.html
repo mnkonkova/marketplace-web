@@ -320,8 +320,11 @@
     } @else {
     <div class="publish-row">
       <button type="button" class="btn primary" [disabled]="saving()" (click)="publish()">
-        {{ saving() ? 'Отправляем…' : 'Отправить на проверку' }}
+        Отправить на проверку
       </button>
+      @if (saving()) {
+      <span class="saving-note">Отправляем…</span>
+      }
       <p class="hint">Сначала подтвердите почту — без этого профиль не пройдёт проверку.</p>
     </div>
     } } }
@@ -346,13 +349,19 @@
       @if (step() === 'done') {
       <button type="button" class="btn primary" (click)="goToCabinet()">Перейти в кабинет</button>
       } @else {
+      <!-- «Сохраняем…» отдельной подписью слева, а не подменой текста
+           кнопки: от подмены менялась ширина, и кнопка прыгала под курсором
+           ровно в момент нажатия. -->
+      @if (saving()) {
+      <span class="saving-note">Сохраняем…</span>
+      }
       <button
         type="button"
         class="btn primary"
         [disabled]="!canGoNext() || saving()"
         (click)="next()"
       >
-        {{ saving() ? 'Сохраняем…' : 'Далее' }}
+        Далее
       </button>
       }
     </div>

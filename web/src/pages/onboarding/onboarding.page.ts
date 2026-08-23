@@ -742,5 +742,4 @@ export class OnboardingPage {
       .pipe(catchError(() => EMPTY))
       .subscribe((items) => this.portfolio.set(items));
   }
-
 }
