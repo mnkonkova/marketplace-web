@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, effect, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -41,6 +41,8 @@ export class PartnerLinkPage implements OnInit {
   private readonly api = inject(API_URL);
 
   private readonly modal = inject(NzModalService);
+
+  private readonly router = inject(Router);
 
   public readonly auth = inject(AuthSessionStore);
 
@@ -87,12 +89,21 @@ export class PartnerLinkPage implements OnInit {
     });
   }
 
-  public register(): void {
-    this.modal.create({
-      nzContent: AuthDialogComponent,
-      nzFooter: null,
-      nzWidth: 'min(420px, 92vw)',
-      nzData: { initialTab: 1 },
+  /** Аккаунта нет — уводим в регистрацию специалиста.
+   *
+   *  Не окном поверх этой страницы: аккаунт заводят один раз и вместе с
+   *  профилем, а не ради подтверждения кода. И всё равно привязка требует
+   *  подтверждённой почты — код, выданный сейчас, до клика по письму не
+   *  доживёт. Честнее сказать это сразу и позвать вернуться из бота, чем
+   *  показать отказ уже после регистрации.
+   */
+  public signup(): void {
+    // Код едет с человеком: лендинг пробрасывает его в мастер, мастер
+    // запоминает и предлагает привязку на последнем шаге, когда почта уже
+    // подтверждена. Без этого человеку пришлось бы возвращаться в бот за
+    // новой ссылкой — то есть проходить регистрацию и бросать её на полпути.
+    void this.router.navigate(['/for-specialists'], {
+      queryParams: { link: this.code() },
     });
   }
 

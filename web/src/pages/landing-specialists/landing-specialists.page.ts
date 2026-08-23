@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Title, Meta } from '@angular/platform-browser';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
@@ -22,6 +22,8 @@ export class LandingSpecialistsPage implements OnInit {
 
   private readonly router = inject(Router);
 
+  private readonly route = inject(ActivatedRoute);
+
   // Открывает AuthDialog на вкладке «Регистрация» с уже выбранным
   // типом аккаунта = specialist. Категорию юзер выбирает в кабинете
   // при первом заходе в /me/specialist — на лендинге сокращаем воронку
@@ -32,7 +34,13 @@ export class LandingSpecialistsPage implements OnInit {
    * ещё без аккаунта, сам открывает регистрацию.
    */
   public openRegisterSpecialist(): void {
-    void this.router.navigate(['/start'], { queryParams: { role: 'specialist' } });
+    // ?link — одноразовый код привязки к «Боту Работ». Приходит на лендинг
+    // со страницы /link/{code} и едет дальше в мастер: человек регистрируется
+    // и там же привязывает аккаунт, не возвращаясь в бот за новой ссылкой.
+    const link = this.route.snapshot.queryParamMap.get('link');
+    void this.router.navigate(['/start'], {
+      queryParams: { role: 'specialist', ...(link ? { link } : {}) },
+    });
   }
 
   // «Что вы получаете» для спецов. Один пункт помечен beta = true —

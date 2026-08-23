@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { API_URL } from '@shared/api/api-url.token';
 import { EMPTY, catchError, finalize, firstValueFrom, of } from 'rxjs';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
@@ -98,6 +100,10 @@ function isUsernameTaken(err: { error?: ApiErrorBody | null }): boolean {
 })
 export class OnboardingPage {
   private readonly meRepo = inject(MeRepository);
+
+  private readonly http = inject(HttpClient);
+
+  private readonly api = inject(API_URL);
 
   private readonly categoryApi = inject(CategoryApi);
 
@@ -228,6 +234,12 @@ export class OnboardingPage {
     // на /start?role=specialist (ссылка «я специалист» в окне заказчика), и
     // компонент при этом не пересоздаётся — snapshot остался бы пустым.
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      // ?link — одноразовый код привязки к «Боту Работ». Человек пришёл из
+      // бота, через страницу /link/{code} и лендинг. Держим его в памяти
+      // страницы и предлагаем привязку на последнем шаге: раньше нельзя —
+      // привязка требует подтверждённой почты.
+      const link = params.get('link');
+      if (link) this.linkCode.set(link);
       const role = params.get('role');
       if (role === 'client') {
         this.goClient();
@@ -579,6 +591,37 @@ export class OnboardingPage {
   }
 
   public readonly publishState = signal<'idle' | 'done'>('idle');
+
+  /** Код привязки к «Боту Работ», если человек пришёл оттуда. */
+  public readonly linkCode = signal('');
+
+  /** Что случилось с привязкой: пусто — ещё не пробовали. */
+  public readonly linkState = signal<'idle' | 'busy' | 'done' | 'error'>('idle');
+
+  public readonly linkError = signal('');
+
+  /** Привязать аккаунт к «Боту Работ» — тем же запросом, что и страница
+   *  /link/{code}. Здесь он уместен ровно на последнем шаге: до
+   *  подтверждения почты привязка не проходит, а письмо человек открывает
+   *  как раз тут. */
+  public linkBot(): void {
+    const code = this.linkCode();
+    if (!code || this.linkState() === 'busy') return;
+    this.linkState.set('busy');
+    this.linkError.set('');
+    this.http
+      .post(`${this.api}/partner/telegram-link`, { code })
+      .pipe(
+        catchError((err: { error?: ApiErrorBody | null }) => {
+          this.linkState.set('error');
+          this.linkError.set(
+            apiErrorMessage(err?.error ?? null, 'Не получилось привязать'),
+          );
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => this.linkState.set('done'));
+  }
 
   /**
    * Отправка на проверку прямо из мастера.
