@@ -158,6 +158,9 @@ export class OnboardingPage {
   /** Публичный ник для адреса /specialist/<ник>. Пусто — останется UUID. */
   public readonly username = signal('');
 
+  /** Показать кнопку «Войти» рядом с ошибкой: адрес уже занят. */
+  public readonly emailTaken = signal(false);
+
   public readonly categories = signal<Category[]>([]);
 
   public readonly productions = signal<Production[]>([]);
@@ -240,6 +243,14 @@ export class OnboardingPage {
     });
   }
 
+  public setEmail(value: string): void {
+    this.email.set(value);
+    if (this.emailTaken()) {
+      this.emailTaken.set(false);
+      this.error.set('');
+    }
+  }
+
   public startSpecialist(): void {
     this.stepIndex.set(0);
   }
@@ -265,9 +276,18 @@ export class OnboardingPage {
         source: 'onboarding',
       })
       .pipe(
-        catchError((err) => {
-          this.error.set(apiErrorMessage(err?.error, 'Не удалось создать аккаунт'));
-          // Возвращаем на шаг с почтой: обычно занят email или слаб пароль.
+        catchError((err: { error?: ApiErrorBody | null }) => {
+          const text = apiErrorMessage(err?.error ?? null, 'Не удалось создать аккаунт');
+          // Занятый email — самый частый случай, и «уже зарегистрирован» не
+          // подсказывает, что делать. Занятость видна только здесь: ручки
+          // «свободен ли адрес» в API нет, поэтому предлагаем выход прямо в
+          // тексте ошибки.
+          this.emailTaken.set(/уже зарегистрир|already exists/i.test(text));
+          this.error.set(
+            this.emailTaken()
+              ? 'На этот email уже есть аккаунт. Войдите в него или укажите другой адрес.'
+              : text,
+          );
           this.stepIndex.set(0);
           return EMPTY;
         }),

@@ -69,7 +69,7 @@
           type="email"
           autocomplete="email"
           [ngModel]="email()"
-          (ngModelChange)="email.set($event)"
+          (ngModelChange)="setEmail($event)"
           name="email"
           placeholder="you@example.com"
         />
@@ -320,7 +320,11 @@
          выставлялся, а показать его было негде — человек жал «Далее» и
          ничего не происходило. -->
     @if (error()) {
-    <p class="save-error" role="alert">{{ error() }}</p>
+    <p class="save-error" role="alert">
+      {{ error() }} @if (emailTaken()) {
+      <button type="button" class="link-inline" (click)="openLogin()">Войти в аккаунт</button>
+      }
+    </p>
     }
 
     <div class="nav">
