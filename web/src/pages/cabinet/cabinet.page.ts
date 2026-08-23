@@ -168,6 +168,10 @@ export class CabinetPage implements OnInit, OnDestroy {
   public readonly saving = signal(false);
 
   public readonly avatarUploading = signal(false);
+  // Аватар, загруженный в S3, но ещё не сохранённый в профиле: между этими
+  // двумя моментами человек жмёт другие кнопки, и ответы сервера не должны
+  // его затирать. Снимается вместе с успешным сохранением формы.
+  private pendingAvatar: string | null = null;
 
   // localAvatarUrl — blob:URL свежевыбранного файла. На iOS Safari
   // загрузка JPG через src= рисуется построчно («шторка»). Локальный
@@ -333,7 +337,17 @@ export class CabinetPage implements OnInit, OnDestroy {
       })
       .subscribe({
         next: (p) => {
-          this.applyProfile(p);
+          // Только username и updated_at, БЕЗ applyProfile: тот перезаписывает
+          // форму целиком ответом сервера. Username сохраняется отдельной
+          // кнопкой, посреди правки остальной формы, — и на этом месте у юзера
+          // пропадал только что загруженный аватар. Пропадал молча: превью
+          // рисуется из blob'а в памяти, картинка на экране оставалась, а в
+          // форме уже лежало старое значение с сервера, и «Сохранить»
+          // отправляло его обратно. Ровно так же терялись бы недописанные
+          // «о себе» и город.
+          this.profile.update((cur) => (cur ? { ...cur, username: p.username,
+                                                updated_at: p.updated_at } : p));
+          if (p.updated_at) this.setUpdatedAt(p.updated_at);
           ref?.onSaveSuccess();
           this.msg.success(newUsername ? 'Username сохранён' : 'Username сброшен');
         },
@@ -526,6 +540,7 @@ export class CabinetPage implements OnInit, OnDestroy {
         resized,
       );
       this.form.avatar_url = publicURL;
+      this.pendingAvatar = publicURL;
       this.avatarVersion.update((v) => v + 1);
       this.msg.success('Аватар загружен. Нажмите «Сохранить», чтобы применить.');
     } catch (err) {
@@ -540,6 +555,7 @@ export class CabinetPage implements OnInit, OnDestroy {
 
   public clearAvatar(): void {
     this.form.avatar_url = '';
+    this.pendingAvatar = '';        // снятие — тоже правка, и её тоже беречь
     const local = this.localAvatarUrl();
     if (local) URL.revokeObjectURL(local);
     this.localAvatarUrl.set(null);
@@ -646,6 +662,11 @@ export class CabinetPage implements OnInit, OnDestroy {
 
   private applyProfile(p: MeProfile): void {
     this.profile.set(p);
+    // Загруженный, но ещё не сохранённый аватар не отдаём серверному ответу:
+    // он про него не знает, а человек его уже видит на экране. Иначе форма
+    // получает старое значение, «Сохранить» отправляет его обратно, и фото
+    // исчезает — при том, что превью всё это время показывало новое.
+    const pending = this.pendingAvatar;
     // Синхронизируем sessionStorage updated_at — иначе после publish/
     // unpublish следующий save получит 409 «объект был изменён другим
     // запросом», потому что бэк bump'нул updated_at внутри publish-tx.
@@ -659,7 +680,7 @@ export class CabinetPage implements OnInit, OnDestroy {
     this.form = {
       display_name: p.display_name ?? '',
       bio: p.bio ?? '',
-      avatar_url: p.avatar_url ?? '',
+      avatar_url: pending ?? p.avatar_url ?? '',
       city: p.city ?? '',
       rate_min: p.rate_min ?? null,
       rate_max: p.rate_max ?? null,
@@ -740,6 +761,9 @@ export class CabinetPage implements OnInit, OnDestroy {
   }
 
   private doneSave(p: MeProfile, message: string): void {
+    // Сохранение прошло — аватар больше не «в подвешенном состоянии»,
+    // дальше правдой служит ответ сервера.
+    this.pendingAvatar = null;
     this.applyProfile(p);
     this.saving.set(false);
     this.msg.success(message);
