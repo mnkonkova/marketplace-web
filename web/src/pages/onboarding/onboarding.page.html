@@ -100,7 +100,7 @@
 
     <div class="who-grid">
       <app-avatar-picker
-        [url]="form().avatar_url"
+        [url]="localAvatarUrl() ?? form().avatar_url"
         [uploading]="avatarUploading()"
         [name]="form().display_name"
         hint="JPG, PNG, WEBP или HEIC — уменьшим до 512 px."
@@ -201,6 +201,30 @@
       ></textarea>
     </label>
     <p class="hint">{{ bioLength() }} символов · для 100% нужно от 100</p>
+    } @case ('link') {
+    <h1>Придумайте короткую ссылку</h1>
+    <p class="sub">
+      По ней клиенты будут открывать ваш профиль. Без неё адрес получится длинным и нечитаемым.
+    </p>
+
+    <div class="who-fields">
+      <label>
+        Ник
+        <span class="url-preview">
+          wayprmarket.ru/specialist/<b>{{ username().trim() || 'ваш-ник' }}</b>
+        </span>
+        <input
+          nz-input
+          nzSize="large"
+          [ngModel]="username()"
+          (ngModelChange)="username.set($event)"
+          name="username"
+          maxlength="30"
+          placeholder="например: anna-editor"
+        />
+      </label>
+      <p class="hint">Латиница, цифры, дефис и подчёркивание. От 3 до 30 символов.</p>
+    </div>
     } @case ('done') {
     <h1 class="center">Подтвердите почту</h1>
     <p class="sub center">

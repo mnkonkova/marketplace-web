@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { EMPTY, catchError, finalize } from 'rxjs';
+import { EMPTY, catchError, finalize, firstValueFrom } from 'rxjs';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
@@ -18,6 +18,8 @@ import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
 import { openClientRegister } from '@features/client-register/open-client-register';
 import { apiErrorMessage } from '@shared/api/api-error';
+import { putFileToPresignedUrl } from '@entities/me/repository/me-upload';
+import { resizeImageToBlob } from '@shared/image/resize';
 import { groupCategoriesByType } from '@shared/lib/category-groups';
 import { validateRate } from '@shared/lib/rate-validation';
 import { AvatarPickerComponent } from '@shared/ui/avatar-picker/avatar-picker.component';
@@ -38,6 +40,9 @@ const STEPS = [
   // лента, ни каталог — публиковать такой профиль бессмысленно.
   { id: 'work', label: 'Первая работа', skippable: false },
   { id: 'about', label: 'О себе', skippable: true },
+  // Ник — последнее перед финалом: к этому моменту человек уже видел своё
+  // имя и роли, и придумать короткий адрес ему проще, чем на старте.
+  { id: 'link', label: 'Ссылка', skippable: true },
   { id: 'done', label: 'Почта', skippable: false },
 ] as const;
 
@@ -98,12 +103,18 @@ export class OnboardingPage {
 
   public readonly avatarUploading = signal(false);
 
+  /** blob-ссылка на ужатый файл: показываем ещё до ответа S3. */
+  public readonly localAvatarUrl = signal<string | null>(null);
+
   // Учётные данные держим до шага «Кто вы»: регистрация требует имя, а его
   // спрашивают там. Отдельным окном форму больше не показываем — она часть
   // мастера, первым шагом.
   public readonly email = signal('');
 
   public readonly password = signal('');
+
+  /** Публичный ник для адреса /specialist/<ник>. Пусто — останется UUID. */
+  public readonly username = signal('');
 
   public readonly categories = signal<Category[]>([]);
 
@@ -138,6 +149,12 @@ export class OnboardingPage {
       return /.+@.+\..+/.test(this.email().trim()) && this.password().length > 0;
     }
     if (this.step() === 'work') return this.portfolio().length > 0;
+    if (this.step() === 'link') {
+      const u = this.username().trim();
+      // Пустой ник допустим — шаг пропускаемый; непустой должен подойти
+      // бэкенду, иначе он вернёт 400 уже на сохранении.
+      return u === '' || /^[a-z0-9_-]{3,30}$/.test(u);
+    }
     if (this.step() !== 'who') return true;
     return this.form().display_name.trim().length > 0 && this.selectedCategories().size > 0;
   });
@@ -244,7 +261,7 @@ export class OnboardingPage {
       this.saveProfile(() => this.stepIndex.set(i + 1));
       return;
     }
-    if (STEPS[i].id === 'skills' || STEPS[i].id === 'about') {
+    if (STEPS[i].id === 'skills' || STEPS[i].id === 'about' || STEPS[i].id === 'link') {
       this.saveProfile(() => this.stepIndex.set(i + 1));
       return;
     }
@@ -286,31 +303,59 @@ export class OnboardingPage {
     if (!file) return;
     // Файл уходит в наш S3 через presign — без аккаунта его некуда класть.
     if (!this.auth.isLoggedIn()) {
-      this.ensureAccount(() => this.uploadAvatar(file));
+      this.ensureAccount(() => void this.uploadAvatar(file));
       return;
     }
-    this.uploadAvatar(file);
+    void this.uploadAvatar(file);
   }
 
-  private uploadAvatar(file: File): void {
+  /**
+   * Загрузка аватара повторяет проверенный путь кабинета, а не сокращённый:
+   * фото с телефона приходит на 8-15 МБ и в HEIC, и без ресайза загрузка
+   * либо висит минутами, либо роняет вкладку Safari на decode.
+   *
+   * Порядок: проверить тип и размер → ужать канвасом до 512px → показать
+   * локальный blob сразу → отдать в S3 по presigned-ссылке.
+   */
+  private async uploadAvatar(original: File): Promise<void> {
+    if (!original.type.startsWith('image/')) {
+      this.msg.error('Аватар: ожидается картинка (jpg, png, webp, heic)', { nzDuration: 6000 });
+      return;
+    }
+    if (original.size > 50 * 1024 * 1024) {
+      const sizeMB = (original.size / (1024 * 1024)).toFixed(1);
+      this.msg.error(`Файл ${sizeMB} МБ слишком большой. Максимум 50 МБ.`, { nzDuration: 6000 });
+      return;
+    }
+
     this.avatarUploading.set(true);
-    this.meRepo
-      .presignAvatarUpload(file)
-      .pipe(
-        catchError((err) => {
-          this.msg.error(apiErrorMessage(err?.error, 'Не удалось загрузить фото'));
-          return EMPTY;
-        }),
-        finalize(() => this.avatarUploading.set(false)),
-      )
-      .subscribe(async (presign) => {
-        await fetch(presign.upload_url, { method: 'PUT', body: file });
-        this.form.update((f) => ({ ...f, avatar_url: presign.public_url }));
-      });
+    try {
+      const { file: resized } = await resizeImageToBlob(original, 512, 0.9);
+
+      // Локальный предпросмотр из ОЗУ — картинка появляется сразу, не
+      // дожидаясь ответа S3. Прошлый blob освобождаем, иначе течёт память.
+      const prev = this.localAvatarUrl();
+      this.localAvatarUrl.set(URL.createObjectURL(resized));
+      if (prev) URL.revokeObjectURL(prev);
+
+      const presign = await firstValueFrom(this.meRepo.presignAvatarUpload(resized));
+      await putFileToPresignedUrl(presign.upload_url, resized);
+      this.setField('avatar_url', presign.public_url);
+    } catch (err) {
+      this.error.set(`Не удалось загрузить фото: ${(err as Error).message}`);
+      const local = this.localAvatarUrl();
+      if (local) URL.revokeObjectURL(local);
+      this.localAvatarUrl.set(null);
+    } finally {
+      this.avatarUploading.set(false);
+    }
   }
 
   public clearAvatar(): void {
-    this.form.update((f) => ({ ...f, avatar_url: '' }));
+    this.setField('avatar_url', '');
+    const local = this.localAvatarUrl();
+    if (local) URL.revokeObjectURL(local);
+    this.localAvatarUrl.set(null);
   }
 
   /** Загрузчик работы — тот же диалог, что в кабинете. */
@@ -399,6 +444,8 @@ export class OnboardingPage {
           : undefined,
         skills: { skill_ids: [...this.selectedSkills()] },
         social_links: f.social_links,
+        // undefined = не трогать: пустую строку бэкенд понял бы как сброс.
+        username: this.username().trim() || undefined,
       })
       .pipe(
         catchError((err) => {

@@ -383,3 +383,16 @@
   line-height: 1.6;
   resize: vertical;
 }
+
+// Живой предпросмотр адреса: человек видит, что именно получится, до того
+// как нажмёт «Далее».
+.url-preview {
+  color: var(--text-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  word-break: break-all;
+
+  b {
+    color: var(--accent);
+  }
+}
