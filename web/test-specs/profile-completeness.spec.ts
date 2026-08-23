@@ -50,10 +50,12 @@ describe('profile-completeness', () => {
     const checks = completenessChecks(emptyProfile(), []);
     expect(completenessPercent(checks)).toBe(0);
     const missing = missingWeightByTab(checks);
-    // 5 (имя) + 10 (аватар) + 15 (bio) + 5 (студия) + 5 (цена)
-    expect(missing.basic).toBe(40);
-    expect(missing.skills).toBe(10);
-    expect(missing.portfolio).toBe(30);
+    // 5 (имя) + 10 (аватар) + 10 (о себе) + 5 (студия) + 5 (цена)
+    expect(missing.basic).toBe(35);
+    // 10 (роли) + 10 (навыки) — навыки переехали сюда из мастера регистрации.
+    expect(missing.skills).toBe(20);
+    // 15 (первая работа) + 10 (три работы)
+    expect(missing.portfolio).toBe(25);
     expect(missing.contacts).toBe(15);
     expect(missing.publish).toBe(5);
   });
@@ -70,6 +72,9 @@ describe('profile-completeness', () => {
         username: 'anya',
         social_links: { telegram: '@anya' },
         contact_email: 'a@b.c',
+        // Навыки появились в списке вместе с их удалением из мастера:
+        // без них профиль больше не считается заполненным на 100%.
+        skill_ids: ['sk-1'],
       }),
       [work('1'), work('2'), work('3')],
     );
@@ -82,7 +87,18 @@ describe('profile-completeness', () => {
 
   it('одна работа закрывает portfolio_1, но не portfolio_3', () => {
     const checks = completenessChecks(emptyProfile(), [work('1')]);
-    expect(missingWeightByTab(checks).portfolio).toBe(15);
+    // 10, а не 15: вес «трёх работ» ушёл навыкам, когда те переехали из
+    // мастера регистрации в «Что усилит профиль».
+    expect(missingWeightByTab(checks).portfolio).toBe(10);
+  });
+
+  it('навыки участвуют в проценте и живут на вкладке «Навыки»', () => {
+    const без = completenessChecks(emptyProfile());
+    expect(без.find((c) => c.id === 'skills')?.ok).toBeFalse();
+    expect(missingWeightByTab(без).skills).toBeGreaterThan(0);
+
+    const с = completenessChecks(emptyProfile({ skill_ids: ['sk-1'] }));
+    expect(с.find((c) => c.id === 'skills')?.ok).toBeTrue();
   });
 
   it('нулевая ставка не считается заполненной ценой', () => {
