@@ -37,6 +37,20 @@
   } @else {
   <section class="onb-card">
     <!-- Индикатор шагов: пройденные зелёные, текущий белый. -->
+    <!-- Телефон: семь подписанных кружков в строку не помещаются, поэтому
+         там полоски и «ШАГ N ИЗ 7», как в mobile_registration.html. -->
+    <div class="steps-mobile">
+      <div class="stepno">
+        ШАГ {{ stepIndex()! + 1 }} ИЗ {{ steps.length }} @if (steps[stepIndex()!].skippable) { ·
+        можно пропустить }
+      </div>
+      <div class="bars">
+        @for (s of steps; track s.id; let i = $index) {
+        <span class="bar" [class.done]="i <= stepIndex()!"></span>
+        }
+      </div>
+    </div>
+
     <div class="steps">
       @for (s of steps; track s.id; let i = $index) {
       <div class="s" [class.done]="i < stepIndex()!" [class.cur]="i === stepIndex()">

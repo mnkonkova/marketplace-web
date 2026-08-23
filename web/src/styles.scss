@@ -1,3 +1,4 @@
+@use 'design' as design;
 @use 'editor' as editor;
 
 /* Полоса прокрутки резервирует место всегда: вкладки кабинета разной
@@ -984,7 +985,7 @@ h6 {
 .client-register-modal {
   .ant-modal-content {
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--r-panel);
     background: var(--surface);
   }
 
@@ -1004,6 +1005,14 @@ h6 {
 
   input[nz-input]::placeholder {
     color: var(--text-dim);
+  }
+
+  /* Фокус повторяем адресно: общее правило дизайн-системы проигрывает этому
+     блоку по специфичности (оба с !important), и на поле проступала обычная
+     рамка вместо кораллового кольца. */
+  input[nz-input]:focus {
+    border-color: var(--cta) !important;
+    box-shadow: 0 0 0 3px rgba(240, 85, 60, 0.15) !important;
   }
 }
 
@@ -1044,4 +1053,19 @@ h6 {
       right: 6px;
     }
   }
+}
+
+/* Фокус и активные состояния — коралловые во всём приложении. ng-zorro и
+   браузер по умолчанию рисуют синий: он проступал на полях модалки
+   заказчика и шага «Аккаунт» в мастере. */
+@include design.focus-ring;
+
+/* Дизайн-система на поверхностях, которые её используют. Глобально в :root
+   не ставим: лента и главная живут на своей палитре, и менять их вид этой
+   задачей не просили. Источник значений один — shared/scss/_design.scss. */
+.cabinet,
+.onb,
+.client-register-modal,
+.results {
+  @include design.tokens;
 }

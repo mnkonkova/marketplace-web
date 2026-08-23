@@ -4,19 +4,7 @@
 // Мастер регистрации. Палитра и геометрия — как в кабинете и в макетах
 // desktop_registration.html / mobile_registration.html.
 .onb {
-  --bg: #0b0c0e;
-  --bg-elevated: #111316;
-  --surface: #15181c;
-  --surface-hover: #181c22;
-  --border: #23272d;
-  --border-strong: #2c313a;
-  --text: #f2f4f6;
-  --text-muted: #9aa3ad;
-  --text-dim: #6b7280;
-  --cta: #f0553c;
-  --cta-hover: #ff6a52;
-  --accent: #2fbd8f;
-  --accent-dim: rgba(47, 189, 143, 0.1);
+  // Токены — из общей дизайн-системы (shared/scss/_design.scss).
 
   display: flex;
   justify-content: center;
@@ -493,4 +481,44 @@
   font-size: 15px;
   line-height: 1.45;
   text-align: center;
+}
+
+// Компактный индикатор для телефона: полоски и подпись «ШАГ N ИЗ 7».
+// Семь кружков с подписями в строку на 390px не помещаются.
+.steps-mobile {
+  display: none;
+  margin-bottom: 22px;
+
+  .stepno {
+    margin-bottom: 10px;
+    color: var(--text-dim);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+
+  .bars {
+    display: flex;
+    gap: 4px;
+  }
+
+  .bar {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border-strong);
+
+    &.done {
+      background: var(--cta);
+    }
+  }
+}
+
+@media (max-width: bp.$touch) {
+  .steps {
+    display: none;
+  }
+
+  .steps-mobile {
+    display: block;
+  }
 }

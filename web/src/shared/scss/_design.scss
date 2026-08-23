@@ -1,0 +1,165 @@
+// Дизайн-система: один источник токенов и базовых классов для кабинета,
+// мастера регистрации, окна заказчика и выдачи.
+//
+// До этого каждый экран держал свои радиусы и цвета: кабинет переопределял
+// палитру у себя, мастер — у себя, выдача жила на общесайтовой. Значения
+// расходились при первой же правке, а на фокусе полей проступал синий
+// дефолт ng-zorro — самое заметное «не в стиле».
+//
+// Подключается один раз глобально (styles.scss). Экранам остаётся ссылаться
+// на переменные, а не заводить свои.
+
+@mixin tokens {
+  --bg: #0b0c0e;
+  --bg-elevated: #111316; // --bg-2 в макетах: поля, вторичные кнопки
+  --surface: #15181c; // --card
+  --surface-hover: #181c22; // --card-2
+  --border: #23272d; // --line: разделители
+  --border-strong: #2c313a; // --line-2: рамки полей и карточек
+  --border-hover: #3a4049;
+  --text: #f2f4f6;
+  --text-muted: #9aa3ad;
+  --text-dim: #6b7280;
+  --cta: #f0553c;
+  --cta-hover: #ff6a52;
+  --accent: #2fbd8f;
+  --accent-dim: rgba(47, 189, 143, 0.1);
+  --accent-strong: #1f6f57;
+  --danger: #ff6470;
+
+  // Радиусы: карточки 16, панели и окна 18, поля и кнопки 10-11.
+  --r-card: 16px;
+  --r-panel: 18px;
+  --r-field: 10px;
+  --r-btn: 11px;
+}
+
+// Акцент фокуса — коралловый. ng-zorro и браузер по умолчанию рисуют синий,
+// и он проступал на полях модалки и шага «Аккаунт».
+@mixin focus-ring {
+  input:focus,
+  textarea:focus,
+  select:focus,
+  .ant-input:focus,
+  .ant-input-focused,
+  .ant-input-affix-wrapper:focus-within,
+  .ant-select-focused .ant-select-selector {
+    border-color: var(--cta) !important;
+    box-shadow: 0 0 0 3px rgba(240, 85, 60, 0.15) !important;
+    outline: none;
+  }
+
+  // Чекбоксы, радио и переключатели ng-zorro — тоже коралловые.
+  .ant-checkbox-checked .ant-checkbox-inner,
+  .ant-radio-checked .ant-radio-inner,
+  .ant-switch-checked {
+    border-color: var(--cta) !important;
+    background: var(--cta) !important;
+  }
+
+  .ant-radio-checked .ant-radio-inner::after {
+    background: #fff !important;
+  }
+
+  .ant-checkbox-wrapper:hover .ant-checkbox-inner,
+  .ant-radio-wrapper:hover .ant-radio-inner {
+    border-color: var(--cta) !important;
+  }
+}
+
+// Поле ввода: единый вид для всех поверхностей.
+@mixin field {
+  min-height: 44px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-field);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+
+  &::placeholder {
+    color: var(--text-dim);
+  }
+}
+
+// Селект со своей кареткой: нативная стрелка уезжает к правому краю поля и
+// отрывается от названия.
+@mixin select-field {
+  @include field;
+
+  appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa3ad' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px 16px;
+}
+
+@mixin btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: var(--r-btn);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@mixin btn-primary {
+  @include btn-base;
+
+  background: var(--cta);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: var(--cta-hover);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@mixin btn-ghost {
+  @include btn-base;
+
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text);
+
+  &:hover {
+    border-color: var(--border-hover);
+  }
+}
+
+// Карточка: обложка обрезается по скруглению, поэтому overflow обязателен.
+@mixin card {
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  transition: 0.15s;
+
+  &:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+  }
+}
+
+@mixin chip {
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 15px;
+  cursor: pointer;
+}
