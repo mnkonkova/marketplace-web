@@ -15,7 +15,9 @@ describe('ClientRegisterDialog', () => {
 
   function setup() {
     TestBed.resetTestingModule();
-    auth = jasmine.createSpyObj<AuthSessionStore>('auth', ['register']);
+    auth = jasmine.createSpyObj<AuthSessionStore>('auth', ['register', 'emailAvailable']);
+    // По умолчанию адрес свободен — проверка идёт перед регистрацией.
+    auth.emailAvailable.and.returnValue(of(true));
     router = jasmine.createSpyObj<Router>('router', ['navigate']);
     ref = jasmine.createSpyObj<NzModalRef>('ref', ['close']);
     TestBed.configureTestingModule({
@@ -59,6 +61,24 @@ describe('ClientRegisterDialog', () => {
     cmp.submit();
     expect(router.navigate).toHaveBeenCalledWith(['/search']);
     expect(ref.close).toHaveBeenCalledWith(true);
+  });
+
+  it('занятый адрес не доходит до регистрации', () => {
+    const cmp = setup();
+    auth.emailAvailable.and.returnValue(of(false));
+    fill(cmp);
+    cmp.submit();
+    expect(auth.register).not.toHaveBeenCalled();
+    expect(cmp.emailTaken()).toBeTrue();
+    expect(cmp.loading()).toBeFalse();
+  });
+
+  it('короткий пароль не отправляется', () => {
+    const cmp = setup();
+    cmp.form.setValue({ display_name: 'ООО', email: 'a@b.cd', password: 'abc' });
+    cmp.submit();
+    expect(auth.emailAvailable).not.toHaveBeenCalled();
+    expect(auth.register).not.toHaveBeenCalled();
   });
 
   it('пустую форму не отправляет', () => {

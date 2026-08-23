@@ -558,10 +558,6 @@ export class OnboardingPage {
     });
   }
 
-  public finish(): void {
-    this.saveProfile(() => void this.router.navigate(['/me']));
-  }
-
   public readonly resendState = signal<'idle' | 'sent' | 'error'>('idle');
 
   /** Письмо могло не дойти — даём отправить ещё раз, не выходя из мастера. */

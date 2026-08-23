@@ -31,6 +31,11 @@
       formControlName="password"
       placeholder="Не короче 8 символов"
     />
+    @if (form.controls.password.value?.length && form.controls.password.invalid) {
+    <span class="cr-hint"
+      >Ещё {{ 8 - (form.controls.password.value?.length ?? 0) }} символа — минимум 8.</span
+    >
+    }
   </label>
 
   @if (backendError()) {
