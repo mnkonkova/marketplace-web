@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EMPTY, catchError, finalize } from 'rxjs';
@@ -142,14 +143,17 @@ export class OnboardingPage {
   });
 
   public constructor() {
-    // С лендинга приходят с уже выбранной ролью — развилку показывать
-    // незачем. Заказчику мастер не нужен вовсе: ему в каталог.
-    const role = this.route.snapshot.queryParamMap.get('role');
-    if (role === 'client') {
-      this.goClient();
-      return;
-    }
-    if (role === 'specialist') this.startSpecialist();
+    // Роль слушаем, а не читаем один раз: со страницы /start можно попасть
+    // на /start?role=specialist (ссылка «я специалист» в окне заказчика), и
+    // компонент при этом не пересоздаётся — snapshot остался бы пустым.
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const role = params.get('role');
+      if (role === 'client') {
+        this.goClient();
+        return;
+      }
+      if (role === 'specialist' && this.stepIndex() === null) this.startSpecialist();
+    });
 
     this.categoryApi.list().subscribe((items) => this.categories.set(items));
     this.productionApi.listActive().subscribe((r) => this.productions.set(r.items));
