@@ -406,11 +406,6 @@ export class CabinetPage implements OnInit, OnDestroy {
       this.goToTab('skills');
       return;
     }
-    if (publish && !this.form.bio.trim()) {
-      this.error.set('Заполните описание перед публикацией.');
-      this.goToTab('basic');
-      return;
-    }
     this.saving.set(true);
 
     // Одной транзакцией: профиль + категории + навыки под одним updated_at.
