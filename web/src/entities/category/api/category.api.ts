@@ -5,6 +5,8 @@ import { API_URL } from '@shared/api/api-url.token';
 import { Category, CategoryStat, Skill } from '../model/category.types';
 
 export interface SkillsQuery {
+  /** Несколько категорий одним запросом — вместо N запросов по одной. */
+  categories?: string[];
   category?: string;
   kind?: 'tool' | 'platform' | 'genre' | 'skill';
 }
@@ -35,7 +37,11 @@ export class CategoryApi {
 
   public skills(query: SkillsQuery = {}): Observable<Skill[]> {
     let params = new HttpParams();
+    // Категорий может быть несколько: кабинет спрашивает навыки сразу по всем
+    // выбранным ролям. Раньше это был запрос на каждую — пять ролей давали
+    // пять запросов и пять CORS-preflight'ов на один клик.
     if (query.category) params = params.set('category', query.category);
+    if (query.categories?.length) params = params.set('category', query.categories.join(','));
     if (query.kind) params = params.set('kind', query.kind);
     return this.http
       .get<{ items: Skill[] }>(`${this.api}/skills`, { params })

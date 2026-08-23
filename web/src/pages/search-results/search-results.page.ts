@@ -174,6 +174,29 @@ export class SearchResultsPage implements OnInit {
     this.onFiltersChange();
   }
 
+  /**
+   * Подгрузка превью по требованию.
+   *
+   * На выдаче до полусотни карточек, и autoplay на каждой означал загрузку
+   * всех роликов сразу — сотни мегабайт за один заход. Источник подставляем
+   * только когда карточку действительно смотрят.
+   */
+  public playPreview(ev: Event): void {
+    const video = ev.currentTarget as HTMLVideoElement;
+    const src = video.dataset['src'];
+    if (src && !video.src) video.src = src;
+    void video.play().catch(() => {
+      // Автовоспроизведение могли запретить — постер остаётся на месте.
+    });
+  }
+
+  public stopPreview(ev: Event): void {
+    const video = ev.currentTarget as HTMLVideoElement;
+    video.pause();
+    // Позицию сбрасываем, чтобы следующее наведение начинало ролик сначала.
+    video.currentTime = 0;
+  }
+
   public onFiltersChange(): void {
     this.syncUrl();
   }

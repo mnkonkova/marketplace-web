@@ -8,8 +8,9 @@ import {
   inject,
   signal,
   viewChild,
+  DestroyRef,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -18,7 +19,17 @@ import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
-import { EMPTY, Observable, firstValueFrom, forkJoin, of, throwError } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  firstValueFrom,
+  forkJoin,
+  of,
+  throwError,
+  Subject,
+  switchMap,
+  map,
+} from 'rxjs';
 import { catchError, finalize, timeout } from 'rxjs/operators';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { MeUser } from '@entities/auth/model/auth.types';
@@ -232,7 +243,10 @@ export class CabinetPage implements OnInit, OnDestroy {
   /** Снимок сохранённого состояния — для «есть несохранённые изменения». */
   private savedSnapshot = '';
 
+  private readonly destroyRef = inject(DestroyRef);
+
   public ngOnInit(): void {
+    this.subscribeSkillsStream();
     if (!this.auth.isLoggedIn()) {
       this.router.navigate(['/']);
       return;
@@ -345,8 +359,9 @@ export class CabinetPage implements OnInit, OnDestroy {
           // форме уже лежало старое значение с сервера, и «Сохранить»
           // отправляло его обратно. Ровно так же терялись бы недописанные
           // «о себе» и город.
-          this.profile.update((cur) => (cur ? { ...cur, username: p.username,
-                                                updated_at: p.updated_at } : p));
+          this.profile.update((cur) =>
+            cur ? { ...cur, username: p.username, updated_at: p.updated_at } : p,
+          );
           if (p.updated_at) this.setUpdatedAt(p.updated_at);
           ref?.onSaveSuccess();
           this.msg.success(newUsername ? 'Username сохранён' : 'Username сброшен');
@@ -555,7 +570,7 @@ export class CabinetPage implements OnInit, OnDestroy {
 
   public clearAvatar(): void {
     this.form.avatar_url = '';
-    this.pendingAvatar = '';        // снятие — тоже правка, и её тоже беречь
+    this.pendingAvatar = ''; // снятие — тоже правка, и её тоже беречь
     const local = this.localAvatarUrl();
     if (local) URL.revokeObjectURL(local);
     this.localAvatarUrl.set(null);
@@ -705,6 +720,20 @@ export class CabinetPage implements OnInit, OnDestroy {
   //
   // rebaseline=true — вызов сразу после загрузки профиля: подрезка навыков
   // не должна выглядеть как «пользователь что-то поменял».
+  /** Один запрос на все выбранные роли; предыдущий отменяется. */
+  private subscribeSkillsStream(): void {
+    this.skillsRequest$
+      .pipe(
+        switchMap(({ codes, rebaseline }) =>
+          this.categoryApi
+            .skills({ categories: codes })
+            .pipe(map((list) => ({ lists: [list], rebaseline }))),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(({ lists, rebaseline }) => this.applyRecommendedSkills(lists, rebaseline));
+  }
+
   private refreshRecommendedSkills(rebaseline = false): void {
     const codes = [...this.selectedCategories()];
     if (codes.length === 0) {
@@ -713,7 +742,18 @@ export class CabinetPage implements OnInit, OnDestroy {
       if (rebaseline) this.savedSnapshot = this.snapshot();
       return;
     }
-    forkJoin(codes.map((c) => this.categoryApi.skills({ category: c }))).subscribe((lists) => {
+    // switchMap, а не подписка на каждый клик: ответы не отменялись и
+    // приходили не по порядку. Медленный ответ от прежнего набора категорий
+    // приходил последним, и pruneSelectedSkills вычищал навыки, законные для
+    // текущего набора — потеря уезжала прямо в сохранение.
+    this.skillsRequest$.next({ codes, rebaseline });
+  }
+
+  /** Поток запросов навыков: последний отменяет предыдущий. */
+  private readonly skillsRequest$ = new Subject<{ codes: string[]; rebaseline: boolean }>();
+
+  private applyRecommendedSkills(lists: Skill[][], rebaseline: boolean): void {
+    {
       const seen = new Set<string>();
       const merged: Skill[] = [];
       for (const list of lists) {
@@ -727,7 +767,7 @@ export class CabinetPage implements OnInit, OnDestroy {
       this.recommendedSkills.set(merged);
       this.pruneSelectedSkills(new Set(merged.map((s) => s.id)));
       if (rebaseline) this.savedSnapshot = this.snapshot();
-    });
+    }
   }
 
   private pruneSelectedSkills(allowedRecommendedIds: Set<string>): void {

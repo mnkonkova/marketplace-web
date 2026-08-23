@@ -316,14 +316,17 @@ export class OnboardingPage {
         finalize(() => this.saving.set(false)),
       )
       .subscribe(() => {
-        // Профиль специалиста создаётся вместе с аккаунтом — забираем его
-        // updated_at, иначе первое же сохранение упрётся в 409.
+        // Профиль создаётся вместе с аккаунтом — забираем updated_at ДО
+        // продолжения: раньше done() уходил параллельно, два ответа гонялись
+        // за одну ячейку, и следующее сохранение ловило лишний 409.
         this.meRepo
           .getProfile()
-          .pipe(catchError(() => EMPTY))
-          .subscribe((p) => this.sessionStorage.setItem('updated_at', p.updated_at));
-        this.flushPendingAvatar();
-        done();
+          .pipe(catchError(() => of(null)))
+          .subscribe((p) => {
+            if (p) this.sessionStorage.setItem('updated_at', p.updated_at);
+            this.flushPendingAvatar();
+            done();
+          });
       });
   }
 
@@ -706,11 +709,15 @@ export class OnboardingPage {
       .pipe(catchError(() => EMPTY))
       .subscribe((p) => {
         this.sessionStorage.setItem('updated_at', p.updated_at);
+        // Пока ответ шёл, человек мог начать вводить имя или город: мастер
+        // открыт сразу, не дожидаясь профиля. Тронутые поля не перебиваем.
+        const cur = this.form();
+        const keep = <T>(mine: T, theirs: T, filled: boolean): T => (filled ? mine : theirs);
         this.form.set({
           ...emptyProfileForm(),
-          display_name: p.display_name ?? '',
-          bio: p.bio ?? '',
-          city: p.city ?? '',
+          display_name: keep(cur.display_name, p.display_name ?? '', !!cur.display_name.trim()),
+          bio: keep(cur.bio, p.bio ?? '', !!cur.bio.trim()),
+          city: keep(cur.city, p.city ?? '', !!cur.city.trim()),
           avatar_url: p.avatar_url ?? '',
           currency: p.currency || 'RUB',
           rate_min: p.rate_min ?? null,
@@ -743,6 +750,7 @@ export class OnboardingPage {
       this.tools.set([]);
       return;
     }
-    this.categoryApi.skills({ category: codes[0] }).subscribe((items) => this.tools.set(items));
+    // Один запрос на все выбранные роли, а не по запросу на каждую.
+    this.categoryApi.skills({ categories: codes }).subscribe((items) => this.tools.set(items));
   }
 }

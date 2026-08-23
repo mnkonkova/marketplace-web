@@ -151,15 +151,23 @@
         @if (spec.preview_animated_url) {
         <img [src]="spec.preview_animated_url" [alt]="spec.display_name" loading="lazy" />
         } @else if (spec.preview_video_url) {
+        <!--
+          Видео не грузим, пока карточку не увидели и не навели: раньше на
+          выдаче стояло autoplay + preload=metadata на КАЖДОЙ карточке, и
+          страница тянула сотни мегабайт за один заход. Теперь виден постер,
+          а ролик подгружается по наведению или тапу.
+        -->
         <video
-          [src]="spec.preview_video_url"
           [poster]="spec.preview_thumb_url || null"
-          autoplay
           muted
           loop
           playsinline
           webkit-playsinline
-          preload="metadata"
+          preload="none"
+          [attr.data-src]="spec.preview_video_url"
+          (mouseenter)="playPreview($event)"
+          (touchstart)="playPreview($event)"
+          (mouseleave)="stopPreview($event)"
         ></video>
         } @else if (spec.avatar_url) {
         <img [src]="spec.avatar_url" [alt]="spec.display_name" />
