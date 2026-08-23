@@ -6,8 +6,10 @@
   gap: 14px;
 
   h2 {
-    margin: 0;
-    font-size: clamp(20px, 1.2vw + 16px, 24px);
+    /* Справа место под крестик: заголовок в две строки наезжал на него. */
+    margin: 0 44px 0 0;
+    font-size: clamp(19px, 1.2vw + 15px, 24px);
+    line-height: 1.25;
   }
 }
 

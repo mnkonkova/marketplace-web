@@ -316,6 +316,13 @@
     </ul>
     } }
 
+    <!-- Ошибка сохранения. Блок потерялся при перестройке шаблона: сигнал
+         выставлялся, а показать его было негде — человек жал «Далее» и
+         ничего не происходило. -->
+    @if (error()) {
+    <p class="save-error" role="alert">{{ error() }}</p>
+    }
+
     <div class="nav">
       <button type="button" class="btn ghost" (click)="back()">← Назад</button>
       @if (steps[stepIndex()!].skippable) {

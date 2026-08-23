@@ -980,9 +980,7 @@ h6 {
   }
 }
 
-/* Окно регистрации заказчика. На телефоне раскрываем почти на весь экран:
-   в узкой модалке кнопка отправки прячется за клавиатурой, а это последний
-   шаг перед поиском — терять его нельзя. */
+/* Окно регистрации заказчика. */
 .client-register-modal {
   .ant-modal-content {
     border: 1px solid var(--border);
@@ -993,29 +991,57 @@ h6 {
   .ant-modal-body {
     padding: clamp(20px, 3vw, 28px);
   }
+
+  /* Поля тёмные, как везде: ant отдаёт им светлую тему, и на тёмном фоне
+     они выглядели чужеродными плашками. */
+  input[nz-input] {
+    border: 1px solid var(--border-strong, #2c313a) !important;
+    border-radius: 10px !important;
+    background: var(--bg-elevated, #111316) !important;
+    color: var(--text) !important;
+    font-size: 16px !important;
+  }
+
+  input[nz-input]::placeholder {
+    color: var(--text-dim);
+  }
 }
 
+/* Телефон: не узкое окно посреди экрана, а нижний лист — как шторки в
+   кабинете. Прижат к низу, поэтому кнопка отправки оказывается под
+   большим пальцем, а не под клавиатурой. */
 @media (max-width: 600px) {
+  /* Обёртка ng-zorro держит собственные поля по бокам — из-за них лист был
+     уже экрана и висел с щелями по краям. */
+  .ant-modal-wrap:has(.client-register-modal) {
+    padding: 0;
+  }
+
   .client-register-modal {
-    top: 0;
+    top: auto;
+    bottom: 0;
+    width: 100vw !important;
     max-width: 100vw;
     margin: 0;
     padding-bottom: 0;
+    vertical-align: bottom;
 
     .ant-modal-content {
-      min-height: 100vh;
-      min-height: 100dvh;
       border: none;
-      border-radius: 0;
+      border-radius: 18px 18px 0 0;
     }
 
     .ant-modal-body {
-      /* Прокрутка внутри окна, а не всей страницы: фон под модалкой стоит,
-         а форма с открытой клавиатурой остаётся доступной. */
-      max-height: 100dvh;
+      max-height: 90dvh;
       overflow-y: auto;
-      padding-bottom: max(24px, env(safe-area-inset-bottom));
       overscroll-behavior: contain;
+      padding: 22px 18px max(22px, env(safe-area-inset-bottom));
+    }
+
+    /* Крестик у самого края: заголовок к нему подъезжал вплотную. */
+    .ant-modal-close {
+      top: 8px;
+      right: 6px;
     }
   }
 }

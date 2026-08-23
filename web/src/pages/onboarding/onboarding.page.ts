@@ -18,7 +18,7 @@ import { Production } from '@entities/production/model/production.types';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
 import { openClientRegister } from '@features/client-register/open-client-register';
-import { apiErrorMessage } from '@shared/api/api-error';
+import { ApiErrorBody, apiErrorMessage } from '@shared/api/api-error';
 import { putFileToPresignedUrl } from '@entities/me/repository/me-upload';
 import { resizeImageToBlob } from '@shared/image/resize';
 import { groupCategoriesByType } from '@shared/lib/category-groups';
@@ -50,6 +50,11 @@ const STEPS = [
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
+
+/** 409 приходит и на занятый ник, и на устаревший updated_at — различаем. */
+function isUsernameTaken(err: { error?: ApiErrorBody | null }): boolean {
+  return err?.error?.error === 'username_taken';
+}
 
 /**
  * Онбординг специалиста.
@@ -95,6 +100,8 @@ export class OnboardingPage {
 
   private readonly auth = inject(AuthSessionStore);
 
+  private readonly sessionStorage = window.sessionStorage;
+
   public readonly steps = STEPS;
 
   /** null — ещё на экране выбора роли. */
@@ -137,6 +144,9 @@ export class OnboardingPage {
 
   /** blob-ссылка на ужатый файл: показываем ещё до ответа S3. */
   public readonly localAvatarUrl = signal<string | null>(null);
+
+  /** Фото, выбранное до регистрации: уедет, как только появится аккаунт. */
+  private readonly pendingAvatar = signal<File | null>(null);
 
   // Учётные данные держим до шага «Кто вы»: регистрация требует имя, а его
   // спрашивают там. Отдельным окном форму больше не показываем — она часть
@@ -263,7 +273,10 @@ export class OnboardingPage {
         }),
         finalize(() => this.saving.set(false)),
       )
-      .subscribe(() => done());
+      .subscribe(() => {
+        this.flushPendingAvatar();
+        done();
+      });
   }
 
   public goClient(): void {
@@ -333,11 +346,6 @@ export class OnboardingPage {
   public onAvatarPicked(ev: Event): void {
     const file = (ev.target as HTMLInputElement).files?.[0];
     if (!file) return;
-    // Файл уходит в наш S3 через presign — без аккаунта его некуда класть.
-    if (!this.auth.isLoggedIn()) {
-      this.ensureAccount(() => void this.uploadAvatar(file));
-      return;
-    }
     void this.uploadAvatar(file);
   }
 
@@ -370,9 +378,15 @@ export class OnboardingPage {
       this.localAvatarUrl.set(URL.createObjectURL(resized));
       if (prev) URL.revokeObjectURL(prev);
 
-      const presign = await firstValueFrom(this.meRepo.presignAvatarUpload(resized));
-      await putFileToPresignedUrl(presign.upload_url, resized);
-      this.setField('avatar_url', presign.public_url);
+      // До регистрации отправлять некуда: presign требует аккаунт. Файл
+      // ждёт в памяти и уедет сразу после создания аккаунта — просить
+      // регистрацию прямо здесь нельзя, имя ещё не введено, и попытка
+      // выбрасывала человека обратно на первый шаг.
+      if (!this.auth.isLoggedIn()) {
+        this.pendingAvatar.set(resized);
+        return;
+      }
+      await this.sendAvatar(resized);
     } catch (err) {
       this.error.set(`Не удалось загрузить фото: ${(err as Error).message}`);
       const local = this.localAvatarUrl();
@@ -383,8 +397,27 @@ export class OnboardingPage {
     }
   }
 
+  /** Отправка ужатого файла в S3 по presigned-ссылке. */
+  private async sendAvatar(file: File): Promise<void> {
+    const presign = await firstValueFrom(this.meRepo.presignAvatarUpload(file));
+    await putFileToPresignedUrl(presign.upload_url, file);
+    this.setField('avatar_url', presign.public_url);
+  }
+
+  /** Догружает фото, выбранное до регистрации. */
+  private flushPendingAvatar(): void {
+    const file = this.pendingAvatar();
+    if (!file) return;
+    this.pendingAvatar.set(null);
+    this.avatarUploading.set(true);
+    void this.sendAvatar(file)
+      .catch((err) => this.error.set(`Не удалось загрузить фото: ${(err as Error).message}`))
+      .finally(() => this.avatarUploading.set(false));
+  }
+
   public clearAvatar(): void {
     this.setField('avatar_url', '');
+    this.pendingAvatar.set(null);
     const local = this.localAvatarUrl();
     if (local) URL.revokeObjectURL(local);
     this.localAvatarUrl.set(null);
@@ -478,7 +511,7 @@ export class OnboardingPage {
    * Тот же вызов, которым сохраняется кабинет: профиль, категории и навыки
    * уходят одной транзакцией под общим updated_at.
    */
-  private saveProfile(done: () => void): void {
+  private saveProfile(done: () => void, retried = false): void {
     if (!this.auth.isLoggedIn()) {
       this.ensureAccount(() => this.saveProfile(done));
       return;
@@ -519,8 +552,35 @@ export class OnboardingPage {
             : {}),
       })
       .pipe(
-        catchError((err) => {
-          this.error.set(apiErrorMessage(err?.error, 'Не удалось сохранить'));
+        catchError((err: { status?: number; error?: ApiErrorBody | null }) => {
+          // 409 бывает двух видов: занятый username и устаревший updated_at.
+          // Второй в мастере штатен — добавление работы бампает профиль, —
+          // поэтому один раз молча перечитываем и повторяем сохранение.
+          // Занятый ник: сохранение атомарное, поэтому вместе с ним не
+          // сохранилось ничего — ни фото, ни описание. Повторяем БЕЗ ника,
+          // чтобы работа человека не пропала, и возвращаем его на шаг
+          // «Ссылка» с внятным объяснением, что менять надо одно слово.
+          if (isUsernameTaken(err) && this.username()) {
+            this.username.set('');
+            this.saveProfile(() => {
+              this.error.set(
+                'Такой ник уже занят. Остальное сохранено — придумайте другой и нажмите «Далее».',
+              );
+              this.stepIndex.set(STEPS.findIndex((st) => st.id === 'link'));
+            }, true);
+            return EMPTY;
+          }
+          if (err?.status === 409 && !retried) {
+            this.meRepo.getProfile().subscribe({
+              next: (p) => {
+                this.sessionStorage.setItem('updated_at', p.updated_at);
+                this.saveProfile(done, true);
+              },
+              error: () => this.error.set('Профиль изменился в другой вкладке. Обновите страницу.'),
+            });
+            return EMPTY;
+          }
+          this.error.set(apiErrorMessage(err?.error ?? null, 'Не удалось сохранить'));
           return EMPTY;
         }),
         finalize(() => this.saving.set(false)),
