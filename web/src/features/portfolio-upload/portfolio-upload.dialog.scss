@@ -228,11 +228,22 @@
   font-size: 13px;
 }
 
+// Кнопки диалога: ng-zorro отдаёт им 32px высоты и скругление 2px, и рядом
+// с крупными полями они выглядели мелкими прямыми плашками.
 .footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+
+  button {
+    min-height: 44px !important;
+    padding-inline: 20px !important;
+    border-radius: var(--r-btn, 11px) !important;
+    font-size: 15px !important;
+  }
 }
 
 /* На узких экранах модалка переходит в полноэкранный режим — крутим стили вверх по дереву */
@@ -254,9 +265,11 @@
   .footer {
     position: sticky;
     bottom: 0;
-    padding: 12px 0 4px;
-    background: var(--bg-elevated);
+    // Фон панели, а не --bg-elevated: тот темнее самой модалки, и за
+    // кнопками проступала чёрная полоса.
     margin-top: 8px;
+    padding: 12px 0 max(4px, env(safe-area-inset-bottom));
+    background: var(--surface);
   }
 
   .footer button {

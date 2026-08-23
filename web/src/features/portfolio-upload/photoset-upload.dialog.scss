@@ -220,6 +220,13 @@
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
+
+  button {
+    min-height: 44px !important;
+    padding-inline: 20px !important;
+    border-radius: var(--r-btn, 11px) !important;
+    font-size: 15px !important;
+  }
 }
 
 @media (max-width: 600px) {
@@ -231,7 +238,9 @@
     position: sticky;
     bottom: 0;
     padding: 12px 0 4px;
-    background: var(--bg-elevated);
+    // Фон панели, а не --bg-elevated: тот темнее модалки, и за кнопками
+    // проступала чёрная полоса.
+    background: var(--surface);
     margin-top: 8px;
   }
 

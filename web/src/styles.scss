@@ -10,10 +10,13 @@ html {
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg: #060a0c;
-  --bg-elevated: #0a1012;
-  --surface: #0f1619;
-  --surface-hover: #141e22;
+  /* Палитра дизайн-системы кабинета — теперь общая для всего сайта.
+     Раньше кабинет и мастер жили на #0b0c0e, а лента и главная на более
+     холодном #060a0c: на переходе между экранами фон заметно менялся. */
+  --bg: #0b0c0e;
+  --bg-elevated: #111316;
+  --surface: #15181c;
+  --surface-hover: #181c22;
   --border: rgba(255, 255, 255, 0.08);
   --text: #eef6f8;
   --text-muted: rgba(238, 246, 248, 0.62);
@@ -1073,7 +1076,42 @@ app-auth-dialog,
 /* Диалоги загрузки работы и фото-кейса: те же поля и кнопки, что везде. */
 app-portfolio-upload-dialog,
 app-photoset-upload-dialog,
-.portfolio-upload-modal {
+.portfolio-upload-modal,
+/* Окно «Подтвердите email»: оставалось на светлой теме ant с прямыми
+   углами — единственное окно, до которого дизайн-система не дошла. */
+app-email-unverified-dialog,
+.email-unverified-modal {
   @include design.tokens;
   @include design.ant-fields;
+}
+
+/* Окно «Подтвердите email»: заголовок и кнопки в общем стиле. */
+.email-unverified-modal {
+  .ant-modal-content {
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel, 18px);
+    background: var(--surface);
+  }
+
+  .ant-modal-header {
+    border-bottom: 1px solid var(--border);
+    border-radius: var(--r-panel, 18px) var(--r-panel, 18px) 0 0;
+    background: var(--surface);
+  }
+
+  .ant-modal-title {
+    color: var(--text);
+    font-size: 19px;
+  }
+
+  .ant-modal-body {
+    color: var(--text-muted);
+  }
+
+  .ant-btn {
+    min-height: 44px;
+    padding-inline: 20px;
+    border-radius: var(--r-btn, 11px);
+    font-size: 15px;
+  }
 }
