@@ -27,7 +27,7 @@
   padding: 28px 24px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--r-card);
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -73,7 +73,7 @@
   padding: 24px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-card);
 }
 
 .benefit__title {
@@ -118,7 +118,9 @@
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
-  transition: background 0.12s, transform 0.05s;
+  transition:
+    background 0.12s,
+    transform 0.05s;
 
   &:hover {
     background: #4f52d1;
