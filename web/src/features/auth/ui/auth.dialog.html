@@ -75,22 +75,32 @@
   @if (registerBackendError(); as err) {
   <div class="auth-backend-error" role="alert">{{ err }}</div>
   }
-  <button nz-button nzType="primary" nzBlock [nzLoading]="loading()">Создать аккаунт</button>
-  <!-- Согласие стоит ПОД кнопкой и без чекбокса: акцепт по оферте — это
-           действие (создание аккаунта и размещение ресурсов), а не галочка.
-           Ссылки открываются в новой вкладке: диалог живёт в модалке, и
-           обычный переход увёл бы человека со страницы, потеряв форму.
+  <!-- Согласие — явной галочкой перед кнопкой. Раньше акцепт считался по
+       самому действию («нажимая, вы соглашаетесь»): для оферты это
+       допустимо, но недоказуемо — в споре нечем показать, что человек
+       видел документы. Отметка сохраняется вместе с регистрацией.
 
-           Ветки по роли больше нет: оферта стала частью соглашения, и
-           денежные условия внутри него адресованы Специалистам — Клиент,
-           приняв документ, обязательств по ним не несёт. Это сказано в
-           самом тексте, а не решается тем, какую ссылку мы показали. -->
-  <p class="auth-consent">
-    Нажимая «Создать аккаунт», вы соглашаетесь с
-    <a href="/terms" target="_blank" rel="noopener">соглашением и офертой</a>
-    и
-    <a href="/privacy" target="_blank" rel="noopener">политикой конфиденциальности</a>.
-  </p>
+       Ссылки открываются в новой вкладке: диалог живёт в модалке, и
+       обычный переход увёл бы человека со страницы, потеряв форму. -->
+  <label class="auth-consent-check">
+    <input type="checkbox" formControlName="consent" />
+    <span>
+      Я принимаю
+      <a href="/terms" target="_blank" rel="noopener">соглашение и оферту</a>
+      и
+      <a href="/privacy" target="_blank" rel="noopener">политику конфиденциальности</a>
+    </span>
+  </label>
+
+  <button
+    nz-button
+    nzType="primary"
+    nzBlock
+    [nzLoading]="loading()"
+    [disabled]="!registerForm.controls.consent.value"
+  >
+    Создать аккаунт
+  </button>
 </form>
 } @else { @if (!forgotMode()) {
 <form nz-form [formGroup]="loginForm" (ngSubmit)="login()">

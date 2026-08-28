@@ -2,17 +2,21 @@
   <div class="footer-row">
     <span class="muted">© {{ year() }} wayprmarket</span>
     <span class="sep">·</span>
-    <button type="button" class="link" (click)="openModal()">
-      Написать в поддержку
-    </button>
+    <button type="button" class="link" (click)="openModal()">Написать в поддержку</button>
     <span class="sep">·</span>
     <a routerLink="/privacy" class="link">Политика конфиденциальности</a>
     <span class="sep">·</span>
     <a routerLink="/terms" class="link">Соглашение и оферта</a>
   </div>
+  <!--
+    Сноска покрывает все сети со звёздочкой в списке (ru_warn в
+    shared/lib/social-links.ts). Формулировки разные, потому что и статусы
+    разные: у Meta — признание экстремистской организацией, у Telegram —
+    ограничения работы сервиса.
+  -->
   <p class="legal-note">
-    * Instagram и продукты Meta признаны экстремистской организацией; их
-    деятельность запрещена на территории РФ.
+    * Instagram и продукты Meta признаны экстремистской организацией; их деятельность запрещена на
+    территории РФ. Работа Telegram на территории РФ ограничена.
   </p>
 </footer>
 

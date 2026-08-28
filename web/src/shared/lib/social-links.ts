@@ -31,10 +31,11 @@ export interface SocialNetwork {
 export const SOCIAL_NETWORKS: readonly SocialNetwork[] = [
   {
     key: 'telegram',
-    label: 'Telegram',
+    label: 'Telegram*',
     icon: '✈️',
     placeholder: '@username',
-    hint: '@username или https://t.me/username',
+    hint: '* работа сервиса в РФ ограничена',
+    ru_warn: true,
   },
   {
     key: 'whatsapp',

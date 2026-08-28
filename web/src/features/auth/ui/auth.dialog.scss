@@ -201,3 +201,31 @@
   font-size: 20px;
   font-weight: 600;
 }
+
+// Согласие галочкой. Тач-таргет по всей строке, чтобы попадать пальцем не
+// только в сам квадратик.
+.auth-consent-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0 14px;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.45;
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    accent-color: var(--cta);
+    cursor: pointer;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}

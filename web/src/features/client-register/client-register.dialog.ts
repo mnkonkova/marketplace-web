@@ -54,6 +54,8 @@ export class ClientRegisterDialog {
     // «не дублируем, знает бэкенд» — но узнавать о коротком пароле после
     // отправки формы значит проходить её дважды.
     password: ['', [Validators.required, Validators.minLength(MIN_PASSWORD)]],
+    // Согласие обязательно: без отметки форма не отправляется.
+    consent: [false, Validators.requiredTrue],
   });
 
   /** Занятый адрес — проверяем до отправки, как в мастере специалиста. */

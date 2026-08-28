@@ -39,11 +39,18 @@ describe('ClientRegisterDialog', () => {
       display_name: 'ООО Ромашка',
       email: 'client@example.com',
       password: 'seedseed123',
+      // Согласие обязательно: без него форма невалидна.
+      consent: true,
     });
   }
 
   it('форма из трёх полей — лишнее в окно не тащим', () => {
-    expect(Object.keys(setup().form.controls)).toEqual(['display_name', 'email', 'password']);
+    expect(Object.keys(setup().form.controls)).toEqual([
+      'display_name',
+      'email',
+      'password',
+      'consent',
+    ]);
   });
 
   it('регистрирует с ролью client', () => {
@@ -75,7 +82,16 @@ describe('ClientRegisterDialog', () => {
 
   it('короткий пароль не отправляется', () => {
     const cmp = setup();
-    cmp.form.setValue({ display_name: 'ООО', email: 'a@b.cd', password: 'abc' });
+    cmp.form.setValue({ display_name: 'ООО', email: 'a@b.cd', password: 'abc', consent: true });
+    cmp.submit();
+    expect(auth.emailAvailable).not.toHaveBeenCalled();
+    expect(auth.register).not.toHaveBeenCalled();
+  });
+
+  it('без согласия не отправляет', () => {
+    const cmp = setup();
+    fill(cmp);
+    cmp.form.controls.consent.setValue(false);
     cmp.submit();
     expect(auth.emailAvailable).not.toHaveBeenCalled();
     expect(auth.register).not.toHaveBeenCalled();

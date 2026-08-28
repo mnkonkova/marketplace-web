@@ -98,6 +98,8 @@ export class AuthDialogComponent {
     // backend бампнули до 10, фронт пускает 9 → юзер тыкается в 400.
     password: ['', Validators.required],
     kind: [this.data?.initialKind ?? '', Validators.required],
+    // Согласие обязательно: без явной отметки регистрацию не отправляем.
+    consent: [false, Validators.requiredTrue],
   });
 
   public readonly forgotForm = this.fb.group({

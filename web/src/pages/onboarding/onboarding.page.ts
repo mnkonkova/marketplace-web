@@ -174,6 +174,9 @@ export class OnboardingPage {
 
   public readonly password = signal('');
 
+  /** Согласие с документами. Без него дальше первого шага не пускаем. */
+  public readonly consent = signal(false);
+
   /** Публичный ник для адреса /specialist/<ник>. Пусто — останется UUID. */
   public readonly username = signal('');
 
@@ -209,7 +212,7 @@ export class OnboardingPage {
   /** Первый шаг требует имя и хотя бы одну роль — без них профиля нет. */
   public readonly canGoNext = computed(() => {
     if (this.step() === 'account') {
-      return /.+@.+\..+/.test(this.email().trim()) && this.passwordOk();
+      return /.+@.+\..+/.test(this.email().trim()) && this.passwordOk() && this.consent();
     }
     if (this.step() === 'work') return this.portfolio().length > 0;
     if (this.step() === 'link') {
@@ -614,9 +617,7 @@ export class OnboardingPage {
       .pipe(
         catchError((err: { error?: ApiErrorBody | null }) => {
           this.linkState.set('error');
-          this.linkError.set(
-            apiErrorMessage(err?.error ?? null, 'Не получилось привязать'),
-          );
+          this.linkError.set(apiErrorMessage(err?.error ?? null, 'Не получилось привязать'));
           return EMPTY;
         }),
       )

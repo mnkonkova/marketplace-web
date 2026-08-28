@@ -42,6 +42,17 @@
   <p class="cr-err">{{ backendError() }}</p>
   }
 
+  <!-- Согласие явной галочкой: акцепт по действию недоказуем. -->
+  <label class="cr-consent">
+    <input type="checkbox" formControlName="consent" />
+    <span>
+      Я принимаю
+      <a href="/terms" target="_blank" rel="noopener">соглашение и оферту</a>
+      и
+      <a href="/privacy" target="_blank" rel="noopener">политику конфиденциальности</a>
+    </span>
+  </label>
+
   <button
     nz-button
     nzType="primary"
@@ -49,6 +60,7 @@
     type="submit"
     class="cr-submit"
     [nzLoading]="loading()"
+    [disabled]="!form.controls.consent.value"
   >
     Найти команду
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

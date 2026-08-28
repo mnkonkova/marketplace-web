@@ -108,6 +108,18 @@
         }
       </label>
 
+      <!-- Согласие явной галочкой: акцепт по действию недоказуем — в споре
+           нечем показать, что человек видел документы. -->
+      <label class="onb-consent">
+        <input type="checkbox" [checked]="consent()" (change)="consent.set(!consent())" />
+        <span>
+          Я принимаю
+          <a href="/terms" target="_blank" rel="noopener">соглашение и оферту</a>
+          и
+          <a href="/privacy" target="_blank" rel="noopener">политику конфиденциальности</a>
+        </span>
+      </label>
+
       <p class="hint">
         Аккаунт создастся на следующем шаге, когда вы укажете имя. Уже зарегистрированы?
         <button type="button" class="link-inline" (click)="openLogin()">Войти</button>
@@ -317,17 +329,18 @@
     @if (linkCode()) {
     <div class="publish-row">
       @if (linkState() === 'done') {
-      <p class="publish-ok">
-        «Бот Работ» привязан — партнёрская цена там уже открыта.
-      </p>
+      <p class="publish-ok">«Бот Работ» привязан — партнёрская цена там уже открыта.</p>
       } @else {
-      <button type="button" class="btn primary" [disabled]="linkState() === 'busy'"
-              (click)="linkBot()">
+      <button
+        type="button"
+        class="btn primary"
+        [disabled]="linkState() === 'busy'"
+        (click)="linkBot()"
+      >
         {{ linkState() === 'busy' ? 'Привязываю…' : 'Привязать «Бот Работ»' }}
       </button>
       <p class="hint">
-        Откроет партнёрскую цену в боте. Сначала подтвердите почту — без неё
-        привязка не сработает.
+        Откроет партнёрскую цену в боте. Сначала подтвердите почту — без неё привязка не сработает.
       </p>
       @if (linkState() === 'error') {
       <p class="save-error" role="alert">{{ linkError() }}</p>
