@@ -152,7 +152,9 @@
 .final-cta__btn {
   display: inline-block;
   padding: 14px 32px;
-  background: var(--accent);
+  // Главное действие страницы — коралловое, как «Найти» и «Далее». Зелёный
+  // на сайте означает состояние (выбрано, готово), а не «нажми сюда».
+  background: var(--cta);
   color: #fff;
   border-radius: 12px;
   font-size: 16px;

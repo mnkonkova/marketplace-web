@@ -27,8 +27,10 @@ html {
   /* CTA — коралловый «Добавить в проект» и акценты действия. Раньше цвет
      жил хардкодом в feed.page.scss и specialist-profile.page.scss;
      токен нужен, чтобы новые экраны не плодили третью копию. */
-  --cta: #ff5e3a;
-  --cta-hover: #ff7a5c;
+  /* Коралл дизайн-системы. Было два оттенка: #ff5e3a глобально и #f0553c
+     на поверхностях с design.tokens — кнопки отличались от экрана к экрану. */
+  --cta: #f0553c;
+  --cta-hover: #ff6a52;
 }
 
 *,
@@ -346,14 +348,17 @@ h6 {
   color: var(--accent) !important;
 }
 
+/* Главное действие — коралловое. Зелёный остаётся акцентом состояний
+   (выбранные чипы, «сохранено», статусы), но как цвет кнопки он спорил с
+   кораллом: «Создать проект» был зелёным, «Найти» и «Далее» — коралловыми. */
 .ant-btn-primary {
   color: #fff !important;
-  background: var(--accent);
-  border-color: var(--accent) !important;
+  background: var(--cta);
+  border-color: var(--cta) !important;
 }
 .ant-btn-primary:disabled {
-  background: var(--accent-dim) !important;
-  border-color: var(--accent-dim) !important;
+  background: rgba(240, 85, 60, 0.25) !important;
+  border-color: rgba(240, 85, 60, 0.25) !important;
   color: var(--text-dim) !important;
 }
 
@@ -364,9 +369,9 @@ h6 {
 }
 
 .ant-btn-primary:hover {
-  background: var(--accent);
+  background: var(--cta-hover);
   color: #fff !important;
-  border-color: var(--accent) !important;
+  border-color: var(--cta-hover) !important;
 }
 
 .ant-btn-primary:active {
@@ -1070,6 +1075,8 @@ h6 {
 .onb,
 .client-register-modal,
 .results,
+/* Главная: плашка «Впервые здесь?» и её кнопки жили по дефолту ant. */
+app-invite-banner,
 /* Лендинги: свои радиусы вразнобой (12/14px) и кнопки с дефолтом ant. Это
    первая страница, которую видит человек, и от неё ожидается тот же язык,
    что дальше в кабинете. */
