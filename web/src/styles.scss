@@ -1087,6 +1087,7 @@ app-email-unverified-dialog,
 .email-unverified-modal {
   @include design.tokens;
   @include design.ant-fields;
+  @include design.sheet-trigger;
 }
 
 /* Окно «Подтвердите email»: заголовок и кнопки в общем стиле. */

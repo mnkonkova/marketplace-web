@@ -214,3 +214,70 @@
     border-radius: var(--r-btn);
   }
 }
+
+// Триггер нижней шторки: выглядит как поле выбора, открывает лист. Жил
+// четырьмя почти одинаковыми копиями — в контактах, «Где вы работаете»,
+// мастере и фильтрах поиска, — расходившимися только высотой и кеглем.
+@mixin sheet-trigger {
+  .sheet-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-field);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    text-align: left;
+
+    svg {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      color: var(--text-muted);
+    }
+  }
+}
+
+// Кнопки мастера и подобных экранов: .btn с модификаторами primary/ghost/link.
+@mixin buttons {
+  .btn {
+    @include btn-base;
+
+    padding: 13px 22px;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &.primary {
+      background: var(--cta);
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background: var(--cta-hover);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    &.ghost {
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elevated);
+      color: var(--text);
+    }
+
+    &.link {
+      background: none;
+      color: var(--text-muted);
+    }
+  }
+}

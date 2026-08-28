@@ -1,3 +1,4 @@
+@use 'design' as design;
 @use 'editor' as editor;
 @use 'breakpoints' as bp;
 
@@ -213,31 +214,6 @@
   }
 }
 
-// Триггер шторки на телефоне: выглядит как поле выбора, чтобы не читался
-// кнопкой действия.
-.sheet-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  min-height: 48px;
-  padding: 0 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  background: var(--bg-elevated);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 17px;
-
-  svg {
-    width: 16px;
-    height: 16px;
-    flex: 0 0 auto;
-    color: var(--text-muted);
-  }
-}
-
 // ── Шаг «Первая работа» ────────────────────────────────────────────────
 .work-list {
   display: flex;
@@ -311,52 +287,8 @@
   }
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 13px 22px;
-  border: none;
-  border-radius: 11px;
-  font-family: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  &.primary {
-    background: var(--cta);
-    color: #fff;
-
-    &:hover:not(:disabled) {
-      background: var(--cta-hover);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  }
-
-  &.ghost {
-    border: 1px solid var(--border-strong);
-    background: var(--bg-elevated);
-    color: var(--text);
-  }
-
-  &.link {
-    background: none;
-    color: var(--text-muted);
-  }
-}
-
 @include editor.blocks;
+@include design.buttons;
 
 // Ссылка «Войти» прямо в подсказке шага с почтой.
 .link-inline {
