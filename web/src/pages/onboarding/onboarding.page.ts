@@ -25,6 +25,7 @@ import { putFileToPresignedUrl } from '@entities/me/repository/me-upload';
 import { resizeImageToBlob } from '@shared/image/resize';
 import { groupCategoriesByType } from '@shared/lib/category-groups';
 import { isTouchDevice } from '@shared/lib/touch';
+import { startYandexLogin, yandexEnabled } from '@shared/lib/yandex-oauth';
 import { validateRate } from '@shared/lib/rate-validation';
 import { AvatarPickerComponent } from '@shared/ui/avatar-picker/avatar-picker.component';
 import { RolePickerComponent } from '@shared/ui/role-picker/role-picker.component';
@@ -286,6 +287,17 @@ export class OnboardingPage {
       this.loadExisting();
       this.stepIndex.set(1);
     });
+  }
+
+  /** Кнопку показываем только если ключ задан (см. environments). */
+  public readonly yandexEnabled = yandexEnabled();
+
+  /**
+   * Уход на Яндекс. Роль известна: сюда попадают уже после развилки, — и
+   * едет вместе с кодом, поэтому лишнего экрана «кто вы» после возврата нет.
+   */
+  public loginYandex(): void {
+    startYandexLogin({ kind: 'specialist', back: '/start?role=specialist' });
   }
 
   public setEmail(value: string): void {

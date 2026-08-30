@@ -16,4 +16,11 @@ export const environment = {
    * добавляется в specialist-profile.page.ts.
    */
   shareBaseUrl: 'https://wayprmarket.online',
+  /**
+   * Вход через Яндекс. Пусто = кнопка не показывается: локальная разработка
+   * без OAuth это нормальный режим. redirect_uri обязан совпадать с
+   * зарегистрированным в кабинете Яндекса посимвольно.
+   */
+  yandexClientId: 'b46db3ab65b04850b238841c2cbb9d79',
+  yandexRedirectUri: 'https://wayprmarket.ru',
 };

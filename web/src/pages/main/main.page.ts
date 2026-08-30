@@ -21,6 +21,8 @@ import { specialistHandle } from '@shared/lib/specialist-link';
 import { createTypewriter } from '@shared/lib/typewriter.signal';
 import { SEARCH_PLACEHOLDER_EXAMPLES, PLACEHOLDER_TIMING } from '@shared/lib/search-placeholders';
 import { InviteBannerComponent } from '@widgets/invite-banner/invite-banner.component';
+import { NzMessageService } from 'ng-zorro-antd/message';
+import { readYandexReturn } from '@shared/lib/yandex-oauth';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 
 @Component({
@@ -59,6 +61,8 @@ export class MainPage implements OnInit {
   // Условие показа invite-banner: только неавторизованным. Signal reactive
   // (AuthSessionStore.isLoggedIn — computed от session().access_token).
   private readonly auth = inject(AuthSessionStore);
+
+  private readonly msg = inject(NzMessageService);
   public readonly isLoggedIn = this.auth.isLoggedIn;
 
   public readonly howSteps = [
@@ -129,7 +133,30 @@ export class MainPage implements OnInit {
     }
   }
 
+  /**
+   * Возврат от Яндекса. redirect_uri зарегистрирован на корень сайта,
+   * поэтому код прилетает сюда, а не на экран, с которого человек уходил.
+   *
+   * Меняем код на токены и возвращаем его туда, откуда он начинал: адрес
+   * запомнили перед переходом. Код из адресной строки убираем — он
+   * одноразовый, но светиться в истории ему незачем.
+   */
+  private finishYandexLogin(): void {
+    const ret = readYandexReturn(window.location.search);
+    if (!ret) return;
+
+    this.auth.loginWithYandex(ret.code, ret.kind).subscribe({
+      next: () => void this.router.navigateByUrl(ret.back),
+      error: () => {
+        this.msg.error('Не удалось войти через Яндекс. Попробуйте ещё раз.');
+        void this.router.navigate([], { queryParams: {}, replaceUrl: true });
+      },
+    });
+  }
+
   public ngOnInit(): void {
+    this.finishYandexLogin();
+
     this.route.fragment.subscribe((fragment) => {
       if (fragment && isHomeSectionAnchor(fragment)) {
         scrollToAnchorWhenReady(fragment);

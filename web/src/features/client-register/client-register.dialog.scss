@@ -113,3 +113,38 @@
     text-underline-offset: 2px;
   }
 }
+
+// Кнопка Яндекса: нейтральная, фирменный красный спорил бы с нашим кораллом.
+.cr-yandex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-btn, 11px);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+
+  svg {
+    width: 20px;
+    height: 20px;
+    color: #fc3f1d;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.cr-or {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: center;
+}

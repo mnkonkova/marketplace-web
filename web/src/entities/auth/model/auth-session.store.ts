@@ -102,6 +102,21 @@ export class AuthSessionStore {
       .pipe(map((r) => r.available));
   }
 
+  /**
+   * Вход и регистрация через Яндекс одной ручкой: человек не должен помнить,
+   * заводил ли он здесь аккаунт. На сервер уходит одноразовый код из
+   * redirect'а — обмен на токен делает бэкенд, client_secret на клиент не
+   * попадает.
+   */
+  public loginWithYandex(code: string, kind: 'client' | 'specialist'): Observable<TokenPair> {
+    return this.http
+      .post<{ user_id: string; tokens: TokenPair }>(`${this.api}/auth/yandex`, { code, kind })
+      .pipe(
+        tap((res) => this.save(res.tokens, kind)),
+        map((res) => res.tokens),
+      );
+  }
+
   public register(payload: RegisterPayload): Observable<{ user_id: string; tokens: TokenPair }> {
     return this.http
       .post<{ user_id: string; tokens: TokenPair }>(`${this.api}/auth/register`, payload)

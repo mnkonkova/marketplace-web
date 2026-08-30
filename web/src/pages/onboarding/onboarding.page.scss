@@ -498,3 +498,32 @@
     text-underline-offset: 2px;
   }
 }
+
+// Кнопка Яндекса. Фирменный красный не берём: он спорит с нашим кораллом,
+// а узнаваемости хватает логотипа.
+.btn.yandex {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text);
+
+  svg {
+    width: 20px;
+    height: 20px;
+    color: #fc3f1d;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--border-hover);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.or-note {
+  margin: 10px 0 2px;
+  text-align: center;
+}

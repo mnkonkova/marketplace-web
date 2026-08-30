@@ -9,6 +9,7 @@ import { NzModalRef, NzModalService } from 'ng-zorro-antd/modal';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
 import { apiErrorMessage } from '@shared/api/api-error';
+import { startYandexLogin, yandexEnabled } from '@shared/lib/yandex-oauth';
 
 /**
  * Регистрация заказчика — одним окном, без мастера.
@@ -60,6 +61,14 @@ export class ClientRegisterDialog {
 
   /** Занятый адрес — проверяем до отправки, как в мастере специалиста. */
   public readonly emailTaken = signal(false);
+
+  public readonly yandexEnabled = yandexEnabled();
+
+  /** Роль заказчика известна из контекста окна — едет вместе с кодом. */
+  public loginYandex(): void {
+    this.ref.close(false);
+    startYandexLogin({ kind: 'client', back: '/search' });
+  }
 
   public submit(): void {
     if (this.form.invalid) {

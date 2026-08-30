@@ -16,4 +16,11 @@ export const environment = {
    * добавляется в specialist-profile.page.ts.
    */
   shareBaseUrl: '',
+  /**
+   * Вход через Яндекс. Пусто = кнопка не показывается: локальная разработка
+   * без OAuth это нормальный режим. redirect_uri обязан совпадать с
+   * зарегистрированным в кабинете Яндекса посимвольно.
+   */
+  yandexClientId: '',
+  yandexRedirectUri: 'http://192.168.64.2:4200',
 };
