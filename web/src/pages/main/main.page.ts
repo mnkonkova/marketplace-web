@@ -146,14 +146,23 @@ export class MainPage implements OnInit {
     if (!ret) return;
 
     this.auth.loginWithYandex(ret.code, ret.kind).subscribe({
-      next: ({ isNew }) => {
-        // Давнего пользователя в мастер не ведём: он там второй раз
-        // заполняет то, что у него уже есть. Мастер — только новичку.
-        if (isNew) {
-          void this.router.navigateByUrl(ret.back);
+      next: ({ isNew, kind }) => {
+        // Ведём по НАСТОЯЩЕЙ роли аккаунта, а не по запрошенной. Заказчик,
+        // нажавший «я специалист», попадал в кабинет специалиста и видел
+        // «Профиль не найден» — профиля у него и нет.
+        if (kind !== 'specialist') {
+          // Просил вход как специалист, а аккаунт заказчика — молча увести
+          // мало: человек ждал кабинет и не поймёт, почему открылся поиск.
+          if (ret.kind === 'specialist') {
+            this.msg.info(
+              'Этот аккаунт зарегистрирован как заказчик — открыли поиск специалистов.',
+            );
+          }
+          void this.router.navigateByUrl('/search');
           return;
         }
-        void this.router.navigateByUrl(ret.kind === 'specialist' ? '/me' : '/search');
+        // Новичку — мастер профиля, давнему специалисту — кабинет.
+        void this.router.navigateByUrl(isNew ? '/start?role=specialist' : '/me');
       },
       error: () => {
         this.msg.error('Не удалось войти через Яндекс. Попробуйте ещё раз.');

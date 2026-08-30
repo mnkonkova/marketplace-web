@@ -111,15 +111,25 @@ export class AuthSessionStore {
   public loginWithYandex(
     code: string,
     kind: 'client' | 'specialist',
-  ): Observable<{ isNew: boolean }> {
+  ): Observable<{ isNew: boolean; kind: 'client' | 'specialist' }> {
     return this.http
-      .post<{ user_id: string; tokens: TokenPair; is_new?: boolean }>(`${this.api}/auth/yandex`, {
-        code,
-        kind,
-      })
+      .post<{
+        user_id: string;
+        tokens: TokenPair;
+        is_new?: boolean;
+        kind?: string;
+      }>(`${this.api}/auth/yandex`, { code, kind })
       .pipe(
-        tap((res) => this.save(res.tokens, kind)),
-        map((res) => ({ isNew: !!res.is_new })),
+        map((res) => {
+          // Роль берём из ответа: у существующего аккаунта она своя, и
+          // запрошенная фронтом её не отменяет. Сохраняем именно настоящую —
+          // иначе шапка покажет не тот кабинет.
+          const real = (res.kind === 'specialist' ? 'specialist' : 'client') as
+            | 'client'
+            | 'specialist';
+          this.save(res.tokens, real);
+          return { isNew: !!res.is_new, kind: real };
+        }),
       );
   }
 
