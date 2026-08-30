@@ -34,7 +34,7 @@ export class LandingSpecialistsPage implements OnInit {
    * ещё без аккаунта, сам открывает регистрацию.
    */
   public openRegisterSpecialist(): void {
-    // ?link — одноразовый код привязки к «Боту Работ». Приходит на лендинг
+    // ?link — одноразовый код привязки к «Ботработу». Приходит на лендинг
     // со страницы /link/{code} и едет дальше в мастер: человек регистрируется
     // и там же привязывает аккаунт, не возвращаясь в бот за новой ссылкой.
     const link = this.route.snapshot.queryParamMap.get('link');

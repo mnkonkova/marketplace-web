@@ -10,7 +10,7 @@ import { AuthDialogComponent } from '@features/auth/ui/auth.dialog';
 import { API_URL } from '@shared/api/api-url.token';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 
-/** Подтверждение аккаунта для «Бота Работ».
+/** Подтверждение аккаунта для «Ботработа».
  *
  * Человек приходит сюда по одноразовой ссылке из мини-приложения. Смысл
  * страницы в одном: он здесь залогинен, значит аккаунт действительно его —
