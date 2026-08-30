@@ -26,6 +26,6 @@ export const environment = {
    * без OAuth это нормальный режим. redirect_uri обязан совпадать с
    * зарегистрированным в кабинете Яндекса посимвольно.
    */
-  yandexClientId: '',
+  yandexClientId: 'b46db3ab65b04850b238841c2cbb9d79',
   yandexRedirectUri: 'http://192.168.64.2:4200',
 };
