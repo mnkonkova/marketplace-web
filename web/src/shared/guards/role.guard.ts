@@ -18,8 +18,12 @@ export function requireRole(...roles: string[]): CanActivateFn {
       return false;
     }
 
+    // Пустой kind — это «роль ещё не знаем», а не «заказчик». role() их не
+    // различает: без kind оно возвращает 'client' по умолчанию, и специалист,
+    // только что вошедший по паролю (login() сохраняет токены сразу, а kind
+    // приезжает отдельным ответом fetchMe), получал отказ и улетал на '/'.
     let role = auth.role();
-    if (!role) {
+    if (!role || !auth.kind()) {
       try {
         await firstValueFrom(auth.fetchMe());
         role = auth.role();

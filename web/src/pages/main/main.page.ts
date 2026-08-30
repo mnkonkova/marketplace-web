@@ -141,9 +141,10 @@ export class MainPage implements OnInit {
    * запомнили перед переходом. Код из адресной строки убираем — он
    * одноразовый, но светиться в истории ему незачем.
    */
-  private finishYandexLogin(): void {
+  /** true — это возврат от Яндекса, главную грузить не нужно. */
+  private finishYandexLogin(): boolean {
     const ret = readYandexReturn(window.location.search);
-    if (!ret) return;
+    if (!ret) return false;
 
     this.auth.loginWithYandex(ret.code, ret.kind).subscribe({
       next: ({ isNew, kind }) => {
@@ -167,12 +168,19 @@ export class MainPage implements OnInit {
       error: () => {
         this.msg.error('Не удалось войти через Яндекс. Попробуйте ещё раз.');
         void this.router.navigate([], { queryParams: {}, replaceUrl: true });
+        // Вход не удался — человек остаётся на главной, и она должна быть
+        // живой, а не пустой.
+        this.loadHome();
       },
     });
+    return true;
   }
 
   public ngOnInit(): void {
-    this.finishYandexLogin();
+    // Возврат от Яндекса приземляется на главную, но человек здесь не
+    // остаётся: через миг мы уводим его в кабинет, мастер или поиск.
+    // Грузить ради этого ленту с видео — лишние мегабайты на мобильном.
+    if (this.finishYandexLogin()) return;
 
     this.route.fragment.subscribe((fragment) => {
       if (fragment && isHomeSectionAnchor(fragment)) {
@@ -180,6 +188,11 @@ export class MainPage implements OnInit {
       }
     });
 
+    this.loadHome();
+  }
+
+  /** Данные главной: справочники, счётчики и лента. */
+  private loadHome(): void {
     this.categoryApi.list().subscribe((items) => {
       this.categories.set(items);
       const fragment = this.route.snapshot.fragment;
