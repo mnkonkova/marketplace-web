@@ -15,6 +15,7 @@ import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { apiErrorMessage } from '@shared/api/api-error';
+import { startYandexLogin, yandexEnabled } from '@shared/lib/yandex-oauth';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
@@ -170,6 +171,18 @@ export class AuthDialogComponent {
   public goRegister(): void {
     this.modal.destroy();
     void this.router.navigate(['/start']);
+  }
+
+  public readonly yandexEnabled = yandexEnabled();
+
+  /**
+   * Роль здесь неизвестна: в окно входа приходят и заказчики, и специалисты.
+   * Для существующего аккаунта она и не нужна — бэкенд берёт её из профиля,
+   * а kind учитывается только при создании нового.
+   */
+  public loginYandex(): void {
+    this.modal.destroy();
+    startYandexLogin({ kind: 'client', back: '/search' });
   }
 
   public register(): void {

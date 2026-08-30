@@ -229,3 +229,40 @@
     text-underline-offset: 2px;
   }
 }
+
+// Вход через Яндекс. Нейтральная кнопка: фирменный красный спорил бы с
+// нашим кораллом, узнаваемости хватает логотипа.
+.auth-yandex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-btn, 11px);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+
+  svg {
+    width: 20px;
+    height: 20px;
+    color: #fc3f1d;
+  }
+
+  &:hover {
+    border-color: var(--border-hover);
+  }
+}
+
+.auth-or {
+  margin: 0 0 12px;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: center;
+}

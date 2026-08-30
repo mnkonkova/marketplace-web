@@ -146,7 +146,15 @@ export class MainPage implements OnInit {
     if (!ret) return;
 
     this.auth.loginWithYandex(ret.code, ret.kind).subscribe({
-      next: () => void this.router.navigateByUrl(ret.back),
+      next: ({ isNew }) => {
+        // Давнего пользователя в мастер не ведём: он там второй раз
+        // заполняет то, что у него уже есть. Мастер — только новичку.
+        if (isNew) {
+          void this.router.navigateByUrl(ret.back);
+          return;
+        }
+        void this.router.navigateByUrl(ret.kind === 'specialist' ? '/me' : '/search');
+      },
       error: () => {
         this.msg.error('Не удалось войти через Яндекс. Попробуйте ещё раз.');
         void this.router.navigate([], { queryParams: {}, replaceUrl: true });

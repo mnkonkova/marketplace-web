@@ -108,12 +108,18 @@ export class AuthSessionStore {
    * redirect'а — обмен на токен делает бэкенд, client_secret на клиент не
    * попадает.
    */
-  public loginWithYandex(code: string, kind: 'client' | 'specialist'): Observable<TokenPair> {
+  public loginWithYandex(
+    code: string,
+    kind: 'client' | 'specialist',
+  ): Observable<{ isNew: boolean }> {
     return this.http
-      .post<{ user_id: string; tokens: TokenPair }>(`${this.api}/auth/yandex`, { code, kind })
+      .post<{ user_id: string; tokens: TokenPair; is_new?: boolean }>(`${this.api}/auth/yandex`, {
+        code,
+        kind,
+      })
       .pipe(
         tap((res) => this.save(res.tokens, kind)),
-        map((res) => res.tokens),
+        map((res) => ({ isNew: !!res.is_new })),
       );
   }
 
