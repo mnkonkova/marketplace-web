@@ -17,6 +17,21 @@ export class AuthSessionStore {
 
   private readonly session = signal<AuthSession | null>(this.read());
 
+  public constructor() {
+    // Сессия без флагов CRM — это «права неизвестны», а не «прав нет».
+    // Так выглядел вход через Яндекс: токены сохранены, is_manager/is_admin
+    // никто не подтянул, и у админа с менеджером пропадала кнопка в свой
+    // кабинет до следующего входа паролем. Дочитываем один раз на старте.
+    const s = this.session();
+    if (s?.access_token && s.is_admin === undefined) {
+      // Через микротаск, а не сразу: auth-интерцептор сам инжектит этот
+      // стор, и запрос из конструктора упирается в циклическую зависимость
+      // — Angular бросает, ошибка гасится, запрос не уходит. К моменту
+      // микротаска инстанс уже зарегистрирован в инжекторе.
+      queueMicrotask(() => this.fetchMe().subscribe({ error: () => undefined }));
+    }
+  }
+
   public readonly isLoggedIn = computed(() => !!this.session()?.access_token);
 
   public readonly kind = computed(() => this.session()?.kind ?? '');
@@ -128,6 +143,8 @@ export class AuthSessionStore {
             | 'client'
             | 'specialist';
           this.save(res.tokens, real);
+          // Как и в login(): без этого шапка не знает про права CRM.
+          this.fetchMe().subscribe({ error: () => undefined });
           return { isNew: !!res.is_new, kind: real };
         }),
       );
