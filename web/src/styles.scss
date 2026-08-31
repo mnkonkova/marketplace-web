@@ -31,6 +31,7 @@ html {
      на поверхностях с design.tokens — кнопки отличались от экрана к экрану. */
   --cta: #f0553c;
   --cta-hover: #ff6a52;
+  --cta-active: #d34630;
 }
 
 *,
@@ -362,10 +363,19 @@ h6 {
   color: var(--text-dim) !important;
 }
 
+/* Фокус НЕ меняет цвет кнопки. Раньше здесь был --accent, и главная кнопка
+   после клика оставалась зелёной: фокус с неё не уходит, пока не кликнешь
+   мимо. Клавиатуре нужен признак фокуса, а не другой цвет, — даём ореол, и
+   только на :focus-visible, чтобы мышь его не зажигала. */
 .ant-btn-primary:focus {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
+  background: var(--cta);
+  border-color: var(--cta) !important;
   color: #fff !important;
+}
+
+.ant-btn-primary:focus-visible {
+  box-shadow: 0 0 0 3px rgba(240, 85, 60, 0.45) !important;
+  outline: none;
 }
 
 .ant-btn-primary:hover {
@@ -374,10 +384,12 @@ h6 {
   border-color: var(--cta-hover) !important;
 }
 
+/* Нажатие — та же кнопка, но темнее. Чёрный текст на зелёном был третьим
+   цветом кнопки за один клик. */
 .ant-btn-primary:active {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
-  color: #000 !important;
+  background: var(--cta-active) !important;
+  border-color: var(--cta-active) !important;
+  color: #fff !important;
 }
 
 // .project-cart-btn — стилизация переехала в feed.page.scss и
@@ -395,10 +407,13 @@ h6 {
   color: white !important;
 }
 
+/* Вторичная кнопка на наведении — светлее, но той же породы. Зелёная
+   заливка делала «Отмену» заметнее «Сохранить»; !important здесь бил даже
+   правило дизайн-системы внутри кабинета, так что зеленело везде. */
 .ant-btn-default:hover {
-  color: white !important;
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
+  color: var(--text) !important;
+  background: var(--surface-hover) !important;
+  border-color: var(--border-strong, #2c313a) !important;
 }
 
 /* Модалки проекта / брифа */
