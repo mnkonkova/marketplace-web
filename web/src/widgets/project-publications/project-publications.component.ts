@@ -671,6 +671,14 @@ export class ProjectPublicationsComponent {
       // Признака draft_required в DTO проекта нет — спрашиваем всегда:
       // бэк учтёт значение только если этап черновика включён.
       draftRequired: true,
+      // Текущий план: окно открывается на нём, а не пустым. Пустое окно
+      // читается как «плана нет», и даты набираются заново — поверх уже
+      // стоящих.
+      existing: this.pubs().map((p) => ({
+        creator_user_id: p.creator_user_id,
+        due_date: p.due_date,
+        status: p.status,
+      })),
     };
     this.modal
       .create({

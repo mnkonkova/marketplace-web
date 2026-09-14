@@ -13,12 +13,28 @@ export interface ScheduleCreator {
   display_name: string;
 }
 
+/** Уже стоящая в плане выкладка — ровно то, от чего зависит окно. */
+export interface ScheduledPublication {
+  creator_user_id: string;
+  /** ГГГГ-ММ-ДД или ISO — берём первые десять символов. */
+  due_date: string;
+  status: string;
+}
+
 export interface SchedulePublicationsData {
   projectID: string;
   creators: ScheduleCreator[];
   // У проекта включён этап согласования черновика: тогда имеет смысл
   // спрашивать, за сколько дней до выкладки сдавать черновик.
   draftRequired: boolean;
+  /**
+   * Что уже стоит в плане.
+   *
+   * Без этого окно открывалось чистым, и менеджер, открывший его второй
+   * раз, видел пустой календарь вместо своего плана. Дальше он отмечал
+   * даты заново — и получал не исправленный план, а старый плюс новый.
+   */
+  existing: ScheduledPublication[];
 }
 
 /** Заготовки расписания: то, чем реально пользуются. */
@@ -55,6 +71,18 @@ function key(d: Date): string {
  * пачка. Даты выбираются календарём поимённо, а не диапазоном со схемой:
  * заготовки («Вт и Чт») ставят галочки, а дальше их правят руками —
  * праздники и съёмочные дни в схему не укладываются.
+ *
+ * Окно открывается НА ТЕКУЩЕМ ПЛАНЕ, а не пустым. Пустое окно человек
+ * читает как «плана нет» и набирает даты заново — а на сервере они
+ * складываются с уже стоящими, и вместо исправленного плана выходит
+ * старый плюс новый. Теперь стоящие даты отмечены сразу и подписаны,
+ * сколько выкладок реально добавится.
+ *
+ * Снять уже стоящую дату отсюда нельзя, и окно про это говорит: ручки,
+ * которая отменяет одну запланированную выкладку, у API пока нет —
+ * есть только «закрыть с причиной» в её собственной строке. Молча
+ * снимать галочку и ничего не делать было бы хуже всего: человек уйдёт
+ * уверенный, что дату убрал.
  *
  * Разметка перенесена из макета ~/tmp/crm_project_manager (1).html.
  */
@@ -114,6 +142,9 @@ function key(d: Date): string {
               class="dc"
               [class.sel]="isDay(c.date)"
               [class.past]="c.past"
+              [class.set]="isLocked(c.date)"
+              [class.part]="isPartial(c.date)"
+              [attr.title]="isLocked(c.date) ? 'Уже в плане' : null"
               (click)="toggleDay(c.date)"
             >
               {{ c.day }}
@@ -148,22 +179,33 @@ function key(d: Date): string {
         </div>
       }
 
+      <!-- Считаем то, что добавится, а не «люди × дни»: почти всё в этом
+           произведении уже стоит в плане, и обещать 60 там, где заведётся
+           4, значит соврать про объём работы. -->
       <div class="summarybar">
-        <b>{{ picked().size }}</b>
-        <span class="muted">креаторов ×</span>
-        <b>{{ days().size }}</b>
-        <span class="muted">дней =</span>
-        <b>{{ total() }}</b>
-        <span class="muted">выкладок</span>
-        @if (!total()) {
-          <span class="muted">— выберите людей и дни</span>
+        <b>{{ toCreate() }}</b>
+        <span class="muted">{{ toCreate() === 1 ? 'новая выкладка' : 'новых выкладок' }}</span>
+        @if (alreadySet()) {
+          <span class="muted">· {{ alreadySet() }} уже в плане</span>
+        }
+        @if (!picked().size) {
+          <span class="muted">— отметьте, кому ставим даты</span>
+        } @else if (!days().size) {
+          <span class="muted">— отметьте дни в календаре</span>
         }
       </div>
 
+      @if (alreadySet()) {
+        <p class="hint">
+          Отмеченные даты — это текущий план. Новые добавятся к нему, а стоящие останутся как есть:
+          убрать запланированную выкладку можно только из её строки в списке.
+        </p>
+      }
+
       <div class="actions">
         <button type="button" class="btn ghost sm" (click)="cancel()">Отмена</button>
-        <button type="submit" class="btn primary sm" [disabled]="!total() || busy()">
-          Создать выкладки
+        <button type="submit" class="btn primary sm" [disabled]="!toCreate() || busy()">
+          {{ alreadySet() ? 'Добавить даты' : 'Создать выкладки' }}
         </button>
       </div>
     </form>
@@ -206,6 +248,26 @@ function key(d: Date): string {
         color: var(--text-muted);
         font-size: 12.5px;
       }
+      /* Уже стоящая дата отличается от только что отмеченной: первую
+         отсюда не снять, и выглядеть они одинаково не должны. */
+      .dc.set {
+        border-style: dashed;
+        cursor: default;
+        opacity: 0.85;
+      }
+      .dc.part::after {
+        position: absolute;
+        right: 4px;
+        bottom: 3px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: currentcolor;
+        content: '';
+      }
+      .dc.part {
+        position: relative;
+      }
       .actions {
         display: flex;
         justify-content: flex-end;
@@ -225,6 +287,25 @@ export class SchedulePublicationsDialogComponent {
 
   public readonly weekdays = WEEKDAYS;
 
+  /**
+   * Что уже стоит в плане: дата → кто на неё назначен.
+   *
+   * Отменённые не в счёт — их дата свободна, и ставить её заново можно.
+   */
+  private readonly scheduled = new Map<string, Set<string>>(
+    (() => {
+      const out = new Map<string, Set<string>>();
+      for (const p of inject<SchedulePublicationsData>(NZ_MODAL_DATA).existing ?? []) {
+        if (p.status === 'cancelled') continue;
+        const day = p.due_date.slice(0, 10);
+        const set = out.get(day) ?? new Set<string>();
+        set.add(p.creator_user_id);
+        out.set(day, set);
+      }
+      return out;
+    })(),
+  );
+
   public readonly picked = signal<Set<string>>(new Set());
 
   /** Выбранные дни, ключами ГГГГ-ММ-ДД — порядок задаём при отправке. */
@@ -238,6 +319,28 @@ export class SchedulePublicationsDialogComponent {
 
   /** Какой месяц показан в календаре. Проект живёт дольше одного. */
   private readonly cursor = signal(startOfMonth(new Date()));
+
+  public constructor() {
+    // Открываемся на текущем плане: отмечены те, кому уже проставлены
+    // даты, и сами даты. Плана нет — всё пусто, как и было.
+    const creators = new Set<string>();
+    for (const ids of this.scheduled.values()) for (const id of ids) creators.add(id);
+    this.picked.set(creators);
+    this.days.set(new Set(this.scheduled.keys()));
+    // И на том месяце, где план начинается: открывать сентябрь, когда
+    // выкладки стоят в октябре, значит показать пустой календарь поверх
+    // непустого плана.
+    const first = [...this.scheduled.keys()].sort()[0];
+    if (first) {
+      const [y, m] = first.split('-').map(Number);
+      this.showMonth(y, m - 1);
+    }
+  }
+
+  /** Открыть календарь на заданном месяце. Номер месяца с нуля. */
+  public showMonth(year: number, month: number): void {
+    this.cursor.set(new Date(year, month, 1));
+  }
 
   public readonly monthTitle = computed(() => {
     const d = this.cursor();
@@ -266,6 +369,46 @@ export class SchedulePublicationsDialogComponent {
 
   public readonly total = computed(() => this.picked().size * this.days().size);
 
+  /**
+   * Сколько выкладок реально добавится.
+   *
+   * Не «креаторы × дни»: почти всё в этом произведении уже стоит в
+   * плане, и сервер такие пары молча пропускает (ON CONFLICT по паре
+   * «креатор и день»). Показывать 60 там, где заведётся 4, значит
+   * обещать работу, которой не будет.
+   */
+  public readonly toCreate = computed(() => {
+    let n = 0;
+    for (const day of this.days()) {
+      const already = this.scheduled.get(day);
+      for (const id of this.picked()) if (!already?.has(id)) n += 1;
+    }
+    return n;
+  });
+
+  /** Сколько из отмеченного уже стоит: то, что останется как есть. */
+  public readonly alreadySet = computed(() => this.total() - this.toCreate());
+
+  /**
+   * На дате уже есть выкладки — галочка с неё не снимается.
+   *
+   * Снять её было бы нечем: ручки, отменяющей одну запланированную
+   * выкладку, у API нет. Хватает ОДНОЙ существующей выкладки, а не всех
+   * отмеченных: снятая галочка всё равно ничего не отменит, а человек
+   * уйдёт уверенный, что дату убрал.
+   */
+  public isLocked(date: string): boolean {
+    return this.scheduled.has(date);
+  }
+
+  /** Дата есть, но не у всех отмеченных: кому-то её ещё добавят. */
+  public isPartial(date: string): boolean {
+    const already = this.scheduled.get(date);
+    if (!already) return false;
+    for (const id of this.picked()) if (!already.has(id)) return true;
+    return false;
+  }
+
   public isPicked(id: string): boolean {
     return this.picked().has(id);
   }
@@ -279,6 +422,13 @@ export class SchedulePublicationsDialogComponent {
   }
 
   public toggleDay(date: string): void {
+    // Снять стоящую дату отсюда нельзя: ручки, отменяющей одну
+    // запланированную выкладку, у API нет. Галочка, которая снимается и
+    // ничего не меняет, — обещание, которого мы не выполним.
+    if (this.isLocked(date)) {
+      this.msg.info('Дата уже в плане. Убрать её можно только из строки самой выкладки.');
+      return;
+    }
     this.days.set(toggled(this.days(), date));
   }
 
@@ -294,7 +444,9 @@ export class SchedulePublicationsDialogComponent {
    */
   public preset(p: Preset): void {
     const next = new Set(this.days());
-    const month = this.cells().filter((c) => c.date && !c.past);
+    // Занятые даты заготовка не трогает ни в какую сторону: «Сбросить»
+    // не снимает того, что уже стоит в плане, — снять это отсюда нечем.
+    const month = this.cells().filter((c) => c.date && !c.past && !this.isLocked(c.date));
     for (const c of month) next.delete(c.date!);
     if (p === 'clear') {
       this.days.set(next);
@@ -327,6 +479,13 @@ export class SchedulePublicationsDialogComponent {
       this.msg.error('Отметьте дни выкладок в календаре.');
       return;
     }
+    if (!this.toCreate()) {
+      this.msg.info('Всё отмеченное уже стоит в плане — добавлять нечего.');
+      return;
+    }
+    // Шлём набор целиком, а не только новые пары: уже стоящие сервер
+    // пропускает сам, и список дат в запросе остаётся тем же планом,
+    // который менеджер видит на экране.
     const req: BatchRequest = {
       creator_user_ids: [...this.picked()],
       dates: [...this.days()].sort(),
