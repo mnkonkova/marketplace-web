@@ -73,13 +73,18 @@ describe('ProjectStatsComponent: график', () => {
     expect(cmp.lastPoint()?.views).toBe(report().views);
   });
 
-  it('переключатель глубины появляется, только когда есть что переключать', () => {
-    // Ряд из двух дней: «7 дней» и «30 дней» нарисуют одно и то же, и
-    // кнопка, которая ничего не меняет, читается как сломанная.
-    expect(setup(report()).componentInstance.canSwitchRange()).toBeFalse();
+  // Прятать переключатель на коротком ряде нельзя — его тогда не найти
+  // вовсе. Но и молчать нельзя: обе кнопки нарисуют одно и то же, и
+  // переключатель прочитается как сломанный.
+  it('на коротком ряде переключатель остаётся, но говорит, за сколько дней числа', () => {
+    const short = setup(report());
+    expect(short.componentInstance.shortSeries()).toBeTrue();
+    expect(short.componentInstance.seriesDays()).toBe(2);
+    expect(short.nativeElement.textContent).toContain('пока за 2 дня');
 
-    const long = report({ by_day: days(12) });
-    expect(setup(long).componentInstance.canSwitchRange()).toBeTrue();
+    const long = setup(report({ by_day: days(12) }));
+    expect(long.componentInstance.shortSeries()).toBeFalse();
+    expect(long.nativeElement.textContent).not.toContain('пока за');
   });
 
   it('«7 дней» режет ряд до последней недели, «30» возвращает месяц', () => {

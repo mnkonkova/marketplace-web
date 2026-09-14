@@ -36,12 +36,19 @@
     <div class="chart">
       <!-- Переключатель глубины стоит у самого графика: он меняет только
            его, и в шапке экрана читался бы как фильтр всей страницы. -->
-      @if (canSwitchRange()) {
-        <div class="range" role="group" aria-label="Глубина графика">
-          <button type="button" [class.on]="range() === 7" (click)="setRange(7)">7 дней</button>
-          <button type="button" [class.on]="range() === 30" (click)="setRange(30)">30 дней</button>
-        </div>
-      }
+      <div class="range" role="group" aria-label="Глубина графика">
+        @if (shortSeries()) {
+          <!-- Числа есть не за весь выбранный период: без этой подписи
+               обе кнопки рисуют одно и то же, и переключатель читается
+               как сломанный. -->
+          <span class="only"
+            >пока за {{ seriesDays() }}
+            {{ plural(seriesDays(), 'день', 'дня', 'дней') }}</span
+          >
+        }
+        <button type="button" [class.on]="range() === 7" (click)="setRange(7)">7 дней</button>
+        <button type="button" [class.on]="range() === 30" (click)="setRange(30)">30 дней</button>
+      </div>
       <svg
         [attr.viewBox]="'0 0 ' + W + ' ' + H"
         role="img"
