@@ -14,10 +14,12 @@ import { Router } from '@angular/router';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { AdminApi } from '@entities/admin/api/admin.api';
-import { UserCard } from '@entities/admin/model/admin-shell.types';
+import { SpecialistPlatform, UserCard } from '@entities/admin/model/admin-shell.types';
 import { AUDIT_ACTION_LABEL } from '@entities/admin/lib/audit-labels';
 import { parseApiError } from '@shared/api/api-error';
 import { formatAgo } from '@shared/lib/format';
+import { PLATFORM_LABEL } from '@entities/publication/lib/publication-status';
+import { Platform } from '@entities/publication/model/publication.types';
 import { PROJECT_KIND_LABEL } from '@shared/lib/project-status';
 import { CrmIconComponent } from '@shared/ui/crm-icon/crm-icon.component';
 import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
@@ -153,6 +155,21 @@ export class PersonCardComponent {
     const m = this.card()?.moderation;
     return !!m && m.is_published && m.status === 'pending_review';
   });
+
+  /**
+   * Площадки специалиста. Массив приходит целиком — пять элементов в
+   * фиксированном порядке, — и заполненность считаем по нему же: второе
+   * число рядом с массивом рано или поздно с ним разойдётся.
+   */
+  public readonly platforms = computed<SpecialistPlatform[]>(() => this.card()?.platforms ?? []);
+
+  public readonly platformsFilled = computed(
+    () => this.platforms().filter((p) => !!p.handle).length,
+  );
+
+  public platformLabel(p: SpecialistPlatform): string {
+    return PLATFORM_LABEL[p.platform as Platform] ?? p.platform;
+  }
 
   public roleInProject(role: string): string {
     return ROLE_IN_PROJECT[role] ?? role;

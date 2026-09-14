@@ -91,6 +91,26 @@
             </section>
           }
 
+          @if (platforms().length) {
+            <section class="dr-sec" data-test="platforms">
+              <h4>Площадки · {{ platformsFilled() }} из {{ platforms().length }}</h4>
+              @for (pl of platforms(); track pl.platform) {
+                <div class="kv">
+                  <span>{{ platformLabel(pl) }}</span>
+                  @if (pl.handle) {
+                    <a class="link" [href]="pl.handle" target="_blank" rel="noopener noreferrer">
+                      {{ pl.handle }}
+                    </a>
+                  } @else {
+                    <!-- Незаполненная площадка остаётся строкой: иначе
+                         «три из пяти» пришлось бы пересчитывать глазами. -->
+                    <span class="dim">не заполнено</span>
+                  }
+                </div>
+              }
+            </section>
+          }
+
           <section class="dr-sec">
             <h4>Проекты</h4>
             @for (p of c.projects; track p.id + p.role) {

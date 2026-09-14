@@ -130,6 +130,23 @@ export interface ModerationInfo {
   is_published: boolean;
 }
 
+/**
+ * Площадка выкладки в карточке специалиста.
+ *
+ * Всегда пять штук и всегда в одном порядке — том же, что у колонок в
+ * плане выкладок. Пустой `handle` значит «не заполнено»: строка остаётся
+ * на месте, иначе «три из пяти» пришлось бы пересчитывать глазами по
+ * дыркам в списке.
+ *
+ * Телеграма, вотсапа и сайта здесь нет: это контакты, а не площадки, и
+ * выкладки на них не считаются.
+ */
+export interface SpecialistPlatform {
+  platform: string;
+  /** Ссылка на аккаунт. Пусто — площадка не заполнена. */
+  handle: string;
+}
+
 export interface UserCard {
   user_id: string;
   email?: string;
@@ -149,6 +166,9 @@ export interface UserCard {
   is_published?: boolean;
   /** null у тех, у кого профиля специалиста нет: у клиента модерации не бывает. */
   moderation?: ModerationInfo;
+  /** Нет поля вовсе — у человека нет профиля специалиста: у клиента
+   *  площадок не бывает, и пустой блок про них был бы неправдой. */
+  platforms?: SpecialistPlatform[];
   projects: UserProjectRef[];
   audit: AuditEntry[];
 }

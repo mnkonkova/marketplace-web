@@ -120,6 +120,17 @@
   font-variant-numeric: tabular-nums;
 }
 
+// Ссылка на аккаунт длинная и переносу не поддаётся — обрезаем, а полный
+// адрес остаётся в самой ссылке.
+.link {
+  overflow: hidden;
+  color: var(--info);
+  font-family: var(--crm-mono);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dim {
   color: var(--text-dim);
 }

@@ -216,6 +216,36 @@ test('решение модерации принимают в карточке, 
   await page.keyboard.press('Escape');
 });
 
+test('площадки в карточке: пять строк, незаполненные не исчезают', async ({ context, page }) => {
+  await signIn(context, 'admin');
+  await page.goto('/admin/moderation');
+  await page.getByRole('button', { name: 'Открыть' }).first().click();
+  const card = page.getByRole('dialog', { name: 'Карточка человека' });
+  await expect(card).toBeVisible({ timeout: 15_000 });
+
+  // «N из 5» считается по самому списку, и список показан целиком:
+  // пропусти незаполненные — и заполненность придётся считать глазами
+  // по дыркам.
+  const block = card.locator('[data-test="platforms"]');
+  await expect(block.getByRole('heading', { name: /Площадки · \d+ из 5/ })).toBeVisible();
+  await expect(block.locator('.kv')).toHaveCount(5);
+  await expect(block.locator('.kv').filter({ hasText: 'не заполнено' }).first()).toBeVisible();
+  await page.keyboard.press('Escape');
+});
+
+test('у человека без профиля специалиста площадок в карточке нет', async ({ context, page }) => {
+  await signIn(context, 'admin');
+  await page.goto('/admin/users?kind=client');
+  await expect(page.locator('.user-row button.person').first()).toBeVisible({ timeout: 15_000 });
+
+  await page.locator('.user-row button.person').first().click();
+  const card = page.getByRole('dialog', { name: 'Карточка человека' });
+  await expect(card).toBeVisible();
+  // Площадок у заказчика не бывает — пустой блок про них был бы неправдой.
+  await expect(card.locator('[data-test="platforms"]')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+});
+
 test.describe('проекты', () => {
   test.beforeEach(async ({ context, page }) => {
     await signIn(context, 'admin');
