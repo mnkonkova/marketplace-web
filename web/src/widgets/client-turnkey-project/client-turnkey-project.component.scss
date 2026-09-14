@@ -399,6 +399,100 @@
   }
 }
 
+// Плашки состояния периода в строке счёта. Их две, и выглядят они
+// по-разному намеренно: «предварительно» значит «подожди, изменится»,
+// «приблизительно» — «период подытожен, но мерить было нечем».
+.billbar .sum {
+  .state {
+    align-self: flex-start;
+    border-radius: 999px;
+    padding: 1px 9px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  .prelim {
+    border: 1px solid rgb(250 173 20 / 35%);
+    background: rgb(250 173 20 / 12%);
+    color: #ffc953;
+  }
+
+  .approx {
+    border: 1px dashed var(--line-2, #2c313a);
+    color: var(--muted, #8c94a0);
+  }
+}
+
+// Счёт за подытоженный прошлый период. Заметнее обычной плитки: это
+// единственное место, где от заказчика ждут действия с деньгами.
+.duebar {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 16px;
+  padding: 16px 20px;
+  border: 1px solid rgb(82 196 26 / 30%);
+  border-radius: 16px;
+  background: rgb(82 196 26 / 6%);
+  flex-wrap: wrap;
+
+  .dd {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .k {
+      color: var(--muted, #8c94a0);
+      font-size: 11.5px;
+      letter-spacing: 0.02em;
+    }
+
+    b {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .r {
+      color: var(--muted-2, #616772);
+      font-size: 12px;
+    }
+  }
+
+  .parts {
+    display: flex;
+    gap: 22px;
+    flex: 1;
+    min-width: 200px;
+    flex-wrap: wrap;
+    color: var(--muted, #8c94a0);
+    font-size: 12.5px;
+
+    b {
+      display: block;
+      margin-top: 2px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+    }
+
+    i {
+      display: block;
+      color: var(--muted-2, #616772);
+      font-style: normal;
+    }
+  }
+
+  .warn {
+    width: 100%;
+    margin: 0;
+    color: var(--muted, #8c94a0);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+}
+
 // Разбор ролика по площадкам. .prow/.pu/.pv описаны в _crm.scss —
 // здесь только раскрытие и колонка ER, которой у менеджера нет.
 .det {

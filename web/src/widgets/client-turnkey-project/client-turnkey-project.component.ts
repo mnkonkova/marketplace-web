@@ -15,10 +15,18 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { downloadBlob } from '@shared/lib/download-blob';
+import { scrollToAnchorElement } from '@shared/lib/scroll-to-anchor';
 import { parseApiError } from '@shared/api/api-error';
 import { plural } from '@shared/lib/format';
 import { BillingApi } from '@entities/billing/api/billing.api';
-import { formatMoney, monthLabel } from '@entities/billing/lib/money';
+import { formatMoney } from '@entities/billing/lib/money';
+import {
+  isOpenPeriod,
+  periodRange,
+  periodTitle,
+  previousSeq,
+  snapshotNote,
+} from '@entities/billing/lib/period';
 import type { ProjectBilling } from '@entities/billing/model/billing.types';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
@@ -200,11 +208,54 @@ export class ClientTurnkeyProjectComponent {
     (this.billing()?.accruals ?? []).length === 1 ? 'Оклад' : 'Оклады',
   );
 
-  /** Месяц счёта словами: «сентябрь 2026». Период считает сервер. */
-  public readonly monthTitle = computed(() => {
-    const m = this.billing()?.period_month;
-    return m ? monthLabel(m.slice(0, 7)) : '';
+  /** Какой период показан: «Период 3 · 15 сентября — 14 октября». */
+  public readonly periodTitle = computed(() => periodTitle(this.billing()?.period));
+
+  /** Период ещё идёт — счёт не окончательный. */
+  public readonly preliminary = computed(() => isOpenPeriod(this.billing()?.period));
+
+  /** Числа подтянуты, а не измерены: поденной статистики уже нет. */
+  public readonly approximate = computed(() => !!this.billing()?.period?.snapshot_approx);
+
+  /**
+   * Счёт за прошлый период.
+   *
+   * Отдельным запросом и отдельной плашкой: наверху страницы стоит
+   * текущий период, а он ещё идёт — платить по нему нечего. Платят по
+   * подытоженному, и его сумма не должна теряться в ленте роликов.
+   */
+  public readonly prevBilling = signal<ProjectBilling | null>(null);
+
+  /**
+   * Плашку показываем, только когда прошлый период ПОДЫТОЖЕН. Пока он
+   * открыт, сумма ещё меняется — выставлять её к оплате рано.
+   */
+  public readonly prevDue = computed(() => {
+    const b = this.prevBilling();
+    return b?.period?.status === 'locked' ? b : null;
   });
+
+  public readonly prevTitle = computed(() => periodTitle(this.prevDue()?.period));
+
+  public readonly prevRange = computed(() => {
+    const p = this.prevDue()?.period;
+    return p ? periodRange(p) : '';
+  });
+
+  /** «по состоянию на 14 октября» — когда снят срез прошлого периода. */
+  public readonly prevSnapshot = computed(() => snapshotNote(this.prevDue()?.period));
+
+  public readonly prevApprox = computed(() => !!this.prevDue()?.period?.snapshot_approx);
+
+  /**
+   * Кнопка ведёт в начисления, а не в оплату: платёжного провайдера нет,
+   * получение денег подтверждает менеджер руками. Второй блок про деньги
+   * тут заводить не за чем — ниже на этой же странице стоит тот самый, с
+   * составом периода и раскладкой счёта.
+   */
+  public toBilling(): void {
+    scrollToAnchorElement('bill');
+  }
 
   /**
    * Команда собрана автоматически по приоритету, а не выбрана вручную.
@@ -268,6 +319,20 @@ export class ClientTurnkeyProjectComponent {
     });
   }
 
+  // Прошлый период тянем только если он есть: у первого периода
+  // предыдущего не бывает, и спрашивать нулевой номер незачем.
+  private loadPrevious(id: string, current: ProjectBilling): void {
+    const seq = previousSeq(current.period);
+    if (seq === null) {
+      this.prevBilling.set(null);
+      return;
+    }
+    this.billingApi.clientBilling(id, seq).subscribe({
+      next: (b) => this.prevBilling.set(b),
+      error: () => this.prevBilling.set(null),
+    });
+  }
+
   private loadCalendar(id: string, month: string): void {
     this.pubApi.clientCalendar(id, month).subscribe({
       next: (r) => this.calendarDays.set(r.days),
@@ -277,10 +342,17 @@ export class ClientTurnkeyProjectComponent {
 
   private load(id: string): void {
     this.billingApi.clientBilling(id).subscribe({
-      next: (b) => this.billing.set(b),
-      // Тарифа у проекта может не быть — деньги тогда просто не
+      next: (b) => {
+        this.billing.set(b);
+        this.loadPrevious(id, b);
+      },
+      // Тарифа у проекта может не быть, а у проекта без вышедших роликов
+      // нет и периодов (404 no_periods) — деньги тогда просто не
       // показываем, это не сбой.
-      error: () => this.billing.set(null),
+      error: () => {
+        this.billing.set(null);
+        this.prevBilling.set(null);
+      },
     });
     this.pubApi.clientVideos(id).subscribe({
       next: (r) => this.videos.set(r.items),

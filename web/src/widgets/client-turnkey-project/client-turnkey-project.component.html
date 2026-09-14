@@ -43,8 +43,14 @@
   @if (billing()?.totals; as t) {
     <div class="billbar">
       <div class="sum">
-        <span class="k">К оплате за {{ monthTitle() }}</span>
+        <span class="k">К оплате · {{ periodTitle() }}</span>
         <b>{{ money(t.total) }}</b>
+        @if (preliminary()) {
+          <span class="state prelim">Предварительно</span>
+        }
+        @if (approximate()) {
+          <span class="state approx">Данные приблизительные</span>
+        }
       </div>
       <div class="parts">
         <span>
@@ -65,6 +71,39 @@
           </span>
         }
       </div>
+    </div>
+  }
+
+  <!-- Счёт за прошлый период. Появляется, только когда тот подытожен:
+       пока период идёт, сумма меняется, и платить по ней нечего. Кнопка
+       ведёт в начисления, а не в оплату — платёжного провайдера у нас
+       нет, получение денег подтверждает менеджер. -->
+  @if (prevDue(); as prev) {
+    <div class="duebar">
+      <div class="dd">
+        <span class="k">К оплате за прошлый период</span>
+        <b>{{ money(prev.totals?.total) }}</b>
+        <span class="r">{{ prevTitle() }}</span>
+      </div>
+      <div class="parts">
+        <span>
+          Ролики <b>{{ prev.totals?.videos_delivered }}</b>
+          <i>из {{ prev.totals?.videos }} по плану</i>
+        </span>
+        <span>
+          Просмотры <b>{{ prev.totals?.views | number }}</b>
+          @if (prevSnapshot()) {
+            <i>{{ prevSnapshot() }}</i>
+          }
+        </span>
+      </div>
+      @if (prevApprox()) {
+        <p class="warn">
+          Данные приблизительные: поденной статистики за {{ prevRange() }} уже нет, и просмотры в
+          этом счёте подтянуты по последнему известному состоянию, а не измерены на срезе.
+        </p>
+      }
+      <button type="button" class="btn ghost" (click)="toBilling()">Посмотреть начисления</button>
     </div>
   }
 
@@ -326,11 +365,11 @@
         </div>
       }
 
-      <!-- Команда месяца: клиент за неё платит, поэтому видит и состав,
+      <!-- Команда периода: клиент за неё платит, поэтому видит и состав,
              и во сколько обошёлся каждый. -->
       @if (billing()?.accruals?.length) {
         <div class="card" style="margin-bottom: 16px">
-          <h2>Команда месяца</h2>
+          <h2>Команда периода</h2>
           @if (fromOrder()) {
             <p class="sub" style="margin-bottom: 10px">
               Собрана по вашему приоритету — вручную никого не выбирали.
@@ -359,12 +398,14 @@
           }
         </div>
       }
-      <!-- «Команда месяца» — из макета: кто сколько сдал и во сколько это
+      <!-- «Команда периода» — из макета: кто сколько сдал и во сколько это
            обошлось. Заказчик за эту команду платит, поэтому строка «60 000
            + 5 850» — его счёт, а не чужая зарплата. Виджет тот же, что у
            менеджера, но в клиентской роли: UTM-меток и кнопок утверждения
            в ней нет. -->
-      <app-project-billing [projectId]="project().id" role="client" />
+      <div id="bill">
+        <app-project-billing [projectId]="project().id" role="client" />
+      </div>
 
       @if (blocks().notifications && prefs()) {
         <div class="card">
