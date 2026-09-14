@@ -59,6 +59,7 @@ import { parseApiError } from '@shared/api/api-error';
 import { ProjectAutopingComponent } from '@widgets/project-autoping/project-autoping.component';
 import { ProjectChecklistComponent } from '@widgets/project-checklist/project-checklist.component';
 import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.component';
+import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
 
 // Цвет аватара — от человека, а не случайный: одно и то же имя должно
 // выглядеть одинаково на всех экранах и между перезагрузками.
@@ -84,6 +85,7 @@ function avatarClass(id: string): string {
     ProjectAutopingComponent,
     ProjectChecklistComponent,
     ProjectStatsComponent,
+    ErValueComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-publications.component.html',

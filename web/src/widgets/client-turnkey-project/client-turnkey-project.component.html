@@ -127,11 +127,7 @@
       <div class="kpi">
         <div class="k">ER средний</div>
         <div class="v">
-          @if (r.er_percent == null) {
-            —
-          } @else {
-            {{ r.er_percent | number: '1.0-1' }}%
-          }
+          <app-er-value [percent]="r.er_percent" [withoutShares]="!!r.er_without_shares" />
         </div>
         <div class="d">
           по {{ r.videos | number }} {{ plural(r.videos, 'ролику', 'роликам', 'роликам') }}
@@ -311,11 +307,11 @@
                           }
                         </span>
                         <span class="er">
-                          @if (row.er_percent == null) {
-                            ER —
-                          } @else {
-                            ER {{ row.er_percent | number: '1.0-1' }}%
-                          }
+                          ER
+                          <app-er-value
+                            [percent]="row.er_percent"
+                            [withoutShares]="!!row.er_without_shares"
+                          />
                         </span>
                       </div>
                     }

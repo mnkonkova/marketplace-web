@@ -49,6 +49,7 @@ import { ProjectBillingComponent } from '@widgets/project-billing/project-billin
 import { ProjectCalendarComponent } from '@widgets/project-calendar/project-calendar.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
 import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.component';
+import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
 
 /**
  * Проект «креаторы под ключ» глазами заказчика.
@@ -73,6 +74,7 @@ import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.comp
     ProjectCalendarComponent,
     ProjectCommentsComponent,
     ProjectStatsComponent,
+    ErValueComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './client-turnkey-project.component.html',

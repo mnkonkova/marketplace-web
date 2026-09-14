@@ -71,8 +71,8 @@
             <b>{{ money(t.salary_per_month) }}<small>/ мес</small></b>
             @if (t.videos_first_month) { оклад за {{ t.videos_first_month }} {{
             plural(t.videos_first_month, 'ролик', 'ролика', 'роликов') }} на {{
-            projectPlatforms().length }} {{ plural(projectPlatforms().length, 'площадке', 'площадках',
-            'площадках') }} } @else { оклад за месяц }
+            projectPlatforms().length }} {{ plural(projectPlatforms().length, 'площадке',
+            'площадках', 'площадках') }} } @else { оклад за месяц }
           </span>
           <span class="t1">
             <b>{{ money(t.rate_per_1000_views) }}<small>/ 1000</small></b>
@@ -171,7 +171,10 @@
                 <span class="st">
                   <span>Просмотры <b>{{ st.views | number }}</b></span>
                   <span>Лайки <b>{{ st.likes | number }}</b></span>
-                  <span>ER <b>{{ st.er | number: '1.0-1' }}%</b></span>
+                  <span
+                    >ER
+                    <b><app-er-value [percent]="st.er" [withoutShares]="st.erWithoutShares" /></b
+                  ></span>
                 </span>
               </div>
               } @if (canSubmit(pub)) {
@@ -229,9 +232,7 @@
             </p>
             @for (a of e.accruals; track a.id) {
             <div class="money">
-              <span class="k"
-                >Оклад<small>{{ periodOfAccrual(a.period_start) }}</small></span
-              >
+              <span class="k">Оклад<small>{{ periodOfAccrual(a.period_start) }}</small></span>
               <span class="v">{{ money(a.salary) }}</span>
             </div>
             @if (a.deduction) {
@@ -239,8 +240,8 @@
               <span class="k">
                 Недосдано
                 <small
-                  >{{ a.videos_delivered }} из {{ a.videos_planned }} {{
-                  plural(a.videos_planned, 'ролика', 'роликов', 'роликов') }}</small
+                  >{{ a.videos_delivered }} из {{ a.videos_planned }} {{ plural(a.videos_planned,
+                  'ролика', 'роликов', 'роликов') }}</small
                 >
               </span>
               <span class="v">−{{ money(a.deduction) }}</span>
@@ -290,8 +291,7 @@
         <p class="sub">
           Один ролик идёт во все {{ projectPlatforms().length }} {{
           plural(projectPlatforms().length, 'площадку', 'площадки', 'площадок') }}. Можно сдать не
-          все сразу
-          — остальные дошлёте позже.
+          все сразу — остальные дошлёте позже.
         </p>
       </div>
 

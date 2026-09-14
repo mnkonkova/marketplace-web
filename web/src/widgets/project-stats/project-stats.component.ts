@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { DayPoint, PublicationReport } from '@entities/publication/model/publication.types';
 import { PLATFORM_LABEL, PLATFORM_SHORT } from '@entities/publication/lib/publication-status';
 import { plural } from '@shared/lib/format';
+import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
 
 // Цифры проекта: итоги, накопительный график по дням и разрез по
 // площадкам. Один и тот же отчёт отдают три ручки (клиент, креатор,
@@ -16,7 +17,7 @@ import { plural } from '@shared/lib/format';
 @Component({
   selector: 'app-project-stats',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ErValueComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-stats.component.html',
   styleUrl: './project-stats.component.scss',

@@ -550,11 +550,10 @@
                        без просмотров его нет вовсе, и «0%» здесь было бы
                        выдумкой, а не нулём. -->
                   <td>
-                    @if (row.er_percent == null) {
-                      <span class="dash">—</span>
-                    } @else {
-                      {{ row.er_percent | number: '1.0-1' }}%
-                    }
+                    <app-er-value
+                      [percent]="row.er_percent"
+                      [withoutShares]="!!row.er_without_shares"
+                    />
                   </td>
                 </tr>
               }

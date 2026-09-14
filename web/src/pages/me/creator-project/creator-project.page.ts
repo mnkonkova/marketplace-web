@@ -44,12 +44,13 @@ import { CreatorLadderComponent } from '@widgets/creator-ladder/creator-ladder.c
 import { BillingApi } from '@entities/billing/api/billing.api';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
 import { formatMoney } from '@entities/billing/lib/money';
-import { periodOf, periodTitle } from '@entities/billing/lib/period';
+import { periodDay, periodOf, periodTitle } from '@entities/billing/lib/period';
 import type { Material } from '@entities/publication/model/publication.types';
 import { parseApiError } from '@shared/api/api-error';
 import { plural } from '@shared/lib/format';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
+import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
 
 // Страница проекта глазами креатора: карточка проекта, его выкладки,
 // чеклист, материалы, заработок и цифры по его же роликам. Шапка берётся
@@ -72,6 +73,7 @@ import { ProjectCommentsComponent } from '@widgets/project-comments/project-comm
     CreatorAvailabilityComponent,
     CreatorLadderComponent,
     ProjectCommentsComponent,
+    ErValueComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-project.page.html',
@@ -321,10 +323,19 @@ export class CreatorProjectPage {
   // Сумма по всем площадкам ролика приходит в самой выкладке — складывать
   // её из videos_table значило бы держать вторую реализацию правила, по
   // которому считается порог «миллион на ролик».
-  public statsOf(pub: Publication): { views: number; likes: number; er: number } | null {
+  public statsOf(
+    pub: Publication,
+  ): { views: number; likes: number; er?: number; erWithoutShares: boolean } | null {
     if (!pub.links.length) return null;
-    const er = pub.views ? (pub.likes / pub.views) * 100 : 0;
-    return { views: pub.views, likes: pub.likes, er };
+    // ER берём у сервера: он считает (лайки + комментарии + репосты) ÷
+    // просмотры. Своя формула из лайков здесь уже расходилась с отчётом
+    // на тех же роликах, а с приходом репостов разошлась бы сильнее.
+    return {
+      views: pub.views,
+      likes: pub.likes,
+      er: pub.er_percent,
+      erWithoutShares: !!pub.er_without_shares,
+    };
   }
 
   public viewsOf(pub: Publication, platform: Platform): number | null {

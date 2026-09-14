@@ -23,11 +23,7 @@
       <div class="tile">
         <span>ER средний</span>
         <b>
-          @if (r.er_percent == null) {
-            —
-          } @else {
-            {{ r.er_percent | number: '1.0-1' }}%
-          }
+          <app-er-value [percent]="r.er_percent" [withoutShares]="!!r.er_without_shares" />
         </b>
         <small
           >по {{ r.videos | number }} {{ plural(r.videos, 'ролику', 'роликам', 'роликам') }}</small
