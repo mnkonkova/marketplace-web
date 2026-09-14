@@ -8,7 +8,8 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { NzTableModule, NzTableQueryParams } from 'ng-zorro-antd/table';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
@@ -22,6 +23,8 @@ import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
 import { RowMenuComponent, RowMenuItem } from '@shared/ui/row-menu/row-menu.component';
 import { StatusTagComponent, StatusTone } from '@shared/ui/status-tag/status-tag.component';
 import { CrmShellStore } from '@widgets/crm-layout/crm-shell.store';
+import { PersonCardComponent } from '@widgets/person-card/person-card.component';
+import { PersonCardStore } from '@widgets/person-card/person-card.store';
 
 type KindFilter = '' | 'client' | 'specialist';
 type RoleFilter = '' | 'manager' | 'admin' | 'regular';
@@ -48,6 +51,7 @@ type RoleFilter = '' | 'manager' | 'admin' | 'regular';
     PageHeadComponent,
     RowMenuComponent,
     StatusTagComponent,
+    PersonCardComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './users.page.html',
@@ -61,6 +65,10 @@ export class AdminUsersPage implements OnInit, OnDestroy {
   private readonly router = inject(Router);
 
   private readonly shell = inject(CrmShellStore);
+
+  private readonly route = inject(ActivatedRoute);
+
+  private readonly person = inject(PersonCardStore);
 
   public readonly items = signal<UserListItem[]>([]);
 
@@ -108,6 +116,14 @@ export class AdminUsersPage implements OnInit, OnDestroy {
     // Раздела нет в сайдбаре, и путь оболочке взять неоткуда — «Админка»
     // одна в крошках выглядела бы как обрыв.
     this.shell.setTrail([{ label: 'Люди' }, { label: 'Все пользователи' }]);
+    // ?person=… — сюда приводит ⌘K: человека там находят, а открывается
+    // он карточкой поверх списка, своей страницы у него нет.
+    const wanted = this.route.snapshot.queryParamMap.get('person');
+    if (wanted) this.person.open(wanted, null);
+    // ?kind=… — сюда ведут заглушки «Специалисты» и «Клиенты»: пока у них
+    // нет своего экрана, ссылка обязана открыть хотя бы нужный срез.
+    const kind = this.route.snapshot.queryParamMap.get('kind');
+    if (kind === 'client' || kind === 'specialist') this.kind = kind;
     this.fetch();
   }
 
@@ -146,8 +162,11 @@ export class AdminUsersPage implements OnInit, OnDestroy {
    * ни одного правила целиком.
    */
   public menuFor(u: UserListItem): RowMenuItem[] {
-    const out: RowMenuItem[] = [];
+    const out: RowMenuItem[] = [{ code: 'card', label: 'Открыть карточку' }];
     const who = u.display_name || u.email || 'пользователя';
+    if (u.kind === 'specialist' || u.kind === 'both') {
+      out.push({ code: 'profile', label: 'Публичный профиль' });
+    }
     if (
       u.is_published &&
       (u.moderation_status === 'pending_review' || u.moderation_status === 'rejected')
@@ -203,6 +222,11 @@ export class AdminUsersPage implements OnInit, OnDestroy {
     switch (code) {
       case 'approve':
         return this.approveSpecialist(u);
+      case 'card':
+        return this.person.open(u.user_id, null);
+      case 'profile':
+        void this.router.navigate(['/specialist', u.user_id]);
+        return;
       case 'moderation':
         void this.router.navigate(['/admin/moderation', u.user_id]);
         return;
@@ -294,12 +318,9 @@ export class AdminUsersPage implements OnInit, OnDestroy {
     });
   }
 
-  public openProfile(u: UserListItem): void {
-    // Профиль есть только для специалистов. Для клиентов клик пока no-op
-    // (страницы клиентского профиля нет — будет в разделе «Клиенты»).
-    if (u.kind === 'specialist' || u.kind === 'both') {
-      void this.router.navigate(['/specialist', u.user_id]);
-    }
+  /** Карточка человека — всё о нём на одной панели, не уходя из списка. */
+  public openCard(u: UserListItem, ev: Event): void {
+    this.person.open(u.user_id, ev.currentTarget);
   }
 
   public roleLabel(u: UserListItem): { text: string; tone: StatusTone } {

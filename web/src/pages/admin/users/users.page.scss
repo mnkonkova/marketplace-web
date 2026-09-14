@@ -19,13 +19,20 @@
   font-size: 13px;
 }
 
-.user-row {
-  &.clickable {
-    cursor: pointer;
+// Имя — кнопка, а не строка целиком: в строке ещё меню действий, и
+// «клик куда угодно» отнимал бы у него промахи.
+.person {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
 
-    &:hover {
-      background: var(--surface-hover);
-    }
+  &:hover {
+    color: var(--cta);
   }
 }
 

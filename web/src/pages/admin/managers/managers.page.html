@@ -1,6 +1,6 @@
 <app-page-head
   title="Команда"
-  subtitle="Кто ведёт проекты в CRM. Нагрузка — по закреплённым проектам."
+  subtitle="Админы и менеджеры. Нагрузка считается по активным проектам."
 >
   <button head-action nz-button nzType="primary" nzSize="small" (click)="openAdd()">
     Добавить в команду
@@ -12,8 +12,8 @@
   <h3>Добавить в команду</h3>
   <p class="hint">
     Найдите человека, который уже зарегистрирован, — по почте, имени или телефону. Отдельной
-    регистрации для менеджера не нужно: роль выдаётся существующему аккаунту, и доступ в CRM
-    открывается сразу.
+    регистрации для менеджера не нужно: роль выдаётся существующему аккаунту, доступ в CRM
+    открывается сразу, а ссылку для входа выдают в меню строки.
   </p>
   <div class="promote-row">
     <nz-select
@@ -39,23 +39,12 @@
       nzType="primary"
       [disabled]="!promoteUserID"
       [nzLoading]="promoting()"
-      (click)="promote(true)"
+      (click)="promote()"
     >
-      Добавить и выслать ссылку
-    </button>
-    <button
-      nz-button
-      [disabled]="!promoteUserID"
-      [nzLoading]="promoting()"
-      (click)="promote(false)"
-    >
-      Только добавить
+      Добавить
     </button>
     <button nz-button nzType="text" (click)="closeAdd()">Отмена</button>
   </div>
-  @if (lastInviteURL()) {
-  <p class="invite-url">Ссылка на вход: <code>{{ lastInviteURL() }}</code></p>
-  }
 </section>
 }
 
@@ -66,31 +55,56 @@
   emptyText="В команде пока никого. Добавьте первого менеджера — проекты будет некому вести."
   (retry)="fetch()"
 >
-  <nz-table [nzData]="items()" nzSize="middle">
+  <nz-table [nzData]="items()" nzSize="middle" [nzPageSize]="50">
     <thead>
       <tr>
-        <th>Имя</th>
-        <th>Почта</th>
+        <th>Человек</th>
         <th>Роль</th>
-        <th>Проектов в работе</th>
+        <th>В работе</th>
+        <th>Просрочено</th>
+        <th>Последний вход</th>
         <th class="r"></th>
       </tr>
     </thead>
     <tbody>
       @for (m of items(); track m.user_id) {
-      <tr>
-        <td data-label="Имя">{{ m.display_name || '—' }}</td>
-        <td data-label="Почта">
-          {{ m.email || '—' }} @if (m.email && !m.email_verified) {
-          <app-status-tag tone="wait">не подтверждена</app-status-tag>
+      <tr data-test="team-row">
+        <td data-label="Человек">
+          <button type="button" class="person" (click)="openCard(m, $event)">
+            <span class="av" aria-hidden="true">{{ initial(m) }}</span>
+            <span class="who">
+              <b>{{ name(m) }}</b>
+              @if (secondLine(m); as sub) {
+              <small>{{ sub }}</small>
+              }
+            </span>
+          </button>
+        </td>
+        <td data-label="Роль">
+          <app-status-tag>{{ roleLabel(m) }}</app-status-tag>
+          @if (m.is_manager && !m.is_approved) {
+          <app-status-tag tone="wait">ждёт доступа</app-status-tag>
           }
         </td>
-        <td data-label="Роль"><app-status-tag>Менеджер</app-status-tag></td>
-        <td data-label="Проектов в работе" class="num">{{ m.assigned_projects }}</td>
+        <td data-label="В работе" class="num">{{ m.active_projects }}</td>
+        <td data-label="Просрочено" class="num" [class.late]="m.overdue_projects > 0">
+          {{ m.overdue_projects || '—' }}
+        </td>
+        <!-- «Не входил» — не то же самое, что «давно не заходил»: это
+               значит, что ссылку для входа человек так и не открыл. -->
+        <td data-label="Последний вход">
+          @if (m.last_login_at) {
+          <span class="num dim" [title]="m.last_login_at | date: 'dd.MM.yyyy HH:mm'">
+            {{ ago(m.last_login_at) }}
+          </span>
+          } @else {
+          <app-status-tag tone="wait">Не входил</app-status-tag>
+          }
+        </td>
         <td data-label="" class="r">
           <app-row-menu
-            [items]="menu"
-            [label]="'Действия: ' + (m.display_name || m.email || 'менеджер')"
+            [items]="menuFor(m)"
+            [label]="'Действия: ' + name(m)"
             (pick)="onPick(m, $event)"
           />
         </td>
@@ -98,4 +112,79 @@
       }
     </tbody>
   </nz-table>
+  <p class="listmeta">
+    <span class="num">{{ items().length }}</span> {{ peopleWord(items().length) }} · права
+    складываются: админ может вести проекты как менеджер
+  </p>
 </app-list-state>
+
+<!-- Ссылка для входа. Отправки на почту нет — ссылку копируют и передают
+     сами; рисовать кнопку «Отправить» ради письма, которого не будет,
+     значит обещать несуществующее. -->
+@if (loginLink(); as l) {
+<div class="ovl" (click)="closeLoginLink()"></div>
+<div class="dlg" role="dialog" aria-modal="true" aria-label="Ссылка для входа">
+  <h3>Ссылка для входа</h3>
+  <p class="sub">{{ name(l.member) }}</p>
+  <div class="copyrow">
+    <input class="inp mono" readonly [value]="l.url" aria-label="Ссылка для входа" />
+    <button type="button" class="btn ghost" (click)="copyLink()">
+      {{ copied() ? 'Скопировано' : 'Скопировать' }}
+    </button>
+  </div>
+  <p class="hint">
+    Одноразовая, действует 72 часа (до {{ l.expiresAt | date: 'dd.MM.yyyy HH:mm' }}). Предыдущая
+    ссылка перестала работать.
+  </p>
+  <div class="dlg-ft">
+    <button type="button" class="btn quiet" (click)="closeLoginLink()">Закрыть</button>
+  </div>
+</div>
+}
+
+<!-- Передача дел. Открывается и сама по себе, и из отказа снять роль —
+     во втором случае после передачи роль снимается тем же движением. -->
+@if (transfer(); as t) {
+<div class="ovl" (click)="closeTransfer()"></div>
+<div class="dlg" role="dialog" aria-modal="true" aria-label="Передать проекты">
+  <h3>Передать проекты</h3>
+  <p class="sub">
+    @if (t.thenRevoke) { На {{ name(t.from) }} висят проекты — снять роль, пока они за ним, значит
+    оставить их без ответственного. Передайте их другому менеджеру, и роль снимется сразу после. }
+    @else { Все незавершённые проекты {{ name(t.from) }} переедут к выбранному менеджеру. }
+  </p>
+
+  @if (t.projects.length) {
+  <ul class="plist">
+    @for (p of t.projects; track p.id) {
+    <li>{{ p.title }}</li>
+    }
+  </ul>
+  }
+
+  <nz-select
+    [(ngModel)]="transferTo"
+    nzPlaceHolder="Кому передать"
+    style="width: 100%"
+    data-test="transfer-to"
+  >
+    @for (m of transferTargets(); track m.user_id) {
+    <nz-option [nzValue]="m.user_id" [nzLabel]="name(m)"></nz-option>
+    }
+  </nz-select>
+
+  <div class="dlg-ft">
+    <button type="button" class="btn quiet" (click)="closeTransfer()">Отмена</button>
+    <button
+      type="button"
+      class="btn primary"
+      [disabled]="!transferTo || transferring()"
+      (click)="doTransfer()"
+    >
+      {{ t.thenRevoke ? 'Передать и снять роль' : 'Передать' }}
+    </button>
+  </div>
+</div>
+}
+
+<app-person-card (changed)="fetch()" />

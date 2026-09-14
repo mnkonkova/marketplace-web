@@ -59,12 +59,14 @@
     </thead>
     <tbody>
       @for (u of items(); track u.user_id) {
-      <tr
-        class="user-row"
-        [class.clickable]="u.kind === 'specialist' || u.kind === 'both'"
-        (click)="openProfile(u)"
-      >
-        <td data-label="Имя">{{ u.display_name || '—' }}</td>
+      <tr class="user-row">
+        <!-- Клик по имени открывает карточку: раньше он вёл на публичный
+             профиль, и у клиента, у которого профиля нет, не делал ничего. -->
+        <td data-label="Имя">
+          <button type="button" class="person" (click)="openCard(u, $event)">
+            {{ u.display_name || u.email || '—' }}
+          </button>
+        </td>
         <td data-label="Email">{{ u.email || '—' }}</td>
         <td data-label="Роль">
           <app-status-tag [tone]="roleLabel(u).tone">{{ roleLabel(u).text }}</app-status-tag>
@@ -121,3 +123,5 @@
     </tbody>
   </nz-table>
 </app-list-state>
+
+<app-person-card (changed)="retry()" />

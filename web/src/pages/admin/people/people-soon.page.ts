@@ -3,6 +3,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 
+import { AdminSummaryStore } from '@entities/admin/model/admin-summary.store';
+import { plural } from '@shared/lib/format';
 import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
 
 interface SectionCopy {
@@ -10,6 +12,12 @@ interface SectionCopy {
   subtitle: string;
   /** Что здесь будет — одним предложением, без «скоро». */
   plan: string;
+  /** Ключ счётчика в nav_counts — тот же, что стоит у пункта в сайдбаре. */
+  count: 'specialists' | 'clients';
+  /** Как называть этих людей в строке про счётчик. */
+  who: [string, string, string];
+  /** С каким фильтром открыть их в общем списке. */
+  kind: 'specialist' | 'client';
 }
 
 const COPY: Record<string, SectionCopy> = {
@@ -19,6 +27,9 @@ const COPY: Record<string, SectionCopy> = {
     plan:
       'Раздел готовится: здесь будут специалисты отдельным списком — с профилем, ' +
       'статусом модерации и ставками, а не вперемешку с заказчиками.',
+    count: 'specialists',
+    who: ['специалист', 'специалиста', 'специалистов'],
+    kind: 'specialist',
   },
   clients: {
     title: 'Клиенты',
@@ -26,6 +37,9 @@ const COPY: Record<string, SectionCopy> = {
     plan:
       'Раздел готовится: здесь будут заказчики отдельным списком — с проектами ' +
       'и версией прайса, под которой стоит их согласие.',
+    count: 'clients',
+    who: ['клиент', 'клиента', 'клиентов'],
+    kind: 'client',
   },
 };
 
@@ -51,10 +65,13 @@ const COPY: Record<string, SectionCopy> = {
 
     <section class="soon">
       <p class="plan">{{ copy().plan }}</p>
+      <!-- Цифра у пункта меню обязана совпасть с тем, что человек увидит,
+           кликнув. Пока раздела нет, называем её здесь и ведём туда, где
+           эти строки лежат сегодня. -->
       <p class="now">
-        Пока все люди маркетплейса лежат одним списком —
-        <a routerLink="/admin/users">Все пользователи</a>. Там же выдают роль менеджера,
-        подтверждают почту и блокируют аккаунт.
+        {{ countLine() }} Они в общем списке —
+        <a routerLink="/admin/users" [queryParams]="{ kind: copy().kind }">Все пользователи</a>. Там
+        же выдают роль менеджера, подтверждают почту и блокируют аккаунт.
       </p>
     </section>
   `,
@@ -91,10 +108,19 @@ const COPY: Record<string, SectionCopy> = {
 export class AdminPeopleSoonPage {
   private readonly route = inject(ActivatedRoute);
 
+  private readonly summary = inject(AdminSummaryStore);
+
   private readonly section = toSignal(
     this.route.data.pipe(map((d) => (d['section'] as string) ?? 'specialists')),
     { initialValue: 'specialists' },
   );
 
   public readonly copy = computed<SectionCopy>(() => COPY[this.section()] ?? COPY['specialists']);
+
+  public readonly countLine = computed(() => {
+    const c = this.copy();
+    const n = this.summary.data()?.nav_counts?.[c.count];
+    if (n == null) return '';
+    return `Сейчас их ${n} ${plural(n, ...c.who)}.`;
+  });
 }

@@ -60,13 +60,15 @@
         </div>
         <div class="aside">
           <span class="ago">{{ agoLabel(it.updated_at) }}</span>
-          <a [routerLink]="['/admin/moderation', it.user_id]" nz-button nzType="primary">
+          <button nz-button nzType="primary" type="button" (click)="openCard(it.user_id, $event)">
             Открыть
             <span nz-icon nzType="arrow-right"></span>
-          </a>
+          </button>
         </div>
       </li>
       }
     </ul>
   </app-list-state>
 </div>
+
+<app-person-card (changed)="fetch()" />

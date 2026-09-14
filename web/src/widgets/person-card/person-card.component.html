@@ -1,0 +1,163 @@
+@if (userId()) {
+  <div class="scrim" (click)="close()"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-label="Карточка человека">
+    <app-list-state [loading]="loading()" [error]="error()" (retry)="retry()">
+      @if (card(); as c) {
+        <header class="dr-hd">
+          <span class="av" aria-hidden="true">{{ initial() }}</span>
+          <div class="who">
+            <h2>{{ name() }}</h2>
+            <p class="sub">
+              {{ role() }}
+              @if (c.email) {
+                · {{ c.email }}
+              }
+            </p>
+          </div>
+          <button type="button" class="x" aria-label="Закрыть карточку" (click)="close()">
+            <app-crm-icon name="close" />
+          </button>
+        </header>
+
+        <div class="dr-bd">
+          @if (c.moderation; as m) {
+            <section class="dr-sec">
+              <h4>Модерация</h4>
+              <div class="kv">
+                <span>Статус</span>
+                <span>
+                  <app-status-tag [tone]="moderationTone(m.status)">
+                    {{ moderationLabel(c) }}
+                  </app-status-tag>
+                </span>
+              </div>
+              @if (m.reviewed_at) {
+                <div class="kv">
+                  <span>Решение принято</span>
+                  <span class="num">{{ m.reviewed_at | date: 'dd.MM.yyyy HH:mm' }}</span>
+                </div>
+              }
+              @if (m.reason) {
+                <div class="kv">
+                  <span>Причина отказа</span><span>{{ m.reason }}</span>
+                </div>
+              }
+
+              @if (awaitsDecision()) {
+                <!-- Решение принимают здесь же: уходить за ним на отдельный
+                     экран значит терять из виду всё, на чём его основывают. -->
+                <div class="decide">
+                  @if (rejecting()) {
+                    <p>Причину увидит специалист — напишите, что исправить.</p>
+                    <textarea
+                      class="inp"
+                      rows="3"
+                      [(ngModel)]="reason"
+                      placeholder="Например: добавьте 2–3 вертикальных ролика в портфолио"
+                    ></textarea>
+                    <div class="acts">
+                      <button type="button" class="btn quiet" (click)="cancelReject()">
+                        Отмена
+                      </button>
+                      <button
+                        type="button"
+                        class="btn primary"
+                        [disabled]="busy()"
+                        (click)="reject()"
+                      >
+                        Отклонить
+                      </button>
+                    </div>
+                  } @else {
+                    <p>
+                      Профиль опубликован и ждёт решения. Оно относится к текущей версии профиля.
+                    </p>
+                    <div class="acts">
+                      <button
+                        type="button"
+                        class="btn primary"
+                        [disabled]="busy()"
+                        (click)="approve()"
+                      >
+                        Одобрить
+                      </button>
+                      <button type="button" class="btn quiet" (click)="askReject()">
+                        Отклонить с причиной
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </section>
+          }
+
+          <section class="dr-sec">
+            <h4>Проекты</h4>
+            @for (p of c.projects; track p.id + p.role) {
+              <button type="button" class="prow" (click)="openProject(p.id)">
+                <b>{{ p.title }}</b>
+                <span class="dim">{{ kindLabel(p.kind) }} · {{ roleInProject(p.role) }}</span>
+              </button>
+            } @empty {
+              <p class="dim small">Пока ни в одном проекте.</p>
+            }
+          </section>
+
+          <section class="dr-sec">
+            <h4>Вход</h4>
+            <div class="kv">
+              <span>Почта</span>
+              <span>
+                @if (c.email_verified) {
+                  <app-status-tag tone="ok">Подтверждена</app-status-tag>
+                } @else {
+                  <app-status-tag tone="neutral">Не подтверждена</app-status-tag>
+                }
+              </span>
+            </div>
+            <div class="kv">
+              <span>Последний вход</span>
+              @if (c.last_login_at) {
+                <span class="num" [title]="c.last_login_at | date: 'dd.MM.yyyy HH:mm'">
+                  {{ ago(c.last_login_at) }}
+                </span>
+              } @else {
+                <span><app-status-tag tone="wait">Не входил</app-status-tag></span>
+              }
+            </div>
+            <div class="kv">
+              <span>Доступ</span>
+              <span>
+                @if (c.is_active) {
+                  <app-status-tag tone="neutral">Открыт</app-status-tag>
+                } @else {
+                  <app-status-tag tone="blocked">Заблокирован</app-status-tag>
+                }
+              </span>
+            </div>
+            <div class="kv">
+              <span>В системе с</span>
+              <span class="num">{{ c.created_at | date: 'dd.MM.yyyy' }}</span>
+            </div>
+          </section>
+
+          <section class="dr-sec">
+            <h4>Журнал</h4>
+            @for (e of c.audit; track e.id) {
+              <div class="logrow">
+                <time [attr.datetime]="e.created_at">{{ e.created_at | date: 'dd.MM HH:mm' }}</time>
+                <span>
+                  <b>{{ e.actor_display_name || e.actor_email || 'Система' }}</b>
+                  {{ actionLabel(e.action) }}
+                </span>
+              </div>
+            } @empty {
+              <p class="dim small">Журнал по нему молчит.</p>
+            }
+            <button type="button" class="all" (click)="openAudit()">Вся история в журнале</button>
+          </section>
+        </div>
+      }
+    </app-list-state>
+  </aside>
+}
