@@ -185,6 +185,33 @@
   }
 }
 
+// Свёрнутые блоки: детали порядка платежей и разбор ставок у заказчика.
+// Доступны, но экран не занимают — заказчику нужны сумма и стоимость
+// тысячи просмотров, а не устройство расчёта.
+.note-fold,
+.rates-fold {
+  margin-top: 8px;
+
+  summary {
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12.5px;
+    list-style: revert;
+
+    &:hover {
+      color: var(--text);
+    }
+  }
+
+  &[open] summary {
+    margin-bottom: 8px;
+  }
+}
+
+.rates-fold summary {
+  font-size: 13px;
+}
+
 .empty {
   color: var(--text-dim);
   font-size: 13.5px;

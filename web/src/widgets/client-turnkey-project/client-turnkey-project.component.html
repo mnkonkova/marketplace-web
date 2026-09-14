@@ -136,75 +136,13 @@
     </div>
   }
 
-  <!-- Тариф карточками, как в КП: сначала фикс, потом бонус, потом
-         то, что пока не считаем. -->
-  @if (billing()?.terms; as t) {
-    <div class="pcards" style="margin-bottom: 22px">
-      <div class="pcard lead">
-        <div class="ph">Оклад</div>
-        <div class="pb">
-          <div class="big">{{ money(t.salary_per_month) }}<small>/ мес</small></div>
-          <p class="desc">
-            Фиксированная оплата каждому креатору за производство с публикацией на всех площадках.
-          </p>
-          @if (t.videos_first_month || t.videos_next_months) {
-            <div class="tiers">
-              @if (t.videos_first_month) {
-                <div class="tier">
-                  <span class="v">{{ t.videos_first_month }} видео</span>
-                  <span class="d">первый месяц</span>
-                </div>
-              }
-              @if (t.videos_next_months) {
-                <div class="tier">
-                  <span class="v">{{ t.videos_next_months }} видео / мес</span>
-                  <span class="d">со второго месяца</span>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="pcard">
-        <div class="ph">За просмотры</div>
-        <div class="pb">
-          <div class="big">{{ money(t.rate_per_1000_views) }}<small>/ 1000</small></div>
-          <p class="desc">
-            Бонус за просмотры каждого ролика — суммарно по всем пяти площадкам. Ставка падает после
-            порога: виральный ролик не съедает бюджет.
-          </p>
-          @if (t.bonus_views_threshold) {
-            <div class="tiers">
-              <div class="tier">
-                <span class="v">{{ money(t.rate_per_1000_views) }}/1000</span>
-                <span class="d">до {{ t.bonus_views_threshold | number }} на ролик</span>
-              </div>
-              <div class="tier">
-                <span class="v">{{ money(t.rate_per_1000_views_over) }}/1000</span>
-                <span class="d">свыше {{ t.bonus_views_threshold | number }} на ролик</span>
-              </div>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="pcard" [class.off]="!t.click_bonus_rate">
-        <div class="ph">За переходы</div>
-        <div class="pb">
-          <div class="big">
-            {{ t.click_bonus_rate ? money(t.click_bonus_rate) : '—' }}<small>/ переход</small>
-          </div>
-          <p class="desc">Бонус за переходы к вам за месяц.</p>
-          @if (!t.click_bonus_rate) {
-            <p class="offnote">
-              Пока не считаем: источник переходов не подключён. Поля в тарифе есть.
-            </p>
-          }
-        </div>
-      </div>
-    </div>
-  }
+  <!-- Разбор тарифа (оклад, ставка за просмотры, порог, переходы) отсюда
+       убран. Он отвечает на вопрос «как мы считаем», а у заказчика вопрос
+       «сколько платить и выгодно ли это»: на него отвечают строка «К
+       оплате» и стоимость тысячи просмотров выше. Сам разбор никуда не
+       делся — он в «Условиях и стоимости» ниже, под раскрытием, и живёт
+       там в одном экземпляре: две копии одних и тех же ставок на одном
+       экране расходились бы при первой же правке. -->
 
   <div class="two">
     <div>
