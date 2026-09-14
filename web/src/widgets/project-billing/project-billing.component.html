@@ -357,7 +357,8 @@
                   <b>{{ money(a.total) }}</b>
                 </td>
                 <td>
-                  <nz-tag [nzColor]="statusColor[a.status]">{{ statusLabel[a.status] }}</nz-tag>
+                  @let st = status(a);
+                  <nz-tag [nzColor]="st.color">{{ st.label }}</nz-tag>
                 </td>
                 <td class="acts">
                   @if (approvable(a)) {

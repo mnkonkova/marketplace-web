@@ -28,12 +28,11 @@ import {
   UtmLink,
 } from '@entities/billing/model/billing.types';
 import {
-  ACCRUAL_STATUS_COLOR,
-  ACCRUAL_STATUS_LABEL,
   PAYMENT_KIND_LABEL,
   PAYMENT_KIND_MISSING,
   PAYMENT_STATUS_COLOR,
   PAYMENT_STATUS_LABEL,
+  accrualStatus,
   bonusTotal,
   canApprove,
   canConfirmPayment,
@@ -113,10 +112,6 @@ export class ProjectBillingComponent {
   public readonly projectId = input.required<string>();
 
   public readonly role = input.required<BillingRole>();
-
-  public readonly statusLabel = ACCRUAL_STATUS_LABEL;
-
-  public readonly statusColor = ACCRUAL_STATUS_COLOR;
 
   public readonly paymentLabel = PAYMENT_KIND_LABEL;
 
@@ -340,6 +335,11 @@ export class ProjectBillingComponent {
 
   public confirmablePayment(p?: Payment): boolean {
     return canConfirmPayment(p);
+  }
+
+  /** Состояние строки: у непересчитанной его нет — она «предварительная». */
+  public status(a: Accrual): { label: string; color: string } {
+    return accrualStatus(a);
   }
 
   // Второе слагаемое в «60 000 + 5 850».

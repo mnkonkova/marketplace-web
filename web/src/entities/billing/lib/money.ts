@@ -56,6 +56,17 @@ export const ACCRUAL_STATUS_COLOR: Record<AccrualStatus, string> = {
   paid: 'green',
 };
 
+// Состояние строки для колонки «Статус».
+//
+// У непересчитанной строки статуса нет вовсе: её в базе не существует, и
+// сервер присылает пустую строку. Раньше на этом месте оставалась пустая
+// плашка — читалась как «статус потеряли», хотя всё как раз наоборот:
+// строки ещё нет, и утверждать в ней нечего.
+export function accrualStatus(a: Accrual): { label: string; color: string } {
+  if (a.is_preview || !a.status) return { label: 'Предварительно', color: 'gold' };
+  return { label: ACCRUAL_STATUS_LABEL[a.status], color: ACCRUAL_STATUS_COLOR[a.status] };
+}
+
 export const PAYMENT_KIND_LABEL: Record<PaymentKind, string> = {
   prepayment: 'Предоплата',
   final: 'Финальный платёж',
