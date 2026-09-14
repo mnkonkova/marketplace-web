@@ -43,6 +43,7 @@
 
 .cards {
   display: grid;
+  align-items: stretch;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
   margin: 0;
@@ -50,14 +51,29 @@
   list-style: none;
 }
 
+// Карточка — ссылка целиком: попадать в мелкую строку внизу мышью
+// неудобно, а нажимаемым выглядит весь прямоугольник.
 .card {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  height: 100%;
   padding: 16px 18px;
   border: 1px solid var(--border-strong);
   border-radius: var(--r-card, 16px);
   background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    border-color: var(--cta-hover);
+  }
+
+  // Фокус виден: по карточкам ходят и с клавиатуры.
+  &:focus-visible {
+    outline: 2px solid var(--cta, #f0553c);
+    outline-offset: 2px;
+  }
 
   header {
     display: flex;
@@ -87,8 +103,11 @@
   font-size: 13px;
 }
 
+// Строка-указатель, а не вторая кнопка: нажимается вся карточка, и
+// стрелка тут обещала бы отдельную цель.
 .go {
-  margin-top: 6px;
+  margin-top: auto;
+  padding-top: 6px;
   color: var(--cta-hover);
   font-size: 13.5px;
 }

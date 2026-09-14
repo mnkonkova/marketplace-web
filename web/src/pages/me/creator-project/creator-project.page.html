@@ -58,10 +58,15 @@
             <i class="part" [style.width.%]="sharePercent('part')"></i>
             <i class="late" [style.width.%]="sharePercent('late')"></i>
           </span>
+          <!-- Про ПЕРИОД, а не про проект: выполненный план роликов не
+               заканчивает проект, он живёт дальше — закрываются периоды.
+               «Всё сдано» на этом месте читалось как «всё, проект
+               окончен». -->
           <span class="pcount">
-            {{ closed() }} из {{ total() }} {{ plural(total(), 'ролика', 'роликов', 'роликов') }}
-            закрыто · {{ links().done }} из {{ links().total }} {{ plural(links().total, 'ссылки',
-            'ссылок', 'ссылок') }}
+            @if (!total()) { Дат выкладок пока нет — их проставит менеджер. } @else { {{ closed() }}
+            из {{ total() }} по плану периода · {{ links().done }} из {{ links().total }} {{
+            plural(links().total, 'ссылки', 'ссылок', 'ссылок') }} @if (periodEnds(); as ends) { ·
+            период до {{ ends | date: 'd MMM' }} } }
           </span>
         </div>
 
@@ -201,8 +206,14 @@
           }
         </div>
 
-        <!-- ── правая колонка ────────────────────────────── -->
+        <!-- ── правая колонка ──────────────────────────────
+             Порядок: сначала деньги и ближайшая цель, потом материалы,
+             потом история. Второстепенное ниже и мельче. -->
         <div>
+          <!-- Что заработано за период и что добавит следующая ступень.
+               Главное, ради чего креатор сюда заходит. -->
+          <app-creator-ladder [earnings]="earnings()" [publications]="items()" />
+
           @if (materials().length) {
           <div class="card" style="margin-bottom: 16px">
             <h2>Материалы проекта</h2>
@@ -219,51 +230,29 @@
             }
           </div>
           }
-          <!-- Шкала ступеней: главное, что креатор смотрит по ходу
-               периода — сколько просмотров до следующей ступени и
-               сколько это роликов. -->
-          <app-creator-ladder [earnings]="earnings()" [publications]="items()" />
 
-          @if (earnings(); as e) { @if (e.accruals?.length) {
-          <div class="card" style="margin-bottom: 16px">
-            <h2>Мой заработок</h2>
-            <p class="sub" style="margin-bottom: 10px">
-              Период открыт — бонус растёт, пока идут просмотры.
-            </p>
-            @for (a of e.accruals; track a.id) {
-            <div class="money">
-              <span class="k">Оклад<small>{{ periodOfAccrual(a.period_start) }}</small></span>
-              <span class="v">{{ money(a.salary) }}</span>
-            </div>
-            @if (a.deduction) {
+          <!-- История: только прошлые периоды. Текущий стоит выше, крупно
+               и с прогнозом, — второй такой же блок был бы не
+               «подробнее», а той же суммой дважды на одном экране. -->
+          @if (pastAccruals().length) {
+          <div class="card past" style="margin-bottom: 16px">
+            <h2>Прошлые периоды</h2>
+            <p class="sub" style="margin-bottom: 10px">Подытожено и пересчёту не подлежит.</p>
+            @for (a of pastAccruals(); track a.id) {
             <div class="money">
               <span class="k">
-                Недосдано
+                {{ periodOfAccrual(a.period_start) }}
                 <small
                   >{{ a.videos_delivered }} из {{ a.videos_planned }} {{ plural(a.videos_planned,
-                  'ролика', 'роликов', 'роликов') }}</small
+                  'ролик', 'ролика', 'роликов') }} · {{ a.views_total | number }} {{
+                  plural(a.views_total, 'просмотр', 'просмотра', 'просмотров') }}</small
                 >
               </span>
-              <span class="v">−{{ money(a.deduction) }}</span>
-            </div>
-            }
-            <div class="money">
-              <span class="k">
-                Бонус за просмотры
-                <small
-                  >{{ a.views_total | number }} {{ plural(a.views_total, 'просмотр', 'просмотра',
-                  'просмотров') }}</small
-                >
-              </span>
-              <span class="v">{{ money(a.views_bonus) }}</span>
-            </div>
-            <div class="money tot">
-              <span class="k">Итого</span>
               <span class="v">{{ money(a.total) }}</span>
             </div>
             }
           </div>
-          } }
+          }
 
           <app-creator-availability />
         </div>
@@ -347,6 +336,17 @@
           </label>
           } }
         </div>
+        }
+        <!-- Чеклиста у проекта может не быть вовсе: он снимается с шаблона
+             при заведении проекта, а шаблон подключают не всегда. Молчать
+             об этом нельзя — креатор решит, что требований нет, а менеджер
+             решит, что он их проигнорировал. -->
+        @if (noChecklist()) {
+        <div class="divider"></div>
+        <p class="sub" style="margin-top: 10px">
+          Чеклист по этому проекту не задан — менеджер не подключил его к проекту. Требований перед
+          сдачей нет; если они должны быть, напишите менеджеру.
+        </p>
         } @if (commonChecklist().length) {
         <div class="divider"></div>
         <p class="lbl">Перед сдачей</p>
@@ -400,7 +400,18 @@
 
       <div class="modal-bd">
         <p class="lbl">Новая дата</p>
-        <input class="inp" type="date" [(ngModel)]="newDate" />
+        <!-- nz-date-picker, а не <input type="date">: у нативного поля
+             Chrome рисует свой календарь — белый, с синим выделением,
+             мимо всей тёмной темы, и выключить это нельзя. Панель
+             рисуется в слое поверх окна, поэтому прокруткой модалки не
+             обрезается. -->
+        <nz-date-picker
+          class="inp"
+          [(ngModel)]="newDate"
+          nzFormat="dd.MM.yyyy"
+          nzPlaceHolder="Выберите дату"
+          [nzDisabledDate]="disabledPastDates"
+        />
         <p class="lbl" style="margin-top: 14px">Почему</p>
         <textarea
           class="inp"

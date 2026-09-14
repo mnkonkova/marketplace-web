@@ -81,4 +81,28 @@ export class CreatorProjectsPage {
   public closed(p: CreatorProject): number {
     return Math.max(0, p.publications_total - p.publications_open);
   }
+
+  /**
+   * Состояние проекта на карточке.
+   *
+   * Про ПЕРИОД, а не про проект: проект не заканчивается, когда выполнен
+   * план роликов, — он живёт дальше, а закрываются периоды. «Всё сдано»
+   * звучало как «проект окончен» и врало дважды: на проекте без единой
+   * выкладки оно ещё и поздравляло с несделанным.
+   */
+  public stateLabel(p: CreatorProject): string {
+    if (p.publications_overdue) return `${p.publications_overdue} просрочено`;
+    if (p.publications_open) return `${p.publications_open} в работе`;
+    // Ноль выкладок — это не «план выполнен», это «работа не начиналась».
+    if (!p.publications_total) return 'ещё не начали';
+    return 'план периода выполнен';
+  }
+
+  /** Зелёным — только то, что действительно сделано. */
+  public stateTone(p: CreatorProject): string {
+    if (p.publications_overdue) return 'red';
+    if (p.publications_open) return 'gold';
+    if (!p.publications_total) return 'default';
+    return 'green';
+  }
 }

@@ -1,3 +1,4 @@
+import { plural } from '@shared/lib/format';
 import type { TypicalSource } from '../model/billing.types';
 
 // Шкала прогресса креатора: ступени по просмотрам.
@@ -8,9 +9,12 @@ import type { TypicalSource } from '../model/billing.types';
 // что в карточке нужный <b>. Компонент только раскладывает по экрану то,
 // что посчитано тут.
 //
-// Денег здесь нет ни в каком виде. Сколько заработано за период, знает
-// сервер — оно берётся из начисления как есть. Второй расчёт в браузере
-// разойдётся с серверным на первой же правке тарифа, и разойдётся молча.
+// Денег здесь по-прежнему не СЧИТАЮТ. Сколько заработано за период и
+// сколько добавит следующая ступень, знает сервер: первое приходит из
+// начисления, второе — прогнозом (next_step_forecast), и считает его тот
+// же код, что и настоящую выплату. Вторая копия расчёта денег в браузере
+// разошлась бы с серверной на первой же правке ставок, и разошлась бы
+// молча — заметили бы это в день выплаты.
 
 /** Ступень шкалы — 100 000 просмотров. */
 export const LADDER_STEP = 100_000;
@@ -172,102 +176,6 @@ export function ladderState(views: number): LadderState {
 }
 
 /**
- * Ступени для отрисовки: пройденные, текущая и следующая.
- *
- * Показываем не всю бесконечную шкалу, а окно вокруг текущего
- * положения: три пройденные ступени назад и следующую вперёд. Полная
- * шкала на седьмой ступени превращается в ленту одинаковых галочек.
- */
-export function ladderMarks(state: LadderState, back = 3): number[] {
-  const first = Math.max(1, state.passed - back + 1);
-  const marks: number[] = [];
-  for (let i = first; i <= state.passed + 1; i += 1) marks.push(i * LADDER_STEP);
-  return marks;
-}
-
-export interface VideoPlan {
-  /** Обычными роликами: «это 20 обычных роликов». */
-  normal: number;
-  /**
-   * Сколько обычных нужно ДОПОЛНИТЕЛЬНО к одному хиту. 0 — хит закрывает
-   * ступень сам. null — варианта с хитом нет: своего рекорда ещё нет или
-   * он неотличим от обычного ролика.
-   */
-  withHit: number | null;
-}
-
-/** «20 обычных роликов или 1 хит и 8 обычных». */
-export function videosToStep(
-  toNext: number,
-  typical: number,
-  hit: number | null = null,
-): VideoPlan {
-  if (toNext <= 0 || typical <= 0) return { normal: 0, withHit: null };
-  const normal = Math.ceil(toNext / typical);
-  if (hit === null || hit < typical * 2) return { normal, withHit: null };
-  return { normal, withHit: Math.max(0, Math.ceil((toNext - hit) / typical)) };
-}
-
-export interface ForecastInput {
-  /** Просмотры в счёте ступеней сейчас, вместе с перенесённым остатком. */
-  current: number;
-  /** Просмотры роликов, которые вышли, но ещё растут. */
-  young: number[];
-  typical: number;
-  /** Сколько роликов по плану ещё выйдет до конца периода. */
-  plannedLeft: number;
-}
-
-/**
- * Прогноз на конец периода.
- *
- * Три слагаемых: что уже есть, дорост молодых роликов и то, что принесут
- * ещё не вышедшие. Дорост считаем до типичного и не ниже нуля: ролик,
- * который уже перерос типичный, в прогнозе не отнимает — он просто
- * перестаёт расти по этой модели, а не начинает терять просмотры.
- */
-export function forecastViews(input: ForecastInput): number {
-  const { current, young, typical, plannedLeft } = input;
-  const growth = young.reduce((sum, v) => sum + Math.max(0, typical - v), 0);
-  return Math.round(current + growth + Math.max(0, plannedLeft) * Math.max(0, typical));
-}
-
-/** До какой отметки не дотянул этот конкретный ролик. */
-export type VideoLevel = 'typical' | 'best' | 'top';
-
-export interface VideoTarget {
-  level: VideoLevel;
-  /** Сколько просмотров осталось до отметки. 0 — отметка взята. */
-  left: number;
-}
-
-/**
- * Куда тянуть конкретный ролик: до типичного, потом до своего рекорда.
- *
- * Отметки — собственные числа автора, а не шкала «хороший / отличный»
- * с выдуманными порогами: «до отличного 2 600» звучит убедительно ровно
- * до вопроса, откуда взялось «отличное».
- */
-export function videoTarget(
-  views: number,
-  typical: number,
-  hit: number | null = null,
-): VideoTarget | null {
-  if (typical <= 0) return null;
-  if (views < typical) return { level: 'typical', left: typical - views };
-  if (hit !== null && views < hit) return { level: 'best', left: hit - views };
-  return { level: 'top', left: 0 };
-}
-
-/** Лучшие ролики периода — чтобы было видно, что повторять. */
-export function bestVideos(videos: LadderVideo[], limit = 3): LadderVideo[] {
-  return [...videos]
-    .filter((v) => !!v.published_at && v.views > 0)
-    .sort((a, b) => b.views - a.views)
-    .slice(0, limit);
-}
-
-/**
  * Просмотры короткой строкой: «80 тыс.», «1,2 млн», «12 400».
  *
  * Разряды делим неразрывным пробелом, как и суммы в money.ts: обычный
@@ -285,4 +193,131 @@ export function shortViews(n: number): string {
   // человек и смотрит на число.
   if (v >= 10_000 && v % 1000 === 0) return `${v / 1000}\u00a0тыс.`;
   return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+}
+
+// ---- что закрывает ступень ----
+//
+// Прежняя подпись звучала «до ступени 100 тыс. — это 34 обычных ролика».
+// Число верное и бесполезное: тридцати четырёх дат в периоде не бывает,
+// то есть совет невыполним, и читается он как «у тебя нет шансов».
+//
+// По данным площадки ступень закрывается иначе: средний ролик даёт около
+// трёх тысяч, но ролик от пятнадцати тысяч — это каждый десятый (около
+// шести в месяц), а от пятидесяти — каждый тридцатый (один-два в месяц).
+// То есть сто тысяч — это не «тридцать четыре обычных», а «один сильный
+// и два хороших». Поэтому первой идёт подпись про хиты, а количество —
+// второй, и только когда количеством действительно можно успеть.
+
+export interface StepPlan {
+  /** Сколько просмотров осталось до ступени. */
+  toNext: number;
+  /** Один ролик на столько — и ступень закрыта. */
+  oneVideo: number;
+  /** Два ролика по столько — и ступень закрыта. */
+  twoVideos: number;
+  /** Обычными роликами: сколько штук. null — ориентира нет. */
+  normal: number | null;
+  /** Сколько дат в периоде ещё впереди. */
+  plannedLeft: number;
+  /**
+   * Обычных нужно больше, чем осталось дат.
+   *
+   * Совет, которому нельзя последовать, хуже отсутствия совета: он
+   * сообщает не «сделай так», а «ты не успеешь».
+   */
+  beyondPlan: boolean;
+}
+
+export function stepPlan(
+  toNext: number,
+  typical: number | null,
+  plannedLeft: number,
+): StepPlan | null {
+  if (toNext <= 0) return null;
+  const normal = typical && typical > 0 ? Math.ceil(toNext / typical) : null;
+  const left = Math.max(0, plannedLeft);
+  return {
+    toNext,
+    oneVideo: toNext,
+    twoVideos: Math.ceil(toNext / 2),
+    normal,
+    plannedLeft: left,
+    beyondPlan: normal !== null && normal > left,
+  };
+}
+
+/**
+ * Главная подпись: чем ступень закрывается.
+ *
+ * Через хиты, потому что хит достижим: он бывает у каждого десятого
+ * ролика, и человек уже такие снимал. «Один на столько-то или два по
+ * столько-то» — это два разных плана на вечер, а не одно и то же число,
+ * поделённое пополам.
+ */
+export function hitLine(p: StepPlan): string {
+  // Точку в конце не ставим вслепую: shortViews даёт «50 тыс.», и вторая
+  // точка превращает фразу в «50 тыс..».
+  return endSentence(
+    `Один ролик на ${shortViews(p.oneVideo)} закрывает ступень. Или два по ${shortViews(
+      p.twoVideos,
+    )}`,
+  );
+}
+
+/** Точка в конце — если её там ещё нет. */
+function endSentence(text: string): string {
+  return text.endsWith('.') ? text : `${text}.`;
+}
+
+/**
+ * Вторая подпись: количеством обычных.
+ *
+ * Пустая строка, когда количеством не выйти — не осталось дат или
+ * роликов нужно больше, чем дат. Молчание здесь честнее числа: число
+ * говорило бы «сними ещё тридцать четыре» там, где снять их негде.
+ */
+export function countLine(p: StepPlan): string {
+  if (p.normal === null || p.beyondPlan || !p.plannedLeft) return '';
+  const videos = plural(p.normal, 'обычный ролик', 'обычных ролика', 'обычных роликов');
+  const left = plural(p.plannedLeft, 'дата', 'даты', 'дат');
+  return `Обычными — это ${p.normal} ${videos}, а впереди по плану ${p.plannedLeft} ${left}.`;
+}
+
+/**
+ * Вклад одного ролика долей ступени.
+ *
+ * Ради этого числа всё и затевалось: без него ролик на двадцать тысяч —
+ * просто «двадцать тысяч», и непонятно, много это или мало. «Пятая часть
+ * ступени» понятно сразу.
+ *
+ * Мелкие доли не округляем до нуля: «0% ступени» читается как «не дал
+ * ничего», а ролик дал ровно столько, сколько дал.
+ */
+export function stepShareText(views: number, step: number = LADDER_STEP): string {
+  if (step <= 0 || views <= 0) return 'пока ничего к ступени';
+  const pct = (views / step) * 100;
+  if (pct >= 100) {
+    const steps = Math.round(pct / 10) / 10;
+    // Целое число ступеней склоняем, дробное — нет: «3,2 ступени», но
+    // «1 ступень» и «5 ступеней».
+    return Number.isInteger(steps)
+      ? `${steps} ${plural(steps, 'ступень', 'ступени', 'ступеней')}`
+      : `${decimal(steps)} ступени`;
+  }
+  if (pct >= 10) return `${Math.round(pct)}% ступени`;
+  // Меньше десятой процента — «меньше 0,1%»: 0,03 в подписи выглядит
+  // опечаткой, а «0%» неправдой.
+  if (pct < 0.1) return 'меньше 0,1% ступени';
+  return `${decimal(pct)}% ступени`;
+}
+
+/** Доля ступени числом 0..1 и выше — для ширины полоски у ролика. */
+export function stepShare(views: number, step: number = LADDER_STEP): number {
+  if (step <= 0 || views <= 0) return 0;
+  return views / step;
+}
+
+/** Один знак после запятой, запятой — как принято в русских числах. */
+function decimal(n: number): string {
+  return String(Math.round(n * 10) / 10).replace('.', ',');
 }

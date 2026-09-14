@@ -57,30 +57,28 @@
     font-size: 11.5px;
   }
 
-  .now {
+  // Главное число экрана: сколько заработано за период. Крупнее всего
+  // остального намеренно — человек приходит сюда с этим вопросом.
+  .money-now {
     display: flex;
-    align-items: baseline;
-    gap: 9px;
+    flex-direction: column;
+    gap: 2px;
 
     b {
       font-family: var(--mono);
-      font-size: 30px;
+      font-size: 32px;
       font-weight: 600;
       letter-spacing: -0.02em;
     }
 
-    span {
-      color: var(--muted, #8c94a0);
-      font-size: 12.5px;
+    .muted {
+      color: var(--muted-2, #616772);
     }
-  }
 
-  // Перенос называем вслух: «уже 50 тыс.» в первый день периода иначе
-  // выглядит ошибкой.
-  .carry {
-    margin: 8px 0 0;
-    color: var(--green, #52c41a);
-    font-size: 12.5px;
+    .d {
+      color: var(--muted-2, #616772);
+      font-size: 12px;
+    }
   }
 
   .bar {
@@ -98,41 +96,53 @@
     }
   }
 
-  .marks {
+  // Концы полосы: слева заработанное, справа — что будет на ступени.
+  .ends {
     display: flex;
     justify-content: space-between;
-    gap: 8px;
-    margin: 0 0 14px;
-    padding: 0;
-    list-style: none;
+    gap: 12px;
+    margin: 0 0 8px;
 
-    li {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+    i {
+      display: block;
       color: var(--muted-2, #616772);
-      font-size: 11.5px;
-      text-align: center;
+      font-size: 11px;
+      font-style: normal;
     }
 
-    .v {
+    b {
+      font-family: var(--mono);
+      font-size: 14px;
+    }
+
+    .to {
+      text-align: right;
+    }
+
+    .muted {
+      color: var(--muted-2, #616772);
+    }
+  }
+
+  // Прибавка от ступени. Тоном спокойнее самой суммы: это прогноз, а не
+  // начисленное, и выглядеть как заработанное оно не должно.
+  .gain {
+    margin: 0 0 10px;
+    color: var(--muted, #8c94a0);
+    font-size: 12.5px;
+    line-height: 1.5;
+
+    b {
+      color: var(--text);
       font-family: var(--mono);
     }
+  }
 
-    // Место под «+X ₽ за ступень». Высота зарезервирована, текста нет:
-    // ступенчатый тариф ещё не выпущен, и сумма была бы выдуманной.
-    .reward {
-      min-height: 14px;
-    }
-
-    li.done .v {
-      color: var(--green, #52c41a);
-    }
-
-    li.next .v {
-      color: var(--text);
-      font-weight: 600;
-    }
+  // Просмотры — пояснение к деньгам, поэтому мельче их.
+  .views-line {
+    margin: 0 0 8px;
+    color: var(--muted, #8c94a0);
+    font-size: 13px;
   }
 
   // Главная строка: одно действие и одно число.
@@ -147,6 +157,17 @@
     color: var(--muted, #8c94a0);
     font-size: 13px;
     line-height: 1.5;
+
+    // Перенос остатка называем вслух и спокойно: без этой строки недобор
+    // читается как сгоревший.
+    &.carry {
+      color: var(--muted-2, #616772);
+      font-size: 12.5px;
+    }
+
+    &.done {
+      color: var(--green, #52c41a);
+    }
   }
 
   .typ {
@@ -170,35 +191,6 @@
     margin: 0 0 12px;
     color: var(--blue, #4a90d9);
     font-size: 12.5px;
-  }
-
-  .earned {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin-bottom: 4px;
-    padding: 12px 0 0;
-    border-top: 1px solid var(--line, #23272d);
-
-    .k {
-      color: var(--muted, #8c94a0);
-      font-size: 11.5px;
-    }
-
-    b {
-      font-family: var(--mono);
-      font-size: 20px;
-      font-weight: 600;
-    }
-
-    .muted {
-      color: var(--muted-2, #616772);
-    }
-
-    .d {
-      color: var(--muted-2, #616772);
-      font-size: 12px;
-    }
   }
 
   .hint {
@@ -237,10 +229,42 @@
       font-size: 13px;
     }
 
-    .left {
+    // Вклад ролика: полоска и подпись долей ступени. Полоска нужна,
+    // чтобы разницу между «пятой частью» и «половиной» было видно, не
+    // читая чисел.
+    .share {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       width: 100%;
       color: var(--muted-2, #616772);
       font-size: 11.5px;
+    }
+
+    .track {
+      display: block;
+      overflow: hidden;
+      width: 120px;
+      height: 4px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--line, #23272d);
+
+      i {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--coral);
+      }
+    }
+
+    // «Ещё растёт» стоит у названия, а не отдельной строкой: это про
+    // этот ролик, а не про весь список.
+    .growing {
+      margin-left: 6px;
+      color: var(--muted-2, #616772);
+      font-size: 11px;
+      font-style: normal;
     }
   }
 }

@@ -7,15 +7,15 @@ import {
   LadderVideo,
   MATURE_DAYS,
   TYPICAL_SOURCE_NOTE,
-  bestVideos,
-  forecastViews,
+  countLine,
+  hitLine,
   hitVideo,
   isYoung,
-  ladderMarks,
   ladderState,
   shortViews,
-  videoTarget,
-  videosToStep,
+  stepPlan,
+  stepShare,
+  stepShareText,
 } from '@entities/billing/lib/ladder';
 import { isOpenPeriod, periodTitle, snapshotNote } from '@entities/billing/lib/period';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
@@ -23,21 +23,31 @@ import type { Publication } from '@entities/publication/model/publication.types'
 import { plural } from '@shared/lib/format';
 
 /**
- * Шкала прогресса креатора: ступени по просмотрам, ступень — 100 000.
+ * Что креатор зарабатывает в этом периоде и что добавит следующая
+ * ступень.
  *
- * Отвечает на один вопрос — «что мне сделать прямо сейчас». Поэтому всё
- * здесь сведено к одному действию: сколько просмотров до следующей
- * ступени и сколько это роликов. Упрёков нет ни в одном состоянии: не
- * успеваешь — это про то, сколько осталось, а не про то, кто виноват.
+ * Главное здесь — ДЕНЬГИ. Раньше главным были просмотры, и экран говорил
+ * «до следующей ступени 100 тыс. — это 34 обычных ролика». Число верное
+ * и бесполезное сразу с двух сторон: тридцати четырёх дат в периоде не
+ * бывает, то есть совету нельзя последовать, и он читается как «у тебя
+ * нет шансов»; а главный вопрос — «сколько мне за это будет» — оставался
+ * без ответа вовсе.
+ *
+ * Теперь полоса идёт от заработанного к тому, что будет на ступени, а
+ * просмотры стоят строкой ниже пояснением. Подписи построены вокруг
+ * хитов: по данным площадки ролик от пятнадцати тысяч — это каждый
+ * десятый, от пятидесяти — каждый тридцатый, то есть ступень закрывается
+ * одним сильным и двумя хорошими, а не тридцатью четырьмя средними.
+ *
+ * Денег здесь по-прежнему не считают. Заработанное приходит из
+ * начисления, прогноз ступени — из next_step_forecast, и считает его тот
+ * же код, что и настоящую выплату. Вторая копия расчёта в браузере
+ * разошлась бы с серверной на первой же правке ставок — молча, и
+ * заметили бы это в день выплаты.
  *
  * Чего креатору не показываем никогда: цен заказчика, маржи площадки,
  * чужих выплат и вообще чужих имён. Сравнение с проектом приходит с
  * сервера обезличенным числом и таким же остаётся на экране.
- *
- * Денег за ступень тут нет намеренно. Ступенчатый тариф ещё не выпущен —
- * в действующем ступени нет вовсе, и «+X ₽ за ступень» было бы
- * придуманным числом. Место под сумму в вёрстке оставлено (.reward), но
- * текстом не заполняется: пустая строка честнее выдуманной.
  */
 @Component({
   selector: 'app-creator-ladder',
@@ -61,6 +71,8 @@ export class CreatorLadderComponent {
   public readonly views = shortViews;
 
   public readonly money = formatMoney;
+
+  public readonly shareText = stepShareText;
 
   public plural(n: number, one: string, few: string, many: string): string {
     return plural(n, one, few, many);
@@ -122,9 +134,7 @@ export class CreatorLadderComponent {
    * Просмотры в счёте ступеней: перенос плюс ролики периода.
    *
    * Складываем сами — и только просмотры. Это измеренные числа, те же,
-   * что стоят на карточках роликов ниже, а не расчёт по тарифу. Деньги
-   * наоборот берутся у сервера как есть: второй расчёт денег в браузере
-   * разойдётся с серверным на первой же правке ставок.
+   * что стоят на карточках роликов ниже, а не расчёт по тарифу.
    */
   public readonly viewsNow = computed(
     () => this.carryIn() + this.periodVideos().reduce((sum, v) => sum + v.views, 0),
@@ -132,10 +142,61 @@ export class CreatorLadderComponent {
 
   public readonly ladder = computed(() => ladderState(this.viewsNow()));
 
-  public readonly marks = computed(() => ladderMarks(this.ladder()));
+  /**
+   * Прогноз ступени с сервера. Может не прийти — у проекта нет периодов
+   * или пустой тариф. Это штатное состояние, а не ошибка загрузки.
+   */
+  public readonly forecast = computed(() => this.earnings()?.next_step_forecast ?? null);
 
-  /** Доля пройденного внутри текущей ступени — ширина полосы. */
-  public readonly progressPercent = computed(() => Math.round(this.ladder().progress * 1000) / 10);
+  /**
+   * Сколько просмотров до ступени.
+   *
+   * Из прогноза, когда он есть: сервер считает остаток вместе с
+   * перенесённым, а мы о размере переноса знаем только то, что он уже в
+   * счёте. Без прогноза остаётся своя арифметика по тем же измеренным
+   * просмотрам.
+   */
+  public readonly toNext = computed(() => this.forecast()?.views_to_go ?? this.ladder().toNext);
+
+  /** Доля пройденного внутри ступени — ширина полосы. */
+  public readonly progressPercent = computed(() => {
+    const f = this.forecast();
+    const share =
+      f && f.step_views > 0 ? (f.step_views - f.views_to_go) / f.step_views : this.ladder().progress;
+    return Math.round(Math.min(1, Math.max(0, share)) * 1000) / 10;
+  });
+
+  /**
+   * Заработок за период — из его же начисления, как посчитал сервер.
+   *
+   * Строка знает только дату начала своего периода, поэтому ищем по ней.
+   * Начисления может не быть вовсе: пока период не пересчитывали, строки
+   * в базе нет. Это не ноль — это «ещё не посчитано», и показывать здесь
+   * ноль значило бы сказать «ты ничего не заработал».
+   */
+  public readonly earned = computed(() => {
+    const p = this.period();
+    const rows = this.earnings()?.accruals ?? [];
+    if (!p) return null;
+    return rows.find((a) => a.period_start.slice(0, 10) === p.starts_on.slice(0, 10)) ?? null;
+  });
+
+  /**
+   * Правый конец полосы: сколько будет на ступени.
+   *
+   * Заработанное плюс прогноз ступени. Оба числа посчитал сервер —
+   * складываем, а не выводим: сложение двух готовых сумм не расчёт
+   * тарифа, и разойтись здесь нечему.
+   *
+   * null, когда нет одного из двух: полоса тогда остаётся просмотровой,
+   * а выдуманной суммы на ней не появляется.
+   */
+  public readonly atStep = computed(() => {
+    const row = this.earned();
+    const f = this.forecast();
+    if (!row || !f) return null;
+    return row.total + f.forecast_payout;
+  });
 
   /**
    * Типичный ролик — готовым числом с сервера.
@@ -158,38 +219,11 @@ export class CreatorLadderComponent {
     hitVideo(this.allVideos(), this.typical()?.typical_video_views ?? null),
   );
 
-  /** Сколько роликов до ступени: обычными и «один хит плюс N обычных». */
-  public readonly plan = computed(() => {
-    const t = this.typical();
-    if (!t) return null;
-    return videosToStep(this.ladder().toNext, t.typical_video_views, this.hit());
-  });
-
-  /**
-   * «это 20 обычных роликов, или 1 хит и 8 обычных» — фразой целиком.
-   *
-   * Собираем в компоненте, а не в шаблоне: управляющий блок посреди
-   * предложения выносит запятую и точку на свою строку, и после
-   * схлопывания пробелов получается «роликов , или … обычных .».
-   */
-  public readonly planText = computed(() => {
-    const p = this.plan();
-    if (!p) return '';
-    const normal = `${p.normal} ${plural(p.normal, 'обычный ролик', 'обычных ролика', 'обычных роликов')}`;
-    if (p.withHit === null) return `это ${normal}`;
-    if (p.withHit === 0) return `это ${normal} или один хит`;
-    const rest = plural(p.withHit, 'обычный', 'обычных', 'обычных');
-    return `это ${normal} или 1 хит и ${p.withHit} ${rest}`;
-  });
-
-  /** Вышли, но ещё растут: младше двух недель. */
-  public readonly inProgress = computed(() => this.periodVideos().filter((v) => isYoung(v)));
-
   /**
    * Сколько роликов периода ещё впереди: даты стоят, ссылок нет.
    *
    * Только внутри границ периода: выкладка, назначенная на следующий
-   * период, в этот прогноз не входит.
+   * период, в этот счёт не входит.
    */
   public readonly plannedLeft = computed(() => {
     const p = this.period();
@@ -205,42 +239,54 @@ export class CreatorLadderComponent {
     ).length;
   });
 
-  /** Прогноз на конец периода. Пусто, пока не на чем считать. */
-  public readonly forecast = computed(() => {
-    const t = this.typical();
-    if (!t) return null;
-    return forecastViews({
-      current: this.viewsNow(),
-      young: this.inProgress().map((v) => v.views),
-      typical: t.typical_video_views,
-      plannedLeft: this.plannedLeft(),
-    });
+  /** Чем закрыть ступень: хитами первым, количеством вторым. */
+  public readonly plan = computed(() =>
+    stepPlan(this.toNext(), this.typical()?.typical_video_views ?? null, this.plannedLeft()),
+  );
+
+  /** «Один ролик на 100 тыс. закрывает ступень. Или два по 50 тыс.» */
+  public readonly hitText = computed(() => {
+    const p = this.plan();
+    return p ? hitLine(p) : '';
   });
 
-  /** Успевает ли до следующей ступени к концу периода. */
-  public readonly reachesNext = computed(() => {
-    const f = this.forecast();
-    return f !== null && f >= this.ladder().nextAt;
+  /** «Обычными — это 34…». Пусто, когда количеством не выйти. */
+  public readonly countText = computed(() => {
+    const p = this.plan();
+    return p ? countLine(p) : '';
   });
-
-  /** Три лучших ролика периода — чтобы было видно, что повторять. */
-  public readonly best = computed(() => bestVideos(this.periodVideos()));
 
   /**
-   * Заработок за период — из его же начисления, как посчитал сервер.
+   * План периода выполнен: дат впереди не осталось.
    *
-   * Строка знает только дату начала своего периода, поэтому ищем по ней.
-   * Начисления может не быть вовсе: пока период не пересчитывали, строки
-   * в базе нет. Это не ноль — это «ещё не посчитано», и показывать здесь
-   * ноль значило бы сказать «ты ничего не заработал».
+   * Отдельное состояние, а не «ноль роликов»: человеку нельзя советовать
+   * снять ещё, когда снимать негде, — и нужно сказать, что недобранное
+   * не сгорает.
    */
-  public readonly earned = computed(() => {
-    const p = this.period();
-    const rows = this.earnings()?.accruals ?? [];
-    if (!p) return null;
-    const row = rows.find((a) => a.period_start.slice(0, 10) === p.starts_on.slice(0, 10));
-    return row ?? null;
-  });
+  public readonly planDone = computed(() => !!this.period() && this.plannedLeft() === 0);
+
+  /**
+   * Ролики периода со свежими сверху — у каждого виден его вклад.
+   *
+   * Вклад долей ступени и есть главное, чего экрану не хватало: «20 000»
+   * само по себе не говорит, много это или мало, а «пятая часть ступени»
+   * понятно сразу.
+   */
+  public readonly contributions = computed(() =>
+    [...this.periodVideos()]
+      .sort((a, b) => b.views - a.views)
+      .map((v) => ({
+        id: v.id,
+        title: v.title,
+        views: v.views,
+        share: stepShareText(v.views),
+        percent: Math.min(100, Math.round(stepShare(v.views) * 100)),
+        young: isYoung(v),
+      })),
+  );
+
+  /** Вышли, но ещё растут: младше двух недель. */
+  public readonly inProgress = computed(() => this.periodVideos().filter((v) => isYoung(v)));
 
   /**
    * Его место по медиане ролика, обезличенно. Нет числа — нет и блока,
@@ -253,10 +299,4 @@ export class CreatorLadderComponent {
     const p = this.earnings()?.benchmark?.my_percentile;
     return p === undefined ? null : Math.max(1, 100 - p);
   });
-
-  /** До чего тянуть конкретный ролик: до типичного, потом до рекорда. */
-  public target(v: LadderVideo) {
-    const t = this.typical();
-    return t ? videoTarget(v.views, t.typical_video_views, this.hit()) : null;
-  }
 }

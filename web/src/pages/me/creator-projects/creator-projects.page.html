@@ -19,24 +19,43 @@
   } @else {
   <ul class="cards">
     @for (p of ordered(); track p.project_id) {
-    <li class="card" [class.late]="p.publications_overdue > 0">
-      <header>
-        <h2>{{ p.title }}</h2>
-        <nz-tag [nzColor]="p.publications_overdue ? 'red' : p.publications_open ? 'gold' : 'green'">
-          @if (p.publications_overdue) { {{ p.publications_overdue }} просрочено } @else if
-          (p.publications_open) { {{ p.publications_open }} в работе } @else { всё сдано }
-        </nz-tag>
-      </header>
+    <!-- Карточка — ссылка целиком. Мелкая строка внизу была
+         единственным, во что можно попасть, хотя нажимаемым выглядел
+         весь прямоугольник. Настоящая <a>, а не обработчик клика: иначе
+         не работают ctrl-клик, средняя кнопка и «открыть в новой
+         вкладке», а фокус с клавиатуры не виден. Вложенных кнопок и
+         ссылок внутри нет — иначе ссылка в ссылке. -->
+    <li>
+      <a
+        class="card"
+        [class.late]="p.publications_overdue > 0"
+        [routerLink]="['/me/creator/projects', p.project_id]"
+      >
+        <header>
+          <h2>{{ p.title }}</h2>
+          <nz-tag [nzColor]="stateTone(p)">{{ stateLabel(p) }}</nz-tag>
+        </header>
 
-      <p class="counts">{{ closed(p) }} из {{ p.publications_total }} роликов закрыто</p>
-      <p class="meta">
-        @if (p.next_due_date) { Ближайший срок — {{ p.next_due_date | date: 'd MMM' }} · {{
-        due(p.next_due_date) }}. } @else { Несданного нет. } В проекте с {{ p.added_at | date: 'd
-        MMM y' }}.
-      </p>
+        <!-- Нулевое состояние отдельной веткой. «Всё сдано», «0 из 0
+             роликов закрыто» и «Несданного нет» на проекте без единой
+             выкладки — три утверждения, и все три неправда: ничего не
+             сдано, потому что ничего и не было. -->
+        @if (!p.publications_total) {
+        <p class="counts">Работа ещё не началась — дат выкладок пока нет.</p>
+        <p class="meta">
+          Первый период начнётся с первой вышедшей выкладки. В проекте с {{ p.added_at | date: 'd
+          MMM y' }}.
+        </p>
+        } @else {
+        <p class="counts">{{ closed(p) }} из {{ p.publications_total }} по плану периода</p>
+        <p class="meta">
+          @if (p.next_due_date) { Ближайший срок — {{ p.next_due_date | date: 'd MMM' }} · {{
+          due(p.next_due_date) }}. } @else { План периода выполнен — период идёт дальше, новые даты
+          поставит менеджер. } В проекте с {{ p.added_at | date: 'd MMM y' }}.
+        </p>
+        }
 
-      <a class="go" [routerLink]="['/me/creator/projects', p.project_id]">
-        Мои выкладки в проекте →
+        <span class="go">Мои выкладки в проекте</span>
       </a>
     </li>
     } @empty {

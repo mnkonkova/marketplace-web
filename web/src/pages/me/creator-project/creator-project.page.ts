@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -64,6 +65,7 @@ import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
     FormsModule,
     RouterLink,
     NzButtonModule,
+    NzDatePickerModule,
     NzIconModule,
     NzInputModule,
     NzModalModule,
@@ -139,6 +141,26 @@ export class CreatorProjectPage {
   public periodOfAccrual(periodStart: string): string {
     return periodTitle(periodOf(this.earnings()?.periods ?? [], periodStart));
   }
+
+  /** Текущий период — его границы и состояние. */
+  public readonly period = computed(() => this.earnings()?.period ?? null);
+
+  /** Конец текущего периода: «до 12 окт.» в подписи плана. */
+  public readonly periodEnds = computed(() => this.period()?.ends_on ?? null);
+
+  /**
+   * Прошлые начисления — история.
+   *
+   * Текущий период показывает шкала сверху, крупно и с прогнозом. Второй
+   * такой же блок рядом был бы не «подробнее», а дублем: одна и та же
+   * сумма дважды на одном экране.
+   */
+  public readonly pastAccruals = computed(() => {
+    const cur = this.period()?.starts_on.slice(0, 10);
+    return (this.earnings()?.accruals ?? []).filter(
+      (a) => !cur || a.period_start.slice(0, 10) !== cur,
+    );
+  });
 
   /** Материалы проекта: бренд-гайд, обучение, ссылки на аккаунты. */
   public readonly materials = signal<Material[]>([]);
@@ -361,6 +383,17 @@ export class CreatorProjectPage {
 
   public readonly commonChecklist = computed(() => commonItems(this.checklist()));
 
+  /**
+   * У проекта нет ни одного пункта чеклиста.
+   *
+   * Отдельное состояние, а не пустой список. Чеклист снимается с шаблона
+   * в момент заведения проекта; шаблон не подключили — пунктов нет
+   * вовсе, и окно сдачи молча открывалось без единого требования.
+   * Молчание тут читается двумя способами сразу, и оба вредные: креатор
+   * решит, что требований нет, а менеджер — что тот их проигнорировал.
+   */
+  public readonly noChecklist = computed(() => this.checklist().length === 0);
+
   public itemsFor(platform: Platform): ChecklistItem[] {
     return itemsForPlatform(this.checklist(), platform);
   }
@@ -498,13 +531,27 @@ export class CreatorProjectPage {
 
   public readonly dateFor = signal<Publication | null>(null);
 
-  public newDate = '';
+  /**
+   * Новая дата — объектом, а не строкой: поле теперь nz-date-picker.
+   *
+   * Было `<input type="date">` — единственное нативное поле даты во всём
+   * приложении. Chrome рисует у него свой календарь: белый, с синим
+   * выделением, мимо всей тёмной темы, и выключить это нельзя.
+   */
+  public newDate: Date | null = null;
 
   public dateReason = '';
 
+  /** Задним числом дату не просят: перенос бывает только вперёд. */
+  public readonly disabledPastDates = (current: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return current.getTime() < today.getTime();
+  };
+
   public openDateRequest(pub: Publication): void {
     this.dateFor.set(pub);
-    this.newDate = '';
+    this.newDate = null;
     this.dateReason = '';
   }
 
@@ -524,7 +571,13 @@ export class CreatorProjectPage {
       return;
     }
     this.busy.set(true);
-    this.api.creatorRequestDate(pub.id, this.newDate, this.dateReason.trim()).subscribe({
+    // ГГГГ-ММ-ДД в локальном времени: toISOString сдвигает дату на UTC,
+    // и в плюсовых поясах просьба уезжала бы на день назад.
+    const d = this.newDate;
+    const requested = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate(),
+    ).padStart(2, '0')}`;
+    this.api.creatorRequestDate(pub.id, requested, this.dateReason.trim()).subscribe({
       next: () => {
         this.busy.set(false);
         this.dateFor.set(null);
