@@ -211,7 +211,24 @@ END $$;
 `);
 }
 
-/** Цифры для роликов проекта с прошлым: ровные, чтобы читались на экране. */
+/**
+ * Сколько дней подряд собраны цифры проекта с прошлым.
+ *
+ * Больше недели — и это не запас: переключатель глубины графика
+ * показывается, только когда «7 дней» и «30 дней» рисуют разные картинки.
+ * На ряде короче восьми дней обе кнопки дают одно и то же, и их
+ * правильно не показывать — но тогда и проверять нечего.
+ */
+export const HISTORY_DAYS = 20;
+
+/**
+ * Цифры для роликов проекта с прошлым: ряд по дням, ровный и растущий.
+ *
+ * Ряд накопительный, как его и отдаёт сборщик: каждый следующий день не
+ * меньше предыдущего. Последний день — те же {@link HISTORY_VIEWS} на
+ * площадку, что лежат в срезе подытоженного периода: разъедься они, и
+ * «сколько сейчас» на шкале креатора разошлось бы со счётом ступеней.
+ */
 function seedHistoryStats(projectId: string): void {
   psql(`
 DELETE FROM video_stat_daily WHERE link_id IN
@@ -220,9 +237,15 @@ DELETE FROM video_stat_daily WHERE link_id IN
    WHERE p.project_id = '${projectId}');
 
 INSERT INTO video_stat_daily (link_id, stat_date, views, likes, comments, collected_at)
-SELECT l.id, CURRENT_DATE, ${HISTORY_VIEWS}, ${HISTORY_VIEWS} / 30, ${HISTORY_VIEWS} / 300, now()
+SELECT l.id,
+       CURRENT_DATE - d,
+       ${HISTORY_VIEWS} - d * (${HISTORY_VIEWS} / ${HISTORY_DAYS}),
+       (${HISTORY_VIEWS} - d * (${HISTORY_VIEWS} / ${HISTORY_DAYS})) / 30,
+       (${HISTORY_VIEWS} - d * (${HISTORY_VIEWS} / ${HISTORY_DAYS})) / 300,
+       now() - make_interval(days => d)
 FROM publication_links l
 JOIN project_publications p ON p.id = l.publication_id
+CROSS JOIN generate_series(0, ${HISTORY_DAYS} - 1) AS d
 WHERE p.project_id = '${projectId}';
 `);
 }
