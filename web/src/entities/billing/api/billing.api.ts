@@ -12,6 +12,7 @@ import {
   PaymentInput,
   PaymentKind,
   ProjectBilling,
+  ProjectPeriod,
   PublishTermsInput,
   TermsVersion,
   UtmLink,
@@ -19,6 +20,12 @@ import {
 
 interface ListResp<T> {
   items: T[];
+}
+
+// Номер периода в query. Пусто — текущий: это разные запросы, и слать
+// `period=` пустой строкой значит спросить период с номером «ничего».
+function periodParam(period?: number): HttpParams | undefined {
+  return period === undefined ? undefined : new HttpParams().set('period', period);
 }
 
 @Injectable({ providedIn: 'root' })
@@ -41,13 +48,26 @@ export class BillingApi {
 
   // ---- менеджер ----
 
-  // Условия, платежи заказчика, начисления за месяц, UTM и итог периода —
+  // Условия, платежи заказчика, начисления за период, UTM и итог —
   // одним ответом: по частям это пять запросов на один экран.
-  public managerBilling(projectId: string, month?: string): Observable<ProjectBilling> {
-    const params = month ? new HttpParams().set('month', month) : undefined;
+  //
+  // period — НОМЕР периода, а не месяц: периоды катятся от даты первой
+  // публикации. Пусто — текущий. У проекта, где ещё ничего не вышло,
+  // ручка отвечает 404 no_periods: считать не от чего.
+  public managerBilling(projectId: string, period?: number): Observable<ProjectBilling> {
     return this.http.get<ProjectBilling>(`${this.api}/manager/projects/${projectId}/billing`, {
-      params,
+      params: periodParam(period),
     });
+  }
+
+  // Периоды проекта списком. Раньше выпадашка рисовала последние
+  // двенадцать календарных месяцев — список месяцев, про которые никто
+  // не знал, есть ли там что-нибудь. Здесь ровно те периоды, которые
+  // существуют.
+  public managerPeriods(projectId: string): Observable<ListResp<ProjectPeriod>> {
+    return this.http.get<ListResp<ProjectPeriod>>(
+      `${this.api}/manager/projects/${projectId}/billing/periods`,
+    );
   }
 
   // Взять числа из действующего прайса. Дальше они живут снимком: правка
@@ -79,14 +99,13 @@ export class BillingApi {
     );
   }
 
-  // Пересчёт по фактам месяца. Утверждённые и выплаченные строки не
+  // Пересчёт по фактам периода. Утверждённые и выплаченные строки не
   // трогаются — это и есть «период закрыт».
-  public managerRecalcAccruals(projectId: string, month?: string): Observable<ListResp<Accrual>> {
-    const params = month ? new HttpParams().set('month', month) : undefined;
+  public managerRecalcAccruals(projectId: string, period?: number): Observable<ListResp<Accrual>> {
     return this.http.post<ListResp<Accrual>>(
       `${this.api}/manager/projects/${projectId}/accruals/recalc`,
       {},
-      { params },
+      { params: periodParam(period) },
     );
   }
 
@@ -113,15 +132,27 @@ export class BillingApi {
     );
   }
 
+  // ---- админ ----
+
+  // Переоткрыть подытоженный период. Подытоживает только автоматика, и
+  // отменить её решение может один админ: это правка уже выставленного
+  // счёта, а не рядовое действие менеджера.
+  public adminUnlockPeriod(projectId: string, period: number): Observable<ProjectPeriod> {
+    return this.http.post<ProjectPeriod>(
+      `${this.api}/admin/projects/${projectId}/billing/unlock_period`,
+      {},
+      { params: new HttpParams().set('period', period) },
+    );
+  }
+
   // ---- заказчик ----
 
   // Что подписано, что оплачено и во сколько обошлась команда месяца.
   // Начисления заказчик видит: он за них платит, и «60 000 + 5 850» —
   // его счёт. UTM-меток здесь нет — это инструмент менеджера.
-  public clientBilling(projectId: string, month?: string): Observable<ProjectBilling> {
-    const params = month ? new HttpParams().set('month', month) : undefined;
+  public clientBilling(projectId: string, period?: number): Observable<ProjectBilling> {
     return this.http.get<ProjectBilling>(`${this.api}/me/projects/${projectId}/billing`, {
-      params,
+      params: periodParam(period),
     });
   }
 

@@ -111,7 +111,7 @@ export function recalcAffects(items: Accrual[]): number {
   return items.filter((a) => a.status === 'draft').length;
 }
 
-/** Месяц показан расчётом, а не сохранёнными строками. */
+/** Период показан расчётом, а не сохранёнными строками. */
 export function isPreviewPeriod(items: Accrual[]): boolean {
   return items.length > 0 && items.every((a) => a.is_preview);
 }
@@ -122,7 +122,7 @@ export function shortfall(a: Accrual): number {
   return Math.max(0, a.videos_planned - a.videos_delivered);
 }
 
-// «Команда месяца» у заказчика: порядок — по приоритету подборки, потом
+// «Команда периода» у заказчика: порядок — по приоритету подборки, потом
 // по имени. Приоритет 0 значит «проект заведён руками», такие строки
 // уходят в конец: сортировать их вперёд как «нулевой приоритет» было бы
 // ровно наоборот смыслу.
@@ -206,12 +206,12 @@ export function clickTiers(terms: BillingTerms): RateTier[] {
   ];
 }
 
-// Месяц ГГГГ-ММ из даты первого числа периода — и обратно. Бэк отдаёт
-// period_month датой, а в query ждёт ГГГГ-ММ.
-export function monthKey(date: string): string {
-  return date.slice(0, 7);
-}
-
+// Календарный месяц ГГГГ-ММ по-русски: «август 2026».
+//
+// Про периоды проекта этого больше нет — они не совпадают с календарём и
+// подписываются датами (см. lib/period.ts). Остался единственный
+// настоящий календарный месяц в системе: месяц старта заказа, который
+// клиент и выбирает месяцем.
 const MONTH_NAMES = [
   'январь',
   'февраль',
@@ -231,18 +231,4 @@ export function monthLabel(key: string): string {
   const [y, m] = key.split('-').map(Number);
   const name = MONTH_NAMES[m - 1];
   return name ? `${name} ${y}` : key;
-}
-
-export function currentMonthKey(now: Date = new Date()): string {
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
-// Последние n месяцев, свежий первым — выпадашка периода у менеджера.
-export function recentMonths(n = 12, now: Date = new Date()): string[] {
-  const out: string[] = [];
-  for (let i = 0; i < n; i += 1) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  }
-  return out;
 }
