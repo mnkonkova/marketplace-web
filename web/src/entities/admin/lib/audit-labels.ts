@@ -24,6 +24,10 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   'project.assign_manager': 'сменил ответственного',
   'project.mark_test': 'изменил пометку «тест»',
   'project.transfer_batch': 'передал проекты',
+  // Переоткрытие периода — правка уже выставленного счёта, и в журнал
+  // она попадает именно поэтому. Кодом `project.period_unlock` строка
+  // читалась как техническая запись, то есть как «не про деньги».
+  'project.period_unlock': 'переоткрыл период',
 };
 
 /** Над чем действие совершили. Ключи — object_type из журнала. */
