@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnDestroy,
   OnInit,
   inject,
@@ -9,7 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NzTableModule, NzTableQueryParams } from 'ng-zorro-antd/table';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
@@ -67,6 +68,7 @@ export class AdminUsersPage implements OnInit, OnDestroy {
   private readonly shell = inject(CrmShellStore);
 
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly person = inject(PersonCardStore);
 
@@ -118,8 +120,15 @@ export class AdminUsersPage implements OnInit, OnDestroy {
     this.shell.setTrail([{ label: 'Люди' }, { label: 'Все пользователи' }]);
     // ?person=… — сюда приводит ⌘K: человека там находят, а открывается
     // он карточкой поверх списка, своей страницы у него нет.
-    const wanted = this.route.snapshot.queryParamMap.get('person');
-    if (wanted) this.person.open(wanted, null);
+    //
+    // Слушаем параметр, а не читаем снимок один раз: если ⌘K вызвали,
+    // уже стоя на этом списке, Angular страницу не пересоздаёт —
+    // ngOnInit не повторится, адрес сменится, а карточка не откроется.
+    // Отказа при этом никакого: человек видит новый адрес и пустой экран.
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const wanted = params.get('person');
+      if (wanted) this.person.open(wanted, null);
+    });
     // ?kind=… — сюда ведут заглушки «Специалисты» и «Клиенты»: пока у них
     // нет своего экрана, ссылка обязана открыть хотя бы нужный срез.
     const kind = this.route.snapshot.queryParamMap.get('kind');

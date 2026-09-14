@@ -293,3 +293,29 @@ test('выключенные воронки и продакшены не леж�
   const badge = await navCount(page, 'Воронки');
   expect(shown).toBe(badge);
 });
+
+/**
+ * ⌘K со списка пользователей.
+ *
+ * Ломается молча: Angular не пересоздаёт страницу, когда меняется только
+ * параметр адреса, — значит разовое чтение снимка при создании больше не
+ * повторится. Человек видит новый адрес и прежний список, отказа нет.
+ */
+test('⌘K открывает карточку, даже если список пользователей уже открыт', async ({
+  context,
+  page,
+}) => {
+  await signIn(context, 'admin');
+  await page.goto('/admin/users');
+  await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: 15_000 });
+
+  await page.keyboard.press('Control+k');
+  await page.getByPlaceholder(/Проект, человек или клиент/i).fill('Анастасия');
+  await page
+    .getByRole('option', { name: /Анастасия/ })
+    .first()
+    .click();
+
+  await expect(page).toHaveURL(/\/admin\/users\?person=/);
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
+});
