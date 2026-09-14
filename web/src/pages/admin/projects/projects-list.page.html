@@ -1,6 +1,6 @@
 @let f = filters();
 
-<app-page-head title="Проекты" [subtitle]="f.view === 'board' ? boardSubtitle : foundLabel()">
+<app-page-head title="Проекты" [subtitle]="f.view === 'board' ? boardSubtitle : listSubtitle">
   <div head-action class="head-acts">
     <app-view-switch [view]="f.view" (pick)="setView($event)" />
     <button nz-button nzType="primary" nzSize="small" type="button" (click)="openCreate()">

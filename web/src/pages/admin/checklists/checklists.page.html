@@ -1,42 +1,41 @@
-<div class="crm-page">
-  <header class="head">
-    <div>
-      <h1>Чеклисты креаторов</h1>
-      <p class="sub">
-        Что креатор отмечает перед тем, как сдать ссылки. Пункты одинаковы для всех проектов —
-        менеджер только подключает шаблон к проекту и правит копию внутри него. Правка здесь
-        выпускает новую версию: идущие проекты остаются на той, с которой начинались.
-      </p>
-    </div>
-    <button class="btn primary" type="button" (click)="startNew()">Новый чеклист</button>
-  </header>
+<app-page-head
+  title="Чеклисты креаторов"
+  subtitle="Что креатор отмечает перед тем, как сдать ссылки. Правка выпускает новую версию: идущие проекты остаются на той, с которой начинались."
+>
+  <button head-action nz-button nzType="primary" nzSize="small" type="button" (click)="startNew()">
+    Создать чеклист
+  </button>
+</app-page-head>
 
-  @if (loading()) {
-  <p class="empty">Загружаем…</p>
-  } @else if (items().length) {
-  <div class="tpls">
-    @for (t of items(); track t.id) {
-    <article class="card tight tpl">
-      <div class="hd">
-        <h3>{{ t.name }}</h3>
-        <span class="tag">версия {{ t.version }}</span>
-      </div>
-      @if (t.description) {
-      <p class="sub">{{ t.description }}</p>
+<div class="crm-page">
+  <app-list-state
+    [loading]="loading()"
+    [error]="error()"
+    [empty]="items().length === 0"
+    emptyText="Библиотека пуста. Пока в ней нет чеклистов, креатор сдаёт ссылки без проверок."
+    (retry)="load()"
+  >
+    <div class="tpls">
+      @for (t of items(); track t.id) {
+      <article class="card tight tpl">
+        <div class="hd">
+          <h3>{{ t.name }}</h3>
+          <span class="tag green">{{ versionLabel(t) }}</span>
+        </div>
+        @if (t.description) {
+        <p class="sub">{{ t.description }}</p>
+        }
+        <span class="cnt">{{ t.items_count }} {{ itemsWord(t.items_count) }}</span>
+        <div class="acts">
+          <button class="btn quiet sm" type="button" (click)="startEdit(t)">
+            Выпустить новую версию
+          </button>
+          <app-row-menu [items]="menu" [label]="'Действия: ' + t.name" (pick)="onPick(t, $event)" />
+        </div>
+      </article>
       }
-      <span class="cnt">{{ t.items_count }} пунктов</span>
-      <div class="acts">
-        <button class="btn quiet sm" type="button" (click)="startEdit(t)">Изменить</button>
-        <button class="btn quiet sm" type="button" (click)="remove(t)">Убрать</button>
-      </div>
-    </article>
-    }
-  </div>
-  } @else {
-  <p class="empty">
-    Библиотека пуста. Пока в ней нет чеклистов, креатор сдаёт ссылки без проверок.
-  </p>
-  }
+    </div>
+  </app-list-state>
 </div>
 
 @if (editing() !== null) {

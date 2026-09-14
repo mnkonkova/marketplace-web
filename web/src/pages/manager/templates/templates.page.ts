@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import { ChecklistTemplate } from '@entities/publication/model/publication.types';
+import { plural } from '@shared/lib/format';
 import { parseApiError } from '@shared/api/api-error';
+import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
+import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
 
 /**
  * Библиотека чеклистов — то, из чего менеджер собирает требования к
@@ -17,7 +19,7 @@ import { parseApiError } from '@shared/api/api-error';
 @Component({
   selector: 'app-manager-templates',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ListStateComponent, PageHeadComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './templates.page.html',
   styleUrl: './templates.page.scss',
@@ -25,13 +27,23 @@ import { parseApiError } from '@shared/api/api-error';
 export class ManagerTemplatesPage implements OnInit {
   private readonly api = inject(PublicationApi);
 
-  private readonly msg = inject(NzMessageService);
-
   public readonly items = signal<ChecklistTemplate[]>([]);
 
   public readonly loading = signal(true);
 
+  public readonly error = signal<string | null>(null);
+
   public ngOnInit(): void {
+    this.fetch();
+  }
+
+  public itemsWord(n: number): string {
+    return plural(n, 'пункт', 'пункта', 'пунктов');
+  }
+
+  public fetch(): void {
+    this.loading.set(true);
+    this.error.set(null);
     this.api.managerChecklistTemplates().subscribe({
       next: (r) => {
         this.items.set(r.items);
@@ -39,7 +51,7 @@ export class ManagerTemplatesPage implements OnInit {
       },
       error: (e) => {
         this.loading.set(false);
-        this.msg.error(parseApiError(e, 'Не удалось загрузить шаблоны.').message);
+        this.error.set(parseApiError(e, 'Не удалось загрузить чеклисты.').message);
       },
     });
   }

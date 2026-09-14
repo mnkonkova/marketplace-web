@@ -1,15 +1,5 @@
 @use '../../../shared/scss/breakpoints' as bp;
 
-h1 {
-  margin: 0 0 16px;
-}
-
-.head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .promote {
   padding: 16px;
   margin: 0 0 24px;
@@ -47,21 +37,21 @@ h1 {
   }
 }
 
-.list-title {
-  margin: 0 0 12px;
+// Число проектов — моноширинным: колонку читают сравнением, а не по
+// одной строке.
+.num {
+  font-family: var(--crm-mono);
+  font-variant-numeric: tabular-nums;
 }
 
-.row-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+td.r,
+th.r {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
 }
 
 @media (max-width: bp.$touch) {
-  h1 {
-    font-size: 20px;
-  }
-
   .promote {
     padding: 12px;
 
@@ -87,8 +77,8 @@ h1 {
 
   // NzTable → card-layout с inline-лейблами. thead скрыт; вместо него
   // каждая ячейка имеет attr data-label, который CSS::before выводит как
-  // префикс «Email: foo@…», «Имя: —». .row-actions без data-label —
-  // там кнопки, лейбл не нужен.
+  // префикс «Почта: foo@…», «Имя: —». У ячейки с меню строки лейбл
+  // пустой — подписывать «⋯» нечем.
   ::ng-deep .ant-table {
     min-width: 0 !important;
 
@@ -123,16 +113,6 @@ h1 {
           letter-spacing: 0.04em;
         }
       }
-    }
-  }
-
-  .row-actions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 4px;
-
-    button {
-      width: 100%;
     }
   }
 }

@@ -32,7 +32,7 @@ import {
   projectFiltersToQuery,
 } from '@entities/project/lib/project-filters';
 import { AdminProjectsSort, ProjectManagerView } from '@entities/project/model/project.types';
-import { formatAgo, plural } from '@shared/lib/format';
+import { formatAgo } from '@shared/lib/format';
 import {
   PROJECT_STATUS_LABEL,
   PROJECT_STATUS_TONE,
@@ -114,7 +114,7 @@ export class AdminProjectsListPage implements OnInit {
   public q = '';
 
   public readonly boardSubtitle =
-    'Колонки — шаги воронки. Канбан собирается по всем проектам сразу, поэтому фильтры списка на нём не действуют.';
+    'Канбан собирается по всем проектам сразу — фильтры списка на нём не действуют.';
 
   public readonly statusOptions: { value: StatusFilter; label: string }[] = [
     { value: '', label: 'Все статусы' },
@@ -161,11 +161,9 @@ export class AdminProjectsListPage implements OnInit {
     });
   }
 
-  /** «Найдено 12 проектов» — то же число, что у пагинатора, но словами. */
-  public readonly foundLabel = computed(
-    () =>
-      `Найдено ${this.total()} ${plural(this.total(), 'проект', 'проекта', 'проектов')} — фильтры остаются в адресе, ссылкой на выборку можно поделиться.`,
-  );
+  /** Фильтры лежат в адресе — про это и говорит подзаголовок раздела. */
+  public readonly listSubtitle =
+    'Все проекты площадки. Фильтры остаются в адресе — ссылкой на выборку можно поделиться.';
 
   public onSearch(): void {
     this.search$.next(this.q.trim());

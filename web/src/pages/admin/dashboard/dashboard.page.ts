@@ -16,6 +16,7 @@ import { ProjectApi } from '@entities/project/api/project.api';
 import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
 import { Pipeline } from '@entities/pipeline/model/pipeline.types';
 import { ProjectManagerView, ProjectDisplayStatus } from '@entities/project/model/project.types';
+import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
 
 interface FunnelStats {
   pipeline: Pipeline;
@@ -47,7 +48,7 @@ const BUCKETS: Record<ProjectDisplayStatus, keyof Omit<FunnelStats, 'pipeline' |
 @Component({
   selector: 'app-admin-dashboard-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, NzSpinModule, NzEmptyModule],
+  imports: [CommonModule, RouterLink, NzSpinModule, NzEmptyModule, PageHeadComponent],
   templateUrl: './dashboard.page.html',
   styleUrl: './dashboard.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

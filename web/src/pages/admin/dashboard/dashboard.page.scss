@@ -14,28 +14,8 @@ $c-hold: #6b7280;
 $c-done: #6ee7b7;
 $c-cancel: #ff7a7a;
 
-.head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-
-  h1 {
-    margin: 0 0 4px;
-    font-size: clamp(22px, 4vw, 28px);
-  }
-}
-
-.subtitle {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
 .head-link {
-  color: var(--accent);
+  color: var(--text-muted);
   text-decoration: none;
   font-size: 14px;
   white-space: nowrap;

@@ -1,10 +1,15 @@
-<header class="head">
-  <div>
-    <h1>Дашборд воронок</h1>
-    <p class="subtitle">Сводка по всем проектам в системе.</p>
-  </div>
-  <a [routerLink]="['/admin/board']" class="head-link">Открыть канбан →</a>
-</header>
+<app-page-head
+  title="Сводка"
+  subtitle="Что требует вас сегодня. Каждый пункт ведёт в отфильтрованный список."
+>
+  <a
+    head-action
+    class="head-link"
+    [routerLink]="['/admin/projects']"
+    [queryParams]="{ view: 'board' }"
+    >Открыть канбан →</a
+  >
+</app-page-head>
 
 @if (loading()) {
 <nz-spin nzSize="large"></nz-spin>
@@ -47,17 +52,25 @@
       class="h-chip"
       [class.is-warn]="h.orphans > 0"
       [routerLink]="['/admin/projects']"
-      [queryParams]="{ unassigned: '1' }"
+      [queryParams]="{ manager: 'none' }"
     >
       <span class="h-emoji">👤</span>
       <span class="h-label">Без менеджера</span>
       <strong class="h-value">{{ h.orphans }}</strong>
     </a>
-    <div class="h-chip" [class.is-warn]="h.stuck > 0">
+    <!-- «Что не двигалось» — это сортировка списка, а не отдельный фильтр:
+         сервер такого параметра не знает, но порядок «давно не двигались»
+         ставит нужные строки первыми. -->
+    <a
+      class="h-chip"
+      [class.is-warn]="h.stuck > 0"
+      [routerLink]="['/admin/projects']"
+      [queryParams]="{ sort: 'updated_asc' }"
+    >
       <span class="h-emoji">⏱</span>
       <span class="h-label">Без активности 7+ дней</span>
       <strong class="h-value">{{ h.stuck }}</strong>
-    </div>
+    </a>
     <div class="h-chip" [class.is-warn]="h.overRevisions > 0">
       <span class="h-emoji">↻</span>
       <span class="h-label">Превышен лимит правок</span>

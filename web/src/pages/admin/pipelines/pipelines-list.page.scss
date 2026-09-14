@@ -1,31 +1,29 @@
 @use '../../../shared/scss/breakpoints' as bp;
 
-.head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+// Строка кликабельна целиком: попадать в одну кнопку в последней колонке
+// мышью неудобно, а на тач-экране почти невозможно.
+.row {
+  cursor: pointer;
 
-  h1 {
-    margin: 0;
+  &:focus-visible {
+    outline: 2px solid var(--cta);
+    outline-offset: -2px;
   }
 }
 
+.num {
+  font-family: var(--crm-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+td.r,
+th.r {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+
 @media (max-width: bp.$touch) {
-  .head {
-    flex-direction: column;
-    align-items: stretch;
-    margin-bottom: 16px;
-
-    h1 {
-      font-size: 20px;
-    }
-
-    button {
-      width: 100%;
-    }
-  }
-
   ::ng-deep .ant-table {
     min-width: 0 !important;
 

@@ -8,10 +8,14 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 
 import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
 import { Pipeline } from '@entities/pipeline/model/pipeline.types';
+import { parseApiError } from '@shared/api/api-error';
+import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
+import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
+import { RowMenuComponent, RowMenuItem } from '@shared/ui/row-menu/row-menu.component';
+import { StatusTagComponent } from '@shared/ui/status-tag/status-tag.component';
 
 @Component({
   selector: 'app-admin-pipelines-list',
@@ -24,7 +28,10 @@ import { Pipeline } from '@entities/pipeline/model/pipeline.types';
     NzInputModule,
     NzInputNumberModule,
     NzModalModule,
-    NzTagModule,
+    ListStateComponent,
+    PageHeadComponent,
+    RowMenuComponent,
+    StatusTagComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pipelines-list.page.html',
@@ -41,6 +48,10 @@ export class AdminPipelinesListPage implements OnInit {
 
   public readonly items = signal<Pipeline[]>([]);
 
+  public readonly loading = signal(true);
+
+  public readonly error = signal<string | null>(null);
+
   public readonly draft = signal({ name: '', description: '', revisions_included: 2 });
 
   public ngOnInit(): void {
@@ -51,8 +62,31 @@ export class AdminPipelinesListPage implements OnInit {
     void this.router.navigate(['/admin/pipelines', p.id]);
   }
 
+  /** Версия пишется одинаково везде: `v1`, у действующей — «v1 · действует». */
+  public versionLabel(p: Pipeline): string {
+    return p.is_active ? `v${p.version} · действует` : `v${p.version}`;
+  }
+
+  public menuFor(p: Pipeline): RowMenuItem[] {
+    const out: RowMenuItem[] = [{ code: 'open', label: 'Открыть редактор' }];
+    if (!p.is_default && p.is_active) {
+      out.push({
+        code: 'default',
+        label: 'Сделать воронкой по умолчанию',
+        confirm: `Новые проекты продакшна будут создаваться по «${p.name}». Сделать?`,
+        disabled: !!this.busyId(),
+      });
+    }
+    return out;
+  }
+
+  public onPick(p: Pipeline, code: string): void {
+    if (code === 'open') this.open(p);
+    if (code === 'default') this.makeDefault(p);
+  }
+
   // busyId — id pipeline, для которого сейчас в полёте makeDefault.
-  // Защищает от двойного клика: пока запрос идёт, кнопка скрыта.
+  // Защищает от двойного клика: пока запрос идёт, пункт недоступен.
   // Без неё двойной клик пускал две concurrent транзакции, которые в
   // некоторых случаях оставляли is_default=false у обеих.
   public readonly busyId = signal<string | null>(null);
@@ -63,12 +97,12 @@ export class AdminPipelinesListPage implements OnInit {
     this.api.makeDefault(p.id).subscribe({
       next: () => {
         this.busyId.set(null);
-        this.msg.success(`«${p.name}» — теперь default`);
+        this.msg.success(`«${p.name}» — теперь воронка по умолчанию`);
         this.fetch();
       },
-      error: () => {
+      error: (e) => {
         this.busyId.set(null);
-        this.msg.error('Не удалось');
+        this.msg.error(parseApiError(e, 'Не удалось').message);
       },
     });
   }
@@ -76,18 +110,20 @@ export class AdminPipelinesListPage implements OnInit {
   public openCreate(tpl: unknown): void {
     this.draft.set({ name: '', description: '', revisions_included: 2 });
     this.modal.create({
-      nzTitle: 'Новая воронка',
+      nzTitle: 'Создать воронку',
       nzContent: tpl as never,
+      nzOkText: 'Создать',
+      nzCancelText: 'Отмена',
       nzOnOk: () => {
         const d = this.draft();
         if (!d.name.trim()) return false;
         this.api.create(d).subscribe({
           next: (p) => {
-            this.msg.success('Создана');
+            this.msg.success('Воронка создана');
             this.fetch();
             void this.router.navigate(['/admin/pipelines', p.id]);
           },
-          error: () => this.msg.error('Не удалось'),
+          error: (e) => this.msg.error(parseApiError(e, 'Не удалось создать').message),
         });
         return true;
       },
@@ -118,7 +154,18 @@ export class AdminPipelinesListPage implements OnInit {
     this.draft.set({ ...this.draft(), revisions_included: v });
   }
 
-  private fetch(): void {
-    this.api.list().subscribe((r) => this.items.set(r.items));
+  public fetch(): void {
+    this.loading.set(true);
+    this.error.set(null);
+    this.api.list().subscribe({
+      next: (r) => {
+        this.items.set(r.items);
+        this.loading.set(false);
+      },
+      error: (e) => {
+        this.loading.set(false);
+        this.error.set(parseApiError(e, 'Не удалось загрузить воронки.').message);
+      },
+    });
   }
 }

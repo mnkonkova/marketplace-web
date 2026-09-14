@@ -1,18 +1,11 @@
 // Словарь макета (.rate, .tag, .btn, .inp, .twrap) живёт в
 // shared/scss/_crm.scss под .crm-page — страница носит этот класс.
 
-.head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-
-  > div {
-    flex: 1;
-    min-width: 280px;
-  }
+// Номер версии — моноширинным: в столбце истории их читают сравнением.
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .sec {

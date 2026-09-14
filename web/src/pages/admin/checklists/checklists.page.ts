@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzModalService } from 'ng-zorro-antd/modal';
 
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import {
@@ -12,7 +12,11 @@ import {
   Platform,
 } from '@entities/publication/model/publication.types';
 import { PLATFORM_LABEL } from '@entities/publication/lib/publication-status';
+import { plural } from '@shared/lib/format';
 import { parseApiError } from '@shared/api/api-error';
+import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
+import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
+import { RowMenuComponent, RowMenuItem } from '@shared/ui/row-menu/row-menu.component';
 
 /** Строка редактора: то же, что пункт шаблона, но с ключом для track. */
 interface Row extends ChecklistTemplateItem {
@@ -34,7 +38,14 @@ interface Row extends ChecklistTemplateItem {
 @Component({
   selector: 'app-admin-checklists',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    NzButtonModule,
+    ListStateComponent,
+    PageHeadComponent,
+    RowMenuComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './checklists.page.html',
   styleUrl: './checklists.page.scss',
@@ -44,8 +55,6 @@ export class AdminChecklistsPage implements OnInit {
 
   private readonly msg = inject(NzMessageService);
 
-  private readonly modal = inject(NzModalService);
-
   public readonly platforms = ALL_PLATFORMS;
 
   public readonly platformLabel = PLATFORM_LABEL;
@@ -53,6 +62,17 @@ export class AdminChecklistsPage implements OnInit {
   public readonly items = signal<ChecklistTemplate[]>([]);
 
   public readonly loading = signal(true);
+
+  public readonly error = signal<string | null>(null);
+
+  public readonly menu: RowMenuItem[] = [
+    {
+      code: 'remove',
+      label: 'Убрать из библиотеки',
+      danger: true,
+      confirm: 'Убрать чеклист? Проекты, где он подключён, не изменятся — у них свой снимок.',
+    },
+  ];
 
   public readonly saving = signal(false);
 
@@ -71,8 +91,9 @@ export class AdminChecklistsPage implements OnInit {
     this.load();
   }
 
-  private load(): void {
+  public load(): void {
     this.loading.set(true);
+    this.error.set(null);
     this.api.adminChecklistTemplates().subscribe({
       next: (r) => {
         this.items.set(r.items);
@@ -80,9 +101,22 @@ export class AdminChecklistsPage implements OnInit {
       },
       error: (e) => {
         this.loading.set(false);
-        this.msg.error(parseApiError(e, 'Не удалось загрузить библиотеку.').message);
+        this.error.set(parseApiError(e, 'Не удалось загрузить библиотеку.').message);
       },
     });
+  }
+
+  /** Версия пишется одинаково во всей CRM: `v1 · действует`. */
+  public versionLabel(t: ChecklistTemplate): string {
+    return `v${t.version} · действует`;
+  }
+
+  public itemsWord(n: number): string {
+    return plural(n, 'пункт', 'пункта', 'пунктов');
+  }
+
+  public onPick(t: ChecklistTemplate, code: string): void {
+    if (code === 'remove') this.remove(t);
   }
 
   public startNew(): void {
@@ -182,20 +216,15 @@ export class AdminChecklistsPage implements OnInit {
       });
   }
 
+  // Подтверждение спрашивает само меню строки — второе окно поверх него
+  // было бы двумя «вы уверены» подряд.
   public remove(t: ChecklistTemplate): void {
-    this.modal.confirm({
-      nzTitle: `Убрать «${t.name}» из библиотеки?`,
-      nzContent:
-        'Проекты, где он уже подключён, не изменятся: у них свой снимок. ' +
-        'Новые подключить будет нельзя.',
-      nzOnOk: () =>
-        this.api.adminDeleteChecklistTemplate(t.id).subscribe({
-          next: () => {
-            this.msg.success('Шаблон убран из библиотеки');
-            this.load();
-          },
-          error: (e) => this.msg.error(parseApiError(e, 'Не удалось убрать шаблон.').message),
-        }),
+    this.api.adminDeleteChecklistTemplate(t.id).subscribe({
+      next: () => {
+        this.msg.success('Чеклист убран из библиотеки');
+        this.load();
+      },
+      error: (e) => this.msg.error(parseApiError(e, 'Не удалось убрать чеклист.').message),
     });
   }
 }

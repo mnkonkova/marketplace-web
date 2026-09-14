@@ -1,16 +1,13 @@
-<div class="crm-page tariff">
-  <header class="head">
-    <div>
-      <h1>Прайс площадки</h1>
-      <p class="sub">
-        Сколько платит заказчик за креатора и сколько из этого получает сам креатор. Версия не
-        правится — выпускается новая: под действующей стоит согласие клиентов, а проекты сняли с неё
-        числа снимком.
-      </p>
-    </div>
-    <button class="btn primary" type="button" (click)="openForm()">Выпустить новую версию</button>
-  </header>
+<app-page-head
+  title="Прайс креаторов"
+  subtitle="Сколько платит заказчик за креатора и сколько из этого получает сам креатор. Версия не правится — выпускается новая."
+>
+  <button head-action nz-button nzType="primary" nzSize="small" type="button" (click)="openForm()">
+    Выпустить версию прайса
+  </button>
+</app-page-head>
 
+<div class="crm-page tariff">
   @if (loading()) {
   <p class="empty">Загружаем…</p>
   } @else { @if (current(); as v) {
@@ -87,7 +84,7 @@
     </div>
   </div>
 
-  <h2 class="sec">Текст условий · версия {{ v.version }}</h2>
+  <h2 class="sec">Текст условий · {{ versionLabel(v) }}</h2>
   <p class="body">{{ v.body }}</p>
   } @else {
   <p class="empty">
@@ -112,11 +109,7 @@
       <tbody>
         @for (v of versions(); track v.version) {
         <tr>
-          <td>
-            {{ v.version }} @if (v.is_current) {
-            <span class="tag green">действует</span>
-            }
-          </td>
+          <td class="num">{{ versionLabel(v) }}</td>
           <td>{{ v.published_at | date: 'd MMM y' }}</td>
           <td>{{ money(v.salary_per_month) }}</td>
           <td>{{ money(v.rate_per_1000_views) }}</td>

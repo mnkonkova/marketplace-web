@@ -1,20 +1,5 @@
 @use '../../../shared/scss/breakpoints' as bp;
 
-h1 {
-  margin: 0 0 8px;
-}
-
-.head {
-  margin-bottom: 16px;
-
-  .hint {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 13px;
-    line-height: 1.4;
-  }
-}
-
 .filters {
   display: flex;
   gap: 8px;
@@ -44,10 +29,13 @@ h1 {
   }
 }
 
-.row-actions {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+// Колонка меню прижата вправо и не растягивается: это не данные, а одна
+// точка входа в действия.
+td.r,
+th.r {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .dim {
@@ -55,10 +43,6 @@ h1 {
 }
 
 @media (max-width: bp.$touch) {
-  h1 {
-    font-size: 20px;
-  }
-
   .filters {
     flex-direction: column;
     align-items: stretch;

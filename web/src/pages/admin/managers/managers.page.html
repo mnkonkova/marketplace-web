@@ -1,17 +1,24 @@
-<header class="head">
-  <h1>Менеджеры</h1>
-</header>
+<app-page-head
+  title="Команда"
+  subtitle="Кто ведёт проекты в CRM. Нагрузка — по закреплённым проектам."
+>
+  <button head-action nz-button nzType="primary" nzSize="small" (click)="openAdd()">
+    Добавить в команду
+  </button>
+</app-page-head>
 
+@if (addOpen()) {
 <section class="promote">
-  <h3>Сделать менеджером</h3>
+  <h3>Добавить в команду</h3>
   <p class="hint">
-    Найдите существующего юзера по email/имени/телефону. После Promote он получит manager-роль (с
-    автоматическим аппрувом) и magic-link на вход.
+    Найдите человека, который уже зарегистрирован, — по почте, имени или телефону. Отдельной
+    регистрации для менеджера не нужно: роль выдаётся существующему аккаунту, и доступ в CRM
+    открывается сразу.
   </p>
   <div class="promote-row">
     <nz-select
       [(ngModel)]="promoteUserID"
-      nzPlaceHolder="Email, имя или телефон"
+      nzPlaceHolder="Почта, имя или телефон"
       nzShowSearch
       nzServerSearch
       [nzShowArrow]="false"
@@ -19,8 +26,8 @@
       (nzOnSearch)="onSearch($event)"
       [nzLoading]="searchLoading()"
       [nzNotFoundContent]="
-        candidates().length ? 'Нет совпадений' : 'Начните печатать (мин 2 символа)'
-      "
+          candidates().length ? 'Нет совпадений' : 'Начните печатать (мин 2 символа)'
+        "
       style="min-width: 320px"
     >
       @for (u of candidates(); track u.user_id) {
@@ -34,7 +41,7 @@
       [nzLoading]="promoting()"
       (click)="promote(true)"
     >
-      Promote + invite
+      Добавить и выслать ссылку
     </button>
     <button
       nz-button
@@ -42,52 +49,53 @@
       [nzLoading]="promoting()"
       (click)="promote(false)"
     >
-      Только promote
+      Только добавить
     </button>
+    <button nz-button nzType="text" (click)="closeAdd()">Отмена</button>
   </div>
   @if (lastInviteURL()) {
-  <p class="invite-url">Magic-link: <code>{{ lastInviteURL() }}</code></p>
+  <p class="invite-url">Ссылка на вход: <code>{{ lastInviteURL() }}</code></p>
   }
 </section>
+}
 
-<h3 class="list-title">Активные менеджеры</h3>
-<nz-table [nzData]="items()" nzSize="middle">
-  <thead>
-    <tr>
-      <th>Email</th>
-      <th>Имя</th>
-      <th>Email подтверждён</th>
-      <th>Проектов в работе</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    @for (m of items(); track m.user_id) {
-    <tr>
-      <td data-label="Email">{{ m.email || '—' }}</td>
-      <td data-label="Имя">{{ m.display_name || '—' }}</td>
-      <td data-label="Email подтверждён">
-        @if (m.email_verified) {
-        <nz-tag nzColor="blue">Да</nz-tag>
-        } @else {
-        <nz-tag>Нет</nz-tag>
-        }
-      </td>
-      <td data-label="Проектов в работе">{{ m.assigned_projects }}</td>
-      <td class="row-actions">
-        <button nz-button nzSize="small" (click)="sendInvite(m)">✉ Выслать invite</button>
-        <button
-          nz-button
-          nzDanger
-          nzSize="small"
-          nz-popconfirm
-          nzPopconfirmTitle="Снять с роли менеджера?"
-          (nzOnConfirm)="revoke(m)"
-        >
-          Снять
-        </button>
-      </td>
-    </tr>
-    }
-  </tbody>
-</nz-table>
+<app-list-state
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="items().length === 0"
+  emptyText="В команде пока никого. Добавьте первого менеджера — проекты будет некому вести."
+  (retry)="fetch()"
+>
+  <nz-table [nzData]="items()" nzSize="middle">
+    <thead>
+      <tr>
+        <th>Имя</th>
+        <th>Почта</th>
+        <th>Роль</th>
+        <th>Проектов в работе</th>
+        <th class="r"></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (m of items(); track m.user_id) {
+      <tr>
+        <td data-label="Имя">{{ m.display_name || '—' }}</td>
+        <td data-label="Почта">
+          {{ m.email || '—' }} @if (m.email && !m.email_verified) {
+          <app-status-tag tone="wait">не подтверждена</app-status-tag>
+          }
+        </td>
+        <td data-label="Роль"><app-status-tag>Менеджер</app-status-tag></td>
+        <td data-label="Проектов в работе" class="num">{{ m.assigned_projects }}</td>
+        <td data-label="" class="r">
+          <app-row-menu
+            [items]="menu"
+            [label]="'Действия: ' + (m.display_name || m.email || 'менеджер')"
+            (pick)="onPick(m, $event)"
+          />
+        </td>
+      </tr>
+      }
+    </tbody>
+  </nz-table>
+</app-list-state>

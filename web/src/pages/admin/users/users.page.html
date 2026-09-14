@@ -1,10 +1,7 @@
-<header class="head">
-  <h1>Все пользователи</h1>
-  <p class="hint">
-    Полный список юзеров маркетплейса. Поиск по email/имени/телефону (минимум 2 символа), фильтры по
-    типу и роли. Клик по строке специалиста — переход на его публичный профиль.
-  </p>
-</header>
+<app-page-head
+  title="Все пользователи"
+  subtitle="Один список на всех: поиск по email, имени или телефону от двух символов. Клик по строке специалиста открывает его публичный профиль."
+/>
 
 <section class="filters">
   <input
@@ -29,145 +26,98 @@
 
 <p class="counter">Найдено: <strong>{{ total() }}</strong></p>
 
-<nz-table
-  [nzData]="items()"
-  [nzLoading]="loading()"
-  [nzFrontPagination]="false"
-  [nzShowSizeChanger]="true"
-  [nzPageSizeOptions]="[20, 50, 100]"
-  [nzPageIndex]="pageIndex()"
-  [nzPageSize]="pageSize()"
-  [nzTotal]="total()"
-  (nzQueryParams)="onQueryParamsChange($event)"
-  nzSize="middle"
+<app-list-state
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="items().length === 0"
+  emptyText="Никого не нашлось под текущие фильтры."
+  (retry)="retry()"
 >
-  <thead>
-    <tr>
-      <th>Имя</th>
-      <th>Email</th>
-      <th>Тип</th>
-      <th>Роль</th>
-      <th>Approved</th>
-      <th>Active</th>
-      <th>Модерация</th>
-      <th>Email подтверждён</th>
-      <th>Создан</th>
-      <th>Действия</th>
-    </tr>
-  </thead>
-  <tbody>
-    @for (u of items(); track u.user_id) {
-    <tr
-      class="user-row"
-      [class.clickable]="u.kind === 'specialist' || u.kind === 'both'"
-      (click)="openProfile(u)"
-    >
-      <td data-label="Имя">{{ u.display_name || '—' }}</td>
-      <td data-label="Email">{{ u.email || '—' }}</td>
-      <td data-label="Тип">{{ kindLabel(u.kind) }}</td>
-      <td data-label="Роль">
-        <nz-tag [nzColor]="roleLabel(u).color">{{ roleLabel(u).text }}</nz-tag>
-      </td>
-      <td data-label="Approved">
-        @if (u.is_approved) {
-        <nz-tag nzColor="green">Да</nz-tag>
-        } @else {
-        <nz-tag nzColor="gold">Нет</nz-tag>
-        }
-      </td>
-      <td data-label="Active">
-        @if (u.is_active) {
-        <nz-tag nzColor="green">Да</nz-tag>
-        } @else {
-        <nz-tag nzColor="red">Нет</nz-tag>
-        }
-      </td>
-      <td data-label="Модерация">
-        @if (modStatusTag(u); as t) {
-        <nz-tag [nzColor]="t.color">{{ t.text }}</nz-tag>
-        } @else {
-        <span class="dim">—</span>
-        }
-      </td>
-      <td data-label="Email подтверждён">
-        @if (u.email_verified) {
-        <nz-tag nzColor="blue">Да</nz-tag>
-        } @else {
-        <button
-          nz-button
-          nzSize="small"
-          nz-popconfirm
-          nzPopconfirmTitle="Подтвердить email вручную?"
-          nzPopconfirmPlacement="left"
-          (nzOnConfirm)="verifyEmail(u)"
-          (click)="$event.stopPropagation()"
-        >
-          <span nz-icon nzType="check"></span> Подтвердить
-        </button>
-        }
-      </td>
-      <td data-label="Создан">{{ u.created_at | date: 'dd.MM.yyyy' }}</td>
-      <td data-label="Действия" class="row-actions">
-        @if (u.is_published && (u.moderation_status === 'pending_review' || u.moderation_status ===
-        'rejected')) {
-        <button
-          nz-button
-          nzSize="small"
-          nzType="primary"
-          nz-popconfirm
-          nzPopconfirmTitle="Одобрить спеца без открытия карточки?"
-          nzPopconfirmPlacement="left"
-          (nzOnConfirm)="approveSpecialist(u)"
-          (click)="$event.stopPropagation()"
-        >
-          <span nz-icon nzType="check"></span> Подтвердить
-        </button>
-        } @if (u.is_published && u.moderation_status) {
-        <button nz-button nzSize="small" (click)="openModeration(u, $event)">На модерацию →</button>
-        } @if (!u.is_manager && !u.is_admin) {
-        <button
-          nz-button
-          nzSize="small"
-          nz-popconfirm
-          nzPopconfirmTitle="Сделать менеджером?"
-          nzPopconfirmPlacement="left"
-          (nzOnConfirm)="makeManager(u)"
-          (click)="$event.stopPropagation()"
-        >
-          ↑ Manager
-        </button>
-        } @else if (u.is_manager) {
-        <button
-          nz-button
-          nzSize="small"
-          nz-popconfirm
-          nzPopconfirmTitle="Снять с роли менеджера?"
-          nzPopconfirmPlacement="left"
-          (nzOnConfirm)="demoteManager(u)"
-          (click)="$event.stopPropagation()"
-        >
-          ↓ Demote
-        </button>
-        } @if (!u.is_admin) {
-        <button
-          nz-button
-          nzSize="small"
-          [nzDanger]="u.is_active"
-          nz-popconfirm
-          [nzPopconfirmTitle]="u.is_active ? 'Деактивировать?' : 'Активировать?'"
-          nzPopconfirmPlacement="left"
-          (nzOnConfirm)="toggleActive(u)"
-          (click)="$event.stopPropagation()"
-        >
-          {{ u.is_active ? 'Deactivate' : 'Activate' }}
-        </button>
-        }
-      </td>
-    </tr>
-    }
-  </tbody>
-</nz-table>
-
-@if (!loading() && items().length === 0) {
-<nz-empty [nzNotFoundContent]="'Никого не нашлось под текущие фильтры.'"></nz-empty>
-}
+  <nz-table
+    [nzData]="items()"
+    [nzFrontPagination]="false"
+    [nzShowSizeChanger]="true"
+    [nzPageSizeOptions]="[20, 50, 100]"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzTotal]="total()"
+    (nzQueryParams)="onQueryParamsChange($event)"
+    nzSize="middle"
+  >
+    <thead>
+      <tr>
+        <th>Имя</th>
+        <th>Email</th>
+        <th>Роль</th>
+        <th>Допущен</th>
+        <th>Доступ</th>
+        <th>Модерация</th>
+        <th>Почта подтверждена</th>
+        <th>Создан</th>
+        <th class="r"></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (u of items(); track u.user_id) {
+      <tr
+        class="user-row"
+        [class.clickable]="u.kind === 'specialist' || u.kind === 'both'"
+        (click)="openProfile(u)"
+      >
+        <td data-label="Имя">{{ u.display_name || '—' }}</td>
+        <td data-label="Email">{{ u.email || '—' }}</td>
+        <td data-label="Роль">
+          <app-status-tag [tone]="roleLabel(u).tone">{{ roleLabel(u).text }}</app-status-tag>
+        </td>
+        <!-- «Допущен» — это is_approved: право работать в CRM. У обычного
+               пользователя оно ничего не значит, и «Нет» у него читалось как
+               проблема; поэтому прочерк. -->
+        <td data-label="Допущен">
+          @if (!u.is_manager && !u.is_admin) {
+          <span class="dim">—</span>
+          } @else if (u.is_approved) {
+          <app-status-tag tone="ok">Да</app-status-tag>
+          } @else {
+          <app-status-tag tone="wait">Ждёт</app-status-tag>
+          }
+        </td>
+        <td data-label="Доступ">
+          @if (u.is_active) {
+          <app-status-tag tone="neutral">Открыт</app-status-tag>
+          } @else {
+          <app-status-tag tone="blocked">Заблокирован</app-status-tag>
+          }
+        </td>
+        <td data-label="Модерация">
+          @if (modStatusTag(u); as t) {
+          <app-status-tag [tone]="t.tone">{{ t.text }}</app-status-tag>
+          } @else {
+          <span class="dim">—</span>
+          }
+        </td>
+        <!-- Неподтверждённая почта — не «ждёт нас»: подтверждает её сам
+               человек. Янтарным здесь горела половина таблицы, и рядом с
+               ней переставало быть заметно то, что действительно наше. -->
+        <td data-label="Почта подтверждена">
+          @if (u.email_verified) {
+          <app-status-tag tone="ok">Да</app-status-tag>
+          } @else {
+          <app-status-tag tone="neutral">Нет</app-status-tag>
+          }
+        </td>
+        <td data-label="Создан">{{ u.created_at | date: 'dd.MM.yyyy' }}</td>
+        <!-- Действия были пятью кнопками в ряд: строка переносилась, а
+               «Заблокировать» стояло вплотную к «Подтвердить». Теперь одно
+               меню, разрушающее в нём красным и с подтверждением. -->
+        <td data-label="" class="r">
+          <app-row-menu
+            [items]="menuFor(u)"
+            [label]="'Действия: ' + (u.display_name || u.email || 'пользователь')"
+            (pick)="onPick(u, $event)"
+          />
+        </td>
+      </tr>
+      }
+    </tbody>
+  </nz-table>
+</app-list-state>

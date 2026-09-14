@@ -8,12 +8,14 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
 import { TermsVersion } from '@entities/billing/model/billing.types';
 import { formatMoney, fromRubles, toRubles } from '@entities/billing/lib/money';
 import { parseApiError } from '@shared/api/api-error';
+import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
 
 /**
  * Прайс площадки: сколько платит заказчик за креатора и сколько из этого
@@ -55,7 +57,7 @@ interface Draft {
 @Component({
   selector: 'app-admin-tariff',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NzButtonModule, PageHeadComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tariff.page.html',
   styleUrl: './tariff.page.scss',
@@ -93,6 +95,11 @@ export class AdminTariffPage implements OnInit {
         this.msg.error(parseApiError(e, 'Не удалось загрузить прайс.').message);
       },
     });
+  }
+
+  /** Версия пишется одинаково во всей CRM: `v1 · действует`. */
+  public versionLabel(v: TermsVersion): string {
+    return v.is_current ? `v${v.version} · действует` : `v${v.version}`;
   }
 
   public money(kopecks: number | null | undefined): string {
