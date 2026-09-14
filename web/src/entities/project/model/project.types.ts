@@ -1,13 +1,7 @@
 // Типы соответствуют DTO из marketplace-api/internal/projects/dto.go.
 // Поля, отсутствующие в JSON (omitempty в Go), здесь optional.
 
-export type ProjectStatus =
-  | 'draft'
-  | 'active'
-  | 'on_hold'
-  | 'done'
-  | 'cancelled'
-  | 'dispute';
+export type ProjectStatus = 'draft' | 'active' | 'on_hold' | 'done' | 'cancelled' | 'dispute';
 
 export type StepStatus =
   | 'pending'
@@ -125,6 +119,12 @@ export interface ProjectManagerView extends ProjectBase {
   manager_display_name?: string;
   display_status: ProjectDisplayStatus;
   progress: number;
+  // Прогресс числом, а не только процентом: «3 из 5 выкладок» читается
+  // с одного взгляда, а 60% требуют знать, из чего они.
+  progress_done?: number;
+  progress_total?: number;
+  // В чём измерен: publications у креаторов, steps у продакшна.
+  progress_unit?: 'publications' | 'steps';
   current_stage_id?: string;
   current_stage_name?: string;
   current_stage_order: number;

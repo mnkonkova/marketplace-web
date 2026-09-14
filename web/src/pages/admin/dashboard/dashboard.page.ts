@@ -7,178 +7,345 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
-import { forkJoin } from 'rxjs';
+import { Params, Router, RouterLink } from '@angular/router';
 
-import { ProjectApi } from '@entities/project/api/project.api';
-import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
-import { Pipeline } from '@entities/pipeline/model/pipeline.types';
-import { ProjectManagerView, ProjectDisplayStatus } from '@entities/project/model/project.types';
+import { AdminApi } from '@entities/admin/api/admin.api';
+import { AdminSummaryStore } from '@entities/admin/model/admin-summary.store';
+import {
+  AttentionBlock,
+  AttentionKey,
+  AuditEntry,
+  TeamMember,
+} from '@entities/admin/model/admin-shell.types';
+import { AUDIT_ACTION_LABEL } from '@entities/admin/lib/audit-labels';
+import { PROJECT_KIND_LABEL, PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
+import { formatAgo, plural } from '@shared/lib/format';
+import { CrmIconComponent, CrmIconName } from '@shared/ui/crm-icon/crm-icon.component';
+import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
 import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
 
-interface FunnelStats {
-  pipeline: Pipeline;
-  total: number;
-  new: number;
-  active: number;
-  waiting: number;
-  onHold: number;
-  completed: number;
-  cancelled: number;
-  /** % завершения = completed / (completed + cancelled). null если не из чего считать. */
-  conversionPct: number | null;
-  /** Средний лид-тайм по завершённым в днях. null если завершённых нет. */
-  avgLeadDays: number | null;
+/** Как выглядит и куда ведёт один повод зайти в админку сегодня. */
+interface AttentionSpec {
+  key: AttentionKey;
+  icon: CrmIconName;
+  /** Цвет — по срочности: красное сломалось, янтарное ждёт нас, синее к сведению. */
+  tone: 'bad' | 'warn' | 'info';
+  title: string;
+  /** Подпись кнопки — глагол: «Открыть очередь», а не «Перейти». */
+  action: string;
+  /** Куда ведёт: раздел и фильтры, под которыми видно ровно эти строки. */
+  link: string;
+  query?: Params;
+  /** Что написать, когда здесь чисто. Собирается в строку «Спокойно: …». */
+  calm: string;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const STUCK_THRESHOLD_DAYS = 7;
+/**
+ * Порядок — по тому, насколько поздно узнать. Просроченные выкладки и
+ * непринятые решения стоят первыми: их цена растёт каждый день. Деньги и
+ * лимиты — ниже: они не портятся от суток ожидания.
+ */
+const ATTENTION: AttentionSpec[] = [
+  {
+    key: 'publications_overdue',
+    icon: 'alert',
+    tone: 'bad',
+    title: 'Просрочены выкладки',
+    action: 'Открыть проекты',
+    link: '/admin/projects',
+    query: { kind: 'creators_turnkey' },
+    calm: 'выкладки выходят по плану',
+  },
+  {
+    key: 'moderation',
+    icon: 'shield',
+    tone: 'warn',
+    title: 'Модерация',
+    action: 'Открыть очередь',
+    link: '/admin/moderation',
+    calm: 'очередь модерации пуста',
+  },
+  {
+    key: 'projects_unassigned',
+    icon: 'user',
+    tone: 'warn',
+    title: 'Без менеджера',
+    action: 'Назначить',
+    link: '/admin/projects',
+    query: { manager: 'none' },
+    calm: 'у всех проектов есть ответственный',
+  },
+  {
+    key: 'projects_stale',
+    icon: 'clock',
+    tone: 'warn',
+    title: 'Без движения 7+ дней',
+    action: 'Показать',
+    link: '/admin/projects',
+    query: { sort: 'updated_asc' },
+    calm: 'все проекты двигались на этой неделе',
+  },
+  {
+    key: 'managers_unapproved',
+    icon: 'team',
+    tone: 'warn',
+    title: 'Менеджеры без доступа',
+    action: 'Открыть команду',
+    link: '/admin/team',
+    calm: 'неодобренных менеджеров нет',
+  },
+  {
+    key: 'specialist_not_confirmed',
+    icon: 'spec',
+    tone: 'warn',
+    title: 'Клиент выбрал специалиста, менеджер не подтвердил',
+    action: 'Открыть проекты',
+    link: '/admin/projects',
+    calm: 'выбор клиентов подтверждён',
+  },
+  {
+    key: 'work_without_prepayment',
+    icon: 'ruble',
+    tone: 'info',
+    title: 'Работа идёт без подтверждённой предоплаты',
+    action: 'Открыть проекты',
+    link: '/admin/projects',
+    calm: 'работа без предоплаты не идёт',
+  },
+  {
+    key: 'revisions_exceeded',
+    icon: 'repeat',
+    tone: 'warn',
+    title: 'Превышен лимит правок',
+    action: 'Показать',
+    link: '/admin/projects',
+    calm: 'лимит правок никто не превысил',
+  },
+];
 
-const BUCKETS: Record<ProjectDisplayStatus, keyof Omit<FunnelStats, 'pipeline' | 'total'>> = {
-  not_started: 'new',
-  in_progress: 'active',
-  waiting_action: 'waiting',
-  on_hold: 'onHold',
-  completed: 'completed',
-  cancelled: 'cancelled',
+/** Сколько человек помещается в карточку нагрузки, не становясь списком. */
+const LOADS_SHOWN = 8;
+
+/** Цвет статуса в полосе распределения. Порядок — как в жизни проекта. */
+const STATUS_ORDER = ['draft', 'active', 'on_hold', 'dispute', 'done', 'cancelled'] as const;
+
+const STATUS_COLOR: Record<string, string> = {
+  draft: 'var(--text-dim)',
+  active: 'var(--info)',
+  on_hold: 'var(--border-hover)',
+  dispute: 'var(--warn)',
+  done: 'var(--ok)',
+  cancelled: 'var(--bad)',
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  draft: 'Черновик',
+  active: 'В работе',
+  on_hold: 'На паузе',
+  dispute: 'Спор',
+  done: 'Завершён',
+  cancelled: 'Отменён',
+};
+
+interface AttentionRow extends AttentionSpec {
+  block: AttentionBlock;
+  /** Готовая строка-пояснение из первых items — что именно ждёт. */
+  note: string;
+}
+
+interface BranchRow {
+  kind: string;
+  label: string;
+  total: number;
+  parts: { status: string; label: string; color: string; count: number }[];
+}
+
+/**
+ * Сводка — первое, что видит админ.
+ *
+ * Была четырьмя плитками KPI и разрезом по воронкам: цифры красивые, но
+ * ни одна не говорила, что делать. «Всего проектов 17» — это не задача.
+ * Теперь экран отвечает на один вопрос: что требует вас сегодня, — и
+ * каждая строка ведёт в список, отфильтрованный ровно под неё.
+ *
+ * Пустые блоки не выкидываются, а собираются в строку «Спокойно: …»:
+ * исчезнувший блок читается как «не посчитали», а не как «там чисто».
+ */
 @Component({
   selector: 'app-admin-dashboard-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, NzSpinModule, NzEmptyModule, PageHeadComponent],
+  imports: [CommonModule, RouterLink, CrmIconComponent, ListStateComponent, PageHeadComponent],
   templateUrl: './dashboard.page.html',
   styleUrl: './dashboard.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminDashboardPage implements OnInit {
-  private readonly projectApi = inject(ProjectApi);
-  private readonly pipelineApi = inject(PipelineApi);
+  private readonly summary = inject(AdminSummaryStore);
 
-  public readonly loading = signal(true);
-  public readonly pipelines = signal<Pipeline[]>([]);
-  public readonly projects = signal<ProjectManagerView[]>([]);
+  private readonly router = inject(Router);
 
-  public readonly stats = computed<FunnelStats[]>(() => {
-    // Накопители для среднего лид-тайма (sum/count, считаем сразу).
-    const leadSumByPipeline = new Map<string, { sum: number; count: number }>();
+  private readonly api = inject(AdminApi);
 
-    const byID = new Map<string, FunnelStats>();
-    for (const pl of this.pipelines()) {
-      byID.set(pl.id, {
-        pipeline: pl,
-        total: 0,
-        new: 0,
-        active: 0,
-        waiting: 0,
-        onHold: 0,
-        completed: 0,
-        cancelled: 0,
-        conversionPct: null,
-        avgLeadDays: null,
-      });
-      leadSumByPipeline.set(pl.id, { sum: 0, count: 0 });
-    }
-    for (const p of this.projects()) {
-      // Общий проект идёт без воронки — в разрезе по воронкам его нет.
-      const pipelineId = p.pipeline_id;
-      const s = pipelineId ? byID.get(pipelineId) : undefined;
-      if (!s || !pipelineId) continue; // проект на удалённой/неактивной воронке — игнорим
-      s.total++;
-      const bucket = BUCKETS[p.display_status];
-      if (bucket) s[bucket]++;
+  public readonly loading = this.summary.loading;
 
-      // Лид-тайм: считаем только для завершённых, где есть оба таймстампа.
-      if (p.display_status === 'completed' && p.started_at && p.completed_at) {
-        const days = (Date.parse(p.completed_at) - Date.parse(p.started_at)) / DAY_MS;
-        if (Number.isFinite(days) && days >= 0) {
-          const acc = leadSumByPipeline.get(pipelineId)!;
-          acc.sum += days;
-          acc.count++;
-        }
-      }
-    }
+  public readonly error = this.summary.error;
 
-    // Финализируем conversion + avg lead.
-    for (const s of byID.values()) {
-      const closed = s.completed + s.cancelled;
-      s.conversionPct = closed > 0 ? Math.round((s.completed / closed) * 100) : null;
-      const lead = leadSumByPipeline.get(s.pipeline.id)!;
-      s.avgLeadDays = lead.count > 0 ? Math.round(lead.sum / lead.count) : null;
-    }
+  public readonly generatedAt = computed(() => this.summary.data()?.generated_at ?? '');
 
-    return [...byID.values()].sort((a, b) => b.total - a.total);
+  /** Сегодняшняя дата словами — она же говорит, за какой день сводка. */
+  public readonly today = computed(() => {
+    const iso = this.generatedAt();
+    const d = iso ? new Date(iso) : new Date();
+    return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
   });
 
-  public readonly totals = computed(() => {
-    const acc = { total: 0, new: 0, active: 0, waiting: 0, onHold: 0, completed: 0, cancelled: 0 };
-    for (const s of this.stats()) {
-      acc.total += s.total;
-      acc.new += s.new;
-      acc.active += s.active;
-      acc.waiting += s.waiting;
-      acc.onHold += s.onHold;
-      acc.completed += s.completed;
-      acc.cancelled += s.cancelled;
-    }
-    return acc;
+  /** Блоки, где есть что разбирать. Порядок фиксированный (см. ATTENTION). */
+  public readonly rows = computed<AttentionRow[]>(() => {
+    const a = this.summary.data()?.attention;
+    if (!a) return [];
+    return ATTENTION.map((spec) => ({
+      ...spec,
+      block: a[spec.key],
+      note: noteOf(a[spec.key]),
+    })).filter((r) => r.block && r.block.count > 0);
   });
 
-  /** Вторичные операционные метрики — выявляют проблемы, требующие
-   *  внимания админа. Считаются по сырому projects(), не зависят от pipeline. */
-  public readonly health = computed(() => {
-    const now = Date.now();
-    let orphans = 0; // активные проекты без менеджера
-    let stuck = 0; // активные, updated_at старше STUCK_THRESHOLD_DAYS
-    let overRevisions = 0; // revisions_used > revisions_included
+  /** Сколько поводов, а не сколько строк во всех сразу: «58» рядом с
+   *  заголовком читалось бы как одна большая беда вместо шести разных. */
+  public readonly total = computed(() => this.rows().length);
 
-    for (const p of this.projects()) {
-      const isOpen = p.display_status !== 'completed' && p.display_status !== 'cancelled';
-      if (isOpen) {
-        if (!p.assigned_to_user_id) orphans++;
-        if (p.updated_at) {
-          const idleDays = (now - Date.parse(p.updated_at)) / DAY_MS;
-          if (idleDays >= STUCK_THRESHOLD_DAYS) stuck++;
-        }
-      }
-      if (p.revisions_included > 0 && p.revisions_used > p.revisions_included) {
-        overRevisions++;
-      }
-    }
-
-    // Общий лид-тайм по всем завершённым (агрегат поверх воронок).
-    let leadSum = 0;
-    let leadCount = 0;
-    for (const p of this.projects()) {
-      if (p.display_status === 'completed' && p.started_at && p.completed_at) {
-        const days = (Date.parse(p.completed_at) - Date.parse(p.started_at)) / DAY_MS;
-        if (Number.isFinite(days) && days >= 0) {
-          leadSum += days;
-          leadCount++;
-        }
-      }
-    }
-    const avgLead = leadCount > 0 ? Math.round(leadSum / leadCount) : null;
-
-    return { orphans, stuck, overRevisions, avgLead };
+  /** Строка «Спокойно: …» — перечисляет ровно то, где чисто. */
+  public readonly calm = computed(() => {
+    const a = this.summary.data()?.attention;
+    if (!a) return '';
+    const quiet = ATTENTION.filter((s) => !a[s.key] || a[s.key].count === 0).map((s) => s.calm);
+    if (!quiet.length) return '';
+    return `Спокойно: ${quiet.join(', ')}.`;
   });
+
+  public readonly branches = computed<BranchRow[]>(() => {
+    const d = this.summary.data();
+    if (!d) return [];
+    // Ветки — по видам проектов. «Общий проект» показываем только когда
+    // он есть: заводят его редко, и пустая ветка занимала бы строку.
+    return Object.entries(d.projects_by_kind)
+      .filter(([, n]) => n > 0)
+      .map(([kind, total]) => ({
+        kind,
+        label: PROJECT_KIND_LABEL[kind as keyof typeof PROJECT_KIND_LABEL] ?? kind,
+        total,
+        parts: [],
+      }));
+  });
+
+  /**
+   * Распределение по статусам — общее на все ветки.
+   *
+   * Сводка отдаёт срез по видам и срез по статусам порознь, пересечения
+   * в ней нет. Рисовать полосу внутри каждой ветки было бы враньём:
+   * числа взялись бы из другого разреза.
+   */
+  public readonly statusParts = computed(() => {
+    const by = this.summary.data()?.projects_by_status;
+    if (!by) return [];
+    return STATUS_ORDER.filter((s) => (by[s] ?? 0) > 0).map((s) => ({
+      status: s as string,
+      label: STATUS_LABEL[s] ?? PROJECT_STATUS_LABEL[s as never] ?? s,
+      color: STATUS_COLOR[s] ?? 'var(--border-hover)',
+      count: by[s] ?? 0,
+    }));
+  });
+
+  public readonly statusTotal = computed(() => this.statusParts().reduce((n, p) => n + p.count, 0));
+
+  /**
+   * Нагрузка: менеджеры, самые загруженные сверху.
+   *
+   * Карточка отвечает на «кому уже некуда» — значит первыми идут те, у
+   * кого работы больше. Показываем первых восемь: в команде их тридцать,
+   * и полный список здесь превращает карточку в отдельный экран, у
+   * которого уже есть свой адрес.
+   */
+  private readonly managersByLoad = computed(() =>
+    (this.summary.data()?.managers ?? [])
+      .filter((t) => t.is_manager || t.active_projects > 0)
+      .slice()
+      .sort(
+        (a, b) => b.active_projects - a.active_projects || this.name(a).localeCompare(this.name(b)),
+      ),
+  );
+
+  public readonly loads = computed(() => {
+    const all = this.managersByLoad();
+    const max = Math.max(1, ...all.map((t) => t.active_projects));
+    return all
+      .slice(0, LOADS_SHOWN)
+      .map((t) => ({ member: t, percent: Math.round((t.active_projects / max) * 100) }));
+  });
+
+  /** Сколько человек не поместилось — за ними в «Команду». */
+  public readonly loadsRest = computed(() =>
+    Math.max(0, this.managersByLoad().length - LOADS_SHOWN),
+  );
+
+  /**
+   * Журнал: последние записи. Отдельным запросом — в сводку он не входит,
+   * и тащить его туда значило бы грузить ленту ради счётчиков сайдбара,
+   * которые просит та же ручка.
+   */
+  public readonly log = signal<AuditEntry[]>([]);
 
   public ngOnInit(): void {
-    forkJoin({
-      pipelines: this.pipelineApi.list(),
-      // Сводка считается по всем проектам сразу («сколько без
-      // ответственного», «сколько встало»), поэтому просим весь набор
-      // явно: со страницей в 20 строк цифры были бы про эти 20 строк.
-      projects: this.projectApi.adminListProjects({ limit: 1000 }),
-    }).subscribe({
-      next: ({ pipelines, projects }) => {
-        this.pipelines.set(pipelines.items ?? []);
-        this.projects.set(projects.items ?? []);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
+    this.summary.ensure();
+    this.api.listAudit({ limit: 5 }).subscribe({
+      next: (r) => this.log.set(r.items ?? []),
+      // Журнал — приложение к сводке: без него экран остаётся рабочим,
+      // и своей ошибки он не заслуживает.
+      error: () => this.log.set([]),
     });
   }
+
+  public retry(): void {
+    this.summary.reload();
+  }
+
+  public name(t: TeamMember): string {
+    return t.display_name || t.email || t.user_id;
+  }
+
+  public initial(t: TeamMember): string {
+    return (this.name(t).trim().charAt(0) || '·').toUpperCase();
+  }
+
+  public projectsWord(n: number): string {
+    return plural(n, 'проект', 'проекта', 'проектов');
+  }
+
+  public actionLabel(a: AuditEntry): string {
+    return AUDIT_ACTION_LABEL[a.action] ?? a.action;
+  }
+
+  public ago(iso: string): string {
+    return formatAgo(iso);
+  }
+
+  public open(row: AttentionRow): void {
+    void this.router.navigate([row.link], { queryParams: row.query ?? {} });
+  }
+}
+
+/**
+ * Пояснение к блоку: первые строки, которые прислал сервер.
+ *
+ * Формулировки берём его — «12 дн. без движения» он посчитал по тем же
+ * данным, что и count. Своя версия здесь означала бы второе место, где
+ * это считается, и первое же расхождение выглядело бы как ошибка в
+ * цифре.
+ */
+function noteOf(block: AttentionBlock | undefined): string {
+  if (!block?.items?.length) return '';
+  return block.items
+    .slice(0, 3)
+    .map((i) => (i.note ? `${i.title} — ${i.note}` : i.title))
+    .join(' · ');
 }

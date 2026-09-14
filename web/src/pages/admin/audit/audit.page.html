@@ -1,0 +1,79 @@
+@let f = filters();
+
+<app-page-head
+  title="Журнал"
+  subtitle="Кто что менял: люди, прайс, чеклисты и проекты. Свежие записи сверху."
+/>
+
+<section class="filters">
+  <nz-select
+    [ngModel]="f.action"
+    (ngModelChange)="setAction($event)"
+    style="min-width: 240px"
+    data-test="audit-action"
+  >
+    @for (o of actionOptions; track o.value) {
+    <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+    }
+  </nz-select>
+  <nz-select
+    [ngModel]="f.objectType"
+    (ngModelChange)="setObjectType($event)"
+    style="min-width: 170px"
+    data-test="audit-object"
+  >
+    @for (o of objectOptions; track o.value) {
+    <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+    }
+  </nz-select>
+  @if (narrowed()) {
+  <!-- Сюда приходят по ссылке из карточки: без этой строки непонятно,
+         почему в журнале три записи вместо трёхсот. -->
+  <button type="button" class="chip" (click)="clearObject()">
+    Только по одной записи · показать все
+  </button>
+  }
+</section>
+
+<p class="counter">Записей: <strong data-test="audit-total">{{ total() }}</strong></p>
+
+<app-list-state
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="items().length === 0"
+  emptyText="Под эти фильтры записей нет."
+  (retry)="retry()"
+>
+  <nz-table
+    [nzData]="items()"
+    [nzFrontPagination]="false"
+    [nzShowSizeChanger]="true"
+    [nzPageSizeOptions]="[25, 50, 100]"
+    [nzPageIndex]="f.page"
+    [nzPageSize]="f.pageSize"
+    [nzTotal]="total()"
+    (nzQueryParams)="onQueryParamsChange($event)"
+    nzSize="middle"
+  >
+    <thead>
+      <tr>
+        <th>Когда</th>
+        <th>Кто</th>
+        <th>Что сделал</th>
+        <th>Объект</th>
+        <th>Подробности</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (e of items(); track e.id) {
+      <tr data-test="audit-row">
+        <td data-label="Когда" class="num">{{ e.created_at | date: 'dd.MM.yyyy HH:mm' }}</td>
+        <td data-label="Кто">{{ actorName(e) }}</td>
+        <td data-label="Что сделал">{{ actionLabel(e) }}</td>
+        <td data-label="Объект">{{ objectLabel(e) }}</td>
+        <td data-label="Подробности" class="dim">{{ details(e) || '—' }}</td>
+      </tr>
+      }
+    </tbody>
+  </nz-table>
+</app-list-state>

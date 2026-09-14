@@ -17,6 +17,14 @@
       <span class="crm" aria-hidden="true">CRM</span>
     </a>
 
+    <!-- Поиск стоит сразу под логотипом: до конкретного проекта или
+         человека отсюда два нажатия, а через раздел и фильтры — пять. -->
+    <button type="button" class="qs" (click)="openSearch($event)">
+      <app-crm-icon name="search" />
+      <span class="lbl">Поиск по CRM</span>
+      <kbd aria-hidden="true">⌘K</kbd>
+    </button>
+
     <nav class="groups" aria-label="Разделы">
       @for (g of groups(); track g.title) {
         <p class="grp">{{ g.title }}</p>
@@ -34,6 +42,8 @@
                    приглушены: они говорят «сколько тут всего», а не «идите
                    разбирать». -->
               <span class="badge">{{ n }}</span>
+            } @else if (countOf(item) !== null) {
+              <span class="n">{{ countOf(item) }}</span>
             }
           </a>
         }
@@ -124,3 +134,7 @@
     </main>
   </div>
 </div>
+
+<!-- Поиск живёт снаружи раскладки: он перекрывает всё и не должен
+     считаться частью колонки, поверх которой открылся. -->
+<app-crm-search />

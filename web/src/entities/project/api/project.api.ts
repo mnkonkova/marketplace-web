@@ -35,7 +35,12 @@ export interface AdminProjectsParams {
   // Поиск по названию проекта и по клиенту. Короче 2 символов сервер
   // игнорирует — по одной букве совпадёт весь список.
   q?: string;
-  status?: ProjectStatus;
+  // Точный статус проекта либо 'unfinished' — четыре незавершённых одним
+  // набором (draft|active|on_hold|dispute). Пусто = всё, кроме отменённых.
+  status?: ProjectStatus | 'unfinished';
+  // Ветка: креаторы или продакшн. Списки у них разные по смыслу — у
+  // одних план выкладок, у других шаги воронки, — и смотрят их порознь.
+  kind?: ProjectKind;
   // uuid менеджера либо 'none' — проекты без ответственного. «Никого»
   // нельзя выразить пустым значением: пустое значит «любой».
   manager?: string;
@@ -304,6 +309,25 @@ export class ProjectApi {
 
   public adminGetProject(projectId: string): Observable<ProjectFullView> {
     return this.http.get<ProjectFullView>(`${this.api}/admin/projects/${projectId}`);
+  }
+
+  /**
+   * Вернуть отменённый проект в тот статус, в котором он был до отмены.
+   * 409 — отменяли до появления ручки или правили статус руками: угаданный
+   * статус молча поменял бы, кого проект ждёт.
+   */
+  public adminRestoreProject(projectId: string): Observable<{ status: ProjectStatus }> {
+    return this.http.post<{ status: ProjectStatus }>(
+      `${this.api}/admin/projects/${projectId}/restore`,
+      {},
+    );
+  }
+
+  /** Пометить проект тестовым или снять пометку: тестовые в списках скрыты. */
+  public adminMarkProjectTest(projectId: string, isTest: boolean): Observable<void> {
+    return this.http.post<void>(`${this.api}/admin/projects/${projectId}/mark_test`, {
+      is_test: isTest,
+    });
   }
 
   public adminMoveStep(

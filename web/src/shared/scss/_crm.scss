@@ -31,8 +31,8 @@
   --amber-dim: var(--warn-line);
   --red: var(--bad);
   --red-dim: var(--bad-line);
-  --blue: #4b8fd6;
-  --blue-dim: #274b6e;
+  --blue: var(--info);
+  --blue-dim: var(--info-line);
   --violet: #9b7bd4;
   --mono: var(--crm-mono);
   --maxw: 1320px;

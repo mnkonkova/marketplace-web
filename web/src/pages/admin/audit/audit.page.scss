@@ -1,0 +1,89 @@
+@use '../../../shared/scss/breakpoints' as bp;
+
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0 0 12px;
+}
+
+// Снять сужение — не фильтр, а подсказка с действием: выпадающего списка
+// для «объект такой-то» нет, сюда приходят ссылкой из карточки.
+.chip {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px dashed var(--warn-line);
+  border-radius: 8px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    border-style: solid;
+  }
+}
+
+.counter {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+// Время — моноширинным: столбец дат читают сравнением сверху вниз.
+.num {
+  font-family: var(--crm-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+@media (max-width: bp.$touch) {
+  .filters ::ng-deep nz-select {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  ::ng-deep .ant-table {
+    min-width: 0 !important;
+
+    .ant-table-thead {
+      display: none;
+    }
+
+    .ant-table-tbody {
+      tr {
+        display: block;
+        margin-bottom: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--r-card);
+        background: var(--surface);
+      }
+
+      td {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 4px 0 !important;
+        border: none !important;
+
+        &[data-label]::before {
+          content: attr(data-label);
+          flex-shrink: 0;
+          min-width: 110px;
+          color: var(--text-muted);
+          font-size: 12px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+      }
+    }
+  }
+}

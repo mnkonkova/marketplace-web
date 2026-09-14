@@ -220,6 +220,12 @@ export const routes: Routes = [
       },
       { path: 'managers', redirectTo: 'team', pathMatch: 'full' },
       {
+        // Журнал: кто что менял. До него разбор спорного случая шёл в логи
+        // сервера — то есть к тому, у кого есть к ним доступ.
+        path: 'audit',
+        loadComponent: () => import('@pages/admin/audit/audit.page').then((m) => m.AdminAuditPage),
+      },
+      {
         path: 'specialists',
         loadComponent: () =>
           import('@pages/admin/people/people-soon.page').then((m) => m.AdminPeopleSoonPage),

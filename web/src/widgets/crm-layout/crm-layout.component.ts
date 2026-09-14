@@ -20,9 +20,11 @@ import {
 } from '@angular/router';
 
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
-import { AdminApi } from '@entities/admin/api/admin.api';
+import { AdminSummaryStore } from '@entities/admin/model/admin-summary.store';
+import { CrmIconComponent } from '@shared/ui/crm-icon/crm-icon.component';
+import { CrmSearchComponent } from '@widgets/crm-search/crm-search.component';
+import { CrmSearchStore } from '@widgets/crm-search/crm-search.store';
 
-import { CrmIconComponent } from './crm-icon.component';
 import {
   CrmNavGroup,
   CrmNavItem,
@@ -57,7 +59,7 @@ const NARROW = '(max-width: 1000px)';
 @Component({
   selector: 'app-crm-layout',
   standalone: true,
-  imports: [NgTemplateOutlet, RouterLink, RouterOutlet, CrmIconComponent],
+  imports: [NgTemplateOutlet, RouterLink, RouterOutlet, CrmIconComponent, CrmSearchComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './crm-layout.component.html',
   styleUrl: './crm-layout.component.scss',
@@ -67,7 +69,9 @@ export class CrmLayoutComponent implements OnInit {
 
   private readonly router = inject(Router);
 
-  private readonly adminApi = inject(AdminApi);
+  private readonly summary = inject(AdminSummaryStore);
+
+  private readonly search = inject(CrmSearchStore);
 
   private readonly destroyRef = inject(DestroyRef);
 
@@ -131,11 +135,15 @@ export class CrmLayoutComponent implements OnInit {
     () => this.role() === 'admin' && this.url().startsWith('/manager'),
   );
 
-  // Счётчик заявок на модерации. Считается один раз на маунт: оболочка
-  // теперь живёт на родительском маршруте, и переходы между разделами её
-  // не пересоздают. Подписка на каждый переход была бы запросом на каждый
-  // клик — рейт-лимитер отвечал на такое 429 по всей админке.
-  public readonly pendingModeration = signal(0);
+  /**
+   * Счётчики разделов. Приезжают вместе со сводкой одним запросом: цифра
+   * у пункта обязана равняться числу строк, которые откроются по клику, а
+   * считать их по восьми разным ручкам — восемь поводов разойтись.
+   *
+   * Запрос один на весь заход в CRM: оболочка живёт на родительском
+   * маршруте и переходами между разделами не пересоздаётся.
+   */
+  public readonly navCounts = computed(() => this.summary.data()?.nav_counts ?? null);
 
   /** Открыта ли шторка. На широком экране сайдбар всегда на месте. */
   public readonly navOpen = signal(false);
@@ -163,7 +171,8 @@ export class CrmLayoutComponent implements OnInit {
 
   public ngOnInit(): void {
     this.url.set(this.router.url);
-    this.refreshPending();
+    // Сводку просит и экран /admin — хранилище отдаёт им один ответ.
+    if (this.role() === 'admin') this.summary.ensure();
     this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((e: RouterEvent) => {
       // ActivationStart приходит до создания компонента страницы: шапку
       // чистим здесь, чтобы новая страница успела положить свою в ngOnInit.
@@ -185,15 +194,33 @@ export class CrmLayoutComponent implements OnInit {
     return crmNavItemActive(item, this.url());
   }
 
-  /** Коралловый бейдж очереди. 0 и «не знаем» бейджа не рисуют. */
+  /**
+   * Коралловый бейдж очереди — только там, где ждут нас: модерация и
+   * входящие. Ноль и «ещё не знаем» бейджа не рисуют: пустой кружок
+   * читается как «ноль чего-то важного», хотя важного там нет.
+   */
   public badgeOf(item: CrmNavItem): number | null {
+    if (item.counter !== 'moderation' && item.counter !== 'inbox') return null;
     const n =
       item.counter === 'moderation'
-        ? this.pendingModeration()
-        : item.counter === 'inbox'
-          ? (this.shell.inboxCount() ?? 0)
-          : 0;
+        ? // Только nav_counts: старая ручка счётчика модерации не
+          // исключает тестовых пользователей, и её число расходилось бы с
+          // очередью, которая по клику откроется.
+          (this.navCounts()?.moderation_pending ?? 0)
+        : (this.shell.inboxCount() ?? 0);
     return n > 0 ? n : null;
+  }
+
+  /** Приглушённый счётчик: сколько всего в разделе. */
+  public countOf(item: CrmNavItem): number | null {
+    const c = item.counter;
+    if (!c || c === 'moderation' || c === 'inbox') return null;
+    const counts = this.navCounts();
+    return counts ? counts[c] : null;
+  }
+
+  public openSearch(ev: Event): void {
+    this.search.show(ev.currentTarget);
   }
 
   public toggleNav(): void {
@@ -207,15 +234,5 @@ export class CrmLayoutComponent implements OnInit {
   public logout(): void {
     this.auth.clear();
     void this.router.navigateByUrl('/');
-  }
-
-  private refreshPending(): void {
-    // Бейдж модерации — админский; менеджеру эта ручка отвечает 403.
-    if (this.role() !== 'admin') return;
-    this.adminApi.pendingModerationCount().subscribe({
-      next: (r) => this.pendingModeration.set(r.pending_count),
-      // 401/403 — прав нет; бейдж просто не появится.
-      error: () => this.pendingModeration.set(0),
-    });
   }
 }

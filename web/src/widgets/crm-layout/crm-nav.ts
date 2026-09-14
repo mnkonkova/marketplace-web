@@ -1,4 +1,4 @@
-import { CrmIconName } from './crm-icon.component';
+import { CrmIconName } from '@shared/ui/crm-icon/crm-icon.component';
 
 /**
  * Состав сайдбара CRM.
@@ -14,10 +14,23 @@ export type CrmRole = 'admin' | 'manager';
 
 /**
  * Что показать справа в пункте.
- *   'moderation' и 'inbox' — очередь на вас: коралловый бейдж;
- *   остальное — приглушённый моноширинный счётчик.
+ *
+ * 'moderation' и 'inbox' — очередь на вас: коралловый бейдж. Остальные —
+ * приглушённый моноширинный счётчик: «сколько тут всего», а не «идите
+ * разбирать». Имена совпадают с ключами nav_counts из /admin/summary —
+ * сводить их таблицей соответствий значило бы завести второе место, где
+ * можно ошибиться.
  */
-export type CrmNavCounter = 'moderation' | 'inbox';
+export type CrmNavCounter =
+  | 'moderation'
+  | 'inbox'
+  | 'projects_active'
+  | 'team'
+  | 'specialists'
+  | 'clients'
+  | 'checklists'
+  | 'pipelines'
+  | 'productions';
 
 export interface CrmNavItem {
   label: string;
@@ -47,30 +60,36 @@ const ADMIN_GROUPS: CrmNavGroup[] = [
       // Карточка проекта живёт по менеджерскому адресу, но для админа это
       // тот же раздел «Проекты» — иначе, открыв проект, он теряет, где
       // находится.
-      { label: 'Проекты', link: '/admin/projects', icon: 'folder', also: ['/manager/projects'] },
+      {
+        label: 'Проекты',
+        link: '/admin/projects',
+        icon: 'folder',
+        also: ['/manager/projects'],
+        counter: 'projects_active',
+      },
       { label: 'Модерация', link: '/admin/moderation', icon: 'shield', counter: 'moderation' },
     ],
   },
   {
     title: 'Люди',
     items: [
-      { label: 'Команда', link: '/admin/team', icon: 'team' },
-      { label: 'Специалисты', link: '/admin/specialists', icon: 'spec' },
-      { label: 'Клиенты', link: '/admin/clients', icon: 'client' },
+      { label: 'Команда', link: '/admin/team', icon: 'team', counter: 'team' },
+      { label: 'Специалисты', link: '/admin/specialists', icon: 'spec', counter: 'specialists' },
+      { label: 'Клиенты', link: '/admin/clients', icon: 'client', counter: 'clients' },
     ],
   },
   {
     title: 'Креаторы',
     items: [
       { label: 'Прайс', link: '/admin/tariff', icon: 'price' },
-      { label: 'Чеклисты', link: '/admin/checklists', icon: 'check' },
+      { label: 'Чеклисты', link: '/admin/checklists', icon: 'check', counter: 'checklists' },
     ],
   },
   {
     title: 'Продакшн',
     items: [
-      { label: 'Воронки', link: '/admin/pipelines', icon: 'flow' },
-      { label: 'Продакшены', link: '/admin/productions', icon: 'studio' },
+      { label: 'Воронки', link: '/admin/pipelines', icon: 'flow', counter: 'pipelines' },
+      { label: 'Продакшены', link: '/admin/productions', icon: 'studio', counter: 'productions' },
     ],
   },
 ];
