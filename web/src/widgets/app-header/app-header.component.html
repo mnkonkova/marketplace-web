@@ -42,12 +42,12 @@
     <div class="header-actions">
       @if (isLoggedIn()) {
         @if (showManagerCabinet()) {
-          <a routerLink="/manager/board" class="link" [class.is-active]="activeNav() === 'manager'">
+          <a routerLink="/manager" class="link" [class.is-active]="activeNav() === 'manager'">
             Менеджер
           </a>
         }
         @if (showAdminCabinet()) {
-          <a routerLink="/admin/projects" class="link" [class.is-active]="activeNav() === 'admin'">
+          <a routerLink="/admin" class="link" [class.is-active]="activeNav() === 'admin'">
             Админ
           </a>
         }
@@ -140,7 +140,7 @@
       @if (isLoggedIn()) {
         @if (showManagerCabinet()) {
           <a
-            routerLink="/manager/board"
+            routerLink="/manager"
             class="mobile-nav-item"
             [class.is-active]="activeNav() === 'manager'"
             (click)="closeMenu()"
@@ -150,7 +150,7 @@
         }
         @if (showAdminCabinet()) {
           <a
-            routerLink="/admin/projects"
+            routerLink="/admin"
             class="mobile-nav-item"
             [class.is-active]="activeNav() === 'admin'"
             (click)="closeMenu()"

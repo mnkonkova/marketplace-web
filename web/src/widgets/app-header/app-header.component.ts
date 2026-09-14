@@ -220,6 +220,16 @@ export class AppHeaderComponent implements OnInit {
     const path = this.currentPath();
     const hash = this.currentHash();
 
+    // Рабочие кабинеты. Шапка про них не знала вовсе: «Админ» и
+    // «Менеджер» не подсвечивались никогда, и пункт выглядел неактивной
+    // ссылкой, даже когда ты в нём и стоишь.
+    //
+    // Внутри самой CRM шапки нет — она там не нужна, — но карточка
+    // проекта у менеджера открывается по /manager/..., и путь сюда
+    // приходит с любого экрана, где шапка есть: во время перехода
+    // подсветка не должна мигать на «Главную».
+    if (path === '/admin' || path.startsWith('/admin/')) return 'admin';
+    if (path === '/manager' || path.startsWith('/manager/')) return 'manager';
     // Проекты креатора — свой пункт: он стоит рядом с «Кабинетом», и
     // подсвечивать вместо него кабинет значило бы врать, где ты.
     if (path.startsWith('/me/creator')) return 'creator-projects';
