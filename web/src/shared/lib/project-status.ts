@@ -116,16 +116,39 @@ export interface ProgressMeasure {
   hint: string;
 }
 
-export function projectProgressMeasure(kind: ProjectKind, progress: number): ProgressMeasure {
+export function projectProgressMeasure(
+  kind: ProjectKind,
+  progress: number,
+  // Сколько всего шагов или выкладок. Ноль — мерить нечего, и это не то
+  // же самое, что «ничего не сделано»: у проекта с непроставленными
+  // датами бэк отдаёт progress = 100, и полоска рапортовала «всё
+  // закрыто» там, где закрывать было нечего.
+  total?: number | null,
+): ProgressMeasure {
   const percent = Math.max(0, Math.min(100, Math.round(progress || 0)));
+  const nothingToMeasure = total !== undefined && total !== null && total === 0;
   switch (kind) {
     case 'creators_turnkey':
+      if (nothingToMeasure) {
+        return {
+          percent: null,
+          caption: 'дат в плане нет',
+          hint: 'Выкладки ещё не запланированы — закрывать нечего.',
+        };
+      }
       return {
         percent,
         caption: 'по выкладкам',
-        hint: 'Доля выкладок, закрытых по плану проекта.',
+        hint: 'Доля выкладок, закрытых по плану периода.',
       };
     case 'production_turnkey':
+      if (nothingToMeasure) {
+        return {
+          percent: null,
+          caption: 'шагов нет',
+          hint: 'У проекта не заведено ни одного шага воронки.',
+        };
+      }
       return {
         percent,
         caption: 'по шагам',

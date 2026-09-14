@@ -194,12 +194,17 @@ export class ManagerProjectsPage implements OnInit {
 
   /**
    * Чем проект живёт сейчас. У проекта с воронкой это шаг, у проекта с
-   * креаторами шагов нет — там осмысленна доля закрытых выкладок,
-   * которую бэк уже считает в progress.
+   * креаторами шагов нет — там осмысленна доля закрытых выкладок.
+   *
+   * Числом, а не процентом: «100% выкладок закрыто» на проекте, где дат
+   * ещё не проставили, — чистое враньё (нечего закрывать, а звучит как
+   * «всё сделано»). Считаем по progress_done/progress_total, которые бэк
+   * отдаёт рядом с процентом, и при пустом плане говорим об этом прямо.
    */
   public where(p: ProjectManagerView): string {
-    if (p.kind === 'creators_turnkey') return `${p.progress}% выкладок закрыто`;
-    return p.current_step_title || p.current_stage_name || '—';
+    if (p.kind !== 'creators_turnkey') return p.current_step_title || p.current_stage_name || '—';
+    if (!p.progress_total) return 'дат в плане нет';
+    return `${p.progress_done ?? 0} из ${p.progress_total} по плану периода`;
   }
 
   /** Записать изменение фильтра в адрес. Список перечитается сам. */

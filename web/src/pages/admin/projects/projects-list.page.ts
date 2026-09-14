@@ -237,7 +237,7 @@ export class AdminProjectsListPage implements OnInit {
   }
 
   public progress(p: ProjectManagerView): ProgressMeasure {
-    return projectProgressMeasure(p.kind, p.progress);
+    return projectProgressMeasure(p.kind, p.progress, p.progress_total);
   }
 
   public stageLabel(p: ProjectManagerView): string {

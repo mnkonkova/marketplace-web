@@ -112,3 +112,35 @@ describe('projectStageLabel', () => {
     expect(projectStageLabel('production_turnkey')).toBe('Все стадии пройдены');
   });
 });
+
+/**
+ * Пустой план — не «всё закрыто».
+ *
+ * У проекта с креаторами, которому ещё не проставили даты, бэк отдаёт
+ * progress = 100: делить нечего, и доля выходит полной. Полоска
+ * рапортовала «100% по выкладкам» там, где закрывать было нечего, —
+ * то есть поздравляла с несделанным.
+ */
+describe('прогресс при пустом плане', () => {
+  it('нет выкладок — полоски нет, а есть объяснение', () => {
+    const m = projectProgressMeasure('creators_turnkey', 100, 0);
+    expect(m.percent).toBeNull();
+    expect(m.caption).toBe('дат в плане нет');
+  });
+
+  it('нет шагов — то же самое у продакшна', () => {
+    expect(projectProgressMeasure('production_turnkey', 100, 0).percent).toBeNull();
+  });
+
+  it('план есть — считаем как считали', () => {
+    const m = projectProgressMeasure('creators_turnkey', 60, 5);
+    expect(m.percent).toBe(60);
+    expect(m.caption).toBe('по выкладкам');
+  });
+
+  // Старые вызовы без третьего аргумента ничего не теряют: «сколько
+  // всего» им неизвестно, и выдумывать за них «мерить нечего» нельзя.
+  it('без числа выкладок поведение прежнее', () => {
+    expect(projectProgressMeasure('creators_turnkey', 100).percent).toBe(100);
+  });
+});
