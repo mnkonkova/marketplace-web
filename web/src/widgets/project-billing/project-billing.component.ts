@@ -55,6 +55,7 @@ import {
 import {
   isOpenPeriod,
   parsePeriodParam,
+  periodDay,
   periodOptions,
   periodRange,
   periodTitle,
@@ -212,6 +213,12 @@ export class ProjectBillingComponent {
   public readonly periodRange = computed(() => {
     const p = this.shown();
     return p ? periodRange(p) : '';
+  });
+
+  /** «13 октября» — последний день периода. */
+  public readonly periodEnd = computed(() => {
+    const p = this.shown();
+    return p ? periodDay(p.ends_on) : '';
   });
 
   /** Период ещё идёт — числа изменятся. Отдельно от «приблизительных». */

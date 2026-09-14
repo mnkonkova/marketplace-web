@@ -1,3 +1,5 @@
+import type { TypicalSource } from '../model/billing.types';
+
 // Шкала прогресса креатора: ступени по просмотрам.
 //
 // Всё здесь — чистые функции над числами, и это намеренно. Считать
@@ -47,8 +49,11 @@ export interface LadderVideo {
   published_at?: string;
 }
 
-/** Откуда взялся «типичный ролик»: это видно на экране. */
-export type TypicalSource = 'own' | 'project';
+export const TYPICAL_SOURCE_NOTE: Record<TypicalSource, string> = {
+  creator: 'по твоим роликам',
+  project: 'по роликам проекта: своих пока мало',
+  default: 'средний ролик по площадке: истории пока нет',
+};
 
 export interface Typical {
   views: number;
@@ -88,11 +93,12 @@ export function median(values: number[]): number | null {
 /**
  * «Типичный ролик» — медиана зрелых роликов автора.
  *
- * Своих меньше десяти — считаем по проекту: чужая медиана хуже своей, но
- * лучше медианы трёх роликов. Нет и проектной — возвращаем null, и экран
- * говорит «пока не на чем считать». Подставить сюда придуманное число
- * значит построить на нём весь дальнейший план: и «сколько роликов до
- * ступени», и прогноз.
+ * СЕЙЧАС НЕ ВЫЗЫВАЕТСЯ: лесенку «свои → медиана проекта → значение по
+ * умолчанию» считает сервер и отдаёт готовым числом. Вторая копия правила
+ * в браузере разошлась бы с ним на первой же правке, и связать одно с
+ * другим было бы некому — по той же причине здесь не выводятся и границы
+ * периода. Функция оставлена на случай, когда понадобится посчитать
+ * медиану на месте, из своих же данных.
  */
 export function typicalVideo(
   own: LadderVideo[],
@@ -102,7 +108,7 @@ export function typicalVideo(
   const mine = recentMature(own, now);
   if (mine.length >= MIN_OWN_SAMPLE) {
     const value = median(mine.map((v) => v.views));
-    if (value !== null) return { views: value, source: 'own', sample: mine.length };
+    if (value !== null) return { views: value, source: 'creator', sample: mine.length };
   }
   if (projectMedian !== null && projectMedian > 0) {
     return { views: projectMedian, source: 'project', sample: 0 };
@@ -129,14 +135,14 @@ function recentMature(own: LadderVideo[], now: Date): LadderVideo[] {
  */
 export function hitVideo(
   own: LadderVideo[],
-  typical: Typical | null,
+  typicalViews: number | null,
   now: Date = new Date(),
 ): number | null {
-  if (!typical || typical.views <= 0) return null;
+  if (typicalViews === null || typicalViews <= 0) return null;
   const mature = recentMature(own, now).map((v) => v.views);
   if (!mature.length) return null;
   const best = Math.max(...mature);
-  return best >= typical.views * 2 ? best : null;
+  return best >= typicalViews * 2 ? best : null;
 }
 
 export interface LadderState {

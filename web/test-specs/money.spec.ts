@@ -6,14 +6,11 @@ import {
   canMarkPaid,
   clickTiers,
   clicksEnabled,
-  currentMonthKey,
   formatMoney,
   fromRubles,
-  monthKey,
   monthLabel,
   isFromOrder,
   recalcAffects,
-  recentMonths,
   salaryScopeTiers,
   shortfall,
   teamOrder,
@@ -43,7 +40,7 @@ function accrual(over: Partial<Accrual> = {}): Accrual {
     id: 'a1',
     project_id: 'pr1',
     creator_user_id: 'u1',
-    period_month: '2026-08-01T00:00:00Z',
+    period_start: '2026-08-15T00:00:00Z',
     status: 'draft',
     salary: 6_000_000,
     views_base: 107_460,
@@ -261,27 +258,15 @@ describe('«Команда месяца» у заказчика', () => {
   });
 });
 
-describe('месяцы периода', () => {
-  it('period_month из ответа превращается в ключ ГГГГ-ММ', () => {
-    expect(monthKey('2026-08-01T00:00:00Z')).toBe('2026-08');
-  });
-
-  it('подпись периода — по-русски', () => {
+describe('календарный месяц', () => {
+  // Единственный настоящий календарный месяц, который остался: месяц
+  // старта заказа. Периоды проекта подписываются датами — см.
+  // period.spec.ts.
+  it('подпись месяца — по-русски', () => {
     expect(monthLabel('2026-08')).toBe('август 2026');
   });
 
   it('неизвестный ключ возвращается как есть, а не «undefined»', () => {
     expect(monthLabel('')).toBe('');
-  });
-
-  it('текущий месяц и список последних совпадают в первой позиции', () => {
-    const now = new Date(2026, 7, 24);
-    expect(currentMonthKey(now)).toBe('2026-08');
-    const months = recentMonths(3, now);
-    expect(months).toEqual(['2026-08', '2026-07', '2026-06']);
-  });
-
-  it('список месяцев корректно переходит через год', () => {
-    expect(recentMonths(3, new Date(2026, 0, 15))).toEqual(['2026-01', '2025-12', '2025-11']);
   });
 });

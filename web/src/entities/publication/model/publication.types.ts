@@ -80,8 +80,24 @@ export interface Publication {
   views: number;
   likes: number;
   comments: number;
+  // Репосты по всем площадкам выкладки. Пусто, если хоть одна площадка их
+  // не отдаёт: ноль означал бы «репостов нет», а это другое утверждение.
+  shares?: number;
+  // Вовлечённость: (лайки + комментарии + репосты) ÷ просмотры. Считает
+  // сервер — на фронте её больше не собирают из лайков: правило одно, и
+  // второй копии у него быть не должно.
+  er_percent?: number;
+  // Посчитана без репостов, то есть занижена: площадка их не отдала либо
+  // ролик собирали до того, как мы начали их писать. Прошлое не
+  // пересчитывается, так что у старых роликов признак останется навсегда.
+  er_without_shares?: boolean;
   // Самый свежий сбор среди площадок выкладки.
   stats_collected_at?: string;
+  // Когда ролик вышел: самая ранняя известная дата среди площадок.
+  // Пусто — не знаем: площадки даты не отдали или ролик ещё не собирали.
+  // Подставлять сюда дату сдачи ссылок нельзя — сдают и через неделю
+  // после выхода, и возраст ролика («зрелый» = 14 дней) поехал бы.
+  published_at?: string;
 }
 
 // Пункт чеклиста в снимке проекта. platform=null — общий пункт.
@@ -107,6 +123,11 @@ export interface PlatformRow {
   views: number;
   likes: number;
   comments: number;
+  // Пусто — площадка репостов не отдаёт; ноль значил бы «их нет».
+  shares?: number;
+  er_percent?: number;
+  // ER площадки посчитан без репостов и потому занижен.
+  er_without_shares?: boolean;
 }
 
 export interface CreatorRow {
@@ -129,10 +150,12 @@ export interface VideoRow {
   views: number;
   likes: number;
   comments: number;
+  shares?: number;
   // Без просмотров ER не существует — бэк поле не присылает вовсе
   // (`omitempty` над указателем). Ноль вместо пропуска врал бы: «делить
   // не на что» и «вовлечённость нулевая» — разные вещи.
   er_percent?: number;
+  er_without_shares?: boolean;
   growth_24h: number;
   submitted_at: string;
   collected_at?: string;
@@ -145,8 +168,12 @@ export interface PublicationReport {
   views: number;
   likes: number;
   comments: number;
+  shares?: number;
   // Как и у строки ролика: без просмотров поля нет.
   er_percent?: number;
+  // Хоть одна площадка, вошедшая в расчёт, репостов не отдала: показатель
+  // занижен, и сказать об этом обязаны.
+  er_without_shares?: boolean;
   growth_24h: number;
   // Проект закрыт — подробные строки больше не хранятся.
   collapsed: boolean;

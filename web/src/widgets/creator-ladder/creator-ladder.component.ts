@@ -6,6 +6,7 @@ import {
   LADDER_STEP,
   LadderVideo,
   MATURE_DAYS,
+  TYPICAL_SOURCE_NOTE,
   bestVideos,
   forecastViews,
   hitVideo,
@@ -13,7 +14,6 @@ import {
   ladderMarks,
   ladderState,
   shortViews,
-  typicalVideo,
   videoTarget,
   videosToStep,
 } from '@entities/billing/lib/ladder';
@@ -86,18 +86,20 @@ export class CreatorLadderComponent {
   /**
    * Свои ролики как их видит расчёт.
    *
-   * «Вышел» — момент, когда сдана первая ссылка: настоящей даты
-   * публикации у выкладки в API нет, а плановый срок это план, а не
-   * факт. Ролик без ссылок не вышел вовсе и в расчёты не попадает.
+   * «Вышел» — published_at с сервера: самая ранняя известная дата среди
+   * площадок. Ни дата сдачи ссылок, ни плановый срок сюда не годятся —
+   * ссылки сдают и через неделю после выхода, а план это намерение.
+   * Даты нет — ролик в расчёты не попадает: возраст у него неизвестен,
+   * а на возрасте стоит и «зрелый», и «ещё растёт».
    */
   public readonly allVideos = computed<LadderVideo[]>(() =>
     this.publications()
-      .filter((p) => p.status !== 'cancelled' && p.links.length > 0)
+      .filter((p) => p.status !== 'cancelled' && !!p.published_at)
       .map((p) => ({
         id: p.id,
         title: p.title,
         views: p.views,
-        published_at: publishedAt(p),
+        published_at: p.published_at,
       })),
   );
 
@@ -136,22 +138,31 @@ export class CreatorLadderComponent {
   public readonly progressPercent = computed(() => Math.round(this.ladder().progress * 1000) / 10);
 
   /**
-   * Типичный ролик. Своих зрелых меньше десяти — берём обезличенную
-   * медиану проекта, её может не быть вовсе: в маленьком проекте медиана
-   * перестаёт быть агрегатом и превращается в результат соседа.
+   * Типичный ролик — готовым числом с сервера.
+   *
+   * Лесенку «своя история → медиана проекта → значение по умолчанию»
+   * считает он. Своей копии этого правила здесь нет по той же причине,
+   * по которой нет и границ периода: она разойдётся с сервером на первой
+   * же правке, и связать одно с другим будет некому.
    */
-  public readonly typical = computed(() =>
-    typicalVideo(this.allVideos(), this.earnings()?.project_median_views ?? null),
-  );
+  public readonly typical = computed(() => this.earnings()?.benchmark ?? null);
+
+  /** «по твоим роликам» / «по роликам проекта» / «по площадке». */
+  public readonly typicalNote = computed(() => {
+    const b = this.typical();
+    return b ? TYPICAL_SOURCE_NOTE[b.typical_video_source] : '';
+  });
 
   /** Свой рекорд. Пусто, если он неотличим от обычного ролика. */
-  public readonly hit = computed(() => hitVideo(this.allVideos(), this.typical()));
+  public readonly hit = computed(() =>
+    hitVideo(this.allVideos(), this.typical()?.typical_video_views ?? null),
+  );
 
   /** Сколько роликов до ступени: обычными и «один хит плюс N обычных». */
   public readonly plan = computed(() => {
     const t = this.typical();
     if (!t) return null;
-    return videosToStep(this.ladder().toNext, t.views, this.hit());
+    return videosToStep(this.ladder().toNext, t.typical_video_views, this.hit());
   });
 
   /**
@@ -201,7 +212,7 @@ export class CreatorLadderComponent {
     return forecastViews({
       current: this.viewsNow(),
       young: this.inProgress().map((v) => v.views),
-      typical: t.views,
+      typical: t.typical_video_views,
       plannedLeft: this.plannedLeft(),
     });
   });
@@ -231,24 +242,21 @@ export class CreatorLadderComponent {
     return row ?? null;
   });
 
-  /** Его место по медиане ролика, обезличенно. Нет числа — нет и блока. */
-  public readonly percentile = computed(() => this.earnings()?.project_percentile ?? null);
+  /**
+   * Его место по медиане ролика, обезличенно. Нет числа — нет и блока,
+   * без объяснений и пустого места: сравнивать не с чем.
+   *
+   * Процентиль — доля роликов проекта НИЖЕ него, поэтому «в топ-N%» это
+   * 100 − процентиль.
+   */
+  public readonly topPercent = computed(() => {
+    const p = this.earnings()?.benchmark?.my_percentile;
+    return p === undefined ? null : Math.max(1, 100 - p);
+  });
 
   /** До чего тянуть конкретный ролик: до типичного, потом до рекорда. */
   public target(v: LadderVideo) {
     const t = this.typical();
-    return t ? videoTarget(v.views, t.views, this.hit()) : null;
+    return t ? videoTarget(v.views, t.typical_video_views, this.hit()) : null;
   }
-}
-
-/**
- * Когда ролик вышел: первая сданная ссылка.
- *
- * Момент сдачи ссылки, а не плановый срок: план это намерение, и считать
- * по нему значит начать отсчёт от ролика, который мог не выйти. Точной
- * даты публикации в выкладке нет — сервер её и не хранит.
- */
-function publishedAt(p: Publication): string | undefined {
-  const dates = p.links.map((l) => l.submitted_at).filter(Boolean);
-  return dates.length ? dates.reduce((a, b) => (a < b ? a : b)) : undefined;
 }

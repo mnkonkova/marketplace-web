@@ -90,6 +90,8 @@ function resetRateLimits(): void {
  *
  * Числа подобраны так, чтобы каждое было различимо на экране:
  * вчера 2 000 000 просмотров, сегодня 3 000 000, прирост ровно миллион.
+ * Репосты не кладём намеренно: площадки отдают их не все, и ER, посчитанный
+ * без них, — штатное состояние, которое интерфейс обязан помечать.
  */
 export const STATS = {
   yesterday: { tiktok: 1_400_000, instagram: 300_000, youtube: 200_000, vk: 80_000, likee: 20_000 },
@@ -112,6 +114,13 @@ function seedStats(publicationId: string): void {
   psql(`
 DELETE FROM video_stat_daily WHERE link_id IN
   (SELECT id FROM publication_links WHERE publication_id = '${publicationId}');
+
+-- Дату выхода ставит сборщик — он же кладёт и снимки. Раз снимки мы
+-- подменяем, дату обязаны положить тем же посевом: без неё у ролика нет
+-- возраста, а на возрасте стоит и «зрелый» (14 дней), и шкала ступеней
+-- у креатора, которая без даты считала бы ролик невышедшим.
+UPDATE publication_links SET published_at = now() - interval '1 day'
+WHERE publication_id = '${publicationId}';
 
 INSERT INTO video_stat_daily (link_id, stat_date, views, likes, comments, collected_at)
 SELECT l.id, CURRENT_DATE - 1, ${caseBy(STATS.yesterday)},

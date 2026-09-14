@@ -1,4 +1,4 @@
-import type { CreatorPeriod, ProjectPeriod } from '../model/billing.types';
+import type { PeriodBase, ProjectPeriod } from '../model/billing.types';
 
 // Подписи периода.
 //
@@ -27,8 +27,10 @@ const MONTHS_OF = [
   'декабря',
 ];
 
-/** Любой период: у креатора он без id и без клиентского переноса. */
-export type AnyPeriod = ProjectPeriod | CreatorPeriod;
+// Подписи одинаковы для всех трёх ролей: номер, границы и состояние есть
+// у каждой. Переносы у ролей свои, и в подписях их нет — за ними ходят к
+// конкретному типу.
+export type AnyPeriod = PeriodBase;
 
 // Год, месяц и день из ответа сервера.
 //
