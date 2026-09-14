@@ -25,9 +25,12 @@ import { AdminApi, ManagerInfo } from '@entities/admin/api/admin.api';
 import { ProjectApi } from '@entities/project/api/project.api';
 import {
   DEFAULT_PROJECT_FILTERS,
+  KIND_OPTIONS,
   KindFilter,
   ProjectFilters,
   ProjectsView,
+  SORT_OPTIONS,
+  STATUS_OPTIONS,
   StatusFilter,
   parseProjectFilters,
   projectFiltersToParams,
@@ -126,32 +129,14 @@ export class AdminProjectsListPage implements OnInit {
   public readonly boardSubtitle =
     'Канбан собирается по всем проектам сразу — фильтры списка на нём не действуют.';
 
-  // «Активные» первым и по умолчанию: список открывают, чтобы посмотреть
-  // работу, а не архив. Тот же набор считает счётчик в сайдбаре.
-  public readonly statusOptions: { value: StatusFilter; label: string }[] = [
-    { value: 'unfinished', label: 'Активные' },
-    { value: '', label: 'Все статусы' },
-    { value: 'draft', label: 'Черновик' },
-    { value: 'active', label: 'В работе' },
-    { value: 'on_hold', label: 'На паузе' },
-    { value: 'dispute', label: 'Спор' },
-    { value: 'done', label: 'Завершён' },
-    { value: 'cancelled', label: 'Отменён' },
-  ];
+  // Наборы значений — общие с менеджерской страницей: см.
+  // entities/project/lib/project-filters. Вторая копия здесь означала бы,
+  // что «Активные» у админа и у менеджера однажды разойдутся.
+  public readonly statusOptions = STATUS_OPTIONS;
 
-  public readonly kindOptions: { value: KindFilter; label: string }[] = [
-    { value: '', label: 'Все ветки' },
-    { value: 'creators_turnkey', label: 'Креаторы' },
-    { value: 'production_turnkey', label: 'Продакшн' },
-    { value: 'general', label: 'Общие' },
-  ];
+  public readonly kindOptions = KIND_OPTIONS;
 
-  public readonly sortOptions: { value: AdminProjectsSort; label: string }[] = [
-    { value: 'updated_asc', label: 'Давно не двигались' },
-    { value: 'updated_desc', label: 'Недавно обновлённые' },
-    { value: 'created_desc', label: 'Сначала новые' },
-    { value: 'created_asc', label: 'Сначала старые' },
-  ];
+  public readonly sortOptions = SORT_OPTIONS;
 
   /** Поиск с debounce — иначе запрос уходит на каждый символ. */
   private readonly search$ = new Subject<string>();

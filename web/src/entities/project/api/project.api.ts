@@ -297,6 +297,11 @@ export class ProjectApi {
     // нет», но в URL он выглядел бы как выбранный фильтр.
     if (params.q) httpParams = httpParams.set('q', params.q);
     if (params.status) httpParams = httpParams.set('status', params.status);
+    // Ветку слать обязательно: без неё выпадашка «Все ветки / Креаторы /
+    // Продакшн» выглядела рабочей и не делала ничего — сервер параметр
+    // принимает, а мы его не клали. Фильтр, который притворяется
+    // исправным, хуже отсутствующего: по нему принимают решения.
+    if (params.kind) httpParams = httpParams.set('kind', params.kind);
     if (params.manager) httpParams = httpParams.set('manager', params.manager);
     if (params.include_test) httpParams = httpParams.set('include_test', 'true');
     if (params.sort) httpParams = httpParams.set('sort', params.sort);

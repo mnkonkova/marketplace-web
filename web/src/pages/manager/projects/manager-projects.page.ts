@@ -7,12 +7,33 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 import { ProjectApi } from '@entities/project/api/project.api';
-import { ProjectKind, ProjectManagerView } from '@entities/project/model/project.types';
-import { ProjectsView, parseProjectFilters } from '@entities/project/lib/project-filters';
+import {
+  AdminProjectsSort,
+  ProjectKind,
+  ProjectManagerView,
+} from '@entities/project/model/project.types';
+import {
+  DEFAULT_PROJECT_FILTERS,
+  KIND_OPTIONS,
+  KindFilter,
+  MANAGER_STATUS_OPTIONS,
+  ProjectFilters,
+  ProjectsView,
+  SORT_OPTIONS,
+  StatusFilter,
+  parseProjectFilters,
+  projectFiltersToQuery,
+  selectProjects,
+} from '@entities/project/lib/project-filters';
 import { PROJECT_STATUS_LABEL, PROJECT_STATUS_TONE } from '@shared/lib/project-status';
 import { parseApiError } from '@shared/api/api-error';
 import { withFromPage } from '@shared/nav/from-page';
@@ -29,18 +50,38 @@ const KIND_LABEL: Record<ProjectKind, string> = {
 };
 
 /**
- * Проекты менеджера: список или канбан.
+ * Проекты менеджера: список или канбан, фильтры — в адресе.
  *
  * Канбан показывает только то, у чего есть воронка, — а у проекта с
  * креаторами её нет вовсе: вместо шагов у него план выкладок. Поэтому
  * список остаётся видом по умолчанию: он единственный, где виден весь
  * набор, а канбан — второй взгляд на его часть.
+ *
+ * Фильтры те же, что у админа, и разбираются тем же кодом
+ * (entities/project/lib/project-filters): адрес читается одной функцией,
+ * отбор идёт одной функцией, наборы значений общие. Своей копии фильтров
+ * здесь нет намеренно — разойдутся.
+ *
+ * Отличие от админа одно, и оно временное: `GET /manager/projects` не
+ * принимает параметров и отдаёт весь закреплённый набор разом, поэтому
+ * отбирает `selectProjects` на месте. Как только у ручки появятся
+ * параметры, `fetch` начнёт слать `projectFiltersToParams(f)`, а
+ * `visible()` станет просто `items()` — разметку это не трогает. Там же,
+ * в project-filters, описана граница: клиентский отбор честен ровно
+ * пока ручка отдаёт ВЕСЬ набор, а не страницу.
+ *
+ * Фильтра по менеджеру здесь нет и быть не должно: ручка и так отдаёт
+ * только свои проекты, и выпадашка «Все менеджеры» обещала бы чужие.
  */
 @Component({
   selector: 'app-manager-projects',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
+    NzInputModule,
+    NzSelectModule,
+    NzCheckboxModule,
     ListStateComponent,
     PageHeadComponent,
     StatusTagComponent,
@@ -68,27 +109,39 @@ export class ManagerProjectsPage implements OnInit {
 
   public readonly statusLabel = PROJECT_STATUS_LABEL;
 
+  public readonly statusOptions = MANAGER_STATUS_OPTIONS;
+
+  public readonly kindOptions = KIND_OPTIONS;
+
+  public readonly sortOptions = SORT_OPTIONS;
+
   private readonly queryParams = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });
 
+  /** Фильтры читаются из адреса — он здесь единственный источник правды. */
+  public readonly filters = computed<ProjectFilters>(() => parseProjectFilters(this.queryParams()));
+
   /** Вид живёт в адресе — ссылка «канбаном» открывается канбаном. */
-  public readonly view = computed<ProjectsView>(() => parseProjectFilters(this.queryParams()).view);
+  public readonly view = computed<ProjectsView>(() => this.filters().view);
 
-  /** Фильтр по виду: «Все» плюс те виды, что реально есть в списке. */
-  public readonly kind = signal<ProjectKind | 'all'>('all');
+  /** Что набрано в поле поиска. В адрес уезжает через debounce. */
+  public q = '';
 
-  public readonly kinds = computed<ProjectKind[]>(() => {
-    const seen = new Set(this.items().map((p) => p.kind));
-    return (Object.keys(KIND_LABEL) as ProjectKind[]).filter((k) => seen.has(k));
-  });
+  /** Строки под текущими фильтрами. Пагинации у ручки нет — считаем все. */
+  public readonly visible = computed(() => selectProjects(this.items(), this.filters()));
 
-  public readonly visible = computed(() => {
-    const k = this.kind();
-    return k === 'all' ? this.items() : this.items().filter((p) => p.kind === k);
-  });
+  /** Поиск с debounce — иначе адрес переписывается на каждый символ. */
+  private readonly search$ = new Subject<string>();
+
+  public constructor() {
+    this.search$.pipe(debounceTime(300), distinctUntilChanged()).subscribe((q) => {
+      this.patch({ q });
+    });
+  }
 
   public ngOnInit(): void {
+    this.q = this.filters().q;
     this.fetch();
   }
 
@@ -107,17 +160,28 @@ export class ManagerProjectsPage implements OnInit {
     });
   }
 
-  public setKind(k: ProjectKind | 'all'): void {
-    this.kind.set(k);
+  public onSearch(): void {
+    this.search$.next(this.q.trim());
+  }
+
+  public setStatus(v: StatusFilter): void {
+    this.patch({ status: v });
+  }
+
+  public setKind(v: KindFilter): void {
+    this.patch({ kind: v });
+  }
+
+  public setSort(v: AdminProjectsSort): void {
+    this.patch({ sort: v });
+  }
+
+  public setIncludeTest(v: boolean): void {
+    this.patch({ includeTest: v });
   }
 
   public setView(v: ProjectsView): void {
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { view: v === 'board' ? 'board' : null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
+    this.patch({ view: v });
   }
 
   public open(p: ProjectManagerView): void {
@@ -136,5 +200,19 @@ export class ManagerProjectsPage implements OnInit {
   public where(p: ProjectManagerView): string {
     if (p.kind === 'creators_turnkey') return `${p.progress}% выкладок закрыто`;
     return p.current_step_title || p.current_stage_name || '—';
+  }
+
+  /** Записать изменение фильтра в адрес. Список перечитается сам. */
+  private patch(part: Partial<ProjectFilters>): void {
+    const next = { ...DEFAULT_PROJECT_FILTERS, ...this.filters(), ...part };
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: projectFiltersToQuery(next),
+      queryParamsHandling: 'merge',
+      // Каждая правка фильтра — не отдельный шаг истории: «назад» после
+      // трёх кликов по селектам должно возвращать на прошлую страницу, а
+      // не разбирать их по одному.
+      replaceUrl: true,
+    });
   }
 }

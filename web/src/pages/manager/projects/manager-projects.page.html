@@ -1,26 +1,74 @@
+@let f = filters();
+
 <app-page-head
   title="Мои проекты"
-  subtitle="Всё, что закреплено за вами. Канбан показывает только проекты с воронкой — у проекта с креаторами её нет, и найти его можно только в списке."
+  subtitle="Всё, что закреплено за вами. Фильтры остаются в адресе — ссылкой на выборку можно поделиться. Канбан показывает только проекты с воронкой: у проекта с креаторами её нет, и найти его можно только в списке."
 >
-  <app-view-switch head-action [view]="view()" (pick)="setView($event)" />
+  <app-view-switch head-action [view]="f.view" (pick)="setView($event)" />
 </app-page-head>
 
-@if (view() === 'board') {
+@if (f.view === 'board') {
 <app-manager-board />
 } @else {
 <div class="crm-page">
-  @if (kinds().length > 1) {
-  <div class="pickchips filter">
-    <button type="button" class="pick" [class.on]="kind() === 'all'" (click)="setKind('all')">
-      Все<span class="cnt">{{ items().length }}</span>
-    </button>
-    @for (k of kinds(); track k) {
-    <button type="button" class="pick" [class.on]="kind() === k" (click)="setKind(k)">
-      {{ kindLabel[k] }}
-    </button>
+  <!-- Тот же набор, что у админа, и тем же кодом. Фильтра по менеджеру
+       здесь нет: ручка и так отдаёт только свои проекты, и выпадашка
+       «Все менеджеры» обещала бы чужие. -->
+  <section class="filters">
+    <input
+      nz-input
+      type="text"
+      placeholder="Поиск по названию проекта или клиенту"
+      [(ngModel)]="q"
+      (ngModelChange)="onSearch()"
+      class="search-input"
+      data-test="projects-search"
+    />
+    <nz-select
+      [ngModel]="f.kind"
+      (ngModelChange)="setKind($event)"
+      style="min-width: 150px"
+      data-test="projects-kind"
+    >
+      @for (o of kindOptions; track o.value) {
+      <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+      }
+    </nz-select>
+    <nz-select
+      [ngModel]="f.status"
+      (ngModelChange)="setStatus($event)"
+      style="min-width: 150px"
+      data-test="projects-status"
+    >
+      @for (o of statusOptions; track o.value) {
+      <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+      }
+    </nz-select>
+    <nz-select
+      [ngModel]="f.sort"
+      (ngModelChange)="setSort($event)"
+      style="min-width: 200px"
+      data-test="projects-sort"
+    >
+      @for (o of sortOptions; track o.value) {
+      <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+      }
+    </nz-select>
+    <label
+      nz-checkbox
+      [ngModel]="f.includeTest"
+      (ngModelChange)="setIncludeTest($event)"
+      data-test="projects-include-test"
+      >Показывать тестовые</label
+    >
+  </section>
+
+  <p class="counter">
+    Найдено: <strong data-test="projects-total">{{ visible().length }}</strong>
+    @if (visible().length !== items().length) {
+    <span class="of">из {{ items().length }}</span>
     }
-  </div>
-  }
+  </p>
 
   <app-list-state
     [loading]="loading()"
@@ -57,7 +105,7 @@
           </tr>
           } @empty {
           <tr>
-            <td colspan="5" class="empty">Под этот фильтр ничего не попало.</td>
+            <td colspan="5" class="empty">Под текущие фильтры ничего не попало.</td>
           </tr>
           }
         </tbody>

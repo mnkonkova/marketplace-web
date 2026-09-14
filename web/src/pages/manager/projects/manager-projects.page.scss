@@ -1,13 +1,37 @@
 // Словарь макета (.twrap, table, .tag, .pick) — в shared/scss/_crm.scss.
 
-.filter {
-  margin-bottom: 16px;
+// Ряд фильтров и счётчик — те же, что на /admin/projects: два списка
+// проектов не должны выглядеть как из разных приложений.
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0 0 12px;
 
-  .cnt {
+  .search-input {
+    flex: 1;
+    min-width: 240px;
+  }
+
+  // Чекбокс не сжимается: подпись длиннее остальных элементов, и при
+  // нехватке места flex резал её по букве вместо переноса на строку.
+  label[nz-checkbox] {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+.counter {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+
+  // «из скольких» — чтобы было видно, что часть строк отсеяна фильтром, а
+  // не что проектов стало меньше.
+  .of {
     margin-left: 6px;
-    font-family: var(--mono);
-    font-size: 11px;
-    opacity: 0.7;
+    color: var(--text-dim);
   }
 }
 

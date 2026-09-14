@@ -1,5 +1,10 @@
 import { AdminProjectsParams } from '../api/project.api';
-import { AdminProjectsSort, ProjectKind, ProjectStatus } from '../model/project.types';
+import {
+  AdminProjectsSort,
+  ProjectKind,
+  ProjectManagerView,
+  ProjectStatus,
+} from '../model/project.types';
 
 /**
  * Фильтры списка проектов живут в адресе.
@@ -12,6 +17,12 @@ import { AdminProjectsSort, ProjectKind, ProjectStatus } from '../model/project.
  *
  * Фильтрация при этом остаётся серверной: в адресе — то же, что уходит в
  * `GET /admin/projects`, просто записанное так, чтобы пережить перезагрузку.
+ *
+ * Исключение одно и оно временное — страница менеджера: её ручка
+ * параметров не принимает, и отбор там идёт на месте, функцией
+ * `selectProjects` ниже. Разбор адреса, наборы значений и правила отбора
+ * при этом общие на обе страницы: иначе «Активные» у админа и у менеджера
+ * начнут значить разное, и никто этого не заметит.
  */
 
 /**
@@ -163,4 +174,134 @@ export function projectFiltersToParams(f: ProjectFilters): AdminProjectsParams {
   if (f.manager) params.manager = f.manager;
   if (f.includeTest) params.include_test = true;
   return params;
+}
+
+// ---- наборы значений для выпадашек ----
+//
+// Списки лежат здесь, а не в компоненте страницы: их читают обе страницы
+// проектов, и вторая копия разошлась бы с первой на первой же правке —
+// «Активные» у админа и у менеджера начали бы значить разное.
+
+export interface FilterOption<T> {
+  value: T;
+  label: string;
+}
+
+/**
+ * Статусы фильтра.
+ *
+ * «Активные» первым и по умолчанию: список открывают, чтобы посмотреть
+ * работу, а не архив. Тот же набор считает счётчик в сайдбаре.
+ */
+export const STATUS_OPTIONS: FilterOption<StatusFilter>[] = [
+  { value: 'unfinished', label: 'Активные' },
+  { value: '', label: 'Все статусы' },
+  { value: 'draft', label: 'Черновик' },
+  { value: 'active', label: 'В работе' },
+  { value: 'on_hold', label: 'На паузе' },
+  { value: 'dispute', label: 'Спор' },
+  { value: 'done', label: 'Завершён' },
+  { value: 'cancelled', label: 'Отменён' },
+];
+
+/**
+ * Статусы, которые есть смысл предлагать менеджеру.
+ *
+ * `GET /manager/projects` отдаёт только незавершённые (draft, active,
+ * on_hold, dispute) — завершённых и отменённых в ответе нет вовсе.
+ * Показывать «Завершён» там, где он всегда даёт пустой список, — то же
+ * самое, что показывать сломанный фильтр: выбор есть, результата нет, и
+ * человек винит себя.
+ */
+export const MANAGER_STATUS_OPTIONS: FilterOption<StatusFilter>[] = STATUS_OPTIONS.filter((o) =>
+  ['unfinished', 'draft', 'active', 'on_hold', 'dispute'].includes(o.value),
+);
+
+export const KIND_OPTIONS: FilterOption<KindFilter>[] = [
+  { value: '', label: 'Все ветки' },
+  { value: 'creators_turnkey', label: 'Креаторы' },
+  { value: 'production_turnkey', label: 'Продакшн' },
+  { value: 'general', label: 'Общие' },
+];
+
+export const SORT_OPTIONS: FilterOption<AdminProjectsSort>[] = [
+  { value: 'updated_asc', label: 'Давно не двигались' },
+  { value: 'updated_desc', label: 'Недавно обновлённые' },
+  { value: 'created_desc', label: 'Сначала новые' },
+  { value: 'created_asc', label: 'Сначала старые' },
+];
+
+/** Четыре незавершённых статуса — то же, что `unfinished` в SQL сервера. */
+const UNFINISHED: ProjectStatus[] = ['draft', 'active', 'on_hold', 'dispute'];
+
+/** Поиск короче двух символов сервер игнорирует — здесь то же правило. */
+const MIN_QUERY = 2;
+
+/**
+ * Отбор проектов теми же правилами, что и на сервере.
+ *
+ * ЗАЧЕМ ОН ВООБЩЕ ЕСТЬ. У админа фильтрация серверная и этой функции не
+ * нужна. У менеджера её нет: `GET /manager/projects` не принимает ни
+ * одного параметра и отдаёт весь закреплённый набор разом (в репозитории
+ * LIMIT 500). Пока это так, отобрать можно только на месте.
+ *
+ * ГРАНИЦА, ЗА КОТОРОЙ ЭТО СЛОМАЕТСЯ. Клиентский отбор честен ровно до тех
+ * пор, пока ручка отдаёт ВЕСЬ набор. Появится у неё пагинация — и отбор
+ * начнёт применяться к одной странице вместо всего набора: «Активных: 12»
+ * будет значить «двенадцать активных на этой странице», а не в проектах
+ * менеджера. Такое враньё не падает и не видно в логах, поэтому его надо
+ * поймать сразу: как только в ответе появятся limit/offset/total, эта
+ * функция со страницы менеджера обязана уйти.
+ *
+ * ПЕРЕЕЗД НА СЕРВЕР — замена одного вызова: вместо `selectProjects(items, f)`
+ * в шаблоне список приходит уже отобранным, `projectFiltersToParams(f)`
+ * уходит в ручку. Разметку и адрес это не трогает.
+ *
+ * Правила один в один с `Repo.ListAll` в marketplace-api: незавершённые
+ * четвёркой, пустой статус — «всё, кроме отменённых», поиск по названию,
+ * имени клиента и его почте.
+ */
+export function selectProjects(
+  items: ProjectManagerView[],
+  f: ProjectFilters,
+): ProjectManagerView[] {
+  const q = f.q.trim().toLowerCase();
+  const out = items.filter((p) => {
+    if (f.status === 'unfinished') {
+      if (!UNFINISHED.includes(p.status)) return false;
+    } else if (f.status) {
+      if (p.status !== f.status) return false;
+    } else if (p.status === 'cancelled') {
+      return false;
+    }
+    if (!f.includeTest && p.is_test) return false;
+    if (f.kind && p.kind !== f.kind) return false;
+    if (f.manager === 'none') {
+      if (p.assigned_to_user_id) return false;
+    } else if (f.manager && p.assigned_to_user_id !== f.manager) {
+      return false;
+    }
+    if (q.length >= MIN_QUERY && !matchesQuery(p, q)) return false;
+    return true;
+  });
+  return sortProjects(out, f.sort);
+}
+
+// Клиент у проекта бывает двух видов: зарегистрированный (имя в профиле,
+// запасной вариант — почта) и без аккаунта (имя прямо на проекте). Ищем
+// по всем — иначе половина проектов по имени клиента не находится.
+function matchesQuery(p: ProjectManagerView, q: string): boolean {
+  const haystack = [p.title, p.client_display_name, p.client?.display_name, p.client?.email];
+  return haystack.some((v) => !!v && v.toLowerCase().includes(q));
+}
+
+function sortProjects(items: ProjectManagerView[], sort: AdminProjectsSort): ProjectManagerView[] {
+  const field = sort.startsWith('created') ? 'created_at' : 'updated_at';
+  const asc = sort.endsWith('_asc');
+  return [...items].sort((a, b) => {
+    const cmp = (a[field] ?? '').localeCompare(b[field] ?? '');
+    // Второй ключ — название: строки с одинаковой датой иначе скачут
+    // между перерисовками, и список выглядит живущим своей жизнью.
+    return (asc ? cmp : -cmp) || a.title.localeCompare(b.title);
+  });
 }
