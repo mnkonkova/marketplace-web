@@ -1,0 +1,170 @@
+<!-- Шкала ступеней по просмотрам. Ступень — 100 000; денег за ступень
+     здесь нет: ступенчатый тариф ещё не выпущен, и любое число тут было
+     бы выдуманным. -->
+<div class="card ladder">
+  @if (period(); as p) {
+    <div class="lhead">
+      <h2>Ступени по просмотрам</h2>
+      <div class="pmeta">
+        <span class="pt">{{ periodTitle() }}</span>
+        <!-- Две пометки, и они про разное: «предварительно» — подожди,
+             числа ещё изменятся; «приблизительно» — период подытожен, но
+             поденной статистики за него уже нет. -->
+        @if (preliminary()) {
+          <span class="state prelim">Предварительно</span>
+        }
+        @if (approximate()) {
+          <span class="state approx">Данные приблизительные</span>
+        }
+        @if (snapshotNote()) {
+          <span class="asof">{{ snapshotNote() }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="now">
+      <b>{{ views(ladder().views) }}</b>
+      <span
+        >{{ plural(ladder().views, 'просмотр', 'просмотра', 'просмотров') }} в счёте ступеней</span
+      >
+    </div>
+
+    <!-- Перенос называем явно: иначе человек в первый день периода видит
+         «уже 50 тыс.» и не понимает, откуда они. -->
+    @if (carryIn() > 0) {
+      <p class="carry">
+        С прошлого периода тебе перенесли {{ views(carryIn()) }} — они уже в счёте.
+      </p>
+    }
+
+    <div class="bar">
+      <div class="fill" [style.width.%]="progressPercent()"></div>
+    </div>
+    <ul class="marks">
+      @for (m of marks(); track m) {
+        <li [class.done]="ladder().views >= m" [class.next]="ladder().nextAt === m">
+          <span class="v">{{ views(m) }}</span>
+          <!-- Место под «+X ₽ за ступень». Пустым текстом не заполняем:
+               в действующем тарифе ступени нет, и сумма была бы
+               придуманной. -->
+          <span class="reward"></span>
+        </li>
+      }
+    </ul>
+
+    @if (typical(); as t) {
+      <p class="lead">До следующей ступени {{ views(ladder().toNext) }} — {{ planText() }}.</p>
+
+      <p class="plan">
+        @if (plannedLeft()) {
+          Впереди {{ plannedLeft() }} {{ plural(plannedLeft(), 'ролик', 'ролика', 'роликов') }} по
+          плану —
+          @if (reachesNext()) {
+            успеваешь!
+          } @else {
+            по прогнозу выходит {{ views(forecast()!) }}, до ступени чуть не хватает. Один удачный
+            ролик закроет разницу.
+          }
+        } @else if (reachesNext()) {
+          Ролики этого периода ещё растут — по прогнозу ступень возьмётся сама.
+        } @else {
+          Запланированных роликов в этом периоде не осталось: по прогнозу к концу выйдет
+          {{ views(forecast()!) }}. Если хочется взять ступень — попроси у менеджера ещё дату.
+        }
+      </p>
+
+      <p class="typ">
+        Твой типичный ролик — {{ views(t.views) }}.
+        @if (t.source === 'own') {
+          <i
+            >медиана последних {{ t.sample }}
+            {{ plural(t.sample, 'ролика', 'роликов', 'роликов') }} старше {{ matureDays }} дней</i
+          >
+        } @else {
+          <i>пока по проекту: своих роликов старше {{ matureDays }} дней ещё мало</i>
+        }
+        @if (hit(); as h) {
+          <i>твой лучший — {{ views(h) }}</i>
+        }
+      </p>
+    } @else {
+      <!-- Не поломка и не «не загрузилось»: считать правда пока не по
+           чему. Так будет на каждом новом проекте, поэтому текст
+           объясняет, когда число появится. -->
+      <p class="typ none">
+        Типичный ролик пока не на чем считать: нужны ролики старше {{ matureDays }} дней — у них
+        просмотры уже устоялись. Появятся — покажем, сколько роликов до ступени.
+      </p>
+    }
+
+    @if (percentile(); as pc) {
+      <!-- Обезличенно и без имён: сравнение приходит с сервера числом. -->
+      <p class="rank">Ты в топ-{{ pc }}% по медиане ролика в этом проекте.</p>
+    }
+
+    <div class="earned">
+      <span class="k">Заработано за период</span>
+      @if (earned(); as row) {
+        <b>{{ money(row.total) }}</b>
+        <span class="d">
+          {{ money(row.salary) }} оклад + {{ money(row.views_bonus) }} за просмотры
+          @if (row.deduction) {
+            − {{ money(row.deduction) }} за недосданное
+          }
+        </span>
+      } @else {
+        <b class="muted">—</b>
+        <span class="d">Посчитаем, когда по периоду пройдёт расчёт.</span>
+      }
+    </div>
+
+    @if (inProgress().length) {
+      <h3 class="sub">Ролики в работе</h3>
+      <p class="hint">Младше {{ matureDays }} дней — просмотры ещё набираются.</p>
+      <ul class="vids">
+        @for (v of inProgress(); track v.id) {
+          <li>
+            <span class="t">{{ v.title || 'Без названия' }}</span>
+            <span class="n">{{ views(v.views) }}</span>
+            @if (target(v); as tg) {
+              <span class="left">
+                @switch (tg.level) {
+                  @case ('typical') {
+                    до типичного {{ views(tg.left) }}
+                  }
+                  @case ('best') {
+                    до твоего лучшего {{ views(tg.left) }}
+                  }
+                  @default {
+                    это твой лучший результат
+                  }
+                }
+              </span>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    @if (best().length) {
+      <h3 class="sub">Лучшее за период</h3>
+      <p class="hint">Что сработало — то и повторяем.</p>
+      <ul class="vids top">
+        @for (v of best(); track v.id) {
+          <li>
+            <span class="t">{{ v.title || 'Без названия' }}</span>
+            <span class="n">{{ views(v.views) }}</span>
+          </li>
+        }
+      </ul>
+    }
+  } @else {
+    <!-- Периода нет: у проекта не вышло ни одного ролика, и отсчитывать
+         не от чего. Ступени начнутся с первой публикации. -->
+    <h2>Ступени по просмотрам</h2>
+    <p class="typ none">
+      Период начнётся с первого вышедшего ролика — с него же пойдёт счёт ступеней. Ступень —
+      {{ views(step) }} просмотров.
+    </p>
+  }
+</div>

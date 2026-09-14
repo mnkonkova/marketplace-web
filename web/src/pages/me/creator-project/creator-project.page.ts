@@ -40,9 +40,11 @@ import {
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { CreatorAvailabilityComponent } from '@widgets/creator-availability/creator-availability.component';
+import { CreatorLadderComponent } from '@widgets/creator-ladder/creator-ladder.component';
 import { BillingApi } from '@entities/billing/api/billing.api';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
 import { formatMoney } from '@entities/billing/lib/money';
+import { periodOf, periodTitle } from '@entities/billing/lib/period';
 import type { Material } from '@entities/publication/model/publication.types';
 import { parseApiError } from '@shared/api/api-error';
 import { plural } from '@shared/lib/format';
@@ -68,6 +70,7 @@ import { ProjectCommentsComponent } from '@widgets/project-comments/project-comm
     NzTagModule,
     AppHeaderComponent,
     CreatorAvailabilityComponent,
+    CreatorLadderComponent,
     ProjectCommentsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -122,6 +125,18 @@ export class CreatorProjectPage {
    * загружались бы дважды.
    */
   public readonly earnings = signal<CreatorEarnings | null>(null);
+
+  /**
+   * Какому периоду принадлежит строка заработка.
+   *
+   * Строка знает только дату начала своего периода, а «с какого по
+   * какое» лежит в списке периодов из того же ответа. Не нашлось —
+   * показываем саму дату: достраивать границы прибавлением месяца
+   * нельзя, правило периода живёт на сервере.
+   */
+  public periodOfAccrual(periodStart: string): string {
+    return periodTitle(periodOf(this.earnings()?.periods ?? [], periodStart));
+  }
 
   /** Материалы проекта: бренд-гайд, обучение, ссылки на аккаунты. */
   public readonly materials = signal<Material[]>([]);

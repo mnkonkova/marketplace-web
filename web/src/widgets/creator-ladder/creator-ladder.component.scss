@@ -1,0 +1,246 @@
+// Шкала прогресса креатора. Общая часть (.card, .sub, .btn) —
+// в shared/scss/_crm.scss под .crm-page, который носит страница; здесь
+// только то, чего нет больше нигде.
+
+:host {
+  display: block;
+}
+
+.ladder {
+  margin-bottom: 16px;
+
+  .lhead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .pmeta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  // Период подписан датами: «сентябрь» про него неправда.
+  .pt {
+    color: var(--muted, #8c94a0);
+    font-size: 12.5px;
+  }
+
+  // Две пометки, и выглядят они по-разному намеренно: «предварительно»
+  // это «подожди», «приблизительно» — «перепроверь».
+  .state {
+    border-radius: 999px;
+    padding: 1px 9px;
+    font-size: 11px;
+    line-height: 1.6;
+    white-space: nowrap;
+  }
+
+  .prelim {
+    border: 1px solid var(--amber-dim, #4a3a12);
+    background: rgb(250 173 20 / 12%);
+    color: var(--amber, #faad14);
+  }
+
+  .approx {
+    border: 1px dashed var(--line-2, #2c313a);
+    color: var(--muted, #8c94a0);
+  }
+
+  .asof {
+    color: var(--muted-2, #616772);
+    font-size: 11.5px;
+  }
+
+  .now {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+
+    b {
+      font-family: var(--mono);
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    span {
+      color: var(--muted, #8c94a0);
+      font-size: 12.5px;
+    }
+  }
+
+  // Перенос называем вслух: «уже 50 тыс.» в первый день периода иначе
+  // выглядит ошибкой.
+  .carry {
+    margin: 8px 0 0;
+    color: var(--green, #52c41a);
+    font-size: 12.5px;
+  }
+
+  .bar {
+    height: 8px;
+    margin: 14px 0 8px;
+    border-radius: 999px;
+    background: var(--line, #23272d);
+    overflow: hidden;
+
+    .fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--blue, #4a90d9), var(--coral));
+      transition: width 0.4s ease;
+    }
+  }
+
+  .marks {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      color: var(--muted-2, #616772);
+      font-size: 11.5px;
+      text-align: center;
+    }
+
+    .v {
+      font-family: var(--mono);
+    }
+
+    // Место под «+X ₽ за ступень». Высота зарезервирована, текста нет:
+    // ступенчатый тариф ещё не выпущен, и сумма была бы выдуманной.
+    .reward {
+      min-height: 14px;
+    }
+
+    li.done .v {
+      color: var(--green, #52c41a);
+    }
+
+    li.next .v {
+      color: var(--text);
+      font-weight: 600;
+    }
+  }
+
+  // Главная строка: одно действие и одно число.
+  .lead {
+    margin: 0 0 6px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .plan {
+    margin: 0 0 12px;
+    color: var(--muted, #8c94a0);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .typ {
+    margin: 0 0 12px;
+    color: var(--muted, #8c94a0);
+    font-size: 12.5px;
+    line-height: 1.6;
+
+    i {
+      display: block;
+      color: var(--muted-2, #616772);
+      font-style: normal;
+    }
+
+    &.none {
+      margin-bottom: 0;
+    }
+  }
+
+  .rank {
+    margin: 0 0 12px;
+    color: var(--blue, #4a90d9);
+    font-size: 12.5px;
+  }
+
+  .earned {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 4px;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--line, #23272d);
+
+    .k {
+      color: var(--muted, #8c94a0);
+      font-size: 11.5px;
+    }
+
+    b {
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .muted {
+      color: var(--muted-2, #616772);
+    }
+
+    .d {
+      color: var(--muted-2, #616772);
+      font-size: 12px;
+    }
+  }
+
+  .hint {
+    margin: -6px 0 8px;
+    color: var(--muted-2, #616772);
+    font-size: 12px;
+  }
+
+  .vids {
+    margin: 0 0 4px;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--line, #23272d);
+      flex-wrap: wrap;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .t {
+      flex: 1;
+      min-width: 140px;
+      font-size: 13px;
+    }
+
+    .n {
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .left {
+      width: 100%;
+      color: var(--muted-2, #616772);
+      font-size: 11.5px;
+    }
+  }
+}
