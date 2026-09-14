@@ -140,7 +140,7 @@ test('сортировка по умолчанию — самые давно н�
 });
 
 test('название короче трёх символов не создаётся', async ({ page }) => {
-  await page.getByRole('button', { name: '+ Создать проект' }).click();
+  await page.getByRole('button', { name: 'Создать проект' }).click();
   // Имя окна берём текстом, а не через aria-label: nz-modal рисует
   // заголовок сам, и доступного имени у диалога нет.
   const dialog = page.getByRole('dialog').filter({ hasText: 'Создать проект' });

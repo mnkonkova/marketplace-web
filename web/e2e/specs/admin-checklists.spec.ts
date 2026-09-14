@@ -39,7 +39,7 @@ test.beforeEach(async ({ context, page }) => {
 test('админ заводит чеклист и правит его новой версией', async ({ page }) => {
   const name = `E2E чеклист ${Date.now()}`;
   try {
-    await page.getByRole('button', { name: 'Новый чеклист' }).click();
+    await page.getByRole('button', { name: 'Создать чеклист' }).click();
     const modal = page.locator('.modal');
     await expect(modal).toBeVisible({ timeout: 15_000 });
 
@@ -57,10 +57,11 @@ test('админ заводит чеклист и правит его новой
 
     const card = page.locator('.tpl').filter({ hasText: name });
     await expect(card).toBeVisible();
-    await expect(card).toContainText('версия 1');
+    await expect(card).toContainText('v1 · действует');
 
-    // Правка — это новая версия, а не переписанная старая.
-    await card.getByRole('button', { name: 'Изменить' }).click();
+    // Правка — это новая версия, а не переписанная старая. Кнопка так и
+    // называется: «Изменить» обещало правку на месте, которой здесь нет.
+    await card.getByRole('button', { name: 'Выпустить новую версию' }).click();
     await expect(page.locator('.modal')).toBeVisible();
     await page.locator('.modal').getByRole('button', { name: 'Добавить пункт' }).click();
     await page
@@ -79,14 +80,14 @@ test('админ заводит чеклист и правит его новой
 
     // В библиотеке остаётся одна карточка — новая. Погашенная не висит.
     await expect(page.locator('.tpl').filter({ hasText: name })).toHaveCount(1);
-    await expect(page.locator('.tpl').filter({ hasText: name })).toContainText('версия 2');
+    await expect(page.locator('.tpl').filter({ hasText: name })).toContainText('v2 · действует');
   } finally {
     await dropTemplate(name);
   }
 });
 
 test('чеклист без названия и без пунктов не сохраняется', async ({ page }) => {
-  await page.getByRole('button', { name: 'Новый чеклист' }).click();
+  await page.getByRole('button', { name: 'Создать чеклист' }).click();
   const modal = page.locator('.modal');
   await expect(modal).toBeVisible({ timeout: 15_000 });
 

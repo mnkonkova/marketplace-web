@@ -24,11 +24,12 @@ test.beforeEach(async ({ context, page }) => {
   await page.goto('/admin/tariff');
 });
 
-test('разделы админки ведут по страницам, канбана и дашборда среди них нет', async ({ page }) => {
-  const nav = page.locator('.admin-nav');
+test('разделы админки ведут по страницам, канбана среди них нет', async ({ page }) => {
+  const nav = page.locator('.crm-shell .side');
   await expect(nav.getByRole('link', { name: 'Продакшены' })).toBeVisible({ timeout: 15_000 });
+  // Канбан — вид раздела «Проекты», а не соседний раздел: пункт в меню он
+  // занимал наравне с ними, хотя отвечает на тот же вопрос.
   await expect(nav.getByRole('link', { name: 'Канбан' })).toHaveCount(0);
-  await expect(nav.getByRole('link', { name: 'Дашборд' })).toHaveCount(0);
 
   await nav.getByRole('link', { name: 'Воронки' }).click();
   await expect(page).toHaveURL(/\/admin\/pipelines$/);
@@ -38,7 +39,7 @@ test('форма новой версии открывается копией д�
   // Действующая версия видна карточками ставок.
   await expect(page.locator('.rate').first()).toBeVisible({ timeout: 15_000 });
 
-  await page.getByRole('button', { name: 'Выпустить новую версию' }).click();
+  await page.getByRole('button', { name: 'Выпустить версию прайса' }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Новая версия прайса' });
   await expect(dialog).toBeVisible();
@@ -50,7 +51,7 @@ test('форма новой версии открывается копией д�
 });
 
 test('доля креатора больше цены клиента не выпускается', async ({ page }) => {
-  await page.getByRole('button', { name: 'Выпустить новую версию' }).click();
+  await page.getByRole('button', { name: 'Выпустить версию прайса' }).click();
   const dialog = page.getByRole('dialog', { name: 'Новая версия прайса' });
 
   // Ставка креатора за 1000 просмотров — заведомо выше клиентской.
