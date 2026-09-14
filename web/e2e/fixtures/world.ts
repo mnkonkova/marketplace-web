@@ -29,6 +29,24 @@ export const statePath = join(here, '..', '.state', 'world.json');
 export interface World {
   projectId: string;
   publicationId: string;
+  /**
+   * Проект, в котором не вышло ни одного ролика.
+   *
+   * Периодов у него нет вовсе: отсчёт начинается с первой публикации.
+   * Денежная ручка отвечает на него отказом, а список периодов — пустым
+   * списком, и это состояние, а не сбой.
+   */
+  emptyProjectId: string;
+  /**
+   * Проект с прошлым: период 1 подытожен, период 2 идёт.
+   *
+   * Подытог руками не делается — его через две недели после конца
+   * периода ставит воркер, и дождаться этого браузером нельзя: время не
+   * перемотать. Поэтому подытоженный период кладётся данными, а проверяется
+   * то, что видит человек: пометка «Данные приблизительные», подписи
+   * датами и переоткрытие админом.
+   */
+  historyProjectId: string;
   sessions: Record<'manager' | 'creator' | 'client' | 'admin', Session>;
 }
 
@@ -134,6 +152,126 @@ FROM publication_links l WHERE l.publication_id = '${publicationId}';
 `);
 }
 
+/**
+ * Через сколько дней назад вышли ролики проекта с прошлым.
+ *
+ * Десять первых попадают в период 1 — он длится месяц от даты первого
+ * ролика, — последний в период 2, который идёт сейчас. Числа выбраны с
+ * запасом: даже когда в периоде 28 дней, он кончается позже, чем −27, а
+ * −3 заведомо остаётся в следующем.
+ *
+ * Десять — не круглое число ради красоты: ровно с такой своей историей
+ * сервер перестаёт звать типичным роликом средний по площадке и начинает
+ * считать его по роликам самого креатора. Меньше — и подпись под шкалой
+ * никогда не доходила бы до ветки «по твоим роликам».
+ */
+export const HISTORY_AGES = [45, 43, 41, 39, 37, 35, 33, 31, 29, 27, 3] as const;
+
+/** Сколько просмотров кладём каждой площадке зрелого ролика. */
+const HISTORY_VIEWS = 400_000;
+
+/**
+ * Пять ссылок на один ролик: выкладка считается сданной, только когда
+ * закрыты все площадки, а от статуса зависят и вычет за недосданное, и
+ * состав периода.
+ */
+function historyLinks(tag: string): string[] {
+  return [
+    `https://www.tiktok.com/@nastya/video/741209${tag}`,
+    `https://www.instagram.com/reel/C9xK2mLpQ${tag}/`,
+    `https://www.youtube.com/shorts/kQ2Vn8pLx${tag}`,
+    `https://vk.com/clip-2394821_456${tag}`,
+    `https://likee.video/@nastya/video/741209${tag}`,
+  ];
+}
+
+/**
+ * Отодвинуть выход роликов в прошлое и стереть выведенные из них периоды.
+ *
+ * Дату выхода ставит сборщик, а границы периодов сервер выводит из неё
+ * же — значит подменять надо дату, а не границы: иначе тест проверял бы
+ * разметку поверх состояния, которого приложение не создаёт.
+ *
+ * Периоды сносим по одному с хвоста: каждый следующий ссылается на
+ * предыдущий, и удаление пачкой упирается в этот же внешний ключ.
+ */
+function backdateHistory(projectId: string): void {
+  psql(`
+UPDATE publication_links l SET published_at = p.due_date
+FROM project_publications p
+WHERE p.id = l.publication_id AND p.project_id = '${projectId}';
+
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM project_periods WHERE project_id = '${projectId}' ORDER BY seq DESC LOOP
+    DELETE FROM project_periods WHERE id = r.id;
+  END LOOP;
+END $$;
+`);
+}
+
+/** Цифры для роликов проекта с прошлым: ровные, чтобы читались на экране. */
+function seedHistoryStats(projectId: string): void {
+  psql(`
+DELETE FROM video_stat_daily WHERE link_id IN
+  (SELECT l.id FROM publication_links l
+   JOIN project_publications p ON p.id = l.publication_id
+   WHERE p.project_id = '${projectId}');
+
+INSERT INTO video_stat_daily (link_id, stat_date, views, likes, comments, collected_at)
+SELECT l.id, CURRENT_DATE, ${HISTORY_VIEWS}, ${HISTORY_VIEWS} / 30, ${HISTORY_VIEWS} / 300, now()
+FROM publication_links l
+JOIN project_publications p ON p.id = l.publication_id
+WHERE p.project_id = '${projectId}';
+`);
+}
+
+/**
+ * Подытожить первый период проекта, оставив срез приблизительным.
+ *
+ * Подытог ставит воркер через две недели после конца периода, и
+ * дождаться его браузером нельзя — время не перемотать. Поэтому
+ * состояние кладётся данными: снимок по площадкам, дата среза и пометка
+ * «поденной статистики за период уже нет». Проверяется при этом не
+ * подытог, а то, что видит человек.
+ *
+ * Идемпотентна и вызывается перед каждым прогоном: спека на
+ * переоткрытие оставляет период открытым, и следующему прогону нужен
+ * снова подытоженный.
+ */
+export function lockFirstPeriod(projectId: string): void {
+  psql(`
+WITH per AS (SELECT id, starts_on, ends_on FROM project_periods
+             WHERE project_id = '${projectId}' AND seq = 1)
+INSERT INTO project_period_publications (period_id, publication_id, creator_user_id, status, published_on)
+SELECT per.id, p.id, p.creator_user_id, p.status, MIN(l.published_at)::date
+FROM per
+JOIN project_publications p ON p.project_id = '${projectId}'
+JOIN publication_links l ON l.publication_id = p.id
+GROUP BY per.id, p.id, p.creator_user_id, p.status, per.starts_on, per.ends_on
+HAVING MIN(l.published_at)::date BETWEEN per.starts_on AND per.ends_on
+ON CONFLICT DO NOTHING;
+
+WITH per AS (SELECT id, ends_on FROM project_periods
+             WHERE project_id = '${projectId}' AND seq = 1)
+INSERT INTO project_period_views
+  (period_id, publication_id, platform, link_id, views, likes, comments, stat_date, published_at)
+SELECT per.id, l.publication_id, l.platform, l.id,
+       ${HISTORY_VIEWS}, ${HISTORY_VIEWS} / 30, ${HISTORY_VIEWS} / 300,
+       per.ends_on + 14, l.published_at
+FROM per
+JOIN project_period_publications pp ON pp.period_id = per.id
+JOIN publication_links l ON l.publication_id = pp.publication_id
+ON CONFLICT DO NOTHING;
+
+UPDATE project_periods
+   SET status = 'locked', locked_at = now(),
+       snapshot_as_of = ends_on + 14, snapshot_approx = TRUE
+ WHERE project_id = '${projectId}' AND seq = 1;
+`);
+}
+
 function seedUsers(): void {
   const sql = readFileSync(join(here, '..', 'seed', 'users.sql'), 'utf8');
   // psql внутри контейнера: снаружи клиента может не быть, а контейнер
@@ -226,6 +364,7 @@ export default async function globalSetup(): Promise<void> {
       return null;
     }
     if (!saved.projectId || !saved.publicationId) return null;
+    if (!saved.emptyProjectId || !saved.historyProjectId) return null;
 
     const pubs = await api.get(`/api/v1/manager/projects/${saved.projectId}/publications`, {
       headers: auth(sessions.manager),
@@ -249,8 +388,25 @@ export default async function globalSetup(): Promise<void> {
     });
     if (!crew.ok() || ((await crew.json()).items ?? []).length === 0) return null;
 
+    // Проект без публикаций и проект с прошлым живут своей жизнью, но
+    // без них половина денежных специй проверять нечего.
+    const empty = await api.get(`/api/v1/manager/projects/${saved.emptyProjectId}`, {
+      headers: auth(sessions.manager),
+    });
+    if (!empty.ok()) return null;
+    const periods = await api.get(
+      `/api/v1/manager/projects/${saved.historyProjectId}/billing/periods`,
+      { headers: auth(sessions.manager) },
+    );
+    if (!periods.ok()) return null;
+    if (((await periods.json()).items ?? []).length < 2) return null;
+
     // Цифры кладём заново: они дешёвые, а прошлый прогон мог их сдвинуть.
     seedStats(saved.publicationId);
+    seedHistoryStats(saved.historyProjectId);
+    // И подытог возвращаем на место: спека на переоткрытие оставляет
+    // период открытым, а следующему прогону он нужен подытоженным.
+    lockFirstPeriod(saved.historyProjectId);
     return { ...saved, sessions };
   })();
 
@@ -332,9 +488,80 @@ DELETE FROM projects WHERE client_user_id IN
   });
   seedStats(pubId);
 
+  /**
+   * Завести ещё один проект заказчика с тем же креатором и тарифом.
+   *
+   * С пометкой «тест» — и это не украшение. Админский список показывает
+   * двадцать строк, отсортированных от давно не двигавшихся, и посеянный
+   * проект стоит в нём последним: он свежее всех. Каждая лишняя строка
+   * выталкивает его на вторую страницу, и специя, которая открывает
+   * проект кликом из списка, падает с «элемент не найден» — по причине,
+   * не имеющей к ней никакого отношения. Пометка убирает эти проекты из
+   * списка по умолчанию, а по делу они и есть тестовые.
+   */
+  const newProject = async (title: string, notes: string): Promise<string> => {
+    const p = await call(
+      'post',
+      '/api/v1/manager/projects',
+      sessions.manager,
+      { kind: 'creators_turnkey', title, client_user_id: me.user_id, notes, is_test: true },
+      201,
+    );
+    await call(
+      'post',
+      `/api/v1/manager/projects/${p.id}/creators`,
+      sessions.manager,
+      { creator_user_id: creatorMe.user_id },
+      204,
+    );
+    await call('post', `/api/v1/manager/projects/${p.id}/billing/adopt`, sessions.manager);
+    return p.id as string;
+  };
+
+  // Проект, в котором не вышло ни одного ролика: состав и тариф есть,
+  // выкладок нет. Периода у него нет вовсе — считать не от чего.
+  const emptyProjectId = await newProject(
+    'PetFlat · без публикаций (e2e)',
+    'Ещё не стартовали: дат выкладок нет',
+  );
+
+  // Проект с прошлым: три ролика, два из них в первом периоде.
+  const historyProjectId = await newProject(
+    'PetFlat · прошлые периоды (e2e)',
+    'Идёт второй период, первый уже подытожен',
+  );
+  const day = (ago: number): string =>
+    new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10);
+  const historyBatch = await call(
+    'post',
+    `/api/v1/manager/projects/${historyProjectId}/publications/batch`,
+    sessions.manager,
+    { creator_user_ids: [creatorMe.user_id], dates: HISTORY_AGES.map(day) },
+    201,
+  );
+  const historyPubs = (historyBatch.items ?? []) as { id: string; due_date: string }[];
+  for (const [i, pub] of historyPubs.entries()) {
+    await call('post', `/api/v1/me/creator/publications/${pub.id}/links`, sessions.creator, {
+      urls: historyLinks(String(i + 1).padStart(2, '0')),
+    });
+  }
+  // Сдача ссылок ставит датой выхода сегодня — отодвигаем её к плановой
+  // дате, иначе все три ролика окажутся в одном сегодняшнем периоде.
+  // Периоды сервер выведет заново при первом же запросе.
+  backdateHistory(historyProjectId);
+  seedHistoryStats(historyProjectId);
+  await call(
+    'get',
+    `/api/v1/manager/projects/${historyProjectId}/billing/periods`,
+    sessions.manager,
+  );
+  lockFirstPeriod(historyProjectId);
+
   const world: World = {
     projectId: project.id,
     publicationId: pubId,
+    emptyProjectId,
+    historyProjectId,
     sessions,
   };
   mkdirSync(dirname(statePath), { recursive: true });

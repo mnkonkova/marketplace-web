@@ -15,7 +15,45 @@ DELETE FROM creator_orders WHERE client_user_id IN
     (SELECT id FROM users WHERE email LIKE 'e2e-%@example.com');
 DELETE FROM projects WHERE client_user_id IN
     (SELECT id FROM users WHERE email LIKE 'e2e-%@example.com');
+-- Чужая строка, указывающая на посевного человека, держит его внешним
+-- ключом, и пересев падает целиком — то есть мир перестаёт собираться,
+-- как только протухли токены. Так бывает с любым проектом, заведённым на
+-- посевного менеджера руками: «ответственный», «кто менял тариф», «кто
+-- подтвердил платёж».
+--
+-- Обнуляем такие ссылки везде, где колонка это позволяет, и не трогаем
+-- саму строку: она может быть не наша, и сносить её мы не вправе. Список
+-- колонок берём из каталога, а не перечисляем руками: перечисленный
+-- список устаревает молча — падение видно только через месяц и выглядит
+-- как «сломался докер».
+DO $$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN
+        SELECT c.conrelid::regclass::text AS tbl, a.attname AS col
+        FROM pg_constraint c
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+        WHERE c.contype = 'f'
+          AND c.confrelid = 'users'::regclass
+          AND array_length(c.conkey, 1) = 1
+          AND NOT a.attnotnull
+          -- Каскад и SET NULL база отрабатывает сама; мешают только
+          -- NO ACTION и RESTRICT.
+          AND c.confdeltype IN ('a', 'r')
+    LOOP
+        EXECUTE format(
+            'UPDATE %s SET %I = NULL WHERE %I IN '
+            '(SELECT id FROM users WHERE email LIKE ''e2e-%%@example.com'')',
+            r.tbl, r.col, r.col);
+    END LOOP;
+END $$;
 DELETE FROM users WHERE email LIKE 'e2e-%@example.com';
+-- И то же самое с версией прайса: чужой проект мог снять с неё числа, и
+-- тогда она не удаляется. Снимок в проекте от этого не портится — суммы
+-- в нём свои, ссылка нужна только чтобы сказать, откуда они взялись.
+UPDATE project_billing SET terms_version_id = NULL
+WHERE terms_version_id IN
+    (SELECT id FROM terms_versions WHERE body = 'E2E: условия работы');
 DELETE FROM terms_versions WHERE body = 'E2E: условия работы';
 
 -- Пароль у всех троих один: E2ePassw0rd!
