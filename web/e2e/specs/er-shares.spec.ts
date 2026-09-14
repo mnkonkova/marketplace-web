@@ -51,10 +51,9 @@ test('пока репостов не отдаёт никто, звёздочка
   page,
 }) => {
   const r = await report();
-  expect(
-    r.er_without_shares,
-    'посев намеренно не кладёт репосты: без этого проверять нечего',
-  ).toBe(true);
+  expect(r.er_without_shares, 'посев намеренно не кладёт репосты: без этого проверять нечего').toBe(
+    true,
+  );
 
   await signIn(context, 'client');
   await page.goto(`/me/projects/${world().projectId}`);

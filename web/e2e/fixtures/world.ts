@@ -430,6 +430,12 @@ export default async function globalSetup(): Promise<void> {
     // И подытог возвращаем на место: спека на переоткрытие оставляет
     // период открытым, а следующему прогону он нужен подытоженным.
     lockFirstPeriod(saved.historyProjectId);
+    // И пересчитываем идущий период: цифры только что положили заново, а
+    // без строки начисления кабинет креатора честно говорит «ещё не
+    // посчитано» — и проверять на нём заработок нечего.
+    await api.post(`/api/v1/manager/projects/${saved.historyProjectId}/accruals/recalc`, {
+      headers: auth(sessions.manager),
+    });
     return { ...saved, sessions };
   })();
 
@@ -579,6 +585,14 @@ DELETE FROM projects WHERE client_user_id IN
     sessions.manager,
   );
   lockFirstPeriod(historyProjectId);
+  // Строка начисления за идущий период: без неё в кабинете креатора
+  // стоит «посчитаем, когда по периоду пройдёт расчёт», и заработка на
+  // экране нет вовсе.
+  await call(
+    'post',
+    `/api/v1/manager/projects/${historyProjectId}/accruals/recalc`,
+    sessions.manager,
+  );
 
   const world: World = {
     projectId: project.id,

@@ -36,7 +36,8 @@ test('у проекта без публикаций период не начал
   const answers: Record<string, number> = {};
   page.on('response', (res) => {
     const path = new URL(res.url()).pathname;
-    if (/^\/api\/v1\/manager\/projects\/[^/]+\/billing$/.test(path)) answers['billing'] = res.status();
+    if (/^\/api\/v1\/manager\/projects\/[^/]+\/billing$/.test(path))
+      answers['billing'] = res.status();
     if (path.endsWith('/billing/periods')) answers['periods'] = res.status();
   });
 

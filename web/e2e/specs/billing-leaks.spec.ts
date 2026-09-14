@@ -162,9 +162,9 @@ test('креатор в своём кабинете не видит ни кли�
   const settled = watchApi(page);
 
   await page.goto(`/me/creator/projects/${world().historyProjectId}`);
-  await expect(page.getByRole('heading', { name: 'Ступени по просмотрам' })).toBeVisible({
-    timeout: 15_000,
-  });
+  // Ждём сам блок, а не заголовок в нём: заголовок — вопрос подачи, и
+  // специя про утечки не должна падать от того, что его переписали.
+  await expect(page.locator('app-creator-ladder')).toBeVisible({ timeout: 15_000 });
 
   const captured = await settled();
   const earnings = captured.filter((c) => c.path.endsWith('/earnings'));

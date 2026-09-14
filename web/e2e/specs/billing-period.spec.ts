@@ -147,7 +147,10 @@ test('«предварительно» и «приблизительно» — �
   const periods = await periodsOf(world().historyProjectId);
   const open = periods.find((p) => p.status === 'open')!;
   const locked = periods.find((p) => p.status === 'locked' && p.snapshot_approx);
-  expect(locked, 'мир обязан приготовить подытоженный период с приблизительным срезом').toBeTruthy();
+  expect(
+    locked,
+    'мир обязан приготовить подытоженный период с приблизительным срезом',
+  ).toBeTruthy();
 
   await signIn(context, 'manager');
   await openBilling(page, world().historyProjectId);

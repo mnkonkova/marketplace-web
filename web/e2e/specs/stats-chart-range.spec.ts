@@ -56,9 +56,9 @@ async function collectedDays(): Promise<number> {
 /** Точек на линии — по одной на день окна. */
 async function pointsOn(stats: Locator): Promise<number> {
   const points =
-    (await stats.locator('svg[aria-label="Просмотры нарастающим итогом"] polyline').getAttribute(
-      'points',
-    )) ?? '';
+    (await stats
+      .locator('svg[aria-label="Просмотры нарастающим итогом"] polyline')
+      .getAttribute('points')) ?? '';
   return points.trim().split(/\s+/).filter(Boolean).length;
 }
 
@@ -82,9 +82,7 @@ async function checksRangeSwitch(page: Page, all: number): Promise<void> {
   expect(await pointsOn(stats), 'по умолчанию показан весь собранный ряд').toBe(all);
 
   await week.click();
-  await expect
-    .poll(() => pointsOn(stats), { message: 'неделя обязана укоротить ряд' })
-    .toBe(7);
+  await expect.poll(() => pointsOn(stats), { message: 'неделя обязана укоротить ряд' }).toBe(7);
 
   // И обратно: выбор живёт, пока смотрят, и отменяется тем же кликом.
   await month.click();

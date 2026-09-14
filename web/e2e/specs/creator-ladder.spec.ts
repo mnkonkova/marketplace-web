@@ -78,9 +78,7 @@ async function earnings(): Promise<Earnings> {
     baseURL: API,
     extraHTTPHeaders: { Authorization: `Bearer ${world().sessions.creator.access_token}` },
   });
-  const res = await api.get(
-    `/api/v1/me/creator/projects/${world().historyProjectId}/earnings`,
-  );
+  const res = await api.get(`/api/v1/me/creator/projects/${world().historyProjectId}/earnings`);
   const body = (await res.json()) as Earnings;
   await api.dispose();
   return body;
