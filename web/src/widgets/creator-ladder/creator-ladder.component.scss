@@ -170,6 +170,39 @@
     }
   }
 
+  // Добавить ролик сверх плана. Кнопка спокойная, не главная: главное
+  // на этой карточке — деньги, а добавка это возможность, а не задание.
+  .extra {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 0 0 12px;
+
+    .addv {
+      padding: 6px 13px;
+      border: 1px solid var(--line-2, #2c313a);
+      border-radius: 999px;
+      background: var(--bg-elevated, #111316);
+      color: var(--text, #e6e8eb);
+      font-family: inherit;
+      font-size: 12.5px;
+      cursor: pointer;
+    }
+
+    .addv:hover {
+      border-color: var(--green, #52c41a);
+    }
+
+    i {
+      flex: 1 1 180px;
+      color: var(--muted-2, #616772);
+      font-size: 12px;
+      font-style: normal;
+      line-height: 1.45;
+    }
+  }
+
   .typ {
     margin: 0 0 12px;
     color: var(--muted, #8c94a0);

@@ -100,7 +100,11 @@
             [class.red]="g.bad > 0"
             [class.green]="!g.bad && g.total > 0 && g.full === g.total"
           >
-            @if (g.total) { {{ g.full }} из {{ g.total }} по плану } @else { дат пока нет }
+            @if (g.total) {
+              {{ g.full }} из {{ g.total }} по плану
+            } @else {
+              дат пока нет
+            }
           </span>
           <button class="btn quiet sm" type="button" (click)="remindCreator(g.user_id)">
             Напомнить
@@ -154,6 +158,12 @@
                         <small> · {{ pubDue(dd) }}</small>
                       }
                     </span>
+                  } @else if (selfAdded(pub)) {
+                    <!-- Выкладку креатор добавил себе сам, сверх плана.
+                         Срок черновика — это договорённость о поручённой
+                         работе, и у добавки её нет. Прочерк на этом месте
+                         читался бы как «забыли проставить». -->
+                    <span class="v off">не нужен</span>
                   } @else {
                     <span class="v off">—</span>
                   }

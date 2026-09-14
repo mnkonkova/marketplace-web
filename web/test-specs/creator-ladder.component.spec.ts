@@ -84,6 +84,30 @@ describe('CreatorLadderComponent', () => {
       const cmp = setup(earnings(), [pub({ due_date: '2026-10-05T00:00:00Z' })]);
       expect(cmp.plannedLeft()).toBe(0);
     });
+
+    /**
+     * План ставит менеджер. Ролик, который креатор добавил себе сам,
+     * планом не становится — иначе собственная добавка гасила бы «план
+     * периода выполнен»: человек добрал сверх плана и тут же прочитал,
+     * что план не выполнен. Это же правило держит и оклад: знаменатель
+     * недосдачи считается только по плановым выкладкам.
+     */
+    it('свой добавленный ролик планом не становится', () => {
+      const cmp = setup(earnings(), [pub({ id: 'own', self_added: true })]);
+      expect(cmp.plannedLeft()).toBe(0);
+      expect(cmp.planDone()).toBeTrue();
+      expect(cmp.ownAhead()).toBe(1);
+    });
+
+    it('плановые и свои считаются порознь', () => {
+      const cmp = setup(earnings(), [
+        pub({ id: 'plan' }),
+        pub({ id: 'own', due_date: '2026-09-20T00:00:00Z', self_added: true }),
+      ]);
+      expect(cmp.plannedLeft()).toBe(1);
+      expect(cmp.ownAhead()).toBe(1);
+      expect(cmp.planDone()).toBeFalse();
+    });
   });
 
   describe('деньги', () => {

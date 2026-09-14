@@ -38,6 +38,12 @@ import {
   itemsForPlatform,
   requiredUnchecked,
 } from '@entities/publication/lib/checklist';
+import {
+  isDisabledDay,
+  isSelfAdded,
+  takenOn,
+  ymdLocal,
+} from '@entities/publication/lib/extra-publication';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { CreatorAvailabilityComponent } from '@widgets/creator-availability/creator-availability.component';
@@ -573,10 +579,7 @@ export class CreatorProjectPage {
     this.busy.set(true);
     // ГГГГ-ММ-ДД в локальном времени: toISOString сдвигает дату на UTC,
     // и в плюсовых поясах просьба уезжала бы на день назад.
-    const d = this.newDate;
-    const requested = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-      d.getDate(),
-    ).padStart(2, '0')}`;
+    const requested = ymdLocal(this.newDate);
     this.api.creatorRequestDate(pub.id, requested, this.dateReason.trim()).subscribe({
       next: () => {
         this.busy.set(false);
@@ -591,6 +594,88 @@ export class CreatorProjectPage {
           this.dateFor.set(null);
           this.fetch(this.projectId(), true);
         }
+        this.msg.error(err.message);
+      },
+    });
+  }
+
+  // ---- своя выкладка сверх плана ----
+  //
+  // План ставит менеджер. Эта кнопка про другое: план периода выполнен, а
+  // до ступени не хватило, и добрать нечем — новых дат впереди нет.
+  //
+  // Поэтому первым в окне стоит не поле даты, а правило про оклад:
+  // недосдача считается только по плановым выкладкам, добавить и не
+  // сдать — не штрафуется. Без этой фразы кнопку не нажмут, и правильно
+  // сделают: в чужих системах такое обычно наказывается.
+
+  public readonly addOpen = signal(false);
+
+  /** Дата новой выкладки. Сигнал, а не поле: от неё зависят проверки. */
+  public readonly addDate = signal<Date | null>(null);
+
+  /**
+   * Прошлое и «дальше года вперёд» календарь не отдаёт.
+   *
+   * Те же границы держит сервер (400 invalid_input), и это не дубль
+   * правила, а его место: отказ, прилетевший на день, который пикер
+   * показал выбираемым, человек относит к сбою, а не к своей дате.
+   */
+  public readonly disabledAddDates = (current: Date): boolean => isDisabledDay(current);
+
+  /**
+   * Своя выкладка на выбранный день уже есть.
+   *
+   * Сервер ответит тем же (409 day_taken), но сказать это можно сразу и
+   * прямо в окне: список своих выкладок у страницы уже загружен.
+   */
+  public readonly addTaken = computed(() => {
+    const d = this.addDate();
+    return d ? takenOn(this.items(), ymdLocal(d)) : null;
+  });
+
+  /** Сколько в чеклисте обязательных пунктов — их не обойти при сдаче. */
+  public readonly requiredItems = computed(
+    () => this.checklist().filter((i) => i.is_required).length,
+  );
+
+  public readonly canAdd = computed(() => !!this.addDate() && !this.addTaken());
+
+  public openAddPublication(): void {
+    this.addDate.set(null);
+    this.addOpen.set(true);
+  }
+
+  public closeAddPublication(): void {
+    this.addOpen.set(false);
+  }
+
+  /** Выкладку завёл себе сам креатор, а не поручил менеджер. */
+  public selfAdded(pub: Publication): boolean {
+    return isSelfAdded(pub);
+  }
+
+  public addPublication(): void {
+    const d = this.addDate();
+    if (!d || !this.canAdd()) return;
+    this.busy.set(true);
+    this.api.creatorAddPublication(this.projectId(), ymdLocal(d)).subscribe({
+      next: (created) => {
+        this.busy.set(false);
+        this.addOpen.set(false);
+        this.items.set([...this.items(), created]);
+        this.msg.success('Выкладка добавлена. Сдадите ссылки, когда ролик выйдет.');
+      },
+      error: (e) => {
+        this.busy.set(false);
+        // Текст отказа берём у сервера: он знает и про занятый день, и
+        // про подытоженный период, и про состав проекта. Свой пересказ
+        // разошёлся бы с ним на первой же правке правил.
+        const err = parseApiError(e, 'Не удалось добавить выкладку.');
+        // День заняли, пока окно было открыто (например, в соседней
+        // вкладке). Перечитываем список — предупреждение про занятый
+        // день встанет на место само.
+        if (err.code === 'day_taken') this.fetch(this.projectId(), true);
         this.msg.error(err.message);
       },
     });

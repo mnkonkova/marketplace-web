@@ -133,6 +133,15 @@
                 <b>{{ pub.title || 'Выкладка ' + index(pub) }}</b>
                 <span class="m">
                   <span>{{ badge(pub).label | lowercase }}</span>
+                  @if (selfAdded(pub)) {
+                  <!-- Происхождение выкладки, а не её статус: человеку
+                       полезно видеть, что этот ролик он добавил себе сам,
+                       сверх плана, — и что оклада он не касается. Поэтому
+                       тихой пометкой, а не тегом в один ряд со сроком. -->
+                  <span class="own" title="Вы добавили её сами, сверх плана — на оклад не влияет"
+                    >своя</span
+                  >
+                  }
                   <span
                     class="v"
                     [class.late]="pub.overdue"
@@ -212,7 +221,11 @@
         <div>
           <!-- Что заработано за период и что добавит следующая ступень.
                Главное, ради чего креатор сюда заходит. -->
-          <app-creator-ladder [earnings]="earnings()" [publications]="items()" />
+          <app-creator-ladder
+            [earnings]="earnings()"
+            [publications]="items()"
+            (addVideo)="openAddPublication()"
+          />
 
           @if (materials().length) {
           <div class="card" style="margin-bottom: 16px">
@@ -430,6 +443,78 @@
           (click)="sendDateRequest()"
         >
           Попросить
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ── модалка «добавить ролик» ─────────────────────────────
+     План ставит менеджер, и эта выкладка не часть плана, а добавка сверх
+     него: способ добрать до ступени, когда план периода выполнен, а
+     просмотров не хватило. Поэтому первым в окне стоит не поле даты, а
+     правило про оклад — без него человек побоится нажать, и будет прав:
+     в чужих системах такое обычно наказывается. -->
+@if (addOpen()) {
+<div class="crm-page">
+  <div class="ovl on" (click)="closeAddPublication()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-hd">
+        <h2>Добавить ролик сверх плана</h2>
+        <p class="sub">
+          Своя выкладка — чтобы добрать просмотров до следующей ступени, когда план периода уже
+          выполнен. Название ролика спросим при сдаче ссылок: тему задаёт дата, а что снято —
+          известно только после съёмки.
+        </p>
+      </div>
+
+      <div class="modal-bd">
+        <!-- Главное, что человек обязан прочитать до того, как нажмёт. -->
+        <p class="keeprule">
+          <b>На оклад это не влияет.</b> План ставит менеджер, и недосдача считается только по
+          плановым выкладкам — добавить и не сдать не штрафуется. Просмотры при этом идут в период и
+          в ступени наравне с плановыми.
+        </p>
+
+        <p class="lbl">Дата выкладки</p>
+        <!-- nz-date-picker, а не <input type="date">: у нативного поля
+             Chrome рисует свой календарь мимо всей тёмной темы, и
+             выключить это нельзя. Прошлое и «дальше года вперёд»
+             календарь не даёт — те же границы держит сервер. -->
+        <nz-date-picker
+          class="inp"
+          [ngModel]="addDate()"
+          (ngModelChange)="addDate.set($event)"
+          nzFormat="dd.MM.yyyy"
+          nzPlaceHolder="Сегодня или позже"
+          [nzDisabledDate]="disabledAddDates"
+        />
+        @if (addTaken(); as taken) {
+        <p class="taken">
+          На {{ taken.due_date | date: 'd MMMM' }} у вас уже есть выкладка — выберите другой день.
+        </p>
+        } @if (!noChecklist()) {
+        <!-- Чеклист у проекта подключён: сдавать этот ролик придётся по
+             нему так же, как плановый. Сказать это надо здесь, а не
+             в окне сдачи: там будет поздно. -->
+        <p class="sub" style="margin-top: 14px">
+          У проекта подключён чеклист — сдавать ролик придётся по нему: {{ checklist().length }} {{
+          plural(checklist().length, 'пункт', 'пункта', 'пунктов') }}, из них обязательных {{
+          requiredItems() }}.
+        </p>
+        }
+      </div>
+
+      <div class="modal-ft">
+        <button type="button" class="btn quiet" (click)="closeAddPublication()">Отмена</button>
+        <button
+          type="button"
+          class="btn primary"
+          [disabled]="!canAdd() || busy()"
+          (click)="addPublication()"
+        >
+          Добавить
         </button>
       </div>
     </div>

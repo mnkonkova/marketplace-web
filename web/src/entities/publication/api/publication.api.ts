@@ -101,6 +101,27 @@ export class PublicationApi {
     });
   }
 
+  /**
+   * Завести себе выкладку сверх плана, одной датой.
+   *
+   * Название ролика здесь не спрашивается: тему задаёт дата, а что снято
+   * — известно только после съёмки. Название приходит вместе со
+   * ссылками, обычным путём сдачи.
+   *
+   * Отказы приходят с готовым текстом в message, и показывать надо
+   * именно его: 409 day_taken — на этот день выкладка уже есть, 409
+   * period_locked — период подытожен, 400 invalid_input — дата в прошлом
+   * или дальше чем на год вперёд, 404 not_found — чужой проект.
+   *
+   * dueDate — ГГГГ-ММ-ДД.
+   */
+  public creatorAddPublication(projectId: string, dueDate: string): Observable<Publication> {
+    return this.http.post<Publication>(
+      `${this.api}/me/creator/projects/${projectId}/publications`,
+      { due_date: dueDate },
+    );
+  }
+
   // requestedDate — ГГГГ-ММ-ДД.
   public creatorRequestDate(
     pubId: string,

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { formatMoney } from '@entities/billing/lib/money';
@@ -19,6 +19,7 @@ import {
 } from '@entities/billing/lib/ladder';
 import { isOpenPeriod, periodTitle, snapshotNote } from '@entities/billing/lib/period';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
+import { isSelfAdded } from '@entities/publication/lib/extra-publication';
 import type { Publication } from '@entities/publication/model/publication.types';
 import { plural } from '@shared/lib/format';
 
@@ -63,6 +64,15 @@ export class CreatorLadderComponent {
 
   /** Свои выкладки. Чужих креатору не отдаёт и сам бэк. */
   public readonly publications = input<Publication[]>([]);
+
+  /**
+   * Креатор хочет добавить себе выкладку сверх плана.
+   *
+   * Окно открывает страница, а не шкала: у неё есть и чеклист проекта, и
+   * список выкладок, и ручка. Шкала знает только момент, когда добрать
+   * хочется, — про него и говорит.
+   */
+  public readonly addVideo = output<void>();
 
   public readonly step = LADDER_STEP;
 
@@ -162,7 +172,9 @@ export class CreatorLadderComponent {
   public readonly progressPercent = computed(() => {
     const f = this.forecast();
     const share =
-      f && f.step_views > 0 ? (f.step_views - f.views_to_go) / f.step_views : this.ladder().progress;
+      f && f.step_views > 0
+        ? (f.step_views - f.views_to_go) / f.step_views
+        : this.ladder().progress;
     return Math.round(Math.min(1, Math.max(0, share)) * 1000) / 10;
   });
 
@@ -232,10 +244,28 @@ export class CreatorLadderComponent {
    *
    * Только внутри границ периода: выкладка, назначенная на следующий
    * период, в этот счёт не входит.
+   *
+   * И только ПЛАНОВЫЕ: ролик, который креатор добавил себе сам, планом
+   * не становится. Иначе собственная добавка гасила бы «план периода
+   * выполнен» — человек добрал бы сверх плана и тут же прочитал, что
+   * план не выполнен.
    */
-  public readonly plannedLeft = computed(() => {
+  public readonly plannedLeft = computed(
+    () => this.aheadInPeriod().filter((x) => !isSelfAdded(x)).length,
+  );
+
+  /** Свои добавленные ролики впереди — они не план, но снимать по ним. */
+  public readonly ownAhead = computed(
+    () => this.aheadInPeriod().filter((x) => isSelfAdded(x)).length,
+  );
+
+  /** Все даты впереди: и плановые, и свои. */
+  private readonly datesAhead = computed(() => this.aheadInPeriod().length);
+
+  /** Выкладки периода, которые ещё не вышли. */
+  private readonly aheadInPeriod = computed<Publication[]>(() => {
     const p = this.period();
-    if (!p) return 0;
+    if (!p) return [];
     const from = p.starts_on.slice(0, 10);
     const to = p.ends_on.slice(0, 10);
     return this.publications().filter(
@@ -244,12 +274,18 @@ export class CreatorLadderComponent {
         !x.published_at &&
         x.due_date.slice(0, 10) >= from &&
         x.due_date.slice(0, 10) <= to,
-    ).length;
+    );
   });
 
-  /** Чем закрыть ступень: хитами первым, количеством вторым. */
+  /**
+   * Чем закрыть ступень: хитами первым, количеством вторым.
+   *
+   * Дат впереди считаем ВСЕ, вместе со своими добавленными: совет
+   * «обычными это N роликов» про то, есть ли на них где сняться, а
+   * снимать по своей дате можно ровно так же, как по плановой.
+   */
   public readonly plan = computed(() =>
-    stepPlan(this.toNext(), this.typical()?.typical_video_views ?? null, this.plannedLeft()),
+    stepPlan(this.toNext(), this.typical()?.typical_video_views ?? null, this.datesAhead()),
   );
 
   /** «Один ролик на 100 тыс. закрывает ступень. Или два по 50 тыс.» */

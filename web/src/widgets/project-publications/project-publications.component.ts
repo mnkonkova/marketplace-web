@@ -42,6 +42,7 @@ import {
   missingPlatforms,
   publicationBadge,
 } from '@entities/publication/lib/publication-status';
+import { isSelfAdded } from '@entities/publication/lib/extra-publication';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import { ProjectKind } from '@entities/project/model/project.types';
 import { downloadBlob } from '@shared/lib/download-blob';
@@ -465,6 +466,16 @@ export class ProjectPublicationsComponent {
    * них не держим. Настройки не доехали — решаем по данным, чтобы не
    * потерять колонку там, где этап включён.
    */
+  /**
+   * Выкладку завёл себе сам креатор, сверх плана.
+   *
+   * Менеджеру это видно там, где иначе стоял бы прочерк: у такой
+   * выкладки нет срока черновика, и «не проставлен» здесь — не забывчивость.
+   */
+  public selfAdded(pub: Publication): boolean {
+    return isSelfAdded(pub);
+  }
+
   public readonly hasDrafts = computed(() => {
     const st = this.settings();
     if (st) return st.draft_required;

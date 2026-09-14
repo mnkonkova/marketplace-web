@@ -63,6 +63,15 @@ export interface Publication {
   due_date: string;
   draft_due_date?: string;
   status: PublicationStatus;
+  // Выкладку завёл себе сам креатор — сверх плана, чтобы добрать до
+  // ступени. Приходит только у таких: у плановых ключа НЕТ вовсе,
+  // поэтому проверяется наличие поля, а не значение (isSelfAdded в
+  // lib/extra-publication.ts).
+  //
+  // Оклада это не касается: знаменатель недосдачи считается только по
+  // плановым выкладкам. И срока черновика у такой выкладки не бывает —
+  // черновик это договорённость о поручённой работе.
+  self_added?: boolean;
   closed_by?: string;
   close_reason?: string;
   batch_id?: string;
