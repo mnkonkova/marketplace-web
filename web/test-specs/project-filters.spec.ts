@@ -25,11 +25,12 @@ describe('parseProjectFilters', () => {
     expect(parseProjectFilters(params({}))).toEqual(DEFAULT_PROJECT_FILTERS);
   });
 
-  it('читает поиск, статус, менеджера, сортировку и тестовые', () => {
+  it('читает поиск, статус, ветку, менеджера, сортировку и тестовые', () => {
     const f = parseProjectFilters(
       params({
         q: ' ромашка ',
         status: 'on_hold',
+        kind: 'creators_turnkey',
         manager: 'none',
         sort: 'created_desc',
         test: '1',
@@ -37,9 +38,25 @@ describe('parseProjectFilters', () => {
     );
     expect(f.q).toBe('ромашка');
     expect(f.status).toBe('on_hold');
+    expect(f.kind).toBe('creators_turnkey');
     expect(f.manager).toBe('none');
     expect(f.sort).toBe('created_desc');
     expect(f.includeTest).toBeTrue();
+  });
+
+  // Цифра у раздела в сайдбаре считает незавершённые проекты. Если список
+  // по умолчанию покажет другой набор, число и строки разойдутся — и это
+  // читается как поломка, а не как фильтр.
+  it('по умолчанию — активные, то есть незавершённые', () => {
+    expect(parseProjectFilters(params({})).status).toBe('unfinished');
+    expect(projectFiltersToParams(parseProjectFilters(params({}))).status).toBe('unfinished');
+  });
+
+  it('«Все статусы» пишутся в адрес словом: пустое значение из него исчезает', () => {
+    expect(parseProjectFilters(params({ status: 'all' })).status).toBe('');
+    expect(
+      projectFiltersToParams(parseProjectFilters(params({ status: 'all' }))).status,
+    ).toBeUndefined();
   });
 
   it('вид канбана — из ?view, всё остальное читается как список', () => {
@@ -48,12 +65,17 @@ describe('parseProjectFilters', () => {
     expect(parseProjectFilters(params({})).view).toBe('list');
   });
 
-  // Адрес приходит снаружи — из письма, закладки, чужой переписки.
-  // Мусор в нём не должен доезжать до запроса как есть.
-  it('чужие значения статуса и сортировки не доезжают до запроса', () => {
-    const f = parseProjectFilters(params({ status: 'drop table', sort: 'random' }));
-    expect(f.status).toBe('');
+  // Адрес приходит снаружи — из письма, закладки, чужой переписки. Мусор
+  // в нём не должен доезжать до запроса как есть: на незнакомый статус
+  // ручка отвечает 500, и опечатка в чужой ссылке роняла бы экран.
+  it('чужие значения статуса, ветки и сортировки не доезжают до запроса', () => {
+    const f = parseProjectFilters(params({ status: 'drop table', kind: 'что-то', sort: 'random' }));
+    expect(f.status).toBe(DEFAULT_PROJECT_FILTERS.status);
+    expect(f.kind).toBe('');
     expect(f.sort).toBe(DEFAULT_PROJECT_FILTERS.sort);
+    const sent = projectFiltersToParams(f);
+    expect(sent.status).toBe('unfinished');
+    expect(sent.kind).toBeUndefined();
   });
 
   it('размер страницы — только из списка допустимых', () => {
@@ -82,6 +104,7 @@ describe('projectFiltersToQuery', () => {
     const f: ProjectFilters = {
       q: 'ромашка',
       status: 'active',
+      kind: 'production_turnkey',
       manager: 'none',
       sort: 'created_asc',
       includeTest: true,
@@ -109,8 +132,9 @@ describe('projectFiltersToParams', () => {
   });
 
   it('пустые фильтры в запрос не попадают вовсе', () => {
-    const p = projectFiltersToParams(DEFAULT_PROJECT_FILTERS);
+    const p = projectFiltersToParams({ ...DEFAULT_PROJECT_FILTERS, status: '' });
     expect(p.status).toBeUndefined();
+    expect(p.kind).toBeUndefined();
     expect(p.manager).toBeUndefined();
     // include_test не шлём: сервер по умолчанию и так прячет тестовые.
     expect(p.include_test).toBeUndefined();

@@ -61,11 +61,37 @@ describe('crmNavGroups', () => {
     expect(links('manager')).not.toContain('/manager/board');
   });
 
+  // Коралловый бейдж зовёт разбирать — значит стоит только там, где ждут
+  // нас. Остальные счётчики приглушены: они говорят «сколько тут всего».
   it('очередь на нас помечена бейджем, и таких пунктов ровно два', () => {
     const badged = [...crmNavGroups('admin'), ...crmNavGroups('manager')]
       .flatMap((g) => g.items)
-      .filter((i) => i.counter);
+      .filter((i) => i.counter === 'moderation' || i.counter === 'inbox');
     expect(badged.map((i) => i.label)).toEqual(['Модерация', 'Входящие']);
+  });
+
+  // Цифра у раздела должна равняться числу строк, которые откроются по
+  // клику. Считает их сервер в nav_counts, и имя счётчика у пункта —
+  // это и есть ключ оттуда: таблица соответствий была бы вторым местом,
+  // где можно ошибиться.
+  it('имена счётчиков совпадают с ключами nav_counts', () => {
+    const keys: string[] = [
+      'projects_active',
+      'moderation_pending',
+      'team',
+      'specialists',
+      'clients',
+      'checklists',
+      'pipelines',
+      'productions',
+    ];
+    const counters = crmNavGroups('admin')
+      .flatMap((g) => g.items)
+      .map((i) => i.counter as string | undefined)
+      .filter((c): c is string => !!c && c !== 'moderation');
+    for (const c of counters) {
+      expect(keys).withContext(c).toContain(c);
+    }
   });
 });
 
