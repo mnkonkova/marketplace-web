@@ -92,6 +92,39 @@
   }
 }
 
+// Состояние проекта. Цвет здесь несёт смысл, поэтому плашка своя:
+// глобальный .ant-tag в styles.scss красит любой nzColor в зелёный
+// !important, и «просрочено» выглядело бы так же, как «сдано».
+.state {
+  flex: 0 0 auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: nowrap;
+
+  &.late {
+    background: rgb(224 96 78 / 16%);
+    color: var(--danger, #e0604e);
+  }
+
+  &.open {
+    background: rgb(250 173 20 / 14%);
+    color: var(--warning, #faad14);
+  }
+
+  // Работа не начиналась: ни зелёного, ни тревоги — просто состояние.
+  &.idle {
+    border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+  }
+
+  &.done {
+    background: rgb(82 196 26 / 14%);
+    color: var(--success, #52c41a);
+  }
+}
+
 .counts {
   margin: 0;
   font-size: 14px;

@@ -33,7 +33,12 @@
       >
         <header>
           <h2>{{ p.title }}</h2>
-          <nz-tag [nzColor]="stateTone(p)">{{ stateLabel(p) }}</nz-tag>
+          <!-- Своя плашка, а не nz-tag: в styles.scss у .ant-tag стоит
+               безусловный зелёный !important, и любой nzColor — хоть
+               'red', хоть 'default' — рисуется одинаково зелёным. Здесь
+               цвет несёт смысл: зелёным помечено только сделанное, и
+               пустой проект зелёным быть не должен. -->
+          <span class="state" [class]="'state ' + stateTone(p)">{{ stateLabel(p) }}</span>
         </header>
 
         <!-- Нулевое состояние отдельной веткой. «Всё сдано», «0 из 0

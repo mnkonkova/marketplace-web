@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { PublicationApi } from '@entities/publication/api/publication.api';
@@ -27,7 +26,6 @@ import { BackLinkComponent } from '@shared/nav/back-link.component';
     CommonModule,
     RouterLink,
     NzSpinModule,
-    NzTagModule,
     AppHeaderComponent,
     BackLinkComponent,
   ],
@@ -99,10 +97,11 @@ export class CreatorProjectsPage {
   }
 
   /** Зелёным — только то, что действительно сделано. */
-  public stateTone(p: CreatorProject): string {
-    if (p.publications_overdue) return 'red';
-    if (p.publications_open) return 'gold';
-    if (!p.publications_total) return 'default';
-    return 'green';
+  public stateTone(p: CreatorProject): 'late' | 'open' | 'idle' | 'done' {
+    if (p.publications_overdue) return 'late';
+    if (p.publications_open) return 'open';
+    // Ноль выкладок — не повод для зелёного: хвалить не за что.
+    if (!p.publications_total) return 'idle';
+    return 'done';
   }
 }
