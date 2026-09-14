@@ -35,7 +35,10 @@
   padding: 5px 12px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  background: var(--bg-elevated);
+  // Чуть светлее карточки, а не темнее. С --bg-elevated таблетки были
+  // темнее поверхности, на которой лежат, и вся полоса вкладок читалась
+  // как чёрный провал в карточке, а не как ряд переключателей.
+  background: var(--surface-hover);
   color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;

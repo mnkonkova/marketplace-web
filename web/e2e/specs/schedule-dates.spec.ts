@@ -59,18 +59,23 @@ test('выбранные в календаре дни создают выкла�
   const d = dialog(page);
   await expect(d).toBeVisible({ timeout: 15_000 });
 
-  // Креатор в составе один — его и выбираем по имени.
-  await d.getByRole('button', { name: /Анастасия/ }).click();
+  // Окно открывается НА ТЕКУЩЕМ ПЛАНЕ: состав и уже назначенные дни
+  // отмечены. Раньше оно открывалось пустым, и человек, думая что правит
+  // план, добавлял к нему второй комплект дат.
+  await expect(d.locator('.pick.on').first()).toBeVisible();
 
-  // Свободные будущие дни: календарь гасит прошедшие, а занятые даты
-  // сервер молча пропустит по уникальному индексу «креатор + день».
-  await d.getByRole('button', { name: 'Через день' }).click();
+  // Берём свободный будущий день — не прошедший, не уже стоящий в плане.
+  // Занятый день снять нельзя (ручки отмены одной выкладки у API нет),
+  // поэтому выбираем именно тот, которого в плане ещё нет.
+  const free = d.locator('.mcal .dc:not(.pad):not(.past):not(.sel):not(.set)').first();
+  await expect(free).toBeVisible();
+  await free.click();
 
   const [response] = await Promise.all([
     page.waitForResponse(
       (r) => r.url().includes('/publications/batch') && r.request().method() === 'POST',
     ),
-    d.getByRole('button', { name: 'Создать выкладки' }).click(),
+    d.getByRole('button', { name: /Создать выкладки|Добавить даты/ }).click(),
   ]);
   expect(response.status(), await response.text()).toBe(201);
 
@@ -89,8 +94,18 @@ test('без выбранного креатора создать нельзя',
   const d = dialog(page);
   await expect(d).toBeVisible({ timeout: 15_000 });
 
-  const submit = d.getByRole('button', { name: 'Создать выкладки' });
-  await expect(submit, 'пустая форма не отправляется').toBeDisabled();
+  // Подпись зависит от того, есть ли уже даты в плане: на пустом плане
+  // «Создать выкладки», на непустом «Добавить даты». Проверяем кнопку
+  // подтверждения, а не её текст.
+  const submit = d.getByRole('button', { name: /Создать выкладки|Добавить даты/ });
+
+  // Снимаем весь состав: пачка — это «креаторы × дни», и без одного из
+  // множителей создавать нечего, сколько дней ни отметь.
+  const picked = d.locator('.pick.on');
+  for (let i = await picked.count(); i > 0; i -= 1) {
+    await picked.first().click();
+  }
+  await expect(submit, 'без креаторов отправлять нечего').toBeDisabled();
 
   // Дни есть, людей нет — по-прежнему нечего создавать: пачка это
   // «креаторы × дни», и без одного из множителей она пустая.
