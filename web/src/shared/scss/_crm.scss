@@ -22,16 +22,19 @@
   --muted-2: #616772;
   --coral: var(--cta);
   --coral-hover: var(--cta-hover);
-  --green: #2fbd8f;
-  --green-dim: #1f6f57;
-  --amber: #e2a33c;
-  --amber-dim: #5f4519;
-  --red: #e0604e;
-  --red-dim: #4a2b28;
+  // Статусная палитра переехала в :root (см. styles.scss): те же цвета
+  // нужны плашкам в списках CRM, а те рисуются вне .crm-page. Здесь
+  // остались псевдонимы — макетные имена, которыми размечены эти экраны.
+  --green: var(--ok);
+  --green-dim: var(--ok-line);
+  --amber: var(--warn);
+  --amber-dim: var(--warn-line);
+  --red: var(--bad);
+  --red-dim: var(--bad-line);
   --blue: #4b8fd6;
   --blue-dim: #274b6e;
   --violet: #9b7bd4;
-  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --mono: var(--crm-mono);
   --maxw: 1320px;
 
   color: var(--text);

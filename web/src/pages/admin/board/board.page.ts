@@ -3,13 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDropList, CdkDrag, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CdkScrollable } from '@angular/cdk/scrolling';
-import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { ManagerBoardPage } from '@pages/manager/board/board.page';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
+import { ManagerBoardComponent } from '@pages/manager/board/board.page';
+import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
+import { StatusTagComponent } from '@shared/ui/status-tag/status-tag.component';
 import { BoardListViewComponent } from '@widgets/board-list-view/board-list-view.component';
 import { StageMoveSheetComponent } from '@widgets/stage-move-sheet/stage-move-sheet.component';
 
@@ -25,11 +23,9 @@ import { StageMoveSheetComponent } from '@widgets/stage-move-sheet/stage-move-sh
     CdkDropList,
     CdkDrag,
     CdkScrollable,
-    NzSpinModule,
-    NzTagModule,
-    NzEmptyModule,
     NzSelectModule,
-    AdminLayoutComponent,
+    ListStateComponent,
+    StatusTagComponent,
     BoardListViewComponent,
     StageMoveSheetComponent,
   ],
@@ -37,7 +33,7 @@ import { StageMoveSheetComponent } from '@widgets/stage-move-sheet/stage-move-sh
   templateUrl: './board.page.html',
   styleUrl: './board.page.scss',
 })
-export class AdminBoardPage extends ManagerBoardPage {
+export class AdminBoardComponent extends ManagerBoardComponent {
   protected override loadProjects() {
     // Доску нельзя собрать по странице: карточки раскладываются по всем
     // этапам сразу, и двадцать первых строк дали бы половину колонок

@@ -1,75 +1,87 @@
-<app-admin-layout>
-  <header class="head">
-    <h1>Все проекты</h1>
-    <button nz-button nzType="primary" type="button" (click)="openCreate()">
-      + Создать проект
+@let f = filters();
+
+<app-page-head title="Проекты" [subtitle]="f.view === 'board' ? boardSubtitle : foundLabel()">
+  <div head-action class="head-acts">
+    <app-view-switch [view]="f.view" (pick)="setView($event)" />
+    <button nz-button nzType="primary" nzSize="small" type="button" (click)="openCreate()">
+      Создать проект
     </button>
-  </header>
+  </div>
+</app-page-head>
 
-  <section class="filters">
-    <input
-      nz-input
-      type="text"
-      placeholder="Поиск по названию проекта или клиенту"
-      [(ngModel)]="q"
-      (ngModelChange)="onSearch()"
-      class="search-input"
-      data-test="projects-search"
-    />
-    <nz-select
-      [(ngModel)]="status"
-      (ngModelChange)="onFilterChange()"
-      style="min-width: 150px"
-      data-test="projects-status"
-    >
-      @for (o of statusOptions; track o.value) {
-      <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
-      }
-    </nz-select>
-    <nz-select
-      [(ngModel)]="manager"
-      (ngModelChange)="onFilterChange()"
-      style="min-width: 190px"
-      data-test="projects-manager"
-    >
-      <nz-option nzValue="" nzLabel="Все менеджеры"></nz-option>
-      <nz-option nzValue="none" nzLabel="Без ответственного"></nz-option>
-      @for (m of managers(); track m.user_id) {
-      <nz-option
-        [nzValue]="m.user_id"
-        [nzLabel]="m.display_name || m.email || m.user_id"
-      ></nz-option>
-      }
-    </nz-select>
-    <nz-select
-      [(ngModel)]="sort"
-      (ngModelChange)="onFilterChange()"
-      style="min-width: 200px"
-      data-test="projects-sort"
-    >
-      @for (o of sortOptions; track o.value) {
-      <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
-      }
-    </nz-select>
-    <label
-      nz-checkbox
-      [(ngModel)]="includeTest"
-      (ngModelChange)="onFilterChange()"
-      data-test="projects-include-test"
-      >Показывать тестовые</label
-    >
-  </section>
+@if (f.view === 'board') {
+<!-- Канбан просит весь набор сам: карточки раскладываются по всем шагам
+       сразу, и страница в двадцать строк дала бы половину колонок пустыми.
+       Поэтому фильтры списка на него не действуют — и не показываются. -->
+<app-admin-board />
+} @else {
+<section class="filters">
+  <input
+    nz-input
+    type="text"
+    placeholder="Поиск по названию проекта или клиенту"
+    [(ngModel)]="q"
+    (ngModelChange)="onSearch()"
+    class="search-input"
+    data-test="projects-search"
+  />
+  <nz-select
+    [ngModel]="f.status"
+    (ngModelChange)="setStatus($event)"
+    style="min-width: 150px"
+    data-test="projects-status"
+  >
+    @for (o of statusOptions; track o.value) {
+    <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+    }
+  </nz-select>
+  <nz-select
+    [ngModel]="f.manager"
+    (ngModelChange)="setManager($event)"
+    style="min-width: 190px"
+    data-test="projects-manager"
+  >
+    <nz-option nzValue="" nzLabel="Все менеджеры"></nz-option>
+    <nz-option nzValue="none" nzLabel="Без ответственного"></nz-option>
+    @for (m of managers(); track m.user_id) {
+    <nz-option [nzValue]="m.user_id" [nzLabel]="m.display_name || m.email || m.user_id"></nz-option>
+    }
+  </nz-select>
+  <nz-select
+    [ngModel]="f.sort"
+    (ngModelChange)="setSort($event)"
+    style="min-width: 200px"
+    data-test="projects-sort"
+  >
+    @for (o of sortOptions; track o.value) {
+    <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+    }
+  </nz-select>
+  <label
+    nz-checkbox
+    [ngModel]="f.includeTest"
+    (ngModelChange)="setIncludeTest($event)"
+    data-test="projects-include-test"
+    >Показывать тестовые</label
+  >
+</section>
 
-  <p class="counter">Найдено: <strong data-test="projects-total">{{ total() }}</strong></p>
+<p class="counter">Найдено: <strong data-test="projects-total">{{ total() }}</strong></p>
 
+<app-list-state
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="items().length === 0"
+  emptyText="Под текущие фильтры ничего не попало."
+  (retry)="retry()"
+>
   <nz-table
     [nzData]="items()"
-    [nzLoading]="loading()"
     [nzFrontPagination]="false"
     [nzShowSizeChanger]="true"
     [nzPageSizeOptions]="[20, 50, 100]"
-    [nzPageIndex]="pageIndex()"
-    [nzPageSize]="pageSize()"
+    [nzPageIndex]="f.page"
+    [nzPageSize]="f.pageSize"
     [nzTotal]="total()"
     (nzQueryParams)="onQueryParamsChange($event)"
     nzSize="middle"
@@ -90,7 +102,7 @@
       <tr (click)="open(p)" style="cursor: pointer" data-test="project-row">
         <td data-label="Название">
           {{ p.title }} @if (p.is_test) {
-          <nz-tag nzColor="default" class="test-tag">тест</nz-tag>
+          <app-status-tag class="test-tag">тест</app-status-tag>
           }
         </td>
         <td data-label="Клиент">{{ p.client_display_name || '—' }}</td>
@@ -100,14 +112,14 @@
           }
         </td>
         <td data-label="Статус">
-          <nz-tag [nzColor]="statusColor(p.display_status)">
+          <app-status-tag [tone]="statusTone(p.display_status)">
             {{ statusLabel(p.display_status) }}
-          </nz-tag>
+          </app-status-tag>
         </td>
         <!-- Полоска одного цвета намеренно. Разноцветная читалась как
-               ещё один статус — при том что статус стоит в соседней
-               колонке и говорит ровно это. Цвет тот же, что у полосок в
-               кабинете заказчика. Что полоска меряет, говорит подпись. -->
+                 ещё один статус — при том что статус стоит в соседней
+                 колонке и говорит ровно это. Что полоска меряет, говорит
+                 подпись. -->
         <td data-label="Прогресс" class="progress-cell">
           @if (progress(p); as m) { @if (m.percent !== null) {
           <div class="progress-row" [title]="m.hint">
@@ -116,7 +128,6 @@
               nzSize="small"
               [nzShowInfo]="false"
               nzStatus="normal"
-              nzStrokeColor="#2dd4bf"
             ></nz-progress>
             <span class="progress-num">{{ m.percent }}%</span>
           </div>
@@ -137,11 +148,5 @@
       }
     </tbody>
   </nz-table>
-
-  @if (!loading() && items().length === 0) {
-  <nz-empty
-    [nzNotFoundContent]="'Под текущие фильтры ничего не попало.'"
-    data-test="projects-empty"
-  ></nz-empty>
-  }
-</app-admin-layout>
+</app-list-state>
+}

@@ -1,32 +1,28 @@
-<app-manager-layout>
-  <div class="crm-page">
-    <h1>Шаблоны чеклистов</h1>
-    <p class="sub">
-      Из чего собирается чеклист выкладки. Подключается шаблон в самом проекте, во вкладке
-      «Материалы» — там же остаются и правки: они живут внутри проекта и библиотеку не меняют.
-    </p>
+<div class="crm-page">
+  <h1>Шаблоны чеклистов</h1>
+  <p class="sub">
+    Из чего собирается чеклист выкладки. Подключается шаблон в самом проекте, во вкладке «Материалы»
+    — там же остаются и правки: они живут внутри проекта и библиотеку не меняют.
+  </p>
 
-    @if (loading()) {
-    <p class="empty">Загружаем…</p>
-    } @else if (items().length) {
-    <div class="tpls">
-      @for (t of items(); track t.id) {
-      <article class="card tight tpl">
-        <div class="hd">
-          <h3>{{ t.name }}</h3>
-          <span class="tag">версия {{ t.version }}</span>
-        </div>
-        @if (t.description) {
-        <p class="sub">{{ t.description }}</p>
-        }
-        <span class="cnt">{{ t.items_count }} пунктов</span>
-      </article>
+  @if (loading()) {
+  <p class="empty">Загружаем…</p>
+  } @else if (items().length) {
+  <div class="tpls">
+    @for (t of items(); track t.id) {
+    <article class="card tight tpl">
+      <div class="hd">
+        <h3>{{ t.name }}</h3>
+        <span class="tag">версия {{ t.version }}</span>
+      </div>
+      @if (t.description) {
+      <p class="sub">{{ t.description }}</p>
       }
-    </div>
-    } @else {
-    <p class="empty">
-      Библиотека пуста. Пока в ней нет шаблонов, креатор сдаёт ссылки без проверок.
-    </p>
+      <span class="cnt">{{ t.items_count }} пунктов</span>
+    </article>
     }
   </div>
-</app-manager-layout>
+  } @else {
+  <p class="empty">Библиотека пуста. Пока в ней нет шаблонов, креатор сдаёт ссылки без проверок.</p>
+  }
+</div>

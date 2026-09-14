@@ -20,7 +20,6 @@ import {
 
 import { API_URL } from '@shared/api/api-url.token';
 import { AdminApi, ManagerInfo } from '@entities/admin/api/admin.api';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 
 interface UserSearchItem {
   user_id: string;
@@ -41,7 +40,6 @@ interface UserSearchItem {
     NzTagModule,
     NzSelectModule,
     NzPopconfirmModule,
-    AdminLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './managers.page.html',

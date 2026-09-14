@@ -1,10 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  OnInit,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -19,12 +13,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
-import {
-  AdminApi,
-  ListAllUsersParams,
-  UserListItem,
-} from '@entities/admin/api/admin.api';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
+import { AdminApi, ListAllUsersParams, UserListItem } from '@entities/admin/api/admin.api';
 
 type KindFilter = '' | 'client' | 'specialist';
 type RoleFilter = '' | 'manager' | 'admin' | 'regular';
@@ -43,7 +32,6 @@ type RoleFilter = '' | 'manager' | 'admin' | 'regular';
     NzIconModule,
     NzButtonModule,
     NzPopconfirmModule,
-    AdminLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './users.page.html',
@@ -90,12 +78,10 @@ export class AdminUsersPage implements OnInit {
   ];
 
   public constructor() {
-    this.search$
-      .pipe(debounceTime(300), distinctUntilChanged())
-      .subscribe(() => {
-        this.pageIndex.set(1);
-        this.fetch();
-      });
+    this.search$.pipe(debounceTime(300), distinctUntilChanged()).subscribe(() => {
+      this.pageIndex.set(1);
+      this.fetch();
+    });
   }
 
   public ngOnInit(): void {
@@ -143,9 +129,7 @@ export class AdminUsersPage implements OnInit {
       next: () => {
         this.msg.success(target ? 'Активирован' : 'Деактивирован');
         this.items.update((list) =>
-          list.map((it) =>
-            it.user_id === u.user_id ? { ...it, is_active: target } : it,
-          ),
+          list.map((it) => (it.user_id === u.user_id ? { ...it, is_active: target } : it)),
         );
       },
       error: (e: { error?: { message?: string } }) =>
@@ -162,9 +146,7 @@ export class AdminUsersPage implements OnInit {
         this.msg.success('Роль менеджера выдана');
         this.items.update((list) =>
           list.map((it) =>
-            it.user_id === u.user_id
-              ? { ...it, is_manager: true, is_approved: true }
-              : it,
+            it.user_id === u.user_id ? { ...it, is_manager: true, is_approved: true } : it,
           ),
         );
       },
@@ -179,9 +161,7 @@ export class AdminUsersPage implements OnInit {
         this.msg.success('Снят с роли менеджера');
         this.items.update((list) =>
           list.map((it) =>
-            it.user_id === u.user_id
-              ? { ...it, is_manager: false, is_approved: false }
-              : it,
+            it.user_id === u.user_id ? { ...it, is_manager: false, is_approved: false } : it,
           ),
         );
       },
@@ -225,8 +205,7 @@ export class AdminUsersPage implements OnInit {
   public roleLabel(u: UserListItem): { text: string; color: string } {
     if (u.is_admin) return { text: 'Admin', color: 'red' };
     if (u.is_manager) return { text: 'Manager', color: 'purple' };
-    if (u.kind === 'specialist' || u.kind === 'both')
-      return { text: 'Специалист', color: 'blue' };
+    if (u.kind === 'specialist' || u.kind === 'both') return { text: 'Специалист', color: 'blue' };
     return { text: 'Клиент', color: 'default' };
   }
 

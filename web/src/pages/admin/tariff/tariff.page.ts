@@ -14,7 +14,6 @@ import { BillingApi } from '@entities/billing/api/billing.api';
 import { TermsVersion } from '@entities/billing/model/billing.types';
 import { formatMoney, fromRubles, toRubles } from '@entities/billing/lib/money';
 import { parseApiError } from '@shared/api/api-error';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 
 /**
  * Прайс площадки: сколько платит заказчик за креатора и сколько из этого
@@ -56,7 +55,7 @@ interface Draft {
 @Component({
   selector: 'app-admin-tariff',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminLayoutComponent],
+  imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tariff.page.html',
   styleUrl: './tariff.page.scss',

@@ -12,7 +12,6 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 
 import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
 import { Pipeline } from '@entities/pipeline/model/pipeline.types';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 
 @Component({
   selector: 'app-admin-pipelines-list',
@@ -26,7 +25,6 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
     NzInputNumberModule,
     NzModalModule,
     NzTagModule,
-    AdminLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pipelines-list.page.html',

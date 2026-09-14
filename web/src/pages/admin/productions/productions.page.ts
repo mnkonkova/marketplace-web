@@ -11,7 +11,6 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 import { ProductionApi } from '@entities/production/api/production.api';
 import { Production } from '@entities/production/model/production.types';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 
 @Component({
   selector: 'app-admin-productions',
@@ -25,7 +24,6 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
     NzModalModule,
     NzTagModule,
     NzPopconfirmModule,
-    AdminLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './productions.page.html',
@@ -54,15 +52,13 @@ export class AdminProductionsPage implements OnInit {
       nzOnOk: () => {
         const e = this.editing();
         if (!e.name?.trim()) return false;
-        this.api
-          .create({ name: e.name, description: e.description ?? '' })
-          .subscribe({
-            next: () => {
-              this.msg.success('Создан');
-              this.fetch();
-            },
-            error: () => this.msg.error('Не удалось создать'),
-          });
+        this.api.create({ name: e.name, description: e.description ?? '' }).subscribe({
+          next: () => {
+            this.msg.success('Создан');
+            this.fetch();
+          },
+          error: () => this.msg.error('Не удалось создать'),
+        });
         return true;
       },
     });

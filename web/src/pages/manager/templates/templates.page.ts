@@ -5,7 +5,6 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import { ChecklistTemplate } from '@entities/publication/model/publication.types';
 import { parseApiError } from '@shared/api/api-error';
-import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.component';
 
 /**
  * Библиотека чеклистов — то, из чего менеджер собирает требования к
@@ -18,7 +17,7 @@ import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.c
 @Component({
   selector: 'app-manager-templates',
   standalone: true,
-  imports: [CommonModule, ManagerLayoutComponent],
+  imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './templates.page.html',
   styleUrl: './templates.page.scss',

@@ -1,10 +1,14 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnDestroy,
   OnInit,
+  TemplateRef,
   computed,
+  effect,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { CommonModule, NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -37,13 +41,12 @@ import {
   STAGE_STATUS_LABEL,
   getStepBadge,
 } from '@shared/lib/project-status';
-import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.component';
 import { ManagerTurnkeyProjectComponent } from '@widgets/manager-turnkey-project/manager-turnkey-project.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
 import { ProjectMaterialsComponent } from '@widgets/project-materials/project-materials.component';
 import { ProjectPublicationsComponent } from '@widgets/project-publications/project-publications.component';
 import { BackLinkComponent } from '@shared/nav/back-link.component';
-import { AdminCrumb, AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
+import { CrmShellStore } from '@widgets/crm-layout/crm-shell.store';
 
 @Component({
   selector: 'app-manager-project-detail',
@@ -59,8 +62,6 @@ import { AdminCrumb, AdminLayoutComponent } from '@widgets/admin-layout/admin-la
     NzModalModule,
     NzSelectModule,
     NgTemplateOutlet,
-    AdminLayoutComponent,
-    ManagerLayoutComponent,
     BackLinkComponent,
     ManagerTurnkeyProjectComponent,
     ProjectCommentsComponent,
@@ -71,7 +72,7 @@ import { AdminCrumb, AdminLayoutComponent } from '@widgets/admin-layout/admin-la
   templateUrl: './manager-project-detail.page.html',
   styleUrl: './manager-project-detail.page.scss',
 })
-export class ManagerProjectDetailPage implements OnInit {
+export class ManagerProjectDetailPage implements OnInit, OnDestroy {
   private readonly api = inject(ProjectApi);
 
   private readonly adminApi = inject(AdminApi);
@@ -86,6 +87,11 @@ export class ManagerProjectDetailPage implements OnInit {
 
   private readonly modal = inject(NzModalService);
 
+  private readonly shell = inject(CrmShellStore);
+
+  /** Меню «⋯» карточки — его рисует полоса крошек CRM-оболочки. */
+  private readonly actionsTpl = viewChild<TemplateRef<unknown>>('actionsTpl');
+
   // Список всех менеджеров (для админ-блока «Назначить менеджера»). Грузится
   // только если текущий юзер admin. Если manager — блок не показывается.
   public readonly managers = signal<ManagerInfo[]>([]);
@@ -98,6 +104,21 @@ export class ManagerProjectDetailPage implements OnInit {
   public readonly assignedManagerId = signal<string | null>(null);
 
   public readonly claimBusy = signal(false);
+
+  public constructor() {
+    // Меню «⋯» — только у админа: удаление проекта менеджеру недоступно.
+    // Крошки оболочка строит сама, страница добавляет к ним только то,
+    // чего в дереве разделов нет, — название открытого проекта.
+    effect(() => {
+      const admin = this.isAdmin() === 'admin';
+      this.shell.setTrail([{ label: this.project()?.title ?? 'Проект' }]);
+      this.shell.setActions(admin ? (this.actionsTpl() ?? null) : null);
+    });
+  }
+
+  public ngOnDestroy(): void {
+    this.shell.reset();
+  }
 
   public get assignedManagerValue(): string {
     return this.assignedManagerId() ?? '';
@@ -228,13 +249,6 @@ export class ManagerProjectDetailPage implements OnInit {
         }),
     });
   }
-
-  // Крошки вместо пилюли «Ко всем проектам» отдельной строкой: та занимала
-  // строку экрана, чтобы сказать то же самое одним словом меньше.
-  public readonly crumbs = computed<AdminCrumb[]>(() => [
-    { label: 'Проекты', link: '/admin/projects' },
-    { label: this.project()?.title ?? 'Проект' },
-  ]);
 
   public approveProposed(): void {
     const p = this.project();

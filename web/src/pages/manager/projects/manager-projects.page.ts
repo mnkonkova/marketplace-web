@@ -7,15 +7,20 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { NzMessageService } from 'ng-zorro-antd/message';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { ProjectApi } from '@entities/project/api/project.api';
 import { ProjectKind, ProjectManagerView } from '@entities/project/model/project.types';
-import { PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
+import { ProjectsView, parseProjectFilters } from '@entities/project/lib/project-filters';
+import { PROJECT_STATUS_LABEL, PROJECT_STATUS_TONE } from '@shared/lib/project-status';
 import { parseApiError } from '@shared/api/api-error';
 import { withFromPage } from '@shared/nav/from-page';
-import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.component';
+import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
+import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
+import { StatusTagComponent, StatusTone } from '@shared/ui/status-tag/status-tag.component';
+import { ViewSwitchComponent } from '@shared/ui/view-switch/view-switch.component';
+import { ManagerBoardComponent } from '@pages/manager/board/board.page';
 
 const KIND_LABEL: Record<ProjectKind, string> = {
   creators_turnkey: 'Креаторы под ключ',
@@ -24,17 +29,24 @@ const KIND_LABEL: Record<ProjectKind, string> = {
 };
 
 /**
- * Проекты менеджера списком.
+ * Проекты менеджера: список или канбан.
  *
  * Канбан показывает только то, у чего есть воронка, — а у проекта с
- * креаторами её нет вовсе: вместо шагов у него план выкладок. До этого
- * списка такие проекты были недостижимы: менеджер видел их в «Заявках»
- * ровно один раз, пока не взял на себя, и дальше терял.
+ * креаторами её нет вовсе: вместо шагов у него план выкладок. Поэтому
+ * список остаётся видом по умолчанию: он единственный, где виден весь
+ * набор, а канбан — второй взгляд на его часть.
  */
 @Component({
   selector: 'app-manager-projects',
   standalone: true,
-  imports: [CommonModule, ManagerLayoutComponent],
+  imports: [
+    CommonModule,
+    ListStateComponent,
+    PageHeadComponent,
+    StatusTagComponent,
+    ViewSwitchComponent,
+    ManagerBoardComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './manager-projects.page.html',
   styleUrl: './manager-projects.page.scss',
@@ -44,15 +56,24 @@ export class ManagerProjectsPage implements OnInit {
 
   private readonly router = inject(Router);
 
-  private readonly msg = inject(NzMessageService);
+  private readonly route = inject(ActivatedRoute);
 
   public readonly loading = signal(true);
+
+  public readonly error = signal<string | null>(null);
 
   public readonly items = signal<ProjectManagerView[]>([]);
 
   public readonly kindLabel = KIND_LABEL;
 
   public readonly statusLabel = PROJECT_STATUS_LABEL;
+
+  private readonly queryParams = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
+  /** Вид живёт в адресе — ссылка «канбаном» открывается канбаном. */
+  public readonly view = computed<ProjectsView>(() => parseProjectFilters(this.queryParams()).view);
 
   /** Фильтр по виду: «Все» плюс те виды, что реально есть в списке. */
   public readonly kind = signal<ProjectKind | 'all'>('all');
@@ -68,6 +89,12 @@ export class ManagerProjectsPage implements OnInit {
   });
 
   public ngOnInit(): void {
+    this.fetch();
+  }
+
+  public fetch(): void {
+    this.loading.set(true);
+    this.error.set(null);
     this.api.managerAssigned().subscribe({
       next: (r) => {
         this.items.set(r.items);
@@ -75,7 +102,7 @@ export class ManagerProjectsPage implements OnInit {
       },
       error: (e) => {
         this.loading.set(false);
-        this.msg.error(parseApiError(e, 'Не удалось загрузить проекты.').message);
+        this.error.set(parseApiError(e, 'Не удалось загрузить проекты.').message);
       },
     });
   }
@@ -84,8 +111,21 @@ export class ManagerProjectsPage implements OnInit {
     this.kind.set(k);
   }
 
+  public setView(v: ProjectsView): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { view: v === 'board' ? 'board' : null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
   public open(p: ProjectManagerView): void {
     void this.router.navigate(['/manager/projects', p.id], withFromPage(this.router));
+  }
+
+  public statusTone(s: ProjectManagerView['display_status']): StatusTone {
+    return PROJECT_STATUS_TONE[s];
   }
 
   /**

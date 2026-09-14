@@ -1,15 +1,12 @@
 @use '../../../shared/scss/breakpoints' as bp;
 
-.head {
+// Переключатель вида и главная кнопка стоят рядом: «канбаном» — это тоже
+// про то, что сейчас делают со списком, а не отдельная настройка.
+.head-acts {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  gap: 12px;
-
-  h1 {
-    margin: 0;
-  }
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 // Ряд фильтров и счётчик — те же, что на /admin/users: два соседних
@@ -65,6 +62,12 @@
     flex: 1;
     min-width: 70px;
   }
+
+  // Цвет полоски — токеном, а не шестнадцатеричным числом в шаблоне: он
+  // тот же, что у полосок в кабинете заказчика, и расходиться им нельзя.
+  ::ng-deep .ant-progress-bg {
+    background: var(--accent);
+  }
 }
 
 .progress-num {
@@ -81,20 +84,6 @@
 }
 
 @media (max-width: bp.$touch) {
-  .head {
-    flex-direction: column;
-    align-items: stretch;
-    margin-bottom: 16px;
-
-    h1 {
-      font-size: 20px;
-    }
-
-    button {
-      width: 100%;
-    }
-  }
-
   .filters {
     flex-direction: column;
     align-items: stretch;

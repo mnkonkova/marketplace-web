@@ -1,12 +1,11 @@
-<!-- Одна страница, две оболочки. Админ, открывший проект из своего
-     списка, оставался в менеджерском кабинете: вкладки менялись на
-     «Входящие · Канбан», и путь назад к админским разделам исчезал. -->
-@if (isAdmin() === 'admin') {
-<app-admin-layout [crumbs]="crumbs()" [viewingAsManager]="true">
-  <!-- Действия карточки — в полосе крошек, вплотную к названию проекта.
-       Меню, а не кнопки в ряд: тут лежит удаление, и место рядом с
-       «Применить» ему не подходит. -->
-  <div admin-actions class="proj-menu">
+<!-- Действия карточки — в полосе крошек CRM-оболочки, вплотную к названию
+     проекта. Меню, а не кнопки в ряд: тут лежит удаление, и место рядом с
+     «Применить» ему не подходит.
+
+     Шаблоном, а не проекцией: оболочка теперь стоит на родительском
+     маршруте, внутри у неё router-outlet — спроецировать туда нечего. -->
+<ng-template #actionsTpl>
+  <div class="proj-menu">
     <button
       type="button"
       class="dots"
@@ -18,7 +17,12 @@
       ⋯
     </button>
     @if (menuOpen()) {
-    <button type="button" class="menu-backdrop" aria-label="Закрыть меню" (click)="closeMenu()"></button>
+    <button
+      type="button"
+      class="menu-backdrop"
+      aria-label="Закрыть меню"
+      (click)="closeMenu()"
+    ></button>
     <div class="menu" role="menu">
       <button type="button" role="menuitem" class="danger" (click)="askDelete(deleteTpl)">
         Удалить проект
@@ -26,15 +30,18 @@
     </div>
     }
   </div>
+</ng-template>
 
-  <div class="admin-context">
-    <ng-container [ngTemplateOutlet]="body" />
-  </div>
-</app-admin-layout>
-} @else {
-<app-manager-layout>
+<!-- Одна страница, два взгляда. Разделы вокруг у админа и менеджера теперь
+     одни и те же — их даёт CRM-оболочка, — а различается содержимое:
+     менеджеру его боковая колонка про свой день говорит правду, админу в
+     чужом проекте — нет, и её заменяет админский блок (см. .crm-context). -->
+@if (isAdmin() === 'admin') {
+<div class="crm-context">
   <ng-container [ngTemplateOutlet]="body" />
-</app-manager-layout>
+</div>
+} @else {
+<ng-container [ngTemplateOutlet]="body" />
 }
 
 <ng-template #body>
@@ -45,7 +52,7 @@
        только менеджеру, и ведёт она на его канбан. Откуда пришли на самом
        деле — знает from_page. -->
   @if (isAdmin() !== 'admin') {
-  <app-back-link defaultUrl="/manager/board" excludePrefix="/manager/projects/" />
+  <app-back-link defaultUrl="/manager/projects" excludePrefix="/manager/projects/" />
   }
 
   <!-- Админский блок вместо менеджерской боковой колонки: та в чужом
@@ -63,7 +70,10 @@
         nzAllowClear
       >
         @for (m of managers(); track m.user_id) {
-        <nz-option [nzValue]="m.user_id" [nzLabel]="(m.display_name || m.email || m.user_id)"></nz-option>
+        <nz-option
+          [nzValue]="m.user_id"
+          [nzLabel]="(m.display_name || m.email || m.user_id)"
+        ></nz-option>
         }
       </nz-select>
       <button nz-button nzSize="small" (click)="assignManager()">Применить</button>

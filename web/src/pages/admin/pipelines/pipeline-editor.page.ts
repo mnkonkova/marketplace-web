@@ -3,12 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
-import {
-  CdkDragDrop,
-  CdkDropList,
-  CdkDrag,
-  moveItemInArray,
-} from '@angular/cdk/drag-drop';
+import { CdkDragDrop, CdkDropList, CdkDrag, moveItemInArray } from '@angular/cdk/drag-drop';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
@@ -25,7 +20,6 @@ import {
   PipelineStageFull,
   PipelineStep,
 } from '@entities/pipeline/model/pipeline.types';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 
 @Component({
   selector: 'app-admin-pipeline-editor',
@@ -42,7 +36,6 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
     NzSwitchModule,
     NzSpinModule,
     NzModalModule,
-    AdminLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pipeline-editor.page.html',
@@ -136,9 +129,10 @@ export class AdminPipelineEditorPage implements OnInit {
     const stepsCount = s.steps?.length ?? 0;
     this.modal.confirm({
       nzTitle: 'Удалить стадию?',
-      nzContent: stepsCount > 0
-        ? `«${s.name || 'Без названия'}» — будет удалена вместе с ${stepsCount} шаг(ами). Действие нельзя отменить.`
-        : `«${s.name || 'Без названия'}» — стадия без шагов. Действие нельзя отменить.`,
+      nzContent:
+        stepsCount > 0
+          ? `«${s.name || 'Без названия'}» — будет удалена вместе с ${stepsCount} шаг(ами). Действие нельзя отменить.`
+          : `«${s.name || 'Без названия'}» — стадия без шагов. Действие нельзя отменить.`,
       nzOkText: 'Удалить',
       nzOkDanger: true,
       nzCancelText: 'Отмена',

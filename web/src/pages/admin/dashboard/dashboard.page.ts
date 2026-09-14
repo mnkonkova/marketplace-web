@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
@@ -9,7 +16,6 @@ import { ProjectApi } from '@entities/project/api/project.api';
 import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
 import { Pipeline } from '@entities/pipeline/model/pipeline.types';
 import { ProjectManagerView, ProjectDisplayStatus } from '@entities/project/model/project.types';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 
 interface FunnelStats {
   pipeline: Pipeline;
@@ -41,7 +47,7 @@ const BUCKETS: Record<ProjectDisplayStatus, keyof Omit<FunnelStats, 'pipeline' |
 @Component({
   selector: 'app-admin-dashboard-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, NzSpinModule, NzEmptyModule, AdminLayoutComponent],
+  imports: [CommonModule, RouterLink, NzSpinModule, NzEmptyModule],
   templateUrl: './dashboard.page.html',
   styleUrl: './dashboard.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -123,8 +129,8 @@ export class AdminDashboardPage implements OnInit {
    *  внимания админа. Считаются по сырому projects(), не зависят от pipeline. */
   public readonly health = computed(() => {
     const now = Date.now();
-    let orphans = 0;       // активные проекты без менеджера
-    let stuck = 0;         // активные, updated_at старше STUCK_THRESHOLD_DAYS
+    let orphans = 0; // активные проекты без менеджера
+    let stuck = 0; // активные, updated_at старше STUCK_THRESHOLD_DAYS
     let overRevisions = 0; // revisions_used > revisions_included
 
     for (const p of this.projects()) {

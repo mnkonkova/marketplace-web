@@ -1,3 +1,4 @@
+import { StatusTone } from '@shared/ui/status-tag/status-tag.component';
 import {
   ProjectDisplayStatus,
   ProjectKind,
@@ -25,6 +26,21 @@ export const PROJECT_STATUS_COLOR: Record<ProjectDisplayStatus, string> = {
   completed: 'green',
   on_hold: 'orange',
   cancelled: 'red',
+};
+
+// Смысл цвета, а не оттенок. nz-tag просил имя палитры ant ('gold',
+// 'blue'…), и на соседних экранах одно и то же состояние приезжало то
+// золотым, то оранжевым — палитру выбирали на глаз, по одному экрану.
+// Здесь сказано, что цвет значит: ждём мы чего-то или нет.
+export const PROJECT_STATUS_TONE: Record<ProjectDisplayStatus, StatusTone> = {
+  not_started: 'neutral',
+  in_progress: 'neutral',
+  // Мяч на нашей стороне — единственное состояние, ради которого список
+  // открывают.
+  waiting_action: 'wait',
+  on_hold: 'wait',
+  completed: 'ok',
+  cancelled: 'blocked',
 };
 
 export const STAGE_STATUS_LABEL: Record<StageDisplayStatus, string> = {

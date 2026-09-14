@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -11,12 +18,7 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import {
-  AdminApi,
-  ModerationListStatus,
-  ModerationQueueItem,
-} from '@entities/admin/api/admin.api';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
+import { AdminApi, ModerationListStatus, ModerationQueueItem } from '@entities/admin/api/admin.api';
 
 @Component({
   selector: 'app-admin-moderation',
@@ -32,7 +34,6 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
     NzSelectModule,
     NzEmptyModule,
     NzIconModule,
-    AdminLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './moderation.page.html',

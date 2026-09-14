@@ -3,8 +3,8 @@
 // дизайн-система: он общий для трёх экранов, и три копии в ленивых
 // чанках дороже одной в начальном.
 @use 'crm';
-// Правки чужой разметки внутри /admin — после 'crm': они её и правят.
-@use 'admin-shell';
+// Правки чужой разметки внутри CRM — после 'crm': они её и правят.
+@use 'crm-shell';
 @use 'editor' as editor;
 
 /* Полоса прокрутки резервирует место всегда: вкладки кабинета разной
@@ -38,6 +38,24 @@ html {
   --cta: #f0553c;
   --cta-hover: #ff6a52;
   --cta-active: #d34630;
+
+  /* Статусная палитра. Жила внутри .crm-page (--green/--amber/--red) и
+     потому была недоступна всему, что рисуется вне страниц проекта, —
+     статусные плашки в списках брали палитру ng-zorro и приезжали то
+     золотыми, то оранжевыми за одно и то же состояние. Что каждый цвет
+     значит, описано в shared/ui/status-tag. */
+  /* Моноширинный для чисел: разряды в столбце обязаны стоять друг под
+     другом, иначе два числа рядом не сравнить взглядом. */
+  --crm-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ok: #2fbd8f;
+  --ok-line: #1f6f57;
+  --ok-bg: rgb(47 189 143 / 10%);
+  --warn: #e2a33c;
+  --warn-line: #5f4519;
+  --warn-bg: rgb(226 163 60 / 10%);
+  --bad: #e0604e;
+  --bad-line: #4a2b28;
+  --bad-bg: rgb(224 96 78 / 10%);
 }
 
 *,
@@ -601,16 +619,20 @@ h6 {
 .ant-pagination-item:hover,
 .ant-pagination-prev:hover .ant-pagination-item-link,
 .ant-pagination-next:hover .ant-pagination-item-link {
-  border-color: var(--accent) !important;
+  border-color: var(--cta) !important;
 }
 
 .ant-pagination-item:hover a {
-  color: var(--accent) !important;
+  color: var(--cta) !important;
 }
 
+/* Текущая страница — коралловая, как всё выбранное и нажатое в
+   приложении. Зелёный здесь читался как «готово»: в таблице, где зелёным
+   помечены одобренные строки, тот же цвет на номере страницы означал
+   что-то про содержимое, а означает он «вы здесь». */
 .ant-pagination-item-active {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
+  background: var(--cta) !important;
+  border-color: var(--cta) !important;
 }
 
 .ant-pagination-item-active,
@@ -646,6 +668,29 @@ h6 {
 
 /* nzShowSizeChanger открывает .ant-select — общий select-override его
    покрывает (см. выше .ant-select-selector и т.п.), повторять не нужно. */
+
+/* Меню строки (app-row-menu). Выпадашка ng-zorro уезжает в оверлей на
+   уровень body — scoped-стили компонента до неё не достают, поэтому
+   красный пункт описан здесь. */
+.ant-dropdown-menu.row-menu {
+  background: var(--surface) !important;
+  border: 1px solid var(--border);
+}
+
+.ant-dropdown-menu.row-menu .ant-dropdown-menu-item {
+  color: var(--text) !important;
+}
+
+.ant-dropdown-menu.row-menu .ant-dropdown-menu-item:hover {
+  background: var(--surface-hover) !important;
+}
+
+/* Разрушающее — красным: в списке из пяти пунктов одинакового веса
+   необратимый ничем не отличался от остальных. */
+.ant-dropdown-menu.row-menu .ant-dropdown-menu-item.danger,
+.ant-dropdown-menu.row-menu .ant-dropdown-menu-item.danger:hover {
+  color: var(--danger) !important;
+}
 
 .ant-message-notice-content {
   background: var(--surface) !important;
@@ -1122,8 +1167,7 @@ app-invite-banner,
    (.hero, .slotcard, .terms…), но поля и кнопки ant внутри должны
    выглядеть как везде. */
 .crm-page,
-.admin-shell,
-.manager-layout,
+.crm-shell,
 /* Диалог входа открывается из пяти мест, поэтому цепляемся к самому
    компоненту, а не к nzClassName на каждом вызове. */
 app-auth-dialog,
@@ -1140,12 +1184,10 @@ app-email-unverified-dialog,
   @include design.sheet-trigger;
 }
 
-/* Админские таблицы шире экрана: в них десять колонок и кнопки действий
-   в последней. Без прокрутки внутри контейнера правый край просто
-   обрезался — кнопки «Подтвердить» и «Deactivate» не были видны и не
-   нажимались. */
-.admin-shell .ant-table-content,
-.manager-layout .ant-table-content {
+/* Таблицы CRM шире экрана: в них десять колонок и меню действий в
+   последней. Без прокрутки внутри контейнера правый край просто
+   обрезался — до меню строки было не добраться. */
+.crm-shell .ant-table-content {
   overflow-x: auto;
 }
 

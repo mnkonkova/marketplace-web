@@ -1,46 +1,65 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NzTableModule, NzTableQueryParams } from 'ng-zorro-antd/table';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzModalService } from 'ng-zorro-antd/modal';
-import { NzMessageService } from 'ng-zorro-antd/message';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 import { AdminApi, ManagerInfo } from '@entities/admin/api/admin.api';
-import { AdminProjectsParams, ProjectApi } from '@entities/project/api/project.api';
+import { ProjectApi } from '@entities/project/api/project.api';
 import {
-  AdminProjectsSort,
-  ProjectManagerView,
-  ProjectStatus,
-} from '@entities/project/model/project.types';
-import { formatAgo } from '@shared/lib/format';
+  DEFAULT_PROJECT_FILTERS,
+  ProjectFilters,
+  ProjectsView,
+  StatusFilter,
+  parseProjectFilters,
+  projectFiltersToParams,
+  projectFiltersToQuery,
+} from '@entities/project/lib/project-filters';
+import { AdminProjectsSort, ProjectManagerView } from '@entities/project/model/project.types';
+import { formatAgo, plural } from '@shared/lib/format';
 import {
-  PROJECT_STATUS_COLOR,
   PROJECT_STATUS_LABEL,
+  PROJECT_STATUS_TONE,
   ProgressMeasure,
   projectProgressMeasure,
   projectStageLabel,
 } from '@shared/lib/project-status';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
+import { parseApiError } from '@shared/api/api-error';
+import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
+import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
+import { StatusTagComponent, StatusTone } from '@shared/ui/status-tag/status-tag.component';
+import { ViewSwitchComponent } from '@shared/ui/view-switch/view-switch.component';
 import { CreateProjectDialogComponent } from '@features/create-project/create-project.dialog';
 import { withFromPage } from '@shared/nav/from-page';
+import { AdminBoardComponent } from '@pages/admin/board/board.page';
 
-// '' = без фильтра. Фильтруем по status проекта, а не по display_status:
-// второй вычисляется из шагов и в SQL его нет.
-type StatusFilter = '' | ProjectStatus;
-
-// 'none' — проекты без ответственного. Пустым значением это не выразить:
-// пустое значит «любой менеджер».
-type ManagerFilter = '' | 'none' | string;
-
+/**
+ * Все проекты площадки: список или канбан, фильтры — в адресе.
+ *
+ * Канбан переехал сюда с `/admin/board`: это не соседний раздел, а второй
+ * взгляд на тот же набор, и в сайдбаре он занимал пункт наравне с
+ * «Проектами», хотя отвечает на тот же вопрос.
+ *
+ * Фильтрация остаётся серверной. В адресе лежит ровно то, что уходит в
+ * `GET /admin/projects`, — чтобы ссылку на выборку можно было переслать,
+ * а F5 не сбрасывал её в чистый список (см. entities/project/lib).
+ */
 @Component({
   selector: 'app-admin-projects-list',
   standalone: true,
@@ -48,14 +67,16 @@ type ManagerFilter = '' | 'none' | string;
     CommonModule,
     FormsModule,
     NzTableModule,
-    NzTagModule,
     NzProgressModule,
     NzButtonModule,
     NzInputModule,
     NzSelectModule,
     NzCheckboxModule,
-    NzEmptyModule,
-    AdminLayoutComponent,
+    ListStateComponent,
+    PageHeadComponent,
+    StatusTagComponent,
+    ViewSwitchComponent,
+    AdminBoardComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './projects-list.page.html',
@@ -68,9 +89,9 @@ export class AdminProjectsListPage implements OnInit {
 
   private readonly modal = inject(NzModalService);
 
-  private readonly msg = inject(NzMessageService);
-
   private readonly router = inject(Router);
+
+  private readonly route = inject(ActivatedRoute);
 
   public readonly items = signal<ProjectManagerView[]>([]);
 
@@ -78,25 +99,22 @@ export class AdminProjectsListPage implements OnInit {
 
   public readonly loading = signal(false);
 
-  public readonly pageIndex = signal(1);
-
-  public readonly pageSize = signal(20);
+  public readonly error = signal<string | null>(null);
 
   public readonly managers = signal<ManagerInfo[]>([]);
 
+  /** Фильтры читаются из адреса — он здесь единственный источник правды. */
+  public readonly filters = computed<ProjectFilters>(() => parseProjectFilters(this.queryParams()));
+
+  private readonly queryParams = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
+  /** Что набрано в поле поиска. В адрес уезжает через debounce. */
   public q = '';
 
-  public status: StatusFilter = '';
-
-  public manager: ManagerFilter = '';
-
-  // По умолчанию — самые давно обновлённые сверху. Список открывают
-  // ровно с этим вопросом: что не двигалось и кто за это отвечает.
-  public sort: AdminProjectsSort = 'updated_asc';
-
-  // Тестовые проекты по умолчанию скрыты: из-за них половина списка была
-  // «тест т8т 1234», и настоящие проекты в нём терялись.
-  public includeTest = false;
+  public readonly boardSubtitle =
+    'Колонки — шаги воронки. Канбан собирается по всем проектам сразу, поэтому фильтры списка на нём не действуют.';
 
   public readonly statusOptions: { value: StatusFilter; label: string }[] = [
     { value: '', label: 'Все статусы' },
@@ -115,18 +133,26 @@ export class AdminProjectsListPage implements OnInit {
     { value: 'created_asc', label: 'Сначала старые' },
   ];
 
-  // Поиск с debounce — иначе запрос уходит на каждый символ.
+  /** Поиск с debounce — иначе запрос уходит на каждый символ. */
   private readonly search$ = new Subject<string>();
 
   public constructor() {
-    this.search$.pipe(debounceTime(300), distinctUntilChanged()).subscribe(() => {
-      this.pageIndex.set(1);
-      this.fetch();
+    this.search$.pipe(debounceTime(300), distinctUntilChanged()).subscribe((q) => {
+      this.patch({ q, page: 1 });
+    });
+    // Адрес поменялся — перечитываем список. Это же покрывает «назад» в
+    // браузере: страница возвращается в то состояние, в котором её
+    // оставили, а не в начальное.
+    effect(() => {
+      const f = this.filters();
+      // Канбан просит свой набор целиком и сам; списку он не нужен.
+      if (f.view === 'board') return;
+      this.fetch(f);
     });
   }
 
   public ngOnInit(): void {
-    this.fetch();
+    this.q = this.filters().q;
     // Список менеджеров нужен только для выпадашки фильтра. Не доехал —
     // страница работает, просто без фильтра по ответственному.
     this.adminApi.listManagers(true).subscribe({
@@ -135,24 +161,44 @@ export class AdminProjectsListPage implements OnInit {
     });
   }
 
+  /** «Найдено 12 проектов» — то же число, что у пагинатора, но словами. */
+  public readonly foundLabel = computed(
+    () =>
+      `Найдено ${this.total()} ${plural(this.total(), 'проект', 'проекта', 'проектов')} — фильтры остаются в адресе, ссылкой на выборку можно поделиться.`,
+  );
+
   public onSearch(): void {
     this.search$.next(this.q.trim());
   }
 
   // Смена фильтра возвращает на первую страницу: остаться на пятой при
   // сузившемся наборе значит увидеть пустую таблицу вместо результата.
-  public onFilterChange(): void {
-    this.pageIndex.set(1);
-    this.fetch();
+  public setStatus(v: StatusFilter): void {
+    this.patch({ status: v, page: 1 });
+  }
+
+  public setManager(v: string): void {
+    this.patch({ manager: v, page: 1 });
+  }
+
+  public setSort(v: AdminProjectsSort): void {
+    this.patch({ sort: v, page: 1 });
+  }
+
+  public setIncludeTest(v: boolean): void {
+    this.patch({ includeTest: v, page: 1 });
+  }
+
+  public setView(v: ProjectsView): void {
+    this.patch({ view: v });
   }
 
   // nz-table эмитит query params при смене страницы/размера. Offset
   // считаем сами — бэк принимает limit/offset, а не номер страницы.
   public onQueryParamsChange(p: NzTableQueryParams): void {
-    if (p.pageIndex !== this.pageIndex() || p.pageSize !== this.pageSize()) {
-      this.pageIndex.set(p.pageIndex);
-      this.pageSize.set(p.pageSize);
-      this.fetch();
+    const f = this.filters();
+    if (p.pageIndex !== f.page || p.pageSize !== f.pageSize) {
+      this.patch({ page: p.pageIndex, pageSize: p.pageSize });
     }
   }
 
@@ -165,7 +211,7 @@ export class AdminProjectsListPage implements OnInit {
       nzData: { mode: 'admin' },
     });
     ref.afterClose.subscribe((created) => {
-      if (created) this.fetch();
+      if (created) this.fetch(this.filters());
     });
   }
 
@@ -179,8 +225,8 @@ export class AdminProjectsListPage implements OnInit {
     return PROJECT_STATUS_LABEL[s];
   }
 
-  public statusColor(s: ProjectManagerView['display_status']): string {
-    return PROJECT_STATUS_COLOR[s];
+  public statusTone(s: ProjectManagerView['display_status']): StatusTone {
+    return PROJECT_STATUS_TONE[s];
   }
 
   public progress(p: ProjectManagerView): ProgressMeasure {
@@ -195,29 +241,37 @@ export class AdminProjectsListPage implements OnInit {
     return formatAgo(iso);
   }
 
-  private fetch(): void {
+  public retry(): void {
+    this.fetch(this.filters());
+  }
+
+  /** Записать изменение фильтра в адрес. Список перечитается сам. */
+  private patch(part: Partial<ProjectFilters>): void {
+    const next = { ...DEFAULT_PROJECT_FILTERS, ...this.filters(), ...part };
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: projectFiltersToQuery(next),
+      queryParamsHandling: 'merge',
+      // Каждая правка фильтра — не отдельный шаг истории: «назад» после
+      // трёх кликов по селектам должно возвращать на прошлую страницу, а
+      // не разбирать их по одному.
+      replaceUrl: true,
+    });
+  }
+
+  private fetch(f: ProjectFilters): void {
     this.loading.set(true);
-    const params: AdminProjectsParams = {
-      sort: this.sort,
-      limit: this.pageSize(),
-      offset: (this.pageIndex() - 1) * this.pageSize(),
-    };
-    // Короче двух символов сервер всё равно игнорирует — не шлём, чтобы
-    // в запросе не было параметра, который ни на что не влияет.
-    const q = this.q.trim();
-    if (q.length >= 2) params.q = q;
-    if (this.status) params.status = this.status;
-    if (this.manager) params.manager = this.manager;
-    if (this.includeTest) params.include_test = true;
-    this.api.adminListProjects(params).subscribe({
+    this.error.set(null);
+    this.api.adminListProjects(projectFiltersToParams(f)).subscribe({
       next: (r) => {
         this.items.set(r.items ?? []);
         this.total.set(r.total ?? 0);
         this.loading.set(false);
       },
-      error: () => {
+      error: (e) => {
         this.loading.set(false);
-        this.msg.error('Не удалось загрузить список проектов');
+        this.items.set([]);
+        this.error.set(parseApiError(e, 'Не удалось загрузить список проектов.').message);
       },
     });
   }

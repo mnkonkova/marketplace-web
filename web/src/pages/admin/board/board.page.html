@@ -1,20 +1,23 @@
-<app-admin-layout>
-  <header class="head">
-    <h1>Канбан · все проекты</h1>
-    @if (boards().length > 1) {
-    <nz-select [(ngModel)]="selected" style="min-width: 240px" nzPlaceHolder="Выберите воронку">
-      @for (b of boards(); track b.pipeline.id) {
-      <nz-option [nzValue]="b.pipeline.id" [nzLabel]="b.pipeline.name"></nz-option>
-      }
-    </nz-select>
+<!-- Заголовка здесь нет: канбан — вид раздела «Проекты», и второй h1 над
+     его собственным читался бы как другая страница. -->
+@if (boards().length > 1) {
+<div class="board-bar">
+  <nz-select [(ngModel)]="selected" style="min-width: 240px" nzPlaceHolder="Выберите воронку">
+    @for (b of boards(); track b.pipeline.id) {
+    <nz-option [nzValue]="b.pipeline.id" [nzLabel]="b.pipeline.name"></nz-option>
     }
-  </header>
+  </nz-select>
+</div>
+}
 
-  @if (loading()) {
-  <nz-spin nzSize="large"></nz-spin>
-  } @else if (boards().length === 0) {
-  <nz-empty nzNotFoundContent="Проектов нет"></nz-empty>
-  } @else if (currentBoard()) { @let board = currentBoard()!; @if (isListMode()) {
+<app-list-state
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="boards().length === 0"
+  emptyText="Проектов с воронкой нет: у проекта с креаторами шагов не бывает — ищите его в списке."
+  (retry)="fetch()"
+>
+  @if (currentBoard(); as board) { @if (isListMode()) {
   <app-board-list-view [board]="board" (cardTap)="onLongPress($event)" />
   } @else {
   <p class="hint">Колонки = шаги воронки. 🤖 — авто-шаг (n8n).</p>
@@ -44,10 +47,10 @@
           @if (p.client_display_name) {
           <small>Клиент: {{ p.client_display_name }}</small>
           }
-          <small class="assigned"> Менеджер: {{ p.assigned_to_user_id ? '✓' : '—' }} </small>
-          <nz-tag [nzColor]="statusColor(p.display_status)">
+          <small class="assigned">Менеджер: {{ p.manager_display_name || '—' }}</small>
+          <app-status-tag [tone]="statusTone(p.display_status)">
             {{ statusLabel(p.display_status) }}
-          </nz-tag>
+          </app-status-tag>
         </article>
         } @empty {
         <p class="empty-col">—</p>
@@ -68,4 +71,4 @@
     (openProject)="openMoveTargetProject()"
   />
   }
-</app-admin-layout>
+</app-list-state>

@@ -1,19 +1,18 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule, NgTemplateOutlet } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { ProjectApi } from '@entities/project/api/project.api';
 import { ProjectManagerView } from '@entities/project/model/project.types';
-import { PROJECT_STATUS_COLOR, PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
-import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
-import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.component';
+import { PROJECT_STATUS_LABEL, PROJECT_STATUS_TONE } from '@shared/lib/project-status';
+import { parseApiError } from '@shared/api/api-error';
+import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
+import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
+import { StatusTagComponent, StatusTone } from '@shared/ui/status-tag/status-tag.component';
+import { CrmShellStore } from '@widgets/crm-layout/crm-shell.store';
 
 @Component({
   selector: 'app-manager-inbox',
@@ -21,13 +20,10 @@ import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.c
   imports: [
     CommonModule,
     NzCardModule,
-    NzTagModule,
     NzButtonModule,
-    NzSpinModule,
-    NzEmptyModule,
-    NgTemplateOutlet,
-    AdminLayoutComponent,
-    ManagerLayoutComponent,
+    ListStateComponent,
+    PageHeadComponent,
+    StatusTagComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './inbox.page.html',
@@ -40,14 +36,16 @@ export class ManagerInboxPage implements OnInit {
 
   private readonly msg = inject(NzMessageService);
 
-  private readonly auth = inject(AuthSessionStore);
-
-  // «Заявки» — пункт и админского сайдбара тоже: очередь неразобранных
-  // проектов админ смотрит так же часто, как менеджер. Оболочку выбираем
-  // по роли, чтобы админ не проваливался из своих разделов в чужие.
-  public readonly isAdmin = this.auth.role;
+  private readonly shell = inject(CrmShellStore);
 
   public readonly loading = signal(true);
+
+  /**
+   * Ошибка загрузки — отдельно от пустого списка. Прежде их не различали:
+   * упавшая ручка выглядела как «все проекты разобраны», и человек уходил
+   * с экрана довольным.
+   */
+  public readonly error = signal<string | null>(null);
 
   public readonly projects = signal<ProjectManagerView[]>([]);
 
@@ -61,8 +59,8 @@ export class ManagerInboxPage implements OnInit {
     return PROJECT_STATUS_LABEL[s];
   }
 
-  public statusColor(s: ProjectManagerView['display_status']): string {
-    return PROJECT_STATUS_COLOR[s];
+  public statusTone(s: ProjectManagerView['display_status']): StatusTone {
+    return PROJECT_STATUS_TONE[s];
   }
 
   public claim(p: ProjectManagerView): void {
@@ -71,7 +69,7 @@ export class ManagerInboxPage implements OnInit {
       next: () => {
         this.claiming.set(null);
         this.msg.success('Проект взят');
-        void this.router.navigate(['/manager/board']);
+        void this.router.navigate(['/manager/projects', p.id]);
       },
       error: (e) => {
         this.claiming.set(null);
@@ -79,20 +77,28 @@ export class ManagerInboxPage implements OnInit {
           this.msg.warning('Уже взят другим менеджером');
           this.fetch();
         } else {
-          this.msg.error('Не удалось взять проект');
+          this.msg.error(parseApiError(e, 'Не удалось взять проект').message);
         }
       },
     });
   }
 
-  private fetch(): void {
+  public fetch(): void {
     this.loading.set(true);
+    this.error.set(null);
     this.api.managerInbox().subscribe({
       next: (r) => {
         this.projects.set(r.items);
+        // Бейдж «Входящих» в сайдбаре считается отсюда: оболочка живёт
+        // дольше страницы, и просить тот же список второй раз ради одной
+        // цифры было бы платой ни за что.
+        this.shell.setInboxCount(r.items.length);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (e) => {
+        this.loading.set(false);
+        this.error.set(parseApiError(e, 'Не удалось загрузить входящие.').message);
+      },
     });
   }
 }

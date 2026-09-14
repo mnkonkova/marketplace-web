@@ -13,7 +13,6 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { AdminApi, ModerationSpecialistDetail } from '@entities/admin/api/admin.api';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 
 @Component({
   selector: 'app-admin-moderation-detail',
@@ -30,7 +29,6 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
     NzSpinModule,
     NzAlertModule,
     NzIconModule,
-    AdminLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './moderation-detail.page.html',

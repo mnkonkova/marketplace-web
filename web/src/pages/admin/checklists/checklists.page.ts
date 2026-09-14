@@ -13,7 +13,6 @@ import {
 } from '@entities/publication/model/publication.types';
 import { PLATFORM_LABEL } from '@entities/publication/lib/publication-status';
 import { parseApiError } from '@shared/api/api-error';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 
 /** Строка редактора: то же, что пункт шаблона, но с ключом для track. */
 interface Row extends ChecklistTemplateItem {
@@ -35,7 +34,7 @@ interface Row extends ChecklistTemplateItem {
 @Component({
   selector: 'app-admin-checklists',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminLayoutComponent],
+  imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './checklists.page.html',
   styleUrl: './checklists.page.scss',
