@@ -81,6 +81,11 @@
     </div>
   </section>
 
+  <!-- Сводка по всем проектам сразу — над списком. Внутри одного проекта
+       на её главный вопрос ответа нет: во сколько обходится тысяча
+       просмотров по всему, что для вас делают. -->
+  <app-client-overview />
+
   @if (loading()) {
   <div class="center"><nz-spin nzSize="large"></nz-spin></div>
   } @else if (projects().length === 0) {

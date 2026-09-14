@@ -1,0 +1,173 @@
+<!-- Сводка по всем проектам. Стоит над списком проектов: она отвечает на
+     вопрос, которого внутри одного проекта не задать — во сколько
+     обходится тысяча просмотров по всему, что мы для вас делаем.
+
+     Слово «охват» здесь не встречается ни разу: мы считаем просмотры, и
+     на различии «показ против просмотра» стоит вся аргументация. -->
+@if (!failed() && (loading() || hasProjects())) {
+  <section class="overview">
+    @if (data(); as d) {
+      <header class="ohead">
+        <h2>Всё по вашим проектам</h2>
+        <span class="meta">
+          {{ d.projects_total }}
+          {{ plural(d.projects_total, 'проект', 'проекта', 'проектов') }}
+          @if (d.snapshot_approx) {
+            <!-- Часть чисел подтянута, а не измерена: поденную статистику
+                 к моменту подытога уже удалили. Сводка, которая этого не
+                 говорит, выглядит точнее, чем она есть. -->
+            <span class="state approx">часть чисел приблизительная</span>
+          }
+        </span>
+      </header>
+
+      <!-- Главное число экрана. Не «сколько потрачено» и не «сколько
+           просмотров» — а сколько стоит тысяча: оно падает по мере
+           роста, и это лучший аргумент, какой можно показать. -->
+      <div class="hero">
+        <span class="k">Тысяча просмотров обходится в</span>
+        @if (d.cost_per_1000; as cpm) {
+          <b>{{ money(cpm) }}</b>
+          <span class="d">
+            {{ views(d.views.total) }}
+            {{ plural(d.views.total, 'просмотр', 'просмотра', 'просмотров') }} за
+            {{ money(d.money.total) }}
+          </span>
+        } @else {
+          <b class="muted">—</b>
+          <span class="d">Посчитаем, когда выйдут первые ролики: пока делить не на что.</span>
+        }
+      </div>
+
+      <!-- Деньги тремя числами, и они про разное: «стоит на сегодня»,
+           «из них окончательно» и «уже переведено». Одной суммой их
+           схлопывать нельзя — это разные вопросы. -->
+      <div class="tiles">
+        <div class="tile">
+          <span class="k">Стоимость работы</span>
+          <b>{{ money(d.money.total) }}</b>
+          <span class="d">по всем проектам на сегодня</span>
+        </div>
+        <div class="tile">
+          <span class="k">Подытожено</span>
+          <b>{{ money(d.money.locked) }}</b>
+          <span class="d">
+            @if (d.money.current) {
+              и ещё {{ money(d.money.current) }} по идущим периодам — предварительно
+            } @else {
+              окончательные суммы по закрытым периодам
+            }
+          </span>
+        </div>
+        <div class="tile">
+          <span class="k">Переведено</span>
+          <b>{{ money(d.money.paid) }}</b>
+          <span class="d">подтверждённые платежи</span>
+        </div>
+      </div>
+
+      <!-- Площадки: все пять всегда, включая нулевые. Пропавший столбик
+           читается как сбой, а не как ноль. -->
+      <h3 class="sub">Просмотры по площадкам</h3>
+      <ul class="plats">
+        @for (row of platforms(); track row.platform) {
+          <li [class.zero]="!row.views">
+            <span class="name">{{ platformLabel[row.platform] }}</span>
+            <span class="track"><i [style.width.%]="row.percent"></i></span>
+            <b>
+              @if (row.views) {
+                {{ views(row.views) }}
+              } @else {
+                пока ничего
+              }
+            </b>
+          </li>
+        }
+      </ul>
+
+      <!-- График прироста. Ряд поденный и НЕ сглажен: провал в нём —
+           факт, а не шум. Столбики, а не линия: между «вчера 40 тысяч» и
+           «сегодня ноль» линия рисует плавный спуск, которого не было —
+           просто в этот день ничего не выходило. -->
+      @if (hasChart()) {
+        <h3 class="sub">Как растут просмотры</h3>
+        <div class="chart">
+          <svg
+            [attr.viewBox]="'0 0 ' + W + ' ' + H"
+            role="img"
+            aria-label="Прирост просмотров по дням"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            @for (t of yTicks(); track t.value) {
+              <line class="grid" [attr.x1]="PL" [attr.x2]="W - PR" [attr.y1]="t.y" [attr.y2]="t.y" />
+              <text class="tick" [attr.x]="PL - 8" [attr.y]="t.y + 3.5" text-anchor="end">
+                {{ t.value | number }}
+              </text>
+            }
+            @for (b of bars(); track b.date) {
+              <rect
+                class="bar"
+                [attr.x]="b.x"
+                [attr.y]="b.y"
+                [attr.width]="b.width"
+                [attr.height]="b.height"
+              >
+                <title>{{ b.date | date: 'd MMM' }}: +{{ b.views | number }}</title>
+              </rect>
+            }
+            <line
+              class="axis"
+              [attr.x1]="PL"
+              [attr.x2]="W - PR"
+              [attr.y1]="axisY()"
+              [attr.y2]="axisY()"
+            />
+            @for (t of xTicks(); track t.date) {
+              <text class="tick" [attr.x]="t.x" [attr.y]="H - 7" text-anchor="middle">
+                {{ t.date | date: 'd MMM' }}
+              </text>
+            }
+          </svg>
+          <p class="legend">
+            Столбик — сколько просмотров прибавилось за день, а не всего на эту дату.
+            @if (bestDay(); as best) {
+              Лучший день — {{ best.date | date: 'd MMM' }}: +{{ best.views_gained | number }}.
+            }
+          </p>
+        </div>
+      }
+
+      <h3 class="sub">По проектам</h3>
+      <ul class="projs">
+        @for (p of projects(); track p.project_id) {
+          <li>
+            <span class="t">
+              <b>{{ p.title }}</b>
+              @if (p.state === 'running') {
+                <span class="per">{{ periodOf(p) }}</span>
+              }
+            </span>
+            <!-- У не начавшегося проекта нулей не рисуем: ноль просмотров
+                 и ноль рублей читаются как «работаем и ничего не
+                 набрали», а это другое утверждение. -->
+            @if (p.state === 'not_started') {
+              <span class="soon">Период начнётся с первого вышедшего ролика</span>
+            } @else {
+              <span class="n">{{ views(p.views) }}</span>
+              <span class="sum">{{ money(p.total) }}</span>
+              <span class="cpm">
+                @if (p.cost_per_1000; as cpm) {
+                  {{ money(cpm) }} за 1000
+                } @else {
+                  цена тысячи — когда будут просмотры
+                }
+              </span>
+            }
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="empty">Собираем сводку по вашим проектам…</p>
+    }
+  </section>
+}

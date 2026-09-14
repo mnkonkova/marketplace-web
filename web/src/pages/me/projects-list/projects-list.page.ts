@@ -20,6 +20,7 @@ import { ProjectApi } from '@entities/project/api/project.api';
 import { ProjectClientView } from '@entities/project/model/project.types';
 import { PROJECT_STATUS_COLOR, PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import { ClientOverviewComponent } from '@widgets/client-overview/client-overview.component';
 import { withFromPage } from '@shared/nav/from-page';
 
 @Component({
@@ -37,6 +38,7 @@ import { withFromPage } from '@shared/nav/from-page';
     NzButtonModule,
     FormsModule,
     AppHeaderComponent,
+    ClientOverviewComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './projects-list.page.html',

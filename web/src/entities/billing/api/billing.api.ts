@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { API_URL } from '@shared/api/api-url.token';
 import {
   Accrual,
+  ClientOverview,
   BillingTerms,
   BillingTermsInput,
   CreatorEarnings,
@@ -154,6 +155,17 @@ export class BillingApi {
     return this.http.get<ProjectBilling>(`${this.api}/me/projects/${projectId}/billing`, {
       params: periodParam(period),
     });
+  }
+
+  /**
+   * Сводка по всем проектам заказчика.
+   *
+   * Кросс-проектный срез: просмотры по площадкам, счёт, стоимость тысячи
+   * просмотров и график роста. В проекте по отдельности такого ответа
+   * нет — там всё считается внутри одного проекта.
+   */
+  public clientOverview(): Observable<ClientOverview> {
+    return this.http.get<ClientOverview>(`${this.api}/me/overview`);
   }
 
   // ---- креатор ----

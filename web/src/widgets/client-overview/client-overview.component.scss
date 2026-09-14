@@ -1,0 +1,263 @@
+:host {
+  display: block;
+}
+
+.overview {
+  margin: 0 0 20px;
+  padding: 20px 22px;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: var(--r-card, 16px);
+  background: var(--surface);
+}
+
+.ohead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+}
+
+// Пометка про приблизительные числа — пунктиром и спокойным тоном: это
+// «перепроверь», а не «сломалось».
+.state.approx {
+  padding: 1px 9px;
+  border: 1px dashed var(--border-strong, #2c313a);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+// Главное число экрана — стоимость тысячи просмотров. Крупнее всего
+// остального намеренно: оно падает по мере роста, и это лучший
+// аргумент, какой можно показать.
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 18px;
+
+  .k {
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+
+  b {
+    font-size: clamp(30px, 2.4vw + 20px, 42px);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .muted {
+    color: var(--text-dim);
+  }
+
+  .d {
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #23272d);
+  border-radius: var(--r-card, 16px);
+  background: var(--bg-elevated, #111316);
+
+  .k {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  b {
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .d {
+    color: var(--text-dim);
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+}
+
+.sub {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.plats {
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+
+  .name {
+    width: 84px;
+    flex: 0 0 auto;
+    color: var(--text-muted);
+  }
+
+  .track {
+    display: block;
+    overflow: hidden;
+    height: 6px;
+    flex: 1;
+    border-radius: 999px;
+    background: var(--bg-elevated, #111316);
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: var(--accent, #20a194);
+    }
+  }
+
+  b {
+    min-width: 84px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  // Нулевую площадку не прячем, а гасим: пропавший столбик читается как
+  // сбой, а не как ноль.
+  li.zero b {
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+}
+
+.chart {
+  margin-bottom: 18px;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 150px;
+  }
+
+  .bar {
+    fill: var(--accent, #20a194);
+  }
+
+  .grid {
+    stroke: var(--border, #23272d);
+    stroke-width: 1;
+  }
+
+  .axis {
+    stroke: var(--border-strong, #2c313a);
+    stroke-width: 1;
+  }
+
+  .tick {
+    fill: var(--text-dim, #6b7280);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+  }
+
+  .legend {
+    margin: 6px 0 0;
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+}
+
+.projs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border, #23272d);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .t {
+    flex: 1;
+    min-width: 180px;
+    font-size: 13.5px;
+  }
+
+  .per {
+    margin-left: 8px;
+    color: var(--text-dim);
+    font-size: 11.5px;
+  }
+
+  .n,
+  .sum {
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+  }
+
+  .sum {
+    min-width: 96px;
+    text-align: right;
+  }
+
+  .cpm {
+    min-width: 150px;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: right;
+  }
+
+  // Не начавшийся проект: вместо нулей — что будет дальше.
+  .soon {
+    color: var(--text-dim);
+    font-size: 12.5px;
+  }
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13.5px;
+}

@@ -69,21 +69,24 @@
   background: none;
 }
 
+// Точка — единственное, чем день с выкладкой отличается от пустого.
+// Пять пикселей цветом --text-dim на тёмной клетке почти не видно, и
+// календарь читается как пустой: «дат не отображается».
 .dot {
   position: absolute;
   bottom: 4px;
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
 
   &.published {
-    left: calc(50% - 7px);
+    left: calc(50% - 8px);
     background: var(--accent, #20a194);
   }
 
   &.planned {
     left: calc(50% + 2px);
-    background: var(--text-dim);
+    background: var(--text-muted);
   }
 }
 
