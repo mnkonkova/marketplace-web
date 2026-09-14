@@ -85,51 +85,24 @@
         }
       </ul>
 
-      <!-- График прироста. Ряд поденный и НЕ сглажен: провал в нём —
-           факт, а не шум. Столбики, а не линия: между «вчера 40 тысяч» и
-           «сегодня ноль» линия рисует плавный спуск, которого не было —
-           просто в этот день ничего не выходило. -->
+      <!-- График прироста. Линия, а не столбики: просмотры — величина
+           непрерывная, и от графика ждут формы роста, а не набора палок.
+           Ряд НЕ сглажен: ломаная по точкам, потому что сглаженная
+           кривая показывает между замерами значения, которых не было.
+           Дни, которых в ряду нет, линия не соединяет — их не мерили. -->
       @if (hasChart()) {
         <h3 class="sub">Как растут просмотры</h3>
         <div class="chart">
-          <svg
-            [attr.viewBox]="'0 0 ' + W + ' ' + H"
-            role="img"
-            aria-label="Прирост просмотров по дням"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            @for (t of yTicks(); track t.value) {
-              <line class="grid" [attr.x1]="PL" [attr.x2]="W - PR" [attr.y1]="t.y" [attr.y2]="t.y" />
-              <text class="tick" [attr.x]="PL - 8" [attr.y]="t.y + 3.5" text-anchor="end">
-                {{ t.value | number }}
-              </text>
-            }
-            @for (b of bars(); track b.date) {
-              <rect
-                class="bar"
-                [attr.x]="b.x"
-                [attr.y]="b.y"
-                [attr.width]="b.width"
-                [attr.height]="b.height"
-              >
-                <title>{{ b.date | date: 'd MMM' }}: +{{ b.views | number }}</title>
-              </rect>
-            }
-            <line
-              class="axis"
-              [attr.x1]="PL"
-              [attr.x2]="W - PR"
-              [attr.y1]="axisY()"
-              [attr.y2]="axisY()"
-            />
-            @for (t of xTicks(); track t.date) {
-              <text class="tick" [attr.x]="t.x" [attr.y]="H - 7" text-anchor="middle">
-                {{ t.date | date: 'd MMM' }}
-              </text>
-            }
-          </svg>
+          <app-line-chart
+            [points]="chartPoints()"
+            label="Прирост просмотров по дням"
+            yLabel="просмотров за день"
+            sign="+"
+            [height]="150"
+          />
           <p class="legend">
-            Столбик — сколько просмотров прибавилось за день, а не всего на эту дату.
+            Точка — сколько просмотров прибавилось за день, а не всего на эту дату. Наведите на
+            график, чтобы увидеть число за конкретный день.
             @if (bestDay(); as best) {
               Лучший день — {{ best.date | date: 'd MMM' }}: +{{ best.views_gained | number }}.
             }

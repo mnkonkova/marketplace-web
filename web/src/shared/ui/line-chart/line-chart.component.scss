@@ -1,0 +1,81 @@
+:host {
+  display: block;
+}
+
+// Шапка: подпись оси Y слева, период и переключатели справа. Одной
+// строкой, потому что вместе они отвечают на один вопрос — «что и за
+// какой срок тут нарисовано».
+.lchead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+  color: var(--text-dim, #6b7280);
+  font-size: 11.5px;
+
+  .span {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+svg {
+  // height: auto — высота берётся из viewBox. Фиксированная вместе с
+  // width: 100% оставляла бы поля по бокам на узком экране.
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+// Ломаная, а не сглаженная кривая: сглаживание показывает между двумя
+// замерами значения, которых не было.
+.line {
+  fill: none;
+  stroke: var(--accent, #2fbd8f);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+// Мягкая заливка до оси: линия читается как объём, а не как случайная
+// ломаная в пустом поле. Слабая намеренно — сетка под ней должна
+// оставаться видимой.
+.area {
+  fill: rgb(47 189 143 / 10%);
+  stroke: none;
+}
+
+.dot {
+  fill: var(--accent, #2fbd8f);
+  stroke: var(--bg, #0e1013);
+  stroke-width: 1;
+}
+
+.grid {
+  stroke: var(--border, #23272d);
+  stroke-width: 1;
+}
+
+.axis {
+  stroke: var(--border-strong, #2c313a);
+  stroke-width: 1;
+}
+
+.tick {
+  fill: var(--text-dim, #6b7280);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+}
+
+// Колонка под наведение. Невидима, но кликабельна: у прозрачной заливки
+// события мыши остаются, у fill: none — нет.
+.hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.hit:hover {
+  fill: rgb(255 255 255 / 4%);
+}

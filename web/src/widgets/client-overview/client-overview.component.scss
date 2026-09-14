@@ -166,33 +166,9 @@
 }
 
 .chart {
+  // Сам график рисует общий app-line-chart — его сетка, оси и подписи
+  // живут в нём. Здесь остаётся только то, что вокруг.
   margin-bottom: 18px;
-
-  svg {
-    display: block;
-    width: 100%;
-    height: 150px;
-  }
-
-  .bar {
-    fill: var(--accent, #20a194);
-  }
-
-  .grid {
-    stroke: var(--border, #23272d);
-    stroke-width: 1;
-  }
-
-  .axis {
-    stroke: var(--border-strong, #2c313a);
-    stroke-width: 1;
-  }
-
-  .tick {
-    fill: var(--text-dim, #6b7280);
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10.5px;
-  }
 
   .legend {
     margin: 6px 0 0;

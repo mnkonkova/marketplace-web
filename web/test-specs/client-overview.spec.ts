@@ -49,13 +49,7 @@ describe('ClientOverviewComponent', () => {
   it('площадок всегда пять, включая те, где ничего нет', () => {
     const rows = setup(overview()).platforms();
     expect(rows.length).toBe(5);
-    expect(rows.map((r) => r.platform)).toEqual([
-      'tiktok',
-      'instagram',
-      'youtube',
-      'vk',
-      'likee',
-    ]);
+    expect(rows.map((r) => r.platform)).toEqual(['tiktok', 'instagram', 'youtube', 'vk', 'likee']);
     const likee = rows.find((r) => r.platform === 'likee')!;
     expect(likee.views).toBe(0);
     expect(likee.percent).toBe(0);
@@ -67,6 +61,14 @@ describe('ClientOverviewComponent', () => {
     expect(rows.find((r) => r.platform === 'instagram')!.percent).toBe(25);
   });
 
+  /**
+   * График рисует линию, а не столбики: просмотры — величина
+   * непрерывная, и от графика ждут формы роста, а не набора палок.
+   *
+   * Геометрию и разрывы считает общий app-line-chart (его разбор ряда
+   * проверяет chart-series.spec.ts) — здесь остаётся ровно то, за что
+   * отвечает сводка: какой ряд она в этот график отдаёт.
+   */
   describe('график прироста', () => {
     const series = [
       { date: '2026-09-10', views_gained: 40_000 },
@@ -77,25 +79,20 @@ describe('ClientOverviewComponent', () => {
       { date: '2026-09-12', views_gained: 20_000 },
     ];
 
-    it('нулевой день рисуется нулевой высотой, а не подтягивается к соседям', () => {
-      const bars = setup(overview({ series })).bars();
-      expect(bars.length).toBe(3);
-      expect(bars[1].height).toBe(0);
-      expect(bars[0].height).toBeGreaterThan(bars[2].height);
+    it('в график уходит прирост за день, а не накопленный итог', () => {
+      const pts = setup(overview({ series })).chartPoints();
+      expect(pts.map((p) => p.date)).toEqual(['2026-09-10', '2026-09-11', '2026-09-12']);
+      expect(pts.map((p) => p.value)).toEqual([40_000, 0, 20_000]);
     });
 
-    // Столбик в треть пикселя не рисуется вовсе, и день с просмотрами
-    // выглядит как пустой — то есть ряд врёт ровно там, где он точен.
-    it('маленький, но ненулевой день всё равно виден', () => {
-      const cmp = setup(
-        overview({
-          series: [
-            { date: '2026-09-10', views_gained: 1_000_000 },
-            { date: '2026-09-11', views_gained: 3 },
-          ],
-        }),
-      );
-      expect(cmp.bars()[1].height).toBeGreaterThanOrEqual(1);
+    /**
+     * Ноль просмотров и «в этот день не собирали» — разные вещи. Ноль
+     * измерен, и подменять его дырой нельзя: это тоже ответ.
+     */
+    it('нулевой день остаётся нулём, а не выбрасывается из ряда', () => {
+      const pts = setup(overview({ series })).chartPoints();
+      expect(pts.length).toBe(3);
+      expect(pts[1].value).toBe(0);
     });
 
     it('лучший день — максимум прироста, а не последний', () => {
