@@ -1,7 +1,12 @@
 import type { ProgressiveUpgradeService } from './progressive-upgrade.service';
 
 /** Когда триггерить загрузку full-варианта. */
-export type UpgradeTrigger = 'immediate' | 'onPlay-2s' | 'onHover' | 'onIntersect-50%' | 'manual';
+export type UpgradeTrigger =
+  | 'immediate'
+  | 'onPlay-2s'
+  | 'onHover'
+  | 'onIntersect-50%'
+  | 'manual';
 
 export interface ProgressiveUpgradeOptions {
   /** Уже загруженный preview-элемент (видимый, играет). */
@@ -195,7 +200,12 @@ export function enableProgressiveUpgrade(
       { once: true },
     );
 
-    addListener(full, 'error', () => cleanup(), { once: true });
+    addListener(
+      full,
+      'error',
+      () => cleanup(),
+      { once: true },
+    );
 
     // Sanity-timeout 30s — не висим вечно на тормозном CDN.
     upgradeTimer = setTimeout(() => {
