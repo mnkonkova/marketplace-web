@@ -1,5 +1,12 @@
 @use '../../../shared/scss/breakpoints' as bp;
 
+.off-toggle {
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 td.r,
 th.r {
   width: 1%;

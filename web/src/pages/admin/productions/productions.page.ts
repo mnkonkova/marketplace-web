@@ -1,9 +1,17 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
@@ -24,6 +32,7 @@ import { StatusTagComponent } from '@shared/ui/status-tag/status-tag.component';
     NzTableModule,
     NzButtonModule,
     NzInputModule,
+    NzCheckboxModule,
     NzModalModule,
     ListStateComponent,
     PageHeadComponent,
@@ -42,6 +51,19 @@ export class AdminProductionsPage implements OnInit {
   private readonly msg = inject(NzMessageService);
 
   public readonly items = signal<Production[]>([]);
+
+  /**
+   * Выключенные по умолчанию скрыты. Выключенный продакшен нельзя
+   * назначить, а в общей куче он выглядит обычной строкой — и его
+   * выбирают, пока не упрутся. Счётчик в сайдбаре считает так же.
+   */
+  public includeOff = false;
+
+  public readonly visible = computed(() =>
+    this.includeOff ? this.items() : this.items().filter((p) => p.is_active),
+  );
+
+  public readonly hiddenCount = computed(() => this.items().filter((p) => !p.is_active).length);
 
   public readonly loading = signal(true);
 
@@ -127,6 +149,11 @@ export class AdminProductionsPage implements OnInit {
 
   public set description(v: string) {
     this.editing.set({ ...this.editing(), description: v });
+  }
+
+  public onToggleOff(): void {
+    // Ручка отдаёт всё сразу — перечитывать список ради фильтра незачем.
+    this.items.set([...this.items()]);
   }
 
   public fetch(): void {

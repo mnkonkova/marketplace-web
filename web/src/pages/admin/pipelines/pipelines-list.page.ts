@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -6,6 +13,7 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
@@ -27,6 +35,7 @@ import { StatusTagComponent } from '@shared/ui/status-tag/status-tag.component';
     NzButtonModule,
     NzInputModule,
     NzInputNumberModule,
+    NzCheckboxModule,
     NzModalModule,
     ListStateComponent,
     PageHeadComponent,
@@ -47,6 +56,21 @@ export class AdminPipelinesListPage implements OnInit {
   private readonly msg = inject(NzMessageService);
 
   public readonly items = signal<Pipeline[]>([]);
+
+  /**
+   * Выключенные по умолчанию скрыты, как и тестовые проекты.
+   *
+   * Выключенная воронка в общей куче сбивает: назначить её нельзя, а
+   * выглядит она обычной строкой. Заодно число строк сходится со
+   * счётчиком в сайдбаре — он считает только действующие.
+   */
+  public includeOff = false;
+
+  public readonly visible = computed(() =>
+    this.includeOff ? this.items() : this.items().filter((p) => p.is_active),
+  );
+
+  public readonly hiddenCount = computed(() => this.items().filter((p) => !p.is_active).length);
 
   public readonly loading = signal(true);
 
@@ -152,6 +176,12 @@ export class AdminPipelinesListPage implements OnInit {
 
   public set revisions(v: number) {
     this.draft.set({ ...this.draft(), revisions_included: v });
+  }
+
+  public onToggleOff(): void {
+    // Значение уже в поле — перечитывать список незачем: ручка отдаёт всё
+    // сразу, и фильтр здесь клиентский по той же причине.
+    this.items.set([...this.items()]);
   }
 
   public fetch(): void {

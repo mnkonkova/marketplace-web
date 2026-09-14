@@ -26,6 +26,16 @@
     data-test="projects-search"
   />
   <nz-select
+    [ngModel]="f.kind"
+    (ngModelChange)="setKind($event)"
+    style="min-width: 150px"
+    data-test="projects-kind"
+  >
+    @for (o of kindOptions; track o.value) {
+    <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+    }
+  </nz-select>
+  <nz-select
     [ngModel]="f.status"
     (ngModelChange)="setStatus($event)"
     style="min-width: 150px"
@@ -68,6 +78,16 @@
 
 <p class="counter">Найдено: <strong data-test="projects-total">{{ total() }}</strong></p>
 
+<!-- Адрес выборки виден целиком: «скопировать ссылку» вслепую не говорит,
+     что именно уедет в переписку. -->
+<p class="shareurl">
+  <span>Ссылка на выборку</span>
+  <code data-test="projects-share">{{ shareUrl() }}</code>
+  <button type="button" class="copy" (click)="copyShareUrl()">
+    {{ copied() ? 'Скопировано' : 'Скопировать' }}
+  </button>
+</p>
+
 <app-list-state
   [loading]="loading()"
   [error]="error()"
@@ -95,13 +115,15 @@
         <th>Прогресс</th>
         <th>Стадия</th>
         <th>Обновлён</th>
+        <th class="r"></th>
       </tr>
     </thead>
     <tbody>
       @for (p of items(); track p.id) {
-      <tr (click)="open(p)" style="cursor: pointer" data-test="project-row">
+      <tr data-test="project-row">
         <td data-label="Название">
-          {{ p.title }} @if (p.is_test) {
+          <button type="button" class="title" (click)="open(p)">{{ p.title }}</button>
+          @if (p.is_test) {
           <app-status-tag class="test-tag">тест</app-status-tag>
           }
         </td>
@@ -131,7 +153,7 @@
             ></nz-progress>
             <span class="progress-num">{{ m.percent }}%</span>
           </div>
-          <span class="progress-caption">{{ m.caption }}</span>
+          <span class="progress-caption">{{ progressText(p) || m.caption }}</span>
           } @else {
           <span class="dim" [title]="m.hint">{{ m.caption }}</span>
           } }
@@ -143,6 +165,13 @@
         </td>
         <td data-label="Обновлён" [title]="p.updated_at | date: 'dd.MM.yyyy HH:mm'">
           {{ ago(p.updated_at) }}
+        </td>
+        <td data-label="" class="r">
+          <app-row-menu
+            [items]="menuFor(p)"
+            [label]="'Действия: ' + p.title"
+            (pick)="onPick(p, $event)"
+          />
         </td>
       </tr>
       }

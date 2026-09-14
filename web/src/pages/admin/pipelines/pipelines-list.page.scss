@@ -1,5 +1,12 @@
 @use '../../../shared/scss/breakpoints' as bp;
 
+.off-toggle {
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 // Строка кликабельна целиком: попадать в одну кнопку в последней колонке
 // мышью неудобно, а на тач-экране почти невозможно.
 .row {

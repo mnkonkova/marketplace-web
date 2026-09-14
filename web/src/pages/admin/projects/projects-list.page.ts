@@ -18,12 +18,14 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzModalService } from 'ng-zorro-antd/modal';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 import { AdminApi, ManagerInfo } from '@entities/admin/api/admin.api';
 import { ProjectApi } from '@entities/project/api/project.api';
 import {
   DEFAULT_PROJECT_FILTERS,
+  KindFilter,
   ProjectFilters,
   ProjectsView,
   StatusFilter,
@@ -32,7 +34,9 @@ import {
   projectFiltersToQuery,
 } from '@entities/project/lib/project-filters';
 import { AdminProjectsSort, ProjectManagerView } from '@entities/project/model/project.types';
-import { formatAgo } from '@shared/lib/format';
+import { AdminSummaryStore } from '@entities/admin/model/admin-summary.store';
+import { formatAgo, plural } from '@shared/lib/format';
+import { copyToClipboard } from '@shared/lib/clipboard';
 import {
   PROJECT_STATUS_LABEL,
   PROJECT_STATUS_TONE,
@@ -43,6 +47,7 @@ import {
 import { parseApiError } from '@shared/api/api-error';
 import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
 import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
+import { RowMenuComponent, RowMenuItem } from '@shared/ui/row-menu/row-menu.component';
 import { StatusTagComponent, StatusTone } from '@shared/ui/status-tag/status-tag.component';
 import { ViewSwitchComponent } from '@shared/ui/view-switch/view-switch.component';
 import { CreateProjectDialogComponent } from '@features/create-project/create-project.dialog';
@@ -74,6 +79,7 @@ import { AdminBoardComponent } from '@pages/admin/board/board.page';
     NzCheckboxModule,
     ListStateComponent,
     PageHeadComponent,
+    RowMenuComponent,
     StatusTagComponent,
     ViewSwitchComponent,
     AdminBoardComponent,
@@ -92,6 +98,10 @@ export class AdminProjectsListPage implements OnInit {
   private readonly router = inject(Router);
 
   private readonly route = inject(ActivatedRoute);
+
+  private readonly msg = inject(NzMessageService);
+
+  private readonly summary = inject(AdminSummaryStore);
 
   public readonly items = signal<ProjectManagerView[]>([]);
 
@@ -116,7 +126,10 @@ export class AdminProjectsListPage implements OnInit {
   public readonly boardSubtitle =
     'Канбан собирается по всем проектам сразу — фильтры списка на нём не действуют.';
 
+  // «Активные» первым и по умолчанию: список открывают, чтобы посмотреть
+  // работу, а не архив. Тот же набор считает счётчик в сайдбаре.
   public readonly statusOptions: { value: StatusFilter; label: string }[] = [
+    { value: 'unfinished', label: 'Активные' },
     { value: '', label: 'Все статусы' },
     { value: 'draft', label: 'Черновик' },
     { value: 'active', label: 'В работе' },
@@ -124,6 +137,13 @@ export class AdminProjectsListPage implements OnInit {
     { value: 'dispute', label: 'Спор' },
     { value: 'done', label: 'Завершён' },
     { value: 'cancelled', label: 'Отменён' },
+  ];
+
+  public readonly kindOptions: { value: KindFilter; label: string }[] = [
+    { value: '', label: 'Все ветки' },
+    { value: 'creators_turnkey', label: 'Креаторы' },
+    { value: 'production_turnkey', label: 'Продакшн' },
+    { value: 'general', label: 'Общие' },
   ];
 
   public readonly sortOptions: { value: AdminProjectsSort; label: string }[] = [
@@ -173,6 +193,10 @@ export class AdminProjectsListPage implements OnInit {
   // сузившемся наборе значит увидеть пустую таблицу вместо результата.
   public setStatus(v: StatusFilter): void {
     this.patch({ status: v, page: 1 });
+  }
+
+  public setKind(v: KindFilter): void {
+    this.patch({ kind: v, page: 1 });
   }
 
   public setManager(v: string): void {
@@ -241,6 +265,100 @@ export class AdminProjectsListPage implements OnInit {
 
   public retry(): void {
     this.fetch(this.filters());
+  }
+
+  /**
+   * Адрес выборки — его и пересылают. Показываем целиком, а не «скопировать
+   * ссылку» вслепую: человек должен видеть, что именно уедет в переписку.
+   */
+  public readonly shareUrl = computed(() => {
+    const q = projectFiltersToQuery(this.filters());
+    const parts = Object.entries(q)
+      .filter(([, v]) => v !== null)
+      .map(([k, v]) => `${k}=${v}`);
+    return '/admin/projects' + (parts.length ? `?${parts.join('&')}` : '');
+  });
+
+  public readonly copied = signal(false);
+
+  public copyShareUrl(): void {
+    const url =
+      typeof location === 'undefined' ? this.shareUrl() : location.origin + this.shareUrl();
+    const ok = copyToClipboard(url);
+    this.copied.set(ok);
+    if (!ok) this.msg.error('Скопировать не вышло — выделите адрес и скопируйте вручную.');
+  }
+
+  /** Прогресс числом: «3 из 5 выкладок» вместо 60%, из которых неясно, из чего. */
+  public progressText(p: ProjectManagerView): string {
+    if (p.progress_total == null || p.progress_total === 0) return '';
+    const unit =
+      p.progress_unit === 'publications'
+        ? plural(p.progress_total, 'выкладка', 'выкладки', 'выкладок')
+        : plural(p.progress_total, 'шаг', 'шага', 'шагов');
+    return `${p.progress_done ?? 0} из ${p.progress_total} ${unit}`;
+  }
+
+  // ── действия строки ───────────────────────────────────
+  public menuFor(p: ProjectManagerView): RowMenuItem[] {
+    const out: RowMenuItem[] = [{ code: 'open', label: 'Открыть проект' }];
+    // Возврат предлагаем только отменённым: у остальных возвращать нечего,
+    // и пункт читался бы как «что-то с проектом не так».
+    if (p.status === 'cancelled') {
+      out.push({
+        code: 'restore',
+        label: 'Вернуть проект',
+        confirm: `Вернуть «${p.title}» в тот статус, в котором он был до отмены?`,
+      });
+    }
+    out.push(
+      p.is_test
+        ? { code: 'untest', label: 'Снять пометку «тест»' }
+        : {
+            code: 'test',
+            label: 'Пометить тестовым',
+            confirm: `Пометить «${p.title}» тестовым? Из списков он пропадёт, пока их не попросят показать.`,
+          },
+    );
+    return out;
+  }
+
+  public onPick(p: ProjectManagerView, code: string): void {
+    switch (code) {
+      case 'open':
+        return this.open(p);
+      case 'restore':
+        return this.restore(p);
+      case 'test':
+      case 'untest':
+        return this.markTest(p, code === 'test');
+    }
+  }
+
+  private restore(p: ProjectManagerView): void {
+    this.api.adminRestoreProject(p.id).subscribe({
+      next: () => {
+        this.msg.success('Проект вернулся в работу');
+        this.afterChange();
+      },
+      error: (e) => this.msg.error(parseApiError(e, 'Не удалось вернуть проект').message),
+    });
+  }
+
+  private markTest(p: ProjectManagerView, isTest: boolean): void {
+    this.api.adminMarkProjectTest(p.id, isTest).subscribe({
+      next: () => {
+        this.msg.success(isTest ? 'Помечен тестовым' : 'Пометка снята');
+        this.afterChange();
+      },
+      error: (e) => this.msg.error(parseApiError(e, 'Не удалось изменить пометку').message),
+    });
+  }
+
+  /** Набор изменился — перечитываем список и счётчик в сайдбаре. */
+  private afterChange(): void {
+    this.fetch(this.filters());
+    this.summary.reload();
   }
 
   /** Записать изменение фильтра в адрес. Список перечитается сам. */

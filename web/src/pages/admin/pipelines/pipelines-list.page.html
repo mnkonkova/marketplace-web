@@ -7,14 +7,20 @@
   </button>
 </app-page-head>
 
+@if (hiddenCount()) {
+<label class="off-toggle" nz-checkbox [(ngModel)]="includeOff" (ngModelChange)="onToggleOff()">
+  Показывать выключенные ({{ hiddenCount() }})
+</label>
+}
+
 <app-list-state
   [loading]="loading()"
   [error]="error()"
-  [empty]="items().length === 0"
-  emptyText="Воронок ещё нет. Пока их нет, проект продакшна создать не из чего."
+  [empty]="visible().length === 0"
+  emptyText="Действующих воронок нет. Пока их нет, проект продакшна создать не из чего."
   (retry)="fetch()"
 >
-  <nz-table [nzData]="items()" nzSize="middle">
+  <nz-table [nzData]="visible()" nzSize="middle">
     <thead>
       <tr>
         <th>Название</th>
@@ -25,7 +31,7 @@
       </tr>
     </thead>
     <tbody>
-      @for (p of items(); track p.id) {
+      @for (p of visible(); track p.id) {
       <!-- Строка целиком — ссылка на редактор: попадать в одну кнопку
              «Открыть» в последней колонке мышью неудобно, а на тач-экране
              почти невозможно. -->

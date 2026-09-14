@@ -47,11 +47,14 @@ export interface RowMenuItem {
       ⋯
     </button>
     <nz-dropdown-menu #menu="nzDropdownMenu">
-      <ul nz-menu class="row-menu">
+      <!-- Роли проставлены руками: ng-zorro их не ставит, и меню, которое
+           не называет себя меню, экранному диктору не читается как меню. -->
+      <ul nz-menu class="row-menu" role="menu">
         @for (it of items(); track it.code) {
           @if (it.confirm) {
             <li
               nz-menu-item
+              role="menuitem"
               [nzDisabled]="!!it.disabled"
               [class.danger]="it.danger"
               nz-popconfirm
@@ -68,6 +71,7 @@ export interface RowMenuItem {
           } @else {
             <li
               nz-menu-item
+              role="menuitem"
               [nzDisabled]="!!it.disabled"
               [class.danger]="it.danger"
               (click)="$event.stopPropagation(); pick.emit(it.code)"
