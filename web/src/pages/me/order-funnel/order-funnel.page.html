@@ -1,0 +1,683 @@
+<app-header />
+
+<main class="crm-page order-funnel">
+  <div class="stage">
+    <div class="steps">
+      @for (label of stepLabels; track label; let i = $index; let last = $last) {
+      <span class="s" [class.done]="i < step()" [class.cur]="i === step()">
+        <span class="n">
+          @if (i < step()) {
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M5 12.5l4.5 4.5L19 7"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          } @else { {{ i + 1 }} }
+        </span>
+        <span class="lab">{{ label }}</span>
+      </span>
+      @if (!last) {
+      <span class="bar" [class.done]="i < step()"></span>
+      } }
+    </div>
+
+    <!-- 0 · что делаем -->
+    @if (step() === 0) {
+    <section>
+      <h1>Что делаем?</h1>
+      <p class="sub lead">
+        Два разных пути. Дальше интерфейс будет отличаться — выберите по тому, кто снимает.
+      </p>
+      <div class="kinds">
+        <button class="kind k1" type="button" (click)="chooseCreators()">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7" />
+              <path
+                d="M3 20a6 6 0 0112 0M16.5 6.5a3 3 0 010 5.5M19 4.5a6 6 0 010 9.4M17 20a5.5 5.5 0 00-2-4.3"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+              />
+            </svg>
+          </span>
+          <b>Креаторы</b>
+          <p>Блогеры снимают у себя и выкладывают на своих аккаунтах. Вы платите за охват.</p>
+          <ul>
+            <li>вы выбираете людей из каталога</li>
+            <li>каждый ролик идёт во все площадки</li>
+            <li>статистика просмотров в кабинете</li>
+          </ul>
+        </button>
+        <button class="kind k2" type="button" (click)="chooseProduction()">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M4 6h11a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1z"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+              <path
+                d="M16 10l5-3v10l-5-3"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+          <b>Видео под ключ</b>
+          <p>Снимаем и монтируем мы, ролик остаётся вам. Вы платите за продакшен.</p>
+          <ul>
+            <li>бриф → КП → смета → оплата</li>
+            <li>черновик и одна правка</li>
+            <li>исходники и финал вам на диск</li>
+          </ul>
+        </button>
+      </div>
+
+      @if (productionAsked()) {
+      <div class="notice info kind-soon">
+        <span class="ic">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7" />
+            <path
+              d="M12 11v5m0-8.2v.1"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </span>
+        <span class="tx">
+          <b>Этот путь пока оформляется через менеджера</b>
+          Экран продакшена ещё не готов, и заводить заявку вслепую нечестно: у продакшена другой
+          бриф и другая смета. Напишите менеджеру в чат проекта или на почту — он соберёт бриф и
+          вернётся с КП.
+        </span>
+      </div>
+      }
+    </section>
+    }
+
+    <!-- 1 · кто будет снимать -->
+    @if (step() === 1) {
+    <section>
+      <h1>Кто будет снимать</h1>
+      <p class="sub lead">
+        Отметьте креаторов. Приглашение уйдёт каждому — в кабинет и в бот; берут заявку сами.
+      </p>
+
+      <div class="params card tight">
+        <label class="param">
+          <span class="lbl">Месяц старта</span>
+          <select
+            class="inp"
+            [ngModel]="month()"
+            (ngModelChange)="changeMonth($event)"
+            name="month"
+          >
+            @for (m of months; track m) {
+            <option [value]="m">{{ monthName(m) }}</option>
+            }
+          </select>
+        </label>
+        <label class="param">
+          <span class="lbl">Роликов за месяц</span>
+          <input
+            class="inp"
+            type="number"
+            min="1"
+            [ngModel]="videos()"
+            (ngModelChange)="setVideos($event)"
+            name="videos"
+          />
+        </label>
+        @if (limit(); as l) {
+        <p class="param-note">
+          @if (l.first_month) { В первый месяц берут одного креатора: вы проверяете формат на
+          небольшой сумме, мы — что работа идёт. Со второго месяца доступно до трёх. } @else {
+          Доступно {{ l.min_allowed }}–{{ l.allowed }} креаторов: за плечами оплаченных месяцев — {{
+          l.completed_months }}. } Лимит считается на {{ monthName(l.month) }}, а не на сегодня.
+        </p>
+        }
+      </div>
+
+      <div class="pick-grid">
+        <div>
+          <div class="filters">
+            <input
+              class="inp"
+              placeholder="UGC, зоотовары, beauty…"
+              [ngModel]="query()"
+              (ngModelChange)="query.set($event)"
+              (keyup.enter)="applyFilters()"
+              name="q"
+            />
+            <select
+              class="inp cat"
+              [ngModel]="category()"
+              (ngModelChange)="category.set($event); applyFilters()"
+              name="cat"
+            >
+              <option value="">Все категории</option>
+              <option value="blogger">Блогер</option>
+              <option value="ugc">UGC</option>
+            </select>
+          </div>
+
+          @if (catalogLoading()) {
+          <p class="loading">Загружаем каталог…</p>
+          } @else if (catalog().length === 0) {
+          <p class="loading">По этим словам никого нет — попробуйте другой запрос.</p>
+          } @else {
+          <div class="cards">
+            @for (c of catalog(); track c.user_id) {
+            <button
+              class="ccard"
+              type="button"
+              [class.on]="isPicked(c.user_id)"
+              [class.busy]="busy().has(c.user_id)"
+              [attr.aria-pressed]="isPicked(c.user_id)"
+              [disabled]="busy().has(c.user_id)"
+              (click)="toggle(c.user_id)"
+            >
+              <span class="cover">
+                @if (c.preview_thumb_url || c.avatar_url) {
+                <img [src]="c.preview_thumb_url || c.avatar_url" alt="" />
+                } @else { {{ initial(c.display_name) }} }
+                <span class="check">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M5 12.5l4.5 4.5L19 7"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </span>
+              <span class="meta">
+                <b>{{ c.display_name }}</b>
+                <span class="rl">{{ role(c) }}</span>
+                @if (busy().has(c.user_id)) {
+                <span class="pr busy-note">занят в этом месяце</span>
+                } @else {
+                <span class="pr">{{ money(terms()?.salary_per_month) }} / мес</span>
+                }
+              </span>
+            </button>
+            }
+          </div>
+          }
+
+          <div class="notice info catalog-note">
+            <span class="ic">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7" />
+                <path
+                  d="M12 11v5m0-8.2v.1"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </span>
+            <span class="tx">
+              <b>Цена одна на всех</b>
+              Это прайс площадки, а не ставка блогера: {{ money(terms()?.salary_per_month) }} за
+              месяц работы плюс бонус за просмотры. Поэтому выбирать можно по людям, а не по
+              ценнику.
+            </span>
+          </div>
+        </div>
+
+        <aside class="basket">
+          <h2>Подборка</h2>
+          <p class="sub basket-sub">
+            Порядок строк — это приоритет: приглашения уйдут сверху вниз, по одному на свободное
+            место.
+          </p>
+
+          @if (picked().length === 0) {
+          <p class="empty">Пока пусто — отметьте креаторов слева.</p>
+          } @else {
+          <p class="zone">Зовём сразу — {{ needed() }}</p>
+          @for (id of team(); track id; let i = $index) {
+          <div class="brow">
+            <span class="av" [class]="avatarClass(id)">{{ initial(name(id)) }}</span>
+            <span class="nm">
+              {{ name(id) }}
+              <span>приоритет {{ i + 1 }}</span>
+            </span>
+            <span class="ord">
+              <button
+                class="x"
+                type="button"
+                [attr.aria-label]="'Выше: ' + name(id)"
+                [disabled]="i === 0"
+                (click)="move(id, -1)"
+              >
+                ↑
+              </button>
+              <button
+                class="x"
+                type="button"
+                [attr.aria-label]="'Ниже: ' + name(id)"
+                [disabled]="i === picked().length - 1"
+                (click)="move(id, 1)"
+              >
+                ↓
+              </button>
+            </span>
+            <button
+              class="x"
+              type="button"
+              [attr.aria-label]="'Убрать: ' + name(id)"
+              (click)="toggle(id)"
+            >
+              ✕
+            </button>
+          </div>
+          } @if (overLimit()) {
+          <p class="zone reserve-zone">Резерв — {{ reserve().length }}</p>
+          @for (id of reserve(); track id; let i = $index) {
+          <div class="brow reserve">
+            <span class="av" [class]="avatarClass(id)">{{ initial(name(id)) }}</span>
+            <span class="nm">
+              {{ name(id) }}
+              <span>приоритет {{ needed() + i + 1 }}</span>
+            </span>
+            <span class="ord">
+              <button
+                class="x"
+                type="button"
+                [attr.aria-label]="'Выше: ' + name(id)"
+                (click)="move(id, -1)"
+              >
+                ↑
+              </button>
+              <button
+                class="x"
+                type="button"
+                [attr.aria-label]="'Ниже: ' + name(id)"
+                [disabled]="needed() + i === picked().length - 1"
+                (click)="move(id, 1)"
+              >
+                ↓
+              </button>
+            </span>
+            <button
+              class="x"
+              type="button"
+              [attr.aria-label]="'Убрать: ' + name(id)"
+              (click)="toggle(id)"
+            >
+              ✕
+            </button>
+          </div>
+          }
+          <p class="reserve-hint">
+            Больше {{ allowed() }} {{ allowed() === 1 ? 'креатора' : 'креаторов' }} в {{
+            monthName(month()) }} взять нельзя — приглашения уйдут только первым {{ needed() }}.
+            Остальные ждут в резерве: место освободится отказом или молчанием, и следующего позовут
+            без вас.
+          </p>
+          } }
+
+          <div class="btot">
+            <span>Ориентир</span>
+            <b>
+              @if (estimating()) { считаем… } @else { @if (estimate(); as e) { {{ money(e.total) }}
+              } @else { — } }
+            </b>
+          </div>
+
+          @if (estimate(); as e) {
+          <p class="forecast-note">
+            @if (e.has_forecast) { В ориентир входит прогноз бонуса — {{ money(e.bonus_forecast) }}
+            при {{ views(e.avg_views_per_video) }} просмотрах на ролик. @if (e.without_history > 0)
+            { Он посчитан без {{ e.without_history }} из {{ e.forecast.length }}: у них ещё нет
+            сданных роликов. } } @else { Только оклады: истории просмотров нет ни у кого из {{
+            e.forecast.length }} — бонус не ноль, а пока неизвестен. }
+          </p>
+          } @if (terms(); as t) {
+          <label class="consent">
+            <input type="checkbox" [(ngModel)]="agreed" [disabled]="consented()" name="agreed" />
+            <span>
+              Принимаю условия работы, версия {{ t.version }}. Заказ навсегда останется на этой
+              версии — новый прайс его не переписывает.
+            </span>
+          </label>
+          <details class="terms-body">
+            <summary>Прочитать условия</summary>
+            <p>{{ t.body }}</p>
+          </details>
+          }
+
+          <button
+            class="btn primary send"
+            type="button"
+            [disabled]="!canSubmit()"
+            (click)="submit()"
+          >
+            {{ submitting() ? 'Отправляем…' : 'Отправить приглашения' }}
+          </button>
+        </aside>
+      </div>
+    </section>
+    } @if (order(); as o) {
+    <!-- 2 · ждём ответы -->
+    @if (step() === 2) {
+    <section>
+      <h1>Ждём ответы</h1>
+      <p class="sub lead">
+        Приглашения ушли на {{ monthName(o.start_month) }}. Взять заявку креатор может из кабинета
+        или из бота.
+      </p>
+
+      <div class="notice info">
+        <span class="ic">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M12 7v5l3 2"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7" />
+          </svg>
+        </span>
+        <span class="tx">
+          <b>Молчание — не отказ, но и не ответ</b>
+          Если креатор не ответит за сутки, менеджеру придёт напоминание. Через трое суток место
+          освободится само и уйдёт следующему по приоритету.
+        </span>
+      </div>
+
+      @for (c of o.candidates; track c.creator_user_id) {
+      <div class="inv" [class]="invClass(c.status)">
+        <span class="av lg" [class]="avatarClass(c.creator_user_id)">
+          {{ initial(c.creator_name || '?') }}
+        </span>
+        <span class="nm">
+          <b>{{ c.creator_name || 'Креатор' }}</b>
+          <span>приоритет {{ c.priority }}</span>
+        </span>
+        <span
+          class="tag"
+          [class.green]="c.status === 'accepted'"
+          [class.red]="
+            c.status === 'declined' || c.status === 'expired'
+          "
+          [class.amber]="c.status === 'invited'"
+        >
+          {{ statusLabel(c.status) }}
+        </span>
+        <span class="pr">
+          @if (c.status === 'invited' && c.expires_at) { {{ c.expires_at | date: 'd MMM, HH:mm' }}
+          <small>ответ до</small>
+          } @else if (c.status === 'accepted') { {{ money(orderEstimate()?.terms?.salary_per_month)
+          }}
+          <small>оклад по прайсу</small>
+          } @else { —
+          <small>{{ c.status === 'reserve' ? 'ждёт очереди' : 'место свободно' }}</small>
+          }
+        </span>
+      </div>
+      } @if (freeSlots(o) > 0) {
+      <div class="notice warn">
+        <span class="ic">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M12 7v6m0 3.2v.1"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7" />
+          </svg>
+        </span>
+        <span class="tx">
+          <b>Освободилось мест: {{ freeSlots(o) }}</b>
+          Кто-то отказался или не ответил вовремя. Пакет соберётся, когда места закроются.
+        </span>
+        <button class="btn primary sm" type="button" (click)="gotoTopUp()">Добрать</button>
+      </div>
+      }
+
+      <div class="foot">
+        <button class="btn ghost" type="button" [disabled]="busyOrder()" (click)="refresh()">
+          Обновить
+        </button>
+        <span class="sp"></span>
+        <button class="btn quiet" type="button" [disabled]="busyOrder()" (click)="cancel()">
+          Отменить заказ
+        </button>
+      </div>
+    </section>
+    }
+
+    <!-- 3 · добрать -->
+    @if (step() === 3) {
+    <section>
+      <h1>Добрать</h1>
+      <p class="sub lead">Кто согласился — остаётся, их не трогаем.</p>
+
+      <div class="notice warn">
+        <span class="ic">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M12 7v6m0 3.2v.1"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7" />
+          </svg>
+        </span>
+        <span class="tx">
+          <b>{{ o.accepted }} из {{ o.needed }} мест заняты</b>
+          Свободно {{ freeSlots(o) }}. Приглашение уходит только на реально свободное место — иначе
+          согласившихся окажется больше, чем нужно.
+        </span>
+      </div>
+
+      @if (o.reserve_left > 0) {
+      <p class="sub">
+        В резерве ещё {{ o.reserve_left }} — их позовут по приоритету, по одному на место. Ждать и
+        жать ничего не нужно: место освобождается отказом или молчанием, и приглашение уходит
+        следующему само.
+      </p>
+      @for (c of o.candidates; track c.creator_user_id) { @if (c.status === 'reserve') {
+      <div class="inv">
+        <span class="av lg" [class]="avatarClass(c.creator_user_id)">
+          {{ initial(c.creator_name || '?') }}
+        </span>
+        <span class="nm">
+          <b>{{ c.creator_name || 'Креатор' }}</b>
+          <span>приоритет {{ c.priority }}</span>
+        </span>
+        <span class="tag">Ждёт очереди</span>
+      </div>
+      } }
+      <div class="foot">
+        <button class="btn ghost" type="button" (click)="backToWaiting()">← К ответам</button>
+        <span class="sp"></span>
+        @if (o.status === 'draft') {
+        <!-- Черновик значит, что приглашения не ушли вовсе. Только здесь
+             их и можно отправить руками: дальше очередь двигается сама. -->
+        <button class="btn primary" type="button" [disabled]="busyOrder()" (click)="inviteNext()">
+          Отправить приглашения
+        </button>
+        }
+      </div>
+      } @else {
+      <div class="notice info">
+        <span class="ic">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7" />
+            <path
+              d="M12 11v5m0-8.2v.1"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </span>
+        <span class="tx">
+          <b>Резерв кончился</b>
+          Добирать людей в уже созданный заказ вы не можете — это делает менеджер: он подберёт
+          замену под ваши фильтры и добавит её в очередь. Заказ при этом не теряется, места остаются
+          за вами.
+        </span>
+      </div>
+      <div class="foot">
+        <button class="btn ghost" type="button" (click)="backToWaiting()">← К ответам</button>
+      </div>
+      }
+    </section>
+    }
+
+    <!-- 4 · оплата -->
+    @if (step() === 4) {
+    <section>
+      <h1>Оплата</h1>
+      <p class="sub lead">
+        Состав собран: все {{ o.needed }} взяли заявку. После оплаты откроется проект и контакты
+        креаторов.
+      </p>
+
+      <div class="pay">
+        <div>
+          @for (c of o.candidates; track c.creator_user_id) { @if (c.status === 'accepted') {
+          <div class="inv ok">
+            <span class="av lg" [class]="avatarClass(c.creator_user_id)">
+              {{ initial(c.creator_name || '?') }}
+            </span>
+            <span class="nm">
+              <b>{{ c.creator_name || 'Креатор' }}</b>
+              <span>приоритет {{ c.priority }}</span>
+            </span>
+            <span class="tag green">Взял заявку</span>
+            <span class="pr">
+              {{ money(orderEstimate()?.terms?.salary_per_month) }}
+              <small>оклад за месяц</small>
+            </span>
+          </div>
+          } }
+
+          <div class="notice good">
+            <span class="ic">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M5 12.5l4.5 4.5L19 7"
+                  stroke="currentColor"
+                  stroke-width="2.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </span>
+            <span class="tx">
+              <b>Условия зафиксированы</b>
+              Заказ считается по версии правил, с которой вы согласились при создании. Новый прайс
+              площадки его не переписывает.
+            </span>
+          </div>
+        </div>
+
+        <aside class="basket static">
+          <h2>К оплате</h2>
+          @if (orderEstimate(); as e) {
+          <div class="sums">
+            <div class="sumrow">
+              <span>Оклады, {{ e.creators }} чел.</span>
+              <b>{{ money(e.salaries) }}</b>
+            </div>
+            @if (e.has_forecast) {
+            <div class="sumrow">
+              <span>Прогноз бонуса, {{ e.videos }} роликов</span>
+              <b>{{ money(e.bonus_forecast) }}</b>
+            </div>
+            }
+            <div class="sumrow total">
+              <span>{{ e.has_forecast ? 'Ориентир' : 'Известно точно' }}</span>
+              <b>{{ money(e.total) }}</b>
+            </div>
+          </div>
+          @if (!e.has_forecast) {
+          <p class="forecast-note">
+            Бонус за просмотры пока не спрогнозировать: сданных роликов у этой подборки ещё нет. Это
+            «неизвестно», а не «ноль».
+          </p>
+          } } @else {
+          <p class="empty">Считаем смету…</p>
+          }
+
+          <div class="lock">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect
+                x="4"
+                y="10"
+                width="16"
+                height="10"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+              <path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.7" />
+            </svg>
+            <span>
+              Счёт выставляет менеджер, он же отмечает оплату — своей кнопки «оплатить» у вас пока
+              нет, и рисовать её без платёжного шлюза было бы обманом. Контакты креаторов откроются
+              после оплаты: до этого переписка идёт внутри платформы, и история договорённостей
+              остаётся у вас.
+            </span>
+          </div>
+        </aside>
+      </div>
+    </section>
+    }
+
+    <!-- 5 · проект создан -->
+    @if (step() === 5) {
+    <section>
+      <div class="done-ic">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M5 12.5l4.5 4.5L19 7"
+            stroke="currentColor"
+            stroke-width="2.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+      <h1 class="center">Проект создан</h1>
+      <p class="sub lead center">
+        Менеджер проставит даты выкладок, креаторы получат слоты в бот. Дальше — тот проект, что вы
+        уже видели.
+      </p>
+      <div class="summary">
+        <div class="r"><span>Месяц</span><b>{{ monthName(o.start_month) }}</b></div>
+        <div class="r"><span>Креаторов</span><b>{{ o.accepted }}</b></div>
+        <div class="r"><span>Роликов</span><b>{{ o.videos_count }}</b></div>
+        @if (orderEstimate(); as e) {
+        <div class="r"><span>Оплачено</span><b class="num">{{ money(e.total) }}</b></div>
+        }
+      </div>
+      @if (o.project_id) {
+      <div class="done-actions">
+        <button class="btn primary" type="button" (click)="openProject()">Перейти в проект</button>
+      </div>
+      }
+    </section>
+    } }
+  </div>
+</main>

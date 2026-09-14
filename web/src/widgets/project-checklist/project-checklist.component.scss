@@ -1,0 +1,159 @@
+:host {
+  display: block;
+}
+
+.ck-block {
+  margin: 20px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: var(--r-card, 16px);
+  background: var(--surface);
+}
+
+.ck-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0;
+    font-size: 17px;
+  }
+}
+
+.note {
+  margin: 6px 0 12px;
+  max-width: 78ch;
+  color: var(--text-muted);
+  font-size: 13px;
+
+  &.strong {
+    color: var(--text);
+  }
+}
+
+.empty {
+  margin: 8px 0;
+  color: var(--text-dim);
+  font-size: 13.5px;
+}
+
+.ck {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+  }
+
+  li:last-child {
+    border-bottom: none;
+  }
+
+  .txt {
+    flex: 1;
+  }
+}
+
+.req {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(240, 85, 60, 0.14);
+  color: var(--cta-hover);
+  font-size: 11px;
+}
+
+.plat {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(155, 123, 212, 0.16);
+  color: #b79ce6;
+  font-size: 11px;
+}
+
+.lib {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+
+  h3 {
+    margin: 0 0 4px;
+    font-size: 14px;
+  }
+}
+
+.tpls {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    flex-wrap: wrap;
+  }
+
+  li:last-child {
+    border-bottom: none;
+  }
+
+  .nm {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .nm span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+
+  .cnt {
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+}
+
+/* Подключённый шаблон и его версия. Блок появляется, только если бэк
+   прислал снимок: без него «v3» была бы выдумкой. */
+.tplbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-hover);
+  flex-wrap: wrap;
+
+  .tx {
+    flex: 1;
+    min-width: 220px;
+    font-size: 13.5px;
+  }
+
+  .tx b {
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .tx span {
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+}

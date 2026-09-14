@@ -35,7 +35,9 @@
 
   &.waiting {
     border-color: rgba(245, 158, 11, 0.45);
-    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15), 0 12px 32px rgba(245, 158, 11, 0.08);
+    box-shadow:
+      0 0 0 1px rgba(245, 158, 11, 0.15),
+      0 12px 32px rgba(245, 158, 11, 0.08);
 
     &::before {
       content: '';
@@ -132,7 +134,9 @@
   }
 
   > a.meta-link {
-    transition: background 150ms, border-color 150ms;
+    transition:
+      background 150ms,
+      border-color 150ms;
     border: 1px solid transparent;
 
     &:hover {
@@ -254,8 +258,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(0.8); opacity: 0.7; }
-  50% { transform: scale(1.15); opacity: 1; }
+  0%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
 }
 
 .stage-body {
@@ -362,4 +373,182 @@
   text-align: center;
   color: var(--text-muted);
   margin: 80px 0;
+}
+
+/* ===== БЛОКИ ВЫКЛАДОК =====
+   Токены дизайн-системы на этой странице не подключены глобально
+   (см. styles.scss — @include design.tokens стоит на списке классов),
+   поэтому у новых переменных указан фолбэк: без него var() без значения
+   делает всё свойство невалидным, и рамка уезжает в currentColor. */
+.pub-block {
+  margin-top: 24px;
+  padding: 18px 20px;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: var(--r-card, 16px);
+  background: var(--surface);
+
+  h2 {
+    margin: 0 0 12px;
+    font-size: 17px;
+  }
+}
+
+.pub-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.pub-note {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.range {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+
+  button {
+    padding: 5px 12px;
+    border: 1px solid var(--border-strong, #2c313a);
+    border-radius: 999px;
+    background: var(--bg-elevated, #111316);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  button.on {
+    border-color: var(--cta, #f0553c);
+    color: var(--text);
+  }
+}
+
+.videos {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.video {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.video-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  .who {
+    flex: 1;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .plats-count {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+}
+
+.video-links {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    font-size: 13px;
+  }
+
+  a {
+    overflow: hidden;
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  a:hover {
+    color: var(--text);
+  }
+}
+
+.video-stats {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+
+  &.muted {
+    color: var(--text-dim);
+  }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 22px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: 6px;
+  background: var(--bg-elevated, #111316);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.prefs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 6px 0;
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+}
+
+.threshold {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+
+  label {
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  input {
+    width: 160px;
+  }
 }

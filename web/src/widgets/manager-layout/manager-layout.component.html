@@ -1,32 +1,29 @@
 <app-header />
 
-<div class="manager-layout" [class.sidebar-open]="sidebarOpen()">
-  <button
-    type="button"
-    class="hamburger"
-    [attr.aria-label]="sidebarOpen() ? 'Закрыть меню' : 'Открыть меню'"
-    [attr.aria-expanded]="sidebarOpen()"
-    (click)="toggleSidebar()"
-  >
-    <span nz-icon [nzType]="sidebarOpen() ? 'close' : 'menu'" nzTheme="outline"></span>
-  </button>
+<!-- Разделы — горизонтальными вкладками, как в админке и в кабинете
+     пользователя. Боковое меню занимало пятую часть экрана под две
+     ссылки, а канбан и карточка проекта упирались в остаток ширины. -->
+<div class="manager-layout">
+  <nav class="crm-page nav" aria-label="Разделы менеджера">
+    <div class="tabs">
+      <a
+        class="tab"
+        routerLink="/manager"
+        routerLinkActive="on"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        Заявки
+      </a>
+      <!-- Не exact: вкладка остаётся подсвеченной и внутри карточки
+           проекта — иначе, открыв проект, менеджер теряет, где он. -->
+      <a class="tab" routerLink="/manager/projects" routerLinkActive="on">Мои проекты</a>
+      <a class="tab" routerLink="/manager/board" routerLinkActive="on">Канбан</a>
+      <a class="tab" routerLink="/manager/templates" routerLinkActive="on">Шаблоны</a>
+      <span class="sp"></span>
+      <button type="button" class="tab logout-btn" (click)="logout()">Выйти</button>
+    </div>
+  </nav>
 
-  @if (sidebarOpen()) {
-    <div class="backdrop" (click)="closeSidebar()"></div>
-  }
-
-  <aside class="sidebar">
-    <a routerLink="/manager" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">
-      <span nz-icon nzType="inbox" nzTheme="outline"></span> Входящие
-    </a>
-    <a routerLink="/manager/board" routerLinkActive="is-active">
-      <span nz-icon nzType="appstore" nzTheme="outline"></span> Канбан
-    </a>
-    <div class="spacer"></div>
-    <button type="button" class="logout-btn" (click)="logout()">
-      <span nz-icon nzType="logout" nzTheme="outline"></span> Выйти
-    </button>
-  </aside>
   <main class="content">
     <ng-content></ng-content>
   </main>

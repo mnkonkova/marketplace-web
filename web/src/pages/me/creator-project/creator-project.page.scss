@@ -1,0 +1,529 @@
+// Словарь макета (карточки, кнопки, чипы, площадки, чеклист) — общий для
+// страниц проекта. Подключаем в компонент, а не глобально: эти экраны
+
+// Страница выкладок креатора — перенос макета
+// ~/tmp/crm_project_creator (1).html, раздел «специфика креатора».
+// Общая часть (карточки, кнопки, чипы, площадки, чеклист) — в
+// shared/scss/_crm.scss под классом .crm-page, который эта страница носит.
+
+:host {
+  display: block;
+}
+
+// ── шапка проекта ────────────────────────────────────────
+.hero {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px;
+  margin-bottom: 18px;
+
+  .top {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+
+    .t {
+      flex: 1;
+      min-width: 220px;
+    }
+  }
+
+  .mgr {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--muted);
+
+    b {
+      color: var(--text);
+      display: block;
+      font-size: 13.5px;
+    }
+  }
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+// Полоса читается слева направо: сделанное, частичное, просроченное.
+.pbar {
+  flex: 1;
+  min-width: 180px;
+  height: 8px;
+  border-radius: 99px;
+  background: #20242a;
+  overflow: hidden;
+  display: flex;
+
+  i {
+    display: block;
+    height: 100%;
+
+    &.done {
+      background: linear-gradient(90deg, var(--green-dim), var(--green));
+    }
+
+    &.part {
+      background: var(--amber);
+    }
+
+    &.late {
+      background: var(--red);
+    }
+  }
+}
+
+.pcount {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+// ── условия и стоимость ──────────────────────────────────
+.terms {
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+
+  .t1 {
+    font-size: 11.5px;
+    color: var(--muted-2);
+
+    b {
+      display: block;
+      font-family: var(--mono);
+      font-size: 17px;
+      color: var(--text);
+      font-weight: 600;
+      margin-bottom: 2px;
+
+      small {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: Inter, sans-serif;
+        margin-left: 4px;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// ── ближайшее дело ───────────────────────────────────────
+.next {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-radius: 14px;
+  padding: 15px 18px;
+  margin-bottom: 18px;
+  background: rgb(226 163 60 / 8%);
+  border: 1px solid var(--amber-dim);
+
+  &.late {
+    background: rgb(224 96 78 / 8%);
+    border-color: var(--red-dim);
+
+    .cd {
+      color: var(--red);
+    }
+  }
+
+  .cd {
+    font-family: var(--mono);
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--amber);
+    flex: 0 0 auto;
+
+    small {
+      display: block;
+      font-size: 10.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-top: 5px;
+      opacity: 0.8;
+      font-family: Inter, sans-serif;
+    }
+  }
+
+  .tx {
+    flex: 1;
+    min-width: 180px;
+    font-size: 13.5px;
+    color: var(--muted);
+
+    b {
+      display: block;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+  }
+}
+
+// ── карточка выкладки ────────────────────────────────────
+.slotcard {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin-bottom: 12px;
+  overflow: hidden;
+
+  // Рамка — единственный статус, который виден, не читая: сдано,
+  // частично, просрочено.
+  &.done {
+    border-color: var(--green-dim);
+  }
+
+  &.part {
+    border-color: var(--amber-dim);
+  }
+
+  &.late {
+    border-color: var(--red-dim);
+  }
+
+  .hd {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 18px;
+    flex-wrap: wrap;
+
+    .t {
+      flex: 1;
+      min-width: 170px;
+
+      b {
+        display: block;
+        font-size: 15.5px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .m {
+        font-size: 12.5px;
+        color: var(--muted-2);
+        display: flex;
+        gap: 9px;
+        flex-wrap: wrap;
+        align-items: center;
+
+        .v {
+          font-family: var(--mono);
+
+          &.late {
+            color: var(--red);
+          }
+
+          &.soon {
+            color: var(--amber);
+          }
+        }
+      }
+    }
+  }
+
+  .body {
+    padding: 16px 18px;
+    border-top: 1px solid var(--line);
+  }
+}
+
+.plist2 {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.p2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .ic {
+    width: 32px;
+    height: 28px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    font-size: 10.5px;
+    font-weight: 700;
+    border: 1px solid var(--line-2);
+    background: var(--bg-elevated);
+    color: var(--muted-2);
+  }
+
+  &.ok .ic {
+    background: rgb(47 189 143 / 12%);
+    border-color: var(--green-dim);
+    color: var(--green);
+  }
+
+  .nm {
+    width: 78px;
+    flex: 0 0 auto;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .u {
+    flex: 1;
+    min-width: 160px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--blue);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.empty {
+      color: var(--muted-2);
+    }
+  }
+
+  .v {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    min-width: 72px;
+    text-align: right;
+
+    small {
+      color: var(--green);
+      font-size: 11px;
+      margin-left: 5px;
+    }
+  }
+}
+
+.totalrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-2);
+  border-radius: 11px;
+  padding: 11px 14px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+
+  .l {
+    flex: 1;
+    min-width: 130px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .st {
+    display: flex;
+    gap: 18px;
+    font-size: 12.5px;
+    color: var(--muted);
+    flex-wrap: wrap;
+
+    b {
+      font-family: var(--mono);
+      color: var(--text);
+      font-weight: 600;
+    }
+  }
+}
+
+// ── материалы ────────────────────────────────────────────
+.matrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .ic {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  &.doc .ic {
+    background: rgb(75 143 214 / 14%);
+    color: var(--blue);
+  }
+
+  &.video .ic {
+    background: rgb(240 85 60 / 14%);
+    color: var(--coral);
+  }
+
+  &.link .ic {
+    background: rgb(155 123 212 / 14%);
+    color: var(--violet);
+  }
+
+  .t {
+    flex: 1;
+    min-width: 0;
+
+    b {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    span {
+      font-size: 11.5px;
+      color: var(--muted-2);
+      font-family: var(--mono);
+    }
+  }
+}
+
+// ── деньги ───────────────────────────────────────────────
+.money {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+
+  .k {
+    color: var(--muted);
+
+    small {
+      display: block;
+      font-size: 11px;
+      color: var(--muted-2);
+    }
+  }
+
+  .v {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    white-space: nowrap;
+  }
+
+  &.tot {
+    border-top: 1px solid var(--line-2);
+    border-bottom: none;
+    margin-top: 5px;
+    padding-top: 11px;
+    font-weight: 600;
+
+    .v {
+      font-size: 18px;
+    }
+  }
+}
+
+// ── занятость по месяцам ─────────────────────────────────
+.months {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.mo {
+  border: 1px solid var(--line-2);
+  background: var(--bg-elevated);
+  border-radius: 10px;
+  padding: 8px 5px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+
+  &.on {
+    color: var(--green);
+    border-color: var(--green-dim);
+    background: rgb(47 189 143 / 10%);
+
+    small {
+      color: var(--green);
+    }
+  }
+
+  // Не отмеченный месяц — третье состояние, а не «свободен»: клиент
+  // видит его как неизвестность.
+  &.busy {
+    color: var(--red);
+    border-color: var(--red-dim);
+    background: rgb(224 96 78 / 10%);
+  }
+
+  small {
+    display: block;
+    font-size: 10px;
+    color: var(--muted-2);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+}
+
+// ── две колонки ──────────────────────────────────────────
+.two {
+  display: grid;
+  grid-template-columns: 1fr 336px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 940px) {
+  .two {
+    grid-template-columns: 1fr;
+  }
+}
+
+.divider {
+  height: 1px;
+  background: var(--line);
+  margin: 18px 0;
+}
+
+.empty-state {
+  max-width: 520px;
+  margin: 60px auto;
+  text-align: center;
+
+  a {
+    color: var(--coral);
+  }
+}

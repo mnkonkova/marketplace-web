@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
@@ -24,6 +25,7 @@ import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
   selector: 'app-specialist-cabinet',
   standalone: true,
   imports: [
+    RouterLink,
     CommonModule,
     FormsModule,
     NzSpinModule,
@@ -85,11 +87,9 @@ export class SpecialistCabinetPage implements OnInit {
     this.projectApi
       .managerInbox() // плейсхолдер — заменено ниже
       .subscribe();
-    this.http
-      .get<{ items: ProjectManagerView[] }>(`${this.api}/me/specialist/projects`)
-      .subscribe({
-        next: (r) => this.projects.set(r.items),
-      });
+    this.http.get<{ items: ProjectManagerView[] }>(`${this.api}/me/specialist/projects`).subscribe({
+      next: (r) => this.projects.set(r.items),
+    });
   }
 
   public projectStatusLabel(s: ProjectManagerView['display_status']): string {

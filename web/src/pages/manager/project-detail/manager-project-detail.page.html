@@ -1,274 +1,336 @@
+<!-- Одна страница, две оболочки. Админ, открывший проект из своего
+     списка, оставался в менеджерском кабинете: вкладки менялись на
+     «Входящие · Канбан», и путь назад к админским разделам исчезал. -->
+@if (isAdmin() === 'admin') {
+<app-admin-layout [crumbs]="crumbs()" [viewingAsManager]="true">
+  <!-- Действия карточки — в полосе крошек, вплотную к названию проекта.
+       Меню, а не кнопки в ряд: тут лежит удаление, и место рядом с
+       «Применить» ему не подходит. -->
+  <div admin-actions class="proj-menu">
+    <button
+      type="button"
+      class="dots"
+      aria-haspopup="menu"
+      [attr.aria-expanded]="menuOpen()"
+      aria-label="Действия с проектом"
+      (click)="toggleMenu()"
+    >
+      ⋯
+    </button>
+    @if (menuOpen()) {
+    <button type="button" class="menu-backdrop" aria-label="Закрыть меню" (click)="closeMenu()"></button>
+    <div class="menu" role="menu">
+      <button type="button" role="menuitem" class="danger" (click)="askDelete(deleteTpl)">
+        Удалить проект
+      </button>
+    </div>
+    }
+  </div>
+
+  <div class="admin-context">
+    <ng-container [ngTemplateOutlet]="body" />
+  </div>
+</app-admin-layout>
+} @else {
 <app-manager-layout>
+  <ng-container [ngTemplateOutlet]="body" />
+</app-manager-layout>
+}
+
+<ng-template #body>
   @if (loading()) {
-    <nz-spin nzSize="large"></nz-spin>
+  <nz-spin nzSize="large"></nz-spin>
   } @else if (project()) { @let p = project()!;
-    <app-back-link defaultUrl="/manager/board" excludePrefix="/manager/projects/" />
+  <!-- У админа дорогу назад держат крошки в полосе сверху; ссылка нужна
+       только менеджеру, и ведёт она на его канбан. Откуда пришли на самом
+       деле — знает from_page. -->
+  @if (isAdmin() !== 'admin') {
+  <app-back-link defaultUrl="/manager/board" excludePrefix="/manager/projects/" />
+  }
 
-    <header class="hero">
-      <div class="title-row">
-        <h1>{{ p.title }}</h1>
-        <nz-tag [nzColor]="statusColor(p.display_status)">
-          {{ statusLabel(p.display_status) }}
-        </nz-tag>
-      </div>
-      <nz-progress
-        [nzPercent]="p.progress"
-        nzSize="small"
-        [nzShowInfo]="false"
-      ></nz-progress>
-      <p class="hint">
-        Движение по шагам — только через <strong>канбан</strong>.
-        Эта страница — для комментариев и активности.
-      </p>
-
-      <dl class="meta-grid">
-        <div>
-          <dt>Бюджет</dt>
-          <dd>
-            @if (p.budget != null) {
-              {{ p.budget | number }} ₽
-            } @else {
-              <span class="muted">не указан</span>
-            }
-          </dd>
-        </div>
-        <div>
-          <dt>
-            Правки
-            <span class="beta-tag" title="Логика правок ещё не подключена к workflow — счётчик информативный">бета</span>
-          </dt>
-          <dd>{{ p.revisions_used }} из {{ p.revisions_included }}</dd>
-        </div>
-        <div>
-          <dt>Старт</dt>
-          <dd>{{ p.started_at ? (p.started_at | date: 'd MMM y') : '—' }}</dd>
-        </div>
-      </dl>
-
-      @if (!p.assigned_to_user_id && isAdmin() !== 'admin') {
-        <div class="claim-banner">
-          <div>
-            <strong>Проект ждёт менеджера.</strong>
-            <span>Возьмите на себя — будет вашим в канбане.</span>
-          </div>
-          <button
-            nz-button
-            nzType="primary"
-            type="button"
-            [nzLoading]="claimBusy()"
-            (click)="claimProject()"
-          >
-            Взять на себя
-          </button>
-        </div>
-      }
-
-      @if (isAdmin() === 'admin') {
-        <div class="assign-row">
-          <span class="assign-label">Ответственный менеджер:</span>
-          <nz-select
-            [(ngModel)]="assignedManagerValue"
-            style="min-width: 260px"
-            nzPlaceHolder="— не назначен —"
-            nzAllowClear
-          >
-            @for (m of managers(); track m.user_id) {
-              <nz-option
-                [nzValue]="m.user_id"
-                [nzLabel]="(m.display_name || m.email || m.user_id)"
-              ></nz-option>
-            }
-          </nz-select>
-          <button nz-button (click)="assignManager()">Применить</button>
-
-          <div class="danger-zone">
-            <button nz-button type="button" (click)="openChangeFunnel()">
-              Сменить воронку…
-            </button>
-            <button
-              nz-button
-              nzDanger
-              [nzLoading]="cancelBusy()"
-              (click)="cancelProject()"
-            >
-              🗑 Удалить проект
-            </button>
-            <small>Удаление: скроется сразу, физически — через 30 дней</small>
-          </div>
-        </div>
-      }
-    </header>
-
-    <div class="cols">
-      <section class="funnel">
-        <h2 class="section-title">Воронка</h2>
-        @for (stage of p.stages; track stage.id) {
-          <article class="stage">
-            <header>
-              <h3>{{ stage.name }}</h3>
-              <nz-tag [nzColor]="stageStatusColor(stage.display_status)">
-                {{ stageStatusLabel(stage.display_status) }} · {{ stage.steps_done }}/{{
-                  stage.steps_total
-                }}
-              </nz-tag>
-            </header>
-            @for (step of stage.steps; track step.id) {
-              @let badge = stepBadge(step);
-              <div class="step" [class.is-current]="step.is_current">
-                <div class="step-main">
-                  <strong>{{ step.name }}</strong>
-                  <small>{{ step.owner }}</small>
-                </div>
-                <nz-tag [nzColor]="badge.color">{{ badge.label }}</nz-tag>
-              </div>
-            }
-          </article>
+  <!-- Админский блок вместо менеджерской боковой колонки: та в чужом
+       проекте показывала «Других проектов на вас нет» и чей-то чужой день.
+       Здесь то, что админу действительно нужно знать о проекте, — и только
+       то, что есть на самом деле. -->
+  @if (isAdmin() === 'admin') { @let sideless = p.kind === 'creators_turnkey';
+  <section class="admin-meta">
+    <div class="mrow">
+      <span class="lbl">Ответственный менеджер</span>
+      <nz-select
+        [(ngModel)]="assignedManagerValue"
+        style="min-width: 240px"
+        nzPlaceHolder="— не назначен —"
+        nzAllowClear
+      >
+        @for (m of managers(); track m.user_id) {
+        <nz-option [nzValue]="m.user_id" [nzLabel]="(m.display_name || m.email || m.user_id)"></nz-option>
         }
-      </section>
+      </nz-select>
+      <button nz-button nzSize="small" (click)="assignManager()">Применить</button>
+    </div>
 
-      <aside class="side">
-        <section class="panel contacts-panel">
-          <h3>Контакты</h3>
-          <div class="party">
-            <div class="party-head">
-              <span class="role">Клиент</span>
-              <strong>{{ p.client?.display_name || '—' }}</strong>
-            </div>
-            @if (p.client?.email || p.client?.phone || p.client?.telegram) {
-              <ul class="links">
-                @if (p.client?.email) {
-                  <li><a [href]="'mailto:' + p.client!.email">{{ p.client!.email }}</a></li>
-                }
-                @if (p.client?.phone) {
-                  <li><a [href]="'tel:' + p.client!.phone">{{ p.client!.phone }}</a></li>
-                }
-                @if (p.client?.telegram) {
-                  <li><a [href]="tgLink(p.client!.telegram!)" target="_blank" rel="noopener">{{ p.client!.telegram }}</a></li>
-                }
-              </ul>
-            } @else {
-              <p class="empty">Контактов нет — клиент не заполнил профиль.</p>
-            }
-          </div>
+    <div class="mrow">
+      <span class="lbl">Создан</span>
+      <span class="val">{{ p.created_at | date: 'd MMM y' }}</span>
+    </div>
 
-          <div class="party">
-            <div class="party-head">
-              <span class="role">Исполнитель</span>
-              <strong>
-                @if (p.specialist) {
-                  {{ p.specialist.display_name }}
-                } @else if (p.proposed_specialist) {
-                  <span class="pending">{{ p.proposed_specialist.display_name }}</span>
-                  <span class="badge-pending">ждёт подтверждения</span>
-                } @else {
-                  — не назначен —
-                }
-              </strong>
-              @if (!p.specialist) {
-                <button
-                  nz-button
-                  nzSize="small"
-                  type="button"
-                  style="margin-left: 8px"
-                  (click)="openAssignSpecialist()"
-                >
-                  {{ p.proposed_specialist ? 'Назначить другого' : 'Назначить' }}
-                </button>
-              }
-            </div>
-            @if (p.specialist?.email || p.specialist?.phone) {
-              <ul class="links">
-                @if (p.specialist?.email) {
-                  <li><a [href]="'mailto:' + p.specialist!.email">{{ p.specialist!.email }}</a></li>
-                }
-                @if (p.specialist?.phone) {
-                  <li><a [href]="'tel:' + p.specialist!.phone">{{ p.specialist!.phone }}</a></li>
-                }
-              </ul>
-            } @else if (p.proposed_specialist) {
-              <p class="hint-proposed">
-                Клиент выбрал этого исполнителя в брифе. Подтвердите — он получит
-                доступ к проекту, или отклоните и подберите другого.
-              </p>
-              <div class="propose-actions">
-                <button
-                  nz-button
-                  nzType="primary"
-                  [nzLoading]="proposingBusy()"
-                  (click)="approveProposed()"
-                >
-                  ✓ Подтвердить
-                </button>
-                <button
-                  nz-button
-                  nzDanger
-                  [nzLoading]="proposingBusy()"
-                  (click)="rejectProposed()"
-                >
-                  Отклонить
-                </button>
-              </div>
-            }
-          </div>
-        </section>
+    <!-- Контакты клиента были в скрытой колонке, и они не врали — их
+         единственных оттуда и переносим. У проектов с воронкой свои
+         контакты в правой колонке ниже, второй раз их показывать незачем. -->
+    @if (sideless) {
+    <div class="mrow">
+      <span class="lbl">Клиент</span>
+      <span class="val">{{ p.client?.display_name || '—' }}</span>
+      @if (p.client?.email) {
+      <a [href]="'mailto:' + p.client!.email">{{ p.client!.email }}</a>
+      } @if (p.client?.phone) {
+      <a [href]="'tel:' + p.client!.phone">{{ p.client!.phone }}</a>
+      } @if (p.client?.telegram) {
+      <a [href]="tgLink(p.client!.telegram!)" target="_blank" rel="noopener">
+        {{ p.client!.telegram }}
+      </a>
+      }
+    </div>
 
-        <section class="panel">
-          <h3>Комментарии</h3>
-          <div class="comments">
-            @for (c of comments(); track c.id) {
-              <article class="comment" [class.internal]="c.is_internal">
-                <header class="comment-head">
-                  <strong>{{ c.author_name || 'Без имени' }}</strong>
-                  @if (c.is_internal) {
-                    <span class="badge-internal" title="Видно только команде">
-                      🔒 внутренний
-                    </span>
-                  }
-                </header>
-                <p>{{ c.body }}</p>
-                <small>{{ ago(c.created_at) }}</small>
-              </article>
-            } @empty {
-              <p class="empty">Комментариев пока нет.</p>
-            }
-          </div>
-          <textarea
-            nz-input
-            rows="3"
-            [placeholder]="commentInternalValue ? 'Заметка для команды (не видна клиенту)...' : 'Написать клиенту и команде...'"
-            [(ngModel)]="commentBodyValue"
-          ></textarea>
-          <div class="comment-actions">
-            <label class="internal-toggle" [class.on]="commentInternalValue">
-              <nz-switch
-                [ngModel]="commentInternalValue"
-                (ngModelChange)="commentInternalValue = $event"
-              ></nz-switch>
-              <span>{{ commentInternalValue ? '🔒 Внутренний (не видит клиент)' : 'Видно клиенту' }}</span>
-            </label>
-            <button nz-button nzType="primary" (click)="sendComment()">Отправить</button>
-          </div>
-        </section>
+    <details class="hist">
+      <summary>История изменений <span class="n">{{ events().length }}</span></summary>
+      <ng-container [ngTemplateOutlet]="activity" />
+    </details>
+    }
+  </section>
+  }
 
-        <section class="panel">
-          <h3>Активность</h3>
-          <ul class="feed">
-            @for (e of events(); track e.id) {
-              <li>
-                <span class="actor">{{ e.actor_display_name || e.actor_type }}</span>
-                <span class="kind">{{ e.event_kind }}</span>
-                @if (e.from_status && e.to_status) {
-                  <small>{{ e.from_status }} → {{ e.to_status }}</small>
-                }
-                @if (e.comment) {
-                  <em>{{ e.comment }}</em>
-                }
-                <time>{{ ago(e.created_at) }}</time>
-              </li>
+  <!-- У проекта «креаторы под ключ» нет воронки, а заголовок, состав и
+       счётчики рисует его собственная шапка. Здесь остаётся только то, что
+       относится к администрированию проекта, — и если этого нет, шапки нет
+       вовсе: пустая полоса выглядит как незагрузившийся блок. -->
+  @let claimable = !p.assigned_to_user_id && isAdmin() !== 'admin'; @let showHero = p.kind !==
+  'creators_turnkey' || claimable; @if (showHero) {
+  <header class="hero">
+    @if (p.kind !== 'creators_turnkey') {
+    <div class="title-row">
+      <h1>{{ p.title }}</h1>
+      <nz-tag [nzColor]="statusColor(p.display_status)">
+        {{ statusLabel(p.display_status) }}
+      </nz-tag>
+    </div>
+    <nz-progress [nzPercent]="p.progress" nzSize="small" [nzShowInfo]="false"></nz-progress>
+    <p class="hint">
+      Движение по шагам — только через <strong>канбан</strong>. Эта страница — для комментариев и
+      активности.
+    </p>
+
+    <dl class="meta-grid">
+      <div>
+        <dt>Бюджет</dt>
+        <dd>
+          @if (p.budget != null) { {{ p.budget | number }} ₽ } @else {
+          <span class="muted">не указан</span>
+          }
+        </dd>
+      </div>
+      <div>
+        <dt>
+          Правки
+          <span
+            class="beta-tag"
+            title="Логика правок ещё не подключена к workflow — счётчик информативный"
+            >бета</span
+          >
+        </dt>
+        <dd>{{ p.revisions_used }} из {{ p.revisions_included }}</dd>
+      </div>
+      <div>
+        <dt>Старт</dt>
+        <dd>{{ p.started_at ? (p.started_at | date: 'd MMM y') : '—' }}</dd>
+      </div>
+      <div>
+        <dt>Вид</dt>
+        <dd>{{ kindLabel(p.kind) }}</dd>
+      </div>
+    </dl>
+    } @if (claimable) {
+    <div class="claim-banner">
+      <div>
+        <strong>Проект ждёт менеджера.</strong>
+        <span>Возьмите на себя — будет вашим в канбане.</span>
+      </div>
+      <button
+        nz-button
+        nzType="primary"
+        type="button"
+        [nzLoading]="claimBusy()"
+        (click)="claimProject()"
+      >
+        Взять на себя
+      </button>
+    </div>
+    }
+  </header>
+  } @if (p.kind === 'creators_turnkey') {
+  <app-manager-turnkey-project [project]="p" [meId]="meId()" />
+  } @else {
+  <app-project-publications [projectID]="p.id" [kind]="p.kind" />
+
+  <app-project-materials [projectId]="p.id" role="manager" />
+
+  <!-- Переписка: три ветки, разделённые правом читать. Клиентская, личная
+       ветка каждого креатора и внутренние заметки. Менеджер видит все. -->
+  <app-project-comments [projectId]="p.id" role="manager" [meId]="meId()" />
+  }
+
+  <!-- У проекта «креаторы под ключ» контакты и сводка живут в боковой
+       колонке самого проекта, а воронки нет вовсе — этот блок ему не нужен. -->
+  @if (p.kind !== 'creators_turnkey') {
+  <div class="cols" [class.solo]="!p.stages.length">
+    @if (p.stages.length) {
+    <section class="funnel">
+      <h2 class="section-title">Воронка</h2>
+      @for (stage of p.stages; track stage.id) {
+      <article class="stage">
+        <header>
+          <h3>{{ stage.name }}</h3>
+          <nz-tag [nzColor]="stageStatusColor(stage.display_status)">
+            {{ stageStatusLabel(stage.display_status) }} · {{ stage.steps_done }}/{{
+            stage.steps_total }}
+          </nz-tag>
+        </header>
+        @for (step of stage.steps; track step.id) { @let badge = stepBadge(step);
+        <div class="step" [class.is-current]="step.is_current">
+          <div class="step-main">
+            <strong>{{ step.name }}</strong>
+            <small>{{ step.owner }}</small>
+          </div>
+          <nz-tag [nzColor]="badge.color">{{ badge.label }}</nz-tag>
+        </div>
+        }
+      </article>
+      }
+    </section>
+    }
+
+    <aside class="side">
+      <section class="panel contacts-panel">
+        <h3>Контакты</h3>
+        <div class="party">
+          <div class="party-head">
+            <span class="role">Клиент</span>
+            <strong>{{ p.client?.display_name || '—' }}</strong>
+          </div>
+          @if (p.client?.email || p.client?.phone || p.client?.telegram) {
+          <ul class="links">
+            @if (p.client?.email) {
+            <li><a [href]="'mailto:' + p.client!.email">{{ p.client!.email }}</a></li>
+            } @if (p.client?.phone) {
+            <li><a [href]="'tel:' + p.client!.phone">{{ p.client!.phone }}</a></li>
+            } @if (p.client?.telegram) {
+            <li>
+              <a [href]="tgLink(p.client!.telegram!)" target="_blank" rel="noopener"
+                >{{ p.client!.telegram }}</a
+              >
+            </li>
             }
           </ul>
-        </section>
-      </aside>
-    </div>
-  }
-</app-manager-layout>
+          } @else {
+          <p class="empty">Контактов нет — клиент не заполнил профиль.</p>
+          }
+        </div>
+
+        <div class="party">
+          <div class="party-head">
+            <span class="role">Исполнитель</span>
+            <strong>
+              @if (p.specialist) { {{ p.specialist.display_name }} } @else if
+              (p.proposed_specialist) {
+              <span class="pending">{{ p.proposed_specialist.display_name }}</span>
+              <span class="badge-pending">ждёт подтверждения</span>
+              } @else { — не назначен — }
+            </strong>
+            @if (!p.specialist) {
+            <button
+              nz-button
+              nzSize="small"
+              type="button"
+              style="margin-left: 8px"
+              (click)="openAssignSpecialist()"
+            >
+              {{ p.proposed_specialist ? 'Назначить другого' : 'Назначить' }}
+            </button>
+            }
+          </div>
+          @if (p.specialist?.email || p.specialist?.phone) {
+          <ul class="links">
+            @if (p.specialist?.email) {
+            <li><a [href]="'mailto:' + p.specialist!.email">{{ p.specialist!.email }}</a></li>
+            } @if (p.specialist?.phone) {
+            <li><a [href]="'tel:' + p.specialist!.phone">{{ p.specialist!.phone }}</a></li>
+            }
+          </ul>
+          } @else if (p.proposed_specialist) {
+          <p class="hint-proposed">
+            Клиент выбрал этого исполнителя в брифе. Подтвердите — он получит доступ к проекту, или
+            отклоните и подберите другого.
+          </p>
+          <div class="propose-actions">
+            <button
+              nz-button
+              nzType="primary"
+              [nzLoading]="proposingBusy()"
+              (click)="approveProposed()"
+            >
+              ✓ Подтвердить
+            </button>
+            <button nz-button nzDanger [nzLoading]="proposingBusy()" (click)="rejectProposed()">
+              Отклонить
+            </button>
+          </div>
+          }
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Активность</h3>
+        <ng-container [ngTemplateOutlet]="activity" />
+      </section>
+    </aside>
+  </div>
+  } }
+</ng-template>
+
+<!-- Лента активности одна на два места: правая колонка проекта с воронкой
+     и админская «История изменений» у проекта без неё. -->
+<ng-template #activity>
+  <ul class="feed">
+    @for (e of events(); track e.id) {
+    <li>
+      <span class="actor">{{ e.actor_display_name || e.actor_type }}</span>
+      <span class="kind">{{ e.event_kind }}</span>
+      @if (e.from_status && e.to_status) {
+      <small>{{ e.from_status }} → {{ e.to_status }}</small>
+      } @if (e.comment) {
+      <em>{{ e.comment }}</em>
+      }
+      <time>{{ ago(e.created_at) }}</time>
+    </li>
+    } @empty {
+    <li class="none">Событий пока нет.</li>
+    }
+  </ul>
+</ng-template>
+
+<ng-template #deleteTpl>
+  <p>
+    Проект исчезнет из списков и канбана сразу. Физически удалится из БД через 30 дней — до тех пор
+    его ещё можно вернуть SQL-ом.
+  </p>
+  <p class="confirm-hint">
+    Чтобы подтвердить, введите название проекта: <b>{{ project()?.title }}</b>
+  </p>
+  <input nz-input [(ngModel)]="deleteConfirmValue" placeholder="Название проекта" />
+  <input
+    nz-input
+    [(ngModel)]="deleteReasonValue"
+    placeholder="Причина (для лога активности, необязательно)"
+    style="margin-top: 8px"
+  />
+</ng-template>

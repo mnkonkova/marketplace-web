@@ -52,12 +52,6 @@ export interface ListAllUsersParams {
   offset?: number;
 }
 
-export interface CreateClientResult {
-  user_id: string;
-  invite_token?: string;
-  invite_url?: string;
-}
-
 export interface InviteGenerateResult {
   token: string;
   url: string;
@@ -169,14 +163,6 @@ export class AdminApi {
     return this.http.post<void>(`${this.api}/admin/managers/${id}/revoke`, {});
   }
 
-  public createClient(body: {
-    email: string;
-    display_name: string;
-    generate_invite: boolean;
-  }): Observable<CreateClientResult> {
-    return this.http.post<CreateClientResult>(`${this.api}/admin/users`, body);
-  }
-
   // Админский bypass email-верификации. Идемпотентно: повторный вызов
   // не меняет email_verified_at. Для ручного заноса клиента (когда контакты
   // уже сверены офлайн и не хочется гонять magic-link).
@@ -204,14 +190,11 @@ export class AdminApi {
   // Делает существующего юзера менеджером + (если sendInvite=true) сразу
   // выдаёт magic-link. Идемпотентно: повторный вызов на уже-менеджере
   // просто перегенерит invite. is_approved=TRUE ставится одновременно.
-  public promoteToManager(
-    userId: string,
-    sendInvite: boolean,
-  ): Observable<InviteGenerateResult> {
-    return this.http.post<InviteGenerateResult>(
-      `${this.api}/admin/managers/promote`,
-      { user_id: userId, send_invite: sendInvite },
-    );
+  public promoteToManager(userId: string, sendInvite: boolean): Observable<InviteGenerateResult> {
+    return this.http.post<InviteGenerateResult>(`${this.api}/admin/managers/promote`, {
+      user_id: userId,
+      send_invite: sendInvite,
+    });
   }
 
   public redeemInvite(token: string): Observable<RedeemResp> {
@@ -244,10 +227,9 @@ export class AdminApi {
   }
 
   public approveSpecialist(userId: string, expectedUpdatedAt?: string): Observable<void> {
-    return this.http.post<void>(
-      `${this.api}/admin/moderation/specialists/${userId}/approve`,
-      { expected_updated_at: expectedUpdatedAt },
-    );
+    return this.http.post<void>(`${this.api}/admin/moderation/specialists/${userId}/approve`, {
+      expected_updated_at: expectedUpdatedAt,
+    });
   }
 
   public rejectSpecialist(
@@ -255,9 +237,9 @@ export class AdminApi {
     reason: string,
     expectedUpdatedAt?: string,
   ): Observable<void> {
-    return this.http.post<void>(
-      `${this.api}/admin/moderation/specialists/${userId}/reject`,
-      { reason, expected_updated_at: expectedUpdatedAt },
-    );
+    return this.http.post<void>(`${this.api}/admin/moderation/specialists/${userId}/reject`, {
+      reason,
+      expected_updated_at: expectedUpdatedAt,
+    });
   }
 }

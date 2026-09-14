@@ -1,0 +1,131 @@
+:host {
+  display: block;
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+
+  button {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border-strong, #2c313a);
+    border-radius: 8px;
+    background: var(--bg-elevated, #111316);
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  button:hover {
+    color: var(--text);
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.wd {
+  padding-bottom: 4px;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-align: center;
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: default;
+
+  &.has {
+    border-color: var(--border-strong, #2c313a);
+    background: var(--bg-elevated, #111316);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  &.is-selected {
+    border-color: var(--cta, #f0553c);
+  }
+}
+
+.blank {
+  border: none;
+  background: none;
+}
+
+.dot {
+  position: absolute;
+  bottom: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+
+  &.published {
+    left: calc(50% - 7px);
+    background: var(--accent, #20a194);
+  }
+
+  &.planned {
+    left: calc(50% + 2px);
+    background: var(--text-dim);
+  }
+}
+
+.legend,
+.picked {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+
+  .dot {
+    position: static;
+    display: inline-block;
+    margin: 0 2px 0 6px;
+  }
+}
+
+// Кто выходит в выбранный день. Имя приходит в самой записи календаря,
+// поэтому строка теперь про человека, а не про количество.
+.picked-items {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 12.5px;
+  }
+
+  .dot {
+    position: static;
+    flex: 0 0 auto;
+  }
+
+  .nm {
+    flex: 1;
+    color: var(--text);
+  }
+
+  .st {
+    color: var(--text-dim);
+  }
+}

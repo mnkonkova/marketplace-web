@@ -5,6 +5,8 @@ import {
   STAGE_STATUS_COLOR,
   OWNER_LABEL,
   getStepBadge,
+  projectProgressMeasure,
+  projectStageLabel,
 } from '@shared/lib/project-status';
 
 describe('PROJECT_STATUS_LABEL/COLOR', () => {
@@ -71,5 +73,42 @@ describe('getStepBadge', () => {
 
   it('pending → «Впереди» default', () => {
     expect(getStepBadge('pending', 'team')).toEqual({ label: 'Впереди', color: 'default' });
+  });
+});
+
+describe('projectProgressMeasure', () => {
+  // Главное, что проверяем: одна и та же цифра у разных видов проекта
+  // означает разное, и подпись обязана это называть.
+  it('у креаторов меряет выкладками, у продакшна — шагами', () => {
+    expect(projectProgressMeasure('creators_turnkey', 42).caption).toBe('по выкладкам');
+    expect(projectProgressMeasure('production_turnkey', 42).caption).toBe('по шагам');
+  });
+
+  it('процент округляется и не вылезает за 0..100', () => {
+    expect(projectProgressMeasure('production_turnkey', 66.666).percent).toBe(67);
+    expect(projectProgressMeasure('production_turnkey', -5).percent).toBe(0);
+    expect(projectProgressMeasure('production_turnkey', 140).percent).toBe(100);
+  });
+
+  // У общего проекта нет ни шагов, ни выкладок: «0%» читалось бы как
+  // «ничего не сделано», хотя мерить попросту нечем.
+  it('у общего проекта прогресса нет — percent=null и объяснение', () => {
+    const m = projectProgressMeasure('general', 0);
+    expect(m.percent).toBeNull();
+    expect(m.hint).toContain('не по чему');
+  });
+});
+
+describe('projectStageLabel', () => {
+  it('стадия есть — показываем её', () => {
+    expect(projectStageLabel('production_turnkey', 'Монтаж')).toBe('Монтаж');
+  });
+
+  // Прочерк в колонке выглядел как потерянные данные, хотя терять нечего:
+  // стадии бывают только у продакшна.
+  it('стадии нет — объясняем почему, а не ставим прочерк', () => {
+    expect(projectStageLabel('creators_turnkey')).toBe('Без стадий — план выкладок');
+    expect(projectStageLabel('general')).toBe('Без стадий — один срок');
+    expect(projectStageLabel('production_turnkey')).toBe('Все стадии пройдены');
   });
 });

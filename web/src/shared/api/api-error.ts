@@ -43,3 +43,36 @@ export function apiErrorMessage(body: ApiErrorBody | null, fallback = 'Ошиб�
 
   return head;
 }
+
+// ---- разбор HttpErrorResponse ----
+
+export interface ParsedApiError {
+  // Машинный код из поля `error`. Пустая строка, если тела нет.
+  code: string;
+  // Готовый текст для пользователя. Бэк присылает его в `message`
+  // по-русски — свой текст сочиняем только когда message пуст.
+  message: string;
+  status: number;
+}
+
+interface HttpErrorLike {
+  status?: number;
+  error?: ApiErrorBody | string | null;
+}
+
+// parseApiError — единая распаковка ошибки ручки. Ручки CRM отдают
+// {error, message}: `message` уже написан для пользователя, поэтому он
+// имеет приоритет над любыми фронтовыми формулировками. fallback уходит
+// в дело только когда message пуст — например у httpx.WriteErr без текста.
+export function parseApiError(
+  e: unknown,
+  fallback = 'Не удалось выполнить запрос',
+): ParsedApiError {
+  const err = (e ?? {}) as HttpErrorLike;
+  const status = typeof err.status === 'number' ? err.status : 0;
+  const body: ApiErrorBody | null =
+    err.error && typeof err.error === 'object' ? (err.error as ApiErrorBody) : null;
+  const code = body?.error?.trim() || '';
+  const message = body?.message?.trim() || apiErrorMessage(body, fallback);
+  return { code, message, status };
+}

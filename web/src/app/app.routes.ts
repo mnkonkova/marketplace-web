@@ -81,6 +81,40 @@ export const routes: Routes = [
     loadComponent: () =>
       import('@pages/me/project-detail/project-detail.page').then((m) => m.ProjectDetailPage),
   },
+  // Воронка заказа «под ключ». Два маршрута на один экран: /new — пустая
+  // воронка с нулевого шага, /:id — уже созданный заказ. Шаг у него не в
+  // URL, а в статусе заказа: воронку проходят один раз и в одну сторону,
+  // и ссылка «на третий шаг» вела бы в состояние, которого нет.
+  {
+    path: 'me/orders/new',
+    canActivate: [requireRole('client', 'specialist', 'manager', 'admin')],
+    loadComponent: () =>
+      import('@pages/me/order-funnel/order-funnel.page').then((m) => m.OrderFunnelPage),
+  },
+  {
+    path: 'me/orders/:id',
+    canActivate: [requireRole('client', 'specialist', 'manager', 'admin')],
+    loadComponent: () =>
+      import('@pages/me/order-funnel/order-funnel.page').then((m) => m.OrderFunnelPage),
+  },
+  // Проекты, где я в составе. Собственный вход в кабинете специалиста:
+  // раньше на выкладки можно было попасть только по ссылке из карточек
+  // «Назначенные проекты», а это назначения по воронке — не то же самое.
+  {
+    path: 'me/creator/projects',
+    canActivate: [requireRole('specialist', 'admin')],
+    loadComponent: () =>
+      import('@pages/me/creator-projects/creator-projects.page').then((m) => m.CreatorProjectsPage),
+  },
+  // Проект глазами креатора: его выкладки, чеклист и цифры по его роликам.
+  // Отдельный маршрут от /me/projects/:id — там взгляд заказчика, и данные
+  // приходят из других ручек (/me/creator/...).
+  {
+    path: 'me/creator/projects/:id',
+    canActivate: [requireRole('specialist', 'admin')],
+    loadComponent: () =>
+      import('@pages/me/creator-project/creator-project.page').then((m) => m.CreatorProjectPage),
+  },
   {
     path: 'me/specialist',
     canActivate: [requireRole('specialist', 'admin')],
@@ -96,6 +130,21 @@ export const routes: Routes = [
     path: 'manager/board',
     canActivate: [requireRole('manager', 'admin')],
     loadComponent: () => import('@pages/manager/board/board.page').then((m) => m.ManagerBoardPage),
+  },
+  {
+    // Проекты менеджера списком: у проекта с креаторами нет воронки, и на
+    // канбане он не появляется вовсе.
+    path: 'manager/projects',
+    canActivate: [requireRole('manager', 'admin')],
+    loadComponent: () =>
+      import('@pages/manager/projects/manager-projects.page').then((m) => m.ManagerProjectsPage),
+  },
+  {
+    // Библиотека чеклистов: из чего собирается чеклист выкладки.
+    path: 'manager/templates',
+    canActivate: [requireRole('manager', 'admin')],
+    loadComponent: () =>
+      import('@pages/manager/templates/templates.page').then((m) => m.ManagerTemplatesPage),
   },
   {
     path: 'manager/projects/:id',
@@ -133,6 +182,20 @@ export const routes: Routes = [
     canActivate: [requireRole('admin')],
     loadComponent: () =>
       import('@pages/admin/pipelines/pipeline-editor.page').then((m) => m.AdminPipelineEditorPage),
+  },
+  {
+    // Чеклисты креаторов: что креатор отмечает перед сдачей ссылок.
+    // Ведёт админ — пункты общие для всех проектов.
+    path: 'admin/checklists',
+    canActivate: [requireRole('admin')],
+    loadComponent: () =>
+      import('@pages/admin/checklists/checklists.page').then((m) => m.AdminChecklistsPage),
+  },
+  {
+    // Прайс площадки: цена креатора для заказчика и доля самого креатора.
+    path: 'admin/tariff',
+    canActivate: [requireRole('admin')],
+    loadComponent: () => import('@pages/admin/tariff/tariff.page').then((m) => m.AdminTariffPage),
   },
   {
     path: 'admin/projects',

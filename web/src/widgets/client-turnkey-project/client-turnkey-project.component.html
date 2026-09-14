@@ -1,0 +1,414 @@
+<!-- Проект с креаторами: разметка перенесена из макета
+       ~/tmp/crm_project_client (1).html. У проекта с воронкой другой
+       экран — он ниже, в @else. -->
+<div class="crm-page">
+  <app-back-link defaultUrl="/me/projects" excludePrefix="/me/projects/" />
+
+  <div class="phead">
+    <div class="ttl">
+      <h1>{{ project().title }}</h1>
+      <div class="meta">
+        @if (project().started_at) {
+          <span
+            >Период: <b>{{ project().started_at | date: 'dd.MM' }}</b></span
+          >
+        }
+        <span
+          >Роликов: <b>{{ videos().length }}</b></span
+        >
+        <span
+          >Площадок на ролик: <b>{{ platformCount }}</b></span
+        >
+        @if (billing()?.accruals?.length; as n) {
+          <span
+            >Креаторов: <b>{{ n }}</b></span
+          >
+        }
+      </div>
+    </div>
+    <div style="display: flex; gap: 9px; flex-wrap: wrap">
+      @if (blocks().csvExport) {
+        <button type="button" class="btn ghost" [disabled]="csvBusy()" (click)="downloadCsv()">
+          Скачать отчёт
+        </button>
+      }
+      <button type="button" class="btn quiet" (click)="scrollToTalk()">Написать менеджеру</button>
+    </div>
+  </div>
+
+  <!-- Счёт отдельной строкой, а не пятым кубиком в ряду метрик: это
+         разные вещи. Просмотры и лайки — как идёт работа, «к оплате» —
+         сколько за неё платить, и главный вопрос заказчика должен стоять
+         первым, а не переноситься на вторую строку сетки. -->
+  @if (billing()?.totals; as t) {
+    <div class="billbar">
+      <div class="sum">
+        <span class="k">К оплате за {{ monthTitle() }}</span>
+        <b>{{ money(t.total) }}</b>
+      </div>
+      <div class="parts">
+        <span>
+          {{ salaryTitle() }} <b>{{ money(t.salaries) }}</b>
+        </span>
+        <span>
+          Бонус за просмотры <b>{{ money(t.views_bonus) }}</b>
+          @if (t.views) {
+            <i
+              >· {{ t.views | number }}
+              {{ plural(t.views, 'просмотр', 'просмотра', 'просмотров') }}</i
+            >
+          }
+        </span>
+        @if (t.cost_per_1000) {
+          <span>
+            Тысяча просмотров <b>{{ money(t.cost_per_1000) }}</b>
+          </span>
+        }
+      </div>
+    </div>
+  }
+
+  @if (report(); as r) {
+    <div class="kpis" style="margin-bottom: 20px">
+      <div class="kpi">
+        <div class="k">Просмотры, всего</div>
+        <div class="v">{{ r.views | number }}</div>
+        @if (r.growth_24h) {
+          <div class="d up">+{{ r.growth_24h | number }} за сутки</div>
+        }
+      </div>
+      <div class="kpi">
+        <div class="k">Лайки</div>
+        <div class="v">{{ r.likes | number }}</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Комментарии</div>
+        <div class="v">{{ r.comments | number }}</div>
+      </div>
+      <div class="kpi">
+        <div class="k">ER средний</div>
+        <div class="v">
+          @if (r.er_percent == null) {
+            —
+          } @else {
+            {{ r.er_percent | number: '1.0-1' }}%
+          }
+        </div>
+        <div class="d">
+          по {{ r.videos | number }} {{ plural(r.videos, 'ролику', 'роликам', 'роликам') }}
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Тариф карточками, как в КП: сначала фикс, потом бонус, потом
+         то, что пока не считаем. -->
+  @if (billing()?.terms; as t) {
+    <div class="pcards" style="margin-bottom: 22px">
+      <div class="pcard lead">
+        <div class="ph">Оклад</div>
+        <div class="pb">
+          <div class="big">{{ money(t.salary_per_month) }}<small>/ мес</small></div>
+          <p class="desc">
+            Фиксированная оплата каждому креатору за производство с публикацией на всех площадках.
+          </p>
+          @if (t.videos_first_month || t.videos_next_months) {
+            <div class="tiers">
+              @if (t.videos_first_month) {
+                <div class="tier">
+                  <span class="v">{{ t.videos_first_month }} видео</span>
+                  <span class="d">первый месяц</span>
+                </div>
+              }
+              @if (t.videos_next_months) {
+                <div class="tier">
+                  <span class="v">{{ t.videos_next_months }} видео / мес</span>
+                  <span class="d">со второго месяца</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="ph">За просмотры</div>
+        <div class="pb">
+          <div class="big">{{ money(t.rate_per_1000_views) }}<small>/ 1000</small></div>
+          <p class="desc">
+            Бонус за просмотры каждого ролика — суммарно по всем пяти площадкам. Ставка падает после
+            порога: виральный ролик не съедает бюджет.
+          </p>
+          @if (t.bonus_views_threshold) {
+            <div class="tiers">
+              <div class="tier">
+                <span class="v">{{ money(t.rate_per_1000_views) }}/1000</span>
+                <span class="d">до {{ t.bonus_views_threshold | number }} на ролик</span>
+              </div>
+              <div class="tier">
+                <span class="v">{{ money(t.rate_per_1000_views_over) }}/1000</span>
+                <span class="d">свыше {{ t.bonus_views_threshold | number }} на ролик</span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="pcard" [class.off]="!t.click_bonus_rate">
+        <div class="ph">За переходы</div>
+        <div class="pb">
+          <div class="big">
+            {{ t.click_bonus_rate ? money(t.click_bonus_rate) : '—' }}<small>/ переход</small>
+          </div>
+          <p class="desc">Бонус за переходы к вам за месяц.</p>
+          @if (!t.click_bonus_rate) {
+            <p class="offnote">
+              Пока не считаем: источник переходов не подключён. Поля в тарифе есть.
+            </p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="two">
+    <div>
+      @if (blocks().stats || statsDenied()) {
+        <div class="card" style="margin-bottom: 20px">
+          <!-- Плитки и площадки уже стоят наверху и справа: здесь нужен
+               только график по дням, иначе одни и те же числа показываются
+               на экране дважды. -->
+          <app-project-stats
+            [report]="report()"
+            [denied]="statsDenied()"
+            [range]="chartRange()"
+            [showKpis]="false"
+            [showPlatforms]="false"
+          />
+        </div>
+      }
+      @if (blocks().feed) {
+        <h2 style="margin-bottom: 12px">
+          Ролики
+          <span class="num" style="color: var(--muted-2); font-weight: 500">{{
+            videos().length
+          }}</span>
+        </h2>
+
+        @for (v of videos(); track v.publication_id) {
+          <article class="vid">
+            <div class="row">
+              <div class="cover c2"></div>
+              <div class="bd">
+                <div class="t">
+                  <!-- Название, которое дал креатор. Дата остаётся рядом,
+                       но подписью служит именно оно: двенадцать строк
+                       «Вышел 10 сент.» друг от друга не отличить. -->
+                  <b>
+                    @if (v.title) {
+                      {{ v.title }}
+                    } @else if (v.published_at) {
+                      Вышел {{ v.published_at | date: 'd MMM' }}
+                    } @else {
+                      Вышел
+                    }
+                  </b>
+                  @if (v.title && v.published_at) {
+                    <span class="when">вышел {{ v.published_at | date: 'd MMM' }}</span>
+                  }
+                  <span class="tag" [class.green]="!partial(v)" [class.amber]="partial(v)">
+                    {{ platformsOf(v).length }} из {{ platformCount }}
+                    {{ plural(platformCount, 'площадки', 'площадок', 'площадок') }}
+                  </span>
+                </div>
+                <div class="who">{{ creatorName(v.creator_name) }}</div>
+                @if (!v.stats_hidden) {
+                  <div class="nums">
+                    <span class="n"
+                      >Просмотры<b>{{ v.views | number }}</b></span
+                    >
+                    <span class="n"
+                      >Лайки<b>{{ v.likes | number }}</b></span
+                    >
+                    <span class="n"
+                      >Комментарии<b>{{ v.comments | number }}</b></span
+                    >
+                  </div>
+                } @else {
+                  <p class="sub">Показ статистики выключен менеджером.</p>
+                }
+                <div class="ft">
+                  <div class="plats">
+                    @for (pl of platformsOf(v); track pl) {
+                      <span class="plat on">{{ platformShort[pl] }}</span>
+                    }
+                  </div>
+                  @if (!v.stats_hidden && platformRows(v).length) {
+                    <button
+                      type="button"
+                      class="btn quiet sm"
+                      (click)="toggleVideo(v.publication_id)"
+                    >
+                      {{ isVideoOpen(v.publication_id) ? 'Свернуть' : 'По площадкам' }}
+                    </button>
+                  }
+                </div>
+
+                <!-- Разбор по площадкам: ссылка, просмотры, прирост за
+                     сутки и ER. Ролик один и тот же — разница только в
+                     площадке, и ровно за этим заказчик сюда и приходит. -->
+                @if (isVideoOpen(v.publication_id)) {
+                  <div class="det">
+                    @for (row of platformRows(v); track row.link_id) {
+                      <div class="prow">
+                        <span class="pn">{{ platformLabel[row.platform] }}</span>
+                        <a class="pu" [href]="row.url" target="_blank" rel="noopener">
+                          {{ row.url }}
+                        </a>
+                        <span class="pv">
+                          {{ row.views | number }}
+                          @if (row.growth_24h) {
+                            <small>+{{ row.growth_24h | number }}</small>
+                          }
+                        </span>
+                        <span class="er">
+                          @if (row.er_percent == null) {
+                            ER —
+                          } @else {
+                            ER {{ row.er_percent | number: '1.0-1' }}%
+                          }
+                        </span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </article>
+        } @empty {
+          <div class="card">
+            <p class="sub">Роликов пока нет — первые появятся после выкладки.</p>
+          </div>
+        }
+      }
+    </div>
+
+    <div>
+      @if (blocks().calendar) {
+        <div class="card" style="margin-bottom: 16px">
+          <app-project-calendar
+            [days]="calendarDays()"
+            [month]="calendarMonth()"
+            (monthChange)="onMonthChange($event)"
+          />
+        </div>
+      }
+      @if (report()?.by_platform?.length) {
+        <div class="card" style="margin-bottom: 16px">
+          <h2>Какая площадка тянет</h2>
+          <p class="sub" style="margin-bottom: 12px">
+            Ролик один и тот же — разница только в площадке.
+          </p>
+          <div class="platbars">
+            @for (row of report()!.by_platform; track row.platform) {
+              <div class="pbrow">
+                <span class="pn">{{ platformLabel[row.platform] }}</span>
+                <span class="track">
+                  <i
+                    [style.width.%]="report()!.views ? (row.views / report()!.views) * 100 : 0"
+                    style="background: var(--green)"
+                  ></i>
+                </span>
+                <span class="val">{{ row.views | number }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Команда месяца: клиент за неё платит, поэтому видит и состав,
+             и во сколько обошёлся каждый. -->
+      @if (billing()?.accruals?.length) {
+        <div class="card" style="margin-bottom: 16px">
+          <h2>Команда месяца</h2>
+          @if (fromOrder()) {
+            <p class="sub" style="margin-bottom: 10px">
+              Собрана по вашему приоритету — вручную никого не выбирали.
+            </p>
+          }
+          @for (a of billing()!.accruals; track a.id) {
+            <div class="mrow">
+              <span class="av a2">{{ (a.creator_name || '—').charAt(0) }}</span>
+              <span class="bd">
+                <b>{{ a.creator_name || 'Без имени' }}</b>
+                <span>
+                  @if (a.priority) {
+                    приоритет {{ a.priority }} ·
+                  }
+                  {{ a.videos_delivered }}
+                  {{ plural(a.videos_delivered, 'ролик', 'ролика', 'роликов') }} ·
+                  {{ a.views_total | number }}
+                  {{ plural(a.views_total, 'просмотр', 'просмотра', 'просмотров') }}
+                </span>
+              </span>
+              <span class="v">
+                {{ money(a.total) }}
+                <small>{{ money(a.salary) }} + {{ money(a.views_bonus) }}</small>
+              </span>
+            </div>
+          }
+        </div>
+      }
+      <!-- «Команда месяца» — из макета: кто сколько сдал и во сколько это
+           обошлось. Заказчик за эту команду платит, поэтому строка «60 000
+           + 5 850» — его счёт, а не чужая зарплата. Виджет тот же, что у
+           менеджера, но в клиентской роли: UTM-меток и кнопок утверждения
+           в ней нет. -->
+      <app-project-billing [projectId]="project().id" role="client" />
+
+      @if (blocks().notifications && prefs()) {
+        <div class="card">
+          <h2>Уведомления в боте</h2>
+          <p class="sub" style="margin-bottom: 10px">
+            Приходят вам в бот. Порог просмотров — чтобы не пропустить, когда ролик разошёлся.
+          </p>
+          <label class="ck" [class.on]="prefs()!.on_new_video">
+            <span class="box"><span nz-icon nzType="check"></span></span>
+            <span class="txt">Ролик вышел на всех площадках</span>
+            <input
+              type="checkbox"
+              hidden
+              [checked]="prefs()!.on_new_video"
+              (change)="togglePref('on_new_video')"
+            />
+          </label>
+          <label class="ck" [class.on]="prefs()!.on_weekly_digest">
+            <span class="box"><span nz-icon nzType="check"></span></span>
+            <span class="txt">Недельная сводка по просмотрам</span>
+            <input
+              type="checkbox"
+              hidden
+              [checked]="prefs()!.on_weekly_digest"
+              (change)="togglePref('on_weekly_digest')"
+            />
+          </label>
+          <label class="ck" [class.on]="prefs()!.on_date_shift">
+            <span class="box"><span nz-icon nzType="check"></span></span>
+            <span class="txt">Сдвиг даты выкладки</span>
+            <input
+              type="checkbox"
+              hidden
+              [checked]="prefs()!.on_date_shift"
+              (change)="togglePref('on_date_shift')"
+            />
+          </label>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div id="talk">
+    <app-project-comments [projectId]="project().id" role="client" [meId]="meId()" />
+  </div>
+</div>

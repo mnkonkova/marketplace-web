@@ -1,0 +1,197 @@
+<!-- Разметка перенесена из макета ~/tmp/crm_project_manager (1).html:
+     слева колонка проектов и сводка дня, справа сам проект. -->
+<div class="crm-page">
+  <div class="shell">
+    <aside class="aside">
+      <p class="aside-lbl">Активные проекты</p>
+      <div class="plist">
+        @for (s of siblings(); track s.id) {
+          <a
+            class="pitem"
+            [class.on]="s.id === project().id"
+            [routerLink]="['/manager/projects', s.id]"
+          >
+            <b>{{ s.title }}</b>
+            <span>{{ s.client?.display_name || s.client_display_name || 'без клиента' }}</span>
+          </a>
+        } @empty {
+          <p class="empty">Других проектов на вас нет.</p>
+        }
+      </div>
+
+      <p class="aside-lbl">Сегодня</p>
+      <!-- Пока все три нуля — одна строка вместо трёх: ряд нулей приучает
+           не смотреть сюда вовсе, и ненулевое в нём потом теряется. -->
+      <div class="card tight todaybox">
+        @if (todayCalm()) {
+          <p class="calm">Сегодня всё спокойно — ничего не горит.</p>
+        } @else {
+          @if (today().overdue) {
+            <div class="row">
+              <span>Просрочено</span><b class="num late">{{ today().overdue }}</b>
+            </div>
+          }
+          @if (today().partial) {
+            <div class="row">
+              <span>Выложено частично</span><b class="num warn">{{ today().partial }}</b>
+            </div>
+          }
+          @if (today().soon) {
+            <div class="row">
+              <span>Дедлайн ≤ 2 дней</span><b class="num warn">{{ today().soon }}</b>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Контакты заказчика — здесь, а не под проектом: менеджер звонит
+           клиенту из любой вкладки, а не только с последней. -->
+      <p class="aside-lbl">Контакты</p>
+      <div class="card tight contacts">
+        <b>{{ project().client?.display_name || '—' }}</b>
+        @if (project().client?.email) {
+          <a [href]="'mailto:' + project().client!.email">{{ project().client!.email }}</a>
+        }
+        @if (project().client?.phone) {
+          <a [href]="'tel:' + project().client!.phone">{{ project().client!.phone }}</a>
+        }
+        @if (project().client?.telegram) {
+          <span>{{ project().client!.telegram }}</span>
+        }
+        @if (!project().client?.email && !project().client?.phone && !project().client?.telegram) {
+          <span class="empty">Контактов нет — клиент не заполнил профиль.</span>
+        }
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="phead">
+        <div class="ttl">
+          <h1>{{ project().title }}</h1>
+          <div class="meta">
+            @if (project().client?.display_name) {
+              <span
+                >Клиент: <b>{{ project().client?.display_name }}</b></span
+              >
+            }
+            <!-- Отменённые в счёт не идут: план их прячет, и шапка обязана
+                 считать так же. Сколько их было — отдельной подписью. -->
+            <span
+              >Выкладок: <b>{{ livePublications().length }}</b>
+              @if (cancelledCount()) {
+                · {{ cancelledCount() }} отменено
+              }
+            </span>
+            <span
+              >Не сдано: <b>{{ openCount() }}</b></span
+            >
+            <span
+              >Креаторов: <b>{{ crew().length }}</b></span
+            >
+          </div>
+        </div>
+
+        <!-- Состав виден сразу, лицами: менеджер держит в голове людей, а не
+         их количество. Подпись обязательна: кружок с буквой в углу карточки
+         без неё читается как «чей-то аватар», а не как состав проекта. -->
+        @if (crew().length) {
+          <div class="crew">
+            <span class="crew-lbl">
+              {{ plural(crew().length, 'Креатор', 'Креатора', 'Креаторов') }} в проекте
+            </span>
+            <span class="avs">
+              @for (c of crew(); track c.user_id) {
+                <span class="av a2" [title]="c.display_name">{{ c.display_name.charAt(0) }}</span>
+              }
+            </span>
+          </div>
+        }
+      </div>
+
+      @if (burning().length) {
+        <div class="riskbar">
+          <span class="ic">!</span>
+          <span class="tx">
+            <b
+              >{{ burning().length }}
+              {{
+                plural(burning().length, 'выкладка горит', 'выкладки горят', 'выкладок горят')
+              }}</b
+            >
+            — у {{ burningNames() }} срок прошёл, а ссылок нет или собраны не все. Бот уже писал;
+            кнопка «напомнить» — во вкладке «План выкладок».
+          </span>
+        </div>
+      }
+
+      <!-- Предоплата. Система порядок не сторожит: деньги приходят мимо
+           неё, и остановить проект ей нечем. Поэтому не запрет, а
+           предупреждение — и ровно тогда, когда расхождение уже есть. -->
+      @if (prepaymentRisk()) {
+        <div class="riskbar warn">
+          <span class="ic">₽</span>
+          <span class="tx">
+            <b>Работа идёт, предоплата не подтверждена</b> —
+            @if (prepaymentAwaited()) {
+              сумма выставлена, но деньги не отмечены полученными.
+            } @else {
+              предоплата по проекту вообще не заведена.
+            }
+            Выкладки уже стоят в плане: договорённость — предоплата до старта, и сейчас она
+            нарушена. Сумма и отметка «Деньги пришли» — во вкладке «Начисления».
+          </span>
+        </div>
+      }
+
+      <!-- Порядок вкладок — по частоте обращения: переписка ежедневная,
+           статистика и деньги — отчётность раз в период. -->
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab" [class.on]="tab() === 'plan'" (click)="setTab('plan')">
+          План выкладок<span class="cnt">{{ livePublications().length }}</span>
+        </button>
+        <button type="button" class="tab" [class.on]="tab() === 'crew'" (click)="setTab('crew')">
+          Креаторы<span class="cnt">{{ crew().length }}</span>
+        </button>
+        <button type="button" class="tab" [class.on]="tab() === 'talk'" (click)="setTab('talk')">
+          Комментарии
+        </button>
+        <button type="button" class="tab" [class.on]="tab() === 'stats'" (click)="setTab('stats')">
+          Статистика
+        </button>
+        <button type="button" class="tab" [class.on]="tab() === 'pay'" (click)="setTab('pay')">
+          Начисления
+        </button>
+        <button type="button" class="tab" [class.on]="tab() === 'mat'" (click)="setTab('mat')">
+          Материалы
+        </button>
+      </div>
+
+      <!-- Вкладки постоянные: пустая честно говорит, что пусто, а исчезнувшая
+       заставила бы гадать, куда делся раздел. -->
+      @if (tab() === 'plan' || tab() === 'crew' || tab() === 'stats') {
+        <app-project-publications
+          [projectID]="project().id"
+          [kind]="project().kind"
+          [section]="pubSection()"
+        />
+      }
+
+      @if (tab() === 'pay') {
+        <app-project-billing [projectId]="project().id" role="manager" />
+      }
+
+      @if (tab() === 'mat') {
+        <app-project-materials [projectId]="project().id" role="manager" />
+        <app-project-publications
+          [projectID]="project().id"
+          [kind]="project().kind"
+          section="mat"
+        />
+      }
+
+      @if (tab() === 'talk') {
+        <app-project-comments [projectId]="project().id" role="manager" [meId]="meId()" />
+      }
+    </main>
+  </div>
+</div>

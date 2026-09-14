@@ -1,0 +1,98 @@
+// Словарь макета (.card, .tag, .btn, .inp, .ovl, .modal) — в
+// shared/scss/_crm.scss.
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+
+  > div {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  h1 {
+    margin: 0 0 6px;
+  }
+}
+
+.tpls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.tpl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .hd {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  h3,
+  .sub {
+    margin: 0;
+  }
+
+  .cnt {
+    color: var(--muted-2, #616772);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .acts {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+}
+
+.empty {
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+
+// Окно шире стандартного: в строке пункта четыре элемента, и в 540px
+// поле под текст сжимается до нечитаемого.
+.modal.wide {
+  width: min(760px, 100%);
+}
+
+.lbl {
+  margin: 14px 0 6px;
+}
+
+// Строка пункта: текст тянется, остальное по содержимому.
+.row {
+  display: grid;
+  grid-template-columns: 1fr 150px max-content max-content;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr max-content;
+  }
+}
+
+.pick {
+  appearance: none;
+  padding-right: 26px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238c94a0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  background-size: 15px 15px;
+}
+
+.btn.dash.wide {
+  width: 100%;
+  margin-top: 4px;
+}

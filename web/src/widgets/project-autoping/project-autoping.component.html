@@ -1,0 +1,24 @@
+@if (prefs()) {
+  <section class="ping-block">
+    <h2>Автопинг</h2>
+    <p class="note">
+      Бот дёргает креатора сам. Общий чат — только для менеджеров, туда уходит сводка. Выключенное
+      напоминание не откладывается, а не отправляется.
+    </p>
+
+    @for (r of rows; track r.field) {
+      <div class="switchrow">
+        <span class="tx">
+          <b>{{ r.title }}</b>
+          <span>{{ r.note }}</span>
+        </span>
+        <nz-switch
+          [ngModel]="value(r.field)"
+          [nzLoading]="busy() === r.field"
+          [attr.aria-label]="r.title"
+          (ngModelChange)="toggle(r.field)"
+        ></nz-switch>
+      </div>
+    }
+  </section>
+}

@@ -1,5 +1,6 @@
 import {
   ProjectDisplayStatus,
+  ProjectKind,
   StageDisplayStatus,
   StepOwner,
   StepStatus,
@@ -75,5 +76,67 @@ export function getStepBadge(status: StepStatus, owner: StepOwner): StepBadge {
     case 'pending':
     default:
       return { label: 'Впереди', color: 'default' };
+  }
+}
+
+// Вид проекта. Выкладки бывают только у creators_turnkey — до появления
+// поля kind это определялось по наличию выкладок, то есть догадкой.
+export const PROJECT_KIND_LABEL: Record<ProjectKind, string> = {
+  creators_turnkey: 'Креаторы под ключ',
+  production_turnkey: 'Продакшен под ключ',
+  general: 'Общий проект',
+};
+
+// Прогресс у разных видов проекта измеряется разным, и полоска об этом
+// молчит. У креаторов под ключ это доля закрытых выкладок, у продакшна —
+// доля пройденных шагов воронки, у общего проекта прогресса нет вовсе:
+// ни шагов, ни выкладок у него не бывает, и «0%» читалось бы как «ничего
+// не сделано». Подпись рядом с полоской обязана называть меру — иначе
+// два числа в соседних строках выглядят сравнимыми, не будучи таковыми.
+export interface ProgressMeasure {
+  // null — мерить нечем; полоску в этом случае не рисуем.
+  percent: number | null;
+  caption: string;
+  hint: string;
+}
+
+export function projectProgressMeasure(kind: ProjectKind, progress: number): ProgressMeasure {
+  const percent = Math.max(0, Math.min(100, Math.round(progress || 0)));
+  switch (kind) {
+    case 'creators_turnkey':
+      return {
+        percent,
+        caption: 'по выкладкам',
+        hint: 'Доля выкладок, закрытых по плану проекта.',
+      };
+    case 'production_turnkey':
+      return {
+        percent,
+        caption: 'по шагам',
+        hint: 'Доля пройденных шагов воронки.',
+      };
+    case 'general':
+    default:
+      return {
+        percent: null,
+        caption: 'не считается',
+        hint: 'У общего проекта нет ни шагов, ни выкладок — считать прогресс не по чему.',
+      };
+  }
+}
+
+// Что писать в колонке «Стадия». Стадии бывают только у продакшна — у
+// остальных прочерк выглядел как потерянные данные, хотя терять нечего.
+export function projectStageLabel(kind: ProjectKind, currentStageName?: string): string {
+  if (currentStageName) return currentStageName;
+  switch (kind) {
+    case 'creators_turnkey':
+      return 'Без стадий — план выкладок';
+    case 'general':
+      return 'Без стадий — один срок';
+    case 'production_turnkey':
+    default:
+      // Воронка есть, а текущей стадии нет — значит все пройдены.
+      return 'Все стадии пройдены';
   }
 }

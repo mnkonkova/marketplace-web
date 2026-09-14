@@ -51,6 +51,18 @@
             Админ
           </a>
         }
+        <!-- Свои проекты креатор открывает каждый день, а кабинет —
+             портфолио и ставки — правит редко. Поэтому частое стоит
+             первым, а не прячется внутри редкого. -->
+        @if (showCreatorProjects()) {
+          <a
+            routerLink="/me/creator/projects"
+            class="link"
+            [class.is-active]="activeNav() === 'creator-projects'"
+          >
+            Мои проекты
+          </a>
+        }
         <a [routerLink]="cabinetLink()" class="link" [class.is-active]="activeNav() === 'cabinet'">
           Кабинет
         </a>
@@ -144,6 +156,16 @@
             (click)="closeMenu()"
           >
             Админ
+          </a>
+        }
+        @if (showCreatorProjects()) {
+          <a
+            routerLink="/me/creator/projects"
+            class="mobile-nav-item"
+            [class.is-active]="activeNav() === 'creator-projects'"
+            (click)="closeMenu()"
+          >
+            Мои проекты
           </a>
         }
         <a

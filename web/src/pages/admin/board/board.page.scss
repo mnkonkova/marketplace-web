@@ -86,7 +86,7 @@
 .col {
   flex: 0 0 280px;
   background: var(--bg-elevated);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 12px;
 
   header {
@@ -105,7 +105,7 @@
       background: var(--surface-hover);
       color: var(--text);
       padding: 2px 8px;
-      border-radius: 10px;
+      border-radius: var(--r-field);
       font-size: 12px;
     }
   }
@@ -121,7 +121,7 @@
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-field);
   padding: 12px;
   cursor: pointer;
   display: flex;

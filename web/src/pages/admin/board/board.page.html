@@ -2,87 +2,70 @@
   <header class="head">
     <h1>Канбан · все проекты</h1>
     @if (boards().length > 1) {
-      <nz-select
-        [(ngModel)]="selected"
-        style="min-width: 240px"
-        nzPlaceHolder="Выберите воронку"
-      >
-        @for (b of boards(); track b.pipeline.id) {
-          <nz-option
-            [nzValue]="b.pipeline.id"
-            [nzLabel]="b.pipeline.name"
-          ></nz-option>
-        }
-      </nz-select>
+    <nz-select [(ngModel)]="selected" style="min-width: 240px" nzPlaceHolder="Выберите воронку">
+      @for (b of boards(); track b.pipeline.id) {
+      <nz-option [nzValue]="b.pipeline.id" [nzLabel]="b.pipeline.name"></nz-option>
+      }
+    </nz-select>
     }
   </header>
 
   @if (loading()) {
-    <nz-spin nzSize="large"></nz-spin>
+  <nz-spin nzSize="large"></nz-spin>
   } @else if (boards().length === 0) {
-    <nz-empty nzNotFoundContent="Проектов нет"></nz-empty>
-  } @else if (currentBoard()) { @let board = currentBoard()!;
-    @if (isListMode()) {
-      <app-board-list-view
-        [board]="board"
-        (cardTap)="onLongPress($event)"
-      />
-    } @else {
-    <p class="hint">
-      Колонки = шаги воронки. 🤖 — авто-шаг (n8n).
-    </p>
+  <nz-empty nzNotFoundContent="Проектов нет"></nz-empty>
+  } @else if (currentBoard()) { @let board = currentBoard()!; @if (isListMode()) {
+  <app-board-list-view [board]="board" (cardTap)="onLongPress($event)" />
+  } @else {
+  <p class="hint">Колонки = шаги воронки. 🤖 — авто-шаг (n8n).</p>
 
-    <div class="board" cdkDropListGroup cdkScrollable>
-      @for (col of board.columns; track col.step_id) {
-        <section class="col" [class.col-system]="col.step_owner === 'system'">
-          <header>
-            <div class="col-title">
-              <span class="owner-icon" [title]="ownerLabel(col.step_owner)">
-                {{ ownerIcon(col.step_owner) }}
-              </span>
-              <h3>{{ col.step_name }}</h3>
-            </div>
-            <span class="stage-name">{{ col.stage_name }}</span>
-            <span class="count">{{ col.items.length }}</span>
-          </header>
-          <div
-            class="col-body"
-            cdkDropList
-            [cdkDropListData]="col.items"
-            (cdkDropListDropped)="onDrop($event, col)"
-          >
-            @for (p of col.items; track p.id) {
-              <article class="card" cdkDrag [cdkDragData]="p" (click)="open(p)">
-                <strong>{{ p.title }}</strong>
-                @if (p.client_display_name) {
-                  <small>Клиент: {{ p.client_display_name }}</small>
-                }
-                <small class="assigned">
-                  Менеджер: {{ p.assigned_to_user_id ? '✓' : '—' }}
-                </small>
-                <nz-tag [nzColor]="statusColor(p.display_status)">
-                  {{ statusLabel(p.display_status) }}
-                </nz-tag>
-              </article>
-            } @empty {
-              <p class="empty-col">—</p>
-            }
-          </div>
-        </section>
-      }
-    </div>
+  <div class="board" cdkDropListGroup cdkScrollable>
+    @for (col of board.columns; track col.step_id) {
+    <section class="col" [class.col-system]="col.step_owner === 'system'">
+      <header>
+        <div class="col-title">
+          <span class="owner-icon" [title]="ownerLabel(col.step_owner)">
+            {{ ownerIcon(col.step_owner) }}
+          </span>
+          <h3>{{ col.step_name }}</h3>
+        </div>
+        <span class="stage-name">{{ col.stage_name }}</span>
+        <span class="count">{{ col.items.length }}</span>
+      </header>
+      <div
+        class="col-body"
+        cdkDropList
+        [cdkDropListData]="col.items"
+        (cdkDropListDropped)="onDrop($event, col)"
+      >
+        @for (p of col.items; track p.id) {
+        <article class="card" cdkDrag [cdkDragData]="p" (click)="open(p)">
+          <strong>{{ p.title }}</strong>
+          @if (p.client_display_name) {
+          <small>Клиент: {{ p.client_display_name }}</small>
+          }
+          <small class="assigned"> Менеджер: {{ p.assigned_to_user_id ? '✓' : '—' }} </small>
+          <nz-tag [nzColor]="statusColor(p.display_status)">
+            {{ statusLabel(p.display_status) }}
+          </nz-tag>
+        </article>
+        } @empty {
+        <p class="empty-col">—</p>
+        }
+      </div>
+    </section>
     }
+  </div>
+  }
 
-    <app-stage-move-sheet
-      [visible]="moveSheetOpen()"
-      [pipeline]="board.pipeline"
-      [currentStepId]="moveTargetCurrentStepId()"
-      [projectTitle]="moveTarget()?.title ?? ''"
-      [enableChangeFunnel]="true"
-      (close)="closeMoveSheet()"
-      (selectStep)="onSelectMoveStep($event)"
-      (openProject)="openMoveTargetProject()"
-      (changeFunnel)="openChangeFunnel()"
-    />
+  <app-stage-move-sheet
+    [visible]="moveSheetOpen()"
+    [pipeline]="board.pipeline"
+    [currentStepId]="moveTargetCurrentStepId()"
+    [projectTitle]="moveTarget()?.title ?? ''"
+    (close)="closeMoveSheet()"
+    (selectStep)="onSelectMoveStep($event)"
+    (openProject)="openMoveTargetProject()"
+  />
   }
 </app-admin-layout>

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -11,6 +11,8 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { ProjectApi } from '@entities/project/api/project.api';
 import { ProjectManagerView } from '@entities/project/model/project.types';
 import { PROJECT_STATUS_COLOR, PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
+import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
 import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.component';
 
 @Component({
@@ -23,6 +25,8 @@ import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.c
     NzButtonModule,
     NzSpinModule,
     NzEmptyModule,
+    NgTemplateOutlet,
+    AdminLayoutComponent,
     ManagerLayoutComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,6 +39,13 @@ export class ManagerInboxPage implements OnInit {
   private readonly router = inject(Router);
 
   private readonly msg = inject(NzMessageService);
+
+  private readonly auth = inject(AuthSessionStore);
+
+  // «Заявки» — пункт и админского сайдбара тоже: очередь неразобранных
+  // проектов админ смотрит так же часто, как менеджер. Оболочку выбираем
+  // по роли, чтобы админ не проваливался из своих разделов в чужие.
+  public readonly isAdmin = this.auth.role;
 
   public readonly loading = signal(true);
 

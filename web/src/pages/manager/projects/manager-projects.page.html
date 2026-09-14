@@ -1,0 +1,55 @@
+<app-manager-layout>
+  <div class="crm-page">
+    <h1>Мои проекты</h1>
+    <p class="sub">
+      Всё, что закреплено за вами. Канбан показывает только проекты с воронкой — у проекта с
+      креаторами её нет, и найти его можно только здесь.
+    </p>
+
+    @if (kinds().length > 1) {
+    <div class="pickchips filter">
+      <button type="button" class="pick" [class.on]="kind() === 'all'" (click)="setKind('all')">
+        Все<span class="cnt">{{ items().length }}</span>
+      </button>
+      @for (k of kinds(); track k) {
+      <button type="button" class="pick" [class.on]="kind() === k" (click)="setKind(k)">
+        {{ kindLabel[k] }}
+      </button>
+      }
+    </div>
+    } @if (loading()) {
+    <p class="empty">Загружаем…</p>
+    } @else {
+    <div class="twrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Проект</th>
+            <th>Клиент</th>
+            <th>Вид</th>
+            <th>Где сейчас</th>
+            <th>Статус</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of visible(); track p.id) {
+          <tr class="row" (click)="open(p)" tabindex="0" (keydown.enter)="open(p)">
+            <td><b>{{ p.title }}</b></td>
+            <td>{{ p.client?.display_name || p.client_display_name || '—' }}</td>
+            <td>{{ kindLabel[p.kind] }}</td>
+            <td>{{ where(p) }}</td>
+            <td><span class="tag">{{ statusLabel[p.display_status] }}</span></td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="5" class="empty">
+              За вами пока ничего не закреплено. Возьмите проект во вкладке «Заявки».
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+</app-manager-layout>

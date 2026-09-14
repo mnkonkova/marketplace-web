@@ -8,13 +8,22 @@ import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NZ_MODAL_DATA, NzModalRef } from 'ng-zorro-antd/modal';
-import { catchError, debounceTime, distinctUntilChanged, EMPTY, of, Subject, switchMap } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  EMPTY,
+  of,
+  Subject,
+  switchMap,
+} from 'rxjs';
 
 import { API_URL } from '@shared/api/api-url.token';
 import { ProjectApi, CreateProjectPayload } from '@entities/project/api/project.api';
-import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
+import { ProjectKind } from '@entities/project/model/project.types';
 
 interface UserSearchItem {
   user_id: string;
@@ -41,6 +50,7 @@ interface DialogData {
     NzButtonModule,
     NzRadioModule,
     NzSelectModule,
+    NzCheckboxModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -68,7 +78,9 @@ interface DialogData {
           [nzFilterOption]="dontFilter"
           (nzOnSearch)="onClientSearch($event)"
           [nzLoading]="clientSearchLoading()"
-          [nzNotFoundContent]="clientCandidates().length ? 'Нет совпадений' : 'Начните печатать (мин 2 символа)'"
+          [nzNotFoundContent]="
+            clientCandidates().length ? 'Нет совпадений' : 'Начните печатать (мин 2 символа)'
+          "
         >
           @for (u of clientCandidates(); track u.user_id) {
             <nz-option [nzValue]="u.user_id" [nzLabel]="formatUserLabel(u)"></nz-option>
@@ -77,17 +89,34 @@ interface DialogData {
       }
 
       <label>Название проекта</label>
-      <input nz-input [(ngModel)]="title" name="t" placeholder="Промо-ролик к запуску" />
+      <input
+        nz-input
+        [(ngModel)]="title"
+        name="t"
+        placeholder="Промо-ролик к запуску"
+        data-test="create-project-title"
+      />
+      <!-- Подсказка стоит сразу, а не появляется после отказа: правило
+           короткое, и узнавать о нём из ошибки незачем. -->
+      <span class="hint">Минимум 3 символа — по «12345» проект потом не найти.</span>
 
-      <label>Воронка</label>
-      <nz-select [(ngModel)]="pipelineID" name="pl" nzPlaceHolder="Выберите воронку">
-        @for (p of pipelines(); track p.id) {
-          <nz-option [nzValue]="p.id" [nzLabel]="p.name + (p.is_default ? ' (default)' : '')"></nz-option>
+      <label>Вид проекта</label>
+      <div class="kinds">
+        @for (k of kinds; track k.value) {
+          <button type="button" class="kind" [class.on]="kind === k.value" (click)="kind = k.value">
+            <b>{{ k.title }}</b>
+            <span>{{ k.hint }}</span>
+          </button>
         }
-      </nz-select>
+      </div>
 
       <label>Бюджет (опционально, ₽)</label>
-      <nz-input-number [(ngModel)]="budget" name="b" [nzMin]="0" style="width: 100%"></nz-input-number>
+      <nz-input-number
+        [(ngModel)]="budget"
+        name="b"
+        [nzMin]="0"
+        style="width: 100%"
+      ></nz-input-number>
 
       <label>Заметки (бриф/детали)</label>
       <textarea
@@ -97,6 +126,18 @@ interface DialogData {
         name="nt"
         placeholder="Что хочет клиент, дедлайны, бюджет"
       ></textarea>
+
+      <!-- Тестовые проекты копятся на стенде и забивают админский список.
+           Отметка здесь — единственный способ их отличить: по названию
+           («тест т8т 1234») это делалось на глаз. -->
+      <label
+        nz-checkbox
+        [(ngModel)]="isTest"
+        name="it"
+        class="test-flag"
+        data-test="create-project-is-test"
+        >Тестовый проект — прятать из общего списка</label
+      >
 
       <div class="actions">
         <button nz-button type="button" (click)="cancel()">Отмена</button>
@@ -116,6 +157,46 @@ interface DialogData {
         font-size: 12px;
         color: var(--text-muted);
       }
+      .hint {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .test-flag {
+        margin-top: 12px;
+      }
+      /* Вид проекта — карточками, а не выпадашкой: их три, и от выбора
+         зависит вся дальнейшая работа с проектом. */
+      .kinds {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px;
+        margin-top: 2px;
+      }
+      .kind {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding: 11px 13px;
+        border: 1px solid var(--border-strong, #2c313a);
+        border-radius: var(--r-field, 10px);
+        background: var(--bg-elevated, #111316);
+        color: var(--text);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+      .kind b {
+        font-size: 14px;
+      }
+      .kind span {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .kind.on {
+        border-color: var(--cta, #f0553c);
+        background: rgba(240, 85, 60, 0.1);
+      }
       .actions {
         display: flex;
         gap: 8px;
@@ -130,8 +211,6 @@ export class CreateProjectDialogComponent {
 
   private readonly api = inject(ProjectApi);
 
-  private readonly pipelineApi = inject(PipelineApi);
-
   private readonly http = inject(HttpClient);
 
   private readonly apiBase = inject(API_URL);
@@ -142,7 +221,26 @@ export class CreateProjectDialogComponent {
 
   public readonly data = inject<DialogData>(NZ_MODAL_DATA);
 
-  public readonly pipelines = signal<Array<{ id: string; name: string; is_default: boolean }>>([]);
+  // Вид проекта решает всё остальное: у креаторов вместо воронки план
+  // выкладок, у продакшна — шаги, у общего проекта один срок сдачи.
+  // Воронку здесь больше не выбирают: её ставят внутри проекта.
+  public readonly kinds: ReadonlyArray<{ value: ProjectKind; title: string; hint: string }> = [
+    {
+      value: 'creators_turnkey',
+      title: 'Креаторы под ключ',
+      hint: 'План выкладок, состав креаторов, начисления по просмотрам',
+    },
+    {
+      value: 'production_turnkey',
+      title: 'Продакшен под ключ',
+      hint: 'Съёмка и монтаж по шагам воронки',
+    },
+    {
+      value: 'general',
+      title: 'Общий проект',
+      hint: 'Один срок и сдача материалов, без шагов',
+    },
+  ];
 
   public readonly saving = signal(false);
 
@@ -155,7 +253,8 @@ export class CreateProjectDialogComponent {
   public clientName = '';
   public clientContact = '';
   public title = '';
-  public pipelineID = '';
+  public kind: ProjectKind = 'creators_turnkey';
+  public isTest = false;
   public notes = '';
   public budget: number | null = null;
 
@@ -166,15 +265,6 @@ export class CreateProjectDialogComponent {
   private readonly clientQ$ = new Subject<string>();
 
   public constructor() {
-    // Admin тянет /admin/pipelines (полные права), manager — /manager/pipelines
-    // (read-only). Без mode-разделения у менеджера был 403 на admin-роуте.
-    const data = inject<DialogData>(NZ_MODAL_DATA, { optional: true }) ?? { mode: 'manager' as Mode };
-    const pipelines$ = data.mode === 'admin' ? this.pipelineApi.list() : this.pipelineApi.listForManager();
-    pipelines$.subscribe((r) => {
-      this.pipelines.set(r.items.map((p) => ({ id: p.id, name: p.name, is_default: p.is_default })));
-      const def = r.items.find((p) => p.is_default);
-      if (def) this.pipelineID = def.id;
-    });
     // Live-search клиентов: 250ms debounce, отбрасываем повторы. Сервер
     // лимитирует 20 results — больше не загружаем.
     this.clientQ$
@@ -185,10 +275,9 @@ export class CreateProjectDialogComponent {
           if (q.trim().length < 2) return of<UserSearchItem[]>([]);
           this.clientSearchLoading.set(true);
           return this.http
-            .get<{ items: UserSearchItem[] }>(
-              `${this.apiBase}/manager/users/search`,
-              { params: { q, kind: 'client' } },
-            )
+            .get<{
+              items: UserSearchItem[];
+            }>(`${this.apiBase}/manager/users/search`, { params: { q, kind: 'client' } })
             .pipe(catchError(() => of({ items: [] as UserSearchItem[] })));
         }),
       )
@@ -216,20 +305,19 @@ export class CreateProjectDialogComponent {
   }
 
   public submit(): void {
+    // trim до проверки: «   ы   » — это одна буква, а не пять символов.
+    // Ту же границу держит сервер; здесь она экономит круг до него.
     const t = this.title.trim();
-    if (!t) {
-      this.msg.error('Укажите название проекта.');
-      return;
-    }
-    if (!this.pipelineID) {
-      this.msg.error('Выберите воронку.');
+    if (t.length < 3) {
+      this.msg.error('Название проекта — минимум 3 символа.');
       return;
     }
     const payload: CreateProjectPayload = {
-      pipeline_id: this.pipelineID,
+      kind: this.kind,
       title: t,
       notes: this.notes.trim(),
     };
+    if (this.isTest) payload.is_test = true;
     if (this.budget != null) payload.budget = this.budget;
     if (this.clientMode === 'registered') {
       const uid = this.clientUserID.trim();
@@ -249,9 +337,10 @@ export class CreateProjectDialogComponent {
       payload.client_contact = cc;
     }
     this.saving.set(true);
-    const req = this.data.mode === 'admin'
-      ? this.api.adminCreateProject(payload)
-      : this.api.managerCreateProject(payload);
+    const req =
+      this.data.mode === 'admin'
+        ? this.api.adminCreateProject(payload)
+        : this.api.managerCreateProject(payload);
     req
       .pipe(
         catchError((e) => {

@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnDestroy,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -13,12 +20,9 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzRateModule } from 'ng-zorro-antd/rate';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { ProjectApi } from '@entities/project/api/project.api';
-import {
-  ProjectClientView,
-  ProjectComment,
-  ProjectStepView,
-} from '@entities/project/model/project.types';
+import { ProjectClientView, ProjectStepView } from '@entities/project/model/project.types';
 import {
   OWNER_LABEL,
   PROJECT_STATUS_COLOR,
@@ -27,7 +31,11 @@ import {
   STAGE_STATUS_LABEL,
   getStepBadge,
 } from '@shared/lib/project-status';
+import { parseApiError } from '@shared/api/api-error';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import { ClientTurnkeyProjectComponent } from '@widgets/client-turnkey-project/client-turnkey-project.component';
+import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
+import { ProjectMaterialsComponent } from '@widgets/project-materials/project-materials.component';
 import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { withFromPage } from '@shared/nav/from-page';
 
@@ -46,7 +54,10 @@ import { withFromPage } from '@shared/nav/from-page';
     NzIconModule,
     NzRateModule,
     AppHeaderComponent,
+    ClientTurnkeyProjectComponent,
     BackLinkComponent,
+    ProjectCommentsComponent,
+    ProjectMaterialsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-detail.page.html',
@@ -61,6 +72,9 @@ export class ProjectDetailPage implements OnDestroy {
 
   private readonly msg = inject(NzMessageService);
 
+  // Свой id — чтобы в переписке свои сообщения были подписаны «Вы».
+  public readonly meId = inject(AuthSessionStore).userId;
+
   public goSpecialist(id: string, ev: MouseEvent): void {
     ev.preventDefault();
     void this.router.navigate(['/specialist', id], withFromPage(this.router));
@@ -73,31 +87,6 @@ export class ProjectDetailPage implements OnDestroy {
   public readonly project = signal<ProjectClientView | null>(null);
 
   public readonly busy = signal<string | null>(null);
-
-  public readonly comments = signal<ProjectComment[]>([]);
-
-  public readonly newComment = signal('');
-
-  public get newCommentValue(): string {
-    return this.newComment();
-  }
-
-  public set newCommentValue(v: string) {
-    this.newComment.set(v);
-  }
-
-  public sendComment(): void {
-    const p = this.project();
-    const body = this.newComment().trim();
-    if (!p || !body) return;
-    this.api.clientCreateComment(p.id, body).subscribe({
-      next: () => {
-        this.newComment.set('');
-        this.api.clientListComments(p.id).subscribe((r) => this.comments.set(r.items));
-      },
-      error: () => this.msg.error('Не удалось отправить'),
-    });
-  }
 
   public projectStatusLabel(s: ProjectClientView['display_status']): string {
     return PROJECT_STATUS_LABEL[s];
@@ -136,9 +125,7 @@ export class ProjectDetailPage implements OnDestroy {
   }
 
   public canSubmitReview(step: ProjectStepView): boolean {
-    return (
-      step.status === 'waiting_client' && step.owner === 'client' && step.is_review
-    );
+    return step.status === 'waiting_client' && step.owner === 'client' && step.is_review;
   }
 
   // ID review-шага, по которому открыта inline-форма (rating + text).
@@ -196,9 +183,7 @@ export class ProjectDetailPage implements OnDestroy {
             },
             error: () => {
               this.busy.set(null);
-              this.msg.error(
-                'Отзыв сохранён, но шаг не закрылся — обновите страницу.',
-              );
+              this.msg.error('Отзыв сохранён, но шаг не закрылся — обновите страницу.');
             },
           });
         },
@@ -249,6 +234,14 @@ export class ProjectDetailPage implements OnDestroy {
     });
   }
 
+  // ---- выкладки ----
+  //
+  // Лента, календарь, цифры и уведомления бывают только у проекта
+  // «креаторы под ключ», а он рисуется отдельным компонентом
+  // app-client-turnkey-project — он же их и грузит. Здесь их копия
+  // ничего не рисовала и молча удваивала пять запросов на каждое
+  // открытие проекта.
+
   private fetch(id: string, quiet = false): void {
     if (!quiet) this.loading.set(true);
     this.api.getClientFunnel(id).subscribe({
@@ -258,8 +251,11 @@ export class ProjectDetailPage implements OnDestroy {
       },
       error: () => this.loading.set(false),
     });
-    this.api.clientListComments(id).subscribe({
-      next: (r) => this.comments.set(r.items),
-    });
   }
+}
+
+// Текущий месяц в формате ГГГГ-ММ — его же ждёт ручка календаря.
+function currentMonth(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }

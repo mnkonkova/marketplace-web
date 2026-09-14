@@ -1,0 +1,87 @@
+:host {
+  display: block;
+}
+
+// Панель повторяет карточки боковой колонки страницы выкладок: виджет
+// вынесен из неё, а не нарисован заново.
+.panel {
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.section-title {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.note {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.months {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  li:last-child {
+    border-bottom: none;
+  }
+
+  .name {
+    flex: 1;
+  }
+
+  // Три состояния, а не два: «не отмечен» — не «занят» и не «свободен».
+  .state {
+    color: var(--text-dim);
+
+    &.free {
+      color: var(--accent);
+    }
+
+    &.busy {
+      color: var(--text-muted);
+    }
+  }
+
+  .month-actions {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+.linkish {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--text);
+  }
+
+  &:disabled {
+    color: var(--text-dim);
+    cursor: default;
+  }
+}

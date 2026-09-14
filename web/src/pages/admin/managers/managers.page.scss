@@ -14,7 +14,7 @@ h1 {
   padding: 16px;
   margin: 0 0 24px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   background: var(--surface);
 
   h3 {
@@ -36,7 +36,7 @@ h1 {
   .invite-url {
     margin: 12px 0 0;
     padding: 8px 12px;
-    border-radius: 6px;
+    border-radius: var(--r-field);
     background: var(--surface-hover);
     font-size: 12px;
     word-break: break-all;
@@ -100,7 +100,7 @@ h1 {
       tr {
         display: block;
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: var(--r-card);
         padding: 10px 12px;
         margin-bottom: 10px;
         background: var(--surface);

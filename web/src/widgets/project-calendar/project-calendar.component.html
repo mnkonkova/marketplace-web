@@ -1,0 +1,71 @@
+<header class="cal-head">
+  <button type="button" aria-label="Предыдущий месяц" (click)="shift(-1)">
+    <span nz-icon nzType="left" nzTheme="outline"></span>
+  </button>
+  <strong>{{ title() }}</strong>
+  <button type="button" aria-label="Следующий месяц" (click)="shift(1)">
+    <span nz-icon nzType="right" nzTheme="outline"></span>
+  </button>
+</header>
+
+<div class="grid">
+  @for (w of weekdays; track w) {
+    <span class="wd">{{ w }}</span>
+  }
+  @for (c of cells(); track $index) {
+    @if (c.blank) {
+      <span class="cell blank"></span>
+    } @else {
+      <button
+        type="button"
+        class="cell"
+        [class.has]="c.published || c.planned"
+        [class.is-selected]="selected() === c.date"
+        (click)="pick(c)"
+      >
+        <span class="num">{{ c.day }}</span>
+        @if (c.published) {
+          <span class="dot published" [attr.title]="c.published + ' вышло'"></span>
+        }
+        @if (c.planned) {
+          <span class="dot planned" [attr.title]="c.planned + ' запланировано'"></span>
+        }
+      </button>
+    }
+  }
+</div>
+
+@if (selectedCell(); as c) {
+  <p class="picked">
+    {{ c.date | date: 'd MMMM' }}:
+    @if (c.published) {
+      вышло {{ c.published }}
+    }
+    @if (c.published && c.planned) {
+      ·
+    }
+    @if (c.planned) {
+      запланировано {{ c.planned }}
+    }
+  </p>
+  @if (c.items.length) {
+    <ul class="picked-items">
+      @for (i of c.items; track i.publication_id) {
+        <li>
+          <span
+            class="dot"
+            [class.published]="i.status === 'published'"
+            [class.planned]="i.status === 'planned'"
+          ></span>
+          <span class="nm">{{ who(i) }}</span>
+          <span class="st">{{ i.status === 'published' ? 'вышло' : 'запланировано' }}</span>
+        </li>
+      }
+    </ul>
+  }
+} @else {
+  <p class="legend">
+    <span class="dot published"></span> вышло <span class="dot planned"></span> запланировано ·
+    нажмите на день, чтобы увидеть, что выходит
+  </p>
+}

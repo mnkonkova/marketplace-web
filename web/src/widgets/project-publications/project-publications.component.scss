@@ -1,0 +1,613 @@
+:host {
+  display: block;
+}
+
+/* ===== ВЫКЛАДКИ И СТАТИСТИКА ===== */
+.pub-block {
+  margin: 20px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: var(--r-card, 16px);
+  background: var(--surface);
+
+  h2 {
+    margin: 0;
+    font-size: 17px;
+  }
+}
+
+.pub-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pub-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pub-sub {
+  margin: 20px 0 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.pub-note {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.csv {
+  color: var(--text-muted);
+  font-size: 13px;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+.range {
+  display: flex;
+  gap: 6px;
+
+  button {
+    padding: 5px 12px;
+    border: 1px solid var(--border-strong, #2c313a);
+    border-radius: 999px;
+    background: var(--bg-elevated, #111316);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  button.on {
+    border-color: var(--cta, #f0553c);
+    color: var(--text);
+  }
+}
+
+.pub-reason {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.date-req {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: var(--r-card, 16px);
+  background: var(--bg-elevated, #111316);
+  font-size: 13px;
+
+  b {
+    color: var(--text);
+  }
+
+  .date-req-actions {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+.tbl-scroll {
+  overflow-x: auto;
+}
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-strong, #2c313a);
+    color: var(--text-muted);
+    font-weight: 500;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+}
+
+/* ===== МОДАЛКА ЗАКРЫТИЯ ===== */
+.ovl {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 62%);
+}
+
+.modal {
+  width: 100%;
+  max-width: 460px;
+  padding: 20px;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: var(--r-panel, 18px);
+  background: var(--surface);
+
+  h2 {
+    margin: 0 0 8px;
+    font-size: 19px;
+  }
+
+  p {
+    margin: 0 0 12px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* ===== ПЛАН ВЫКЛАДОК ===== */
+/* Секция плана — не карточка: внутри уже карточки-группы, и вторая рамка
+   вокруг них в макете не рисуется. */
+.pub-block.crm-page {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+/* Перенос из макета ~/tmp/crm_project_manager (1).html. Общий словарь
+   (.tag, .av, .btn, .plat, .prow) лежит в shared/scss/_crm.scss под
+   .crm-page — секция плана носит этот класс на себе. Здесь только то,
+   что есть лишь на этом экране: группа-креатор и строка-выкладка. */
+
+.pub-head-tx {
+  flex: 1;
+  min-width: 240px;
+}
+
+.acts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Что горит — над планом: с этого менеджер начинает день. */
+.riskbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 13px 16px;
+  border: 1px solid var(--red-dim, #4a2b28);
+  border-radius: 14px;
+  background: rgb(224 96 78 / 8%);
+  flex-wrap: wrap;
+
+  .ic {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    border-radius: 9px;
+    background: rgb(224 96 78 / 16%);
+    color: var(--red, #e0604e);
+
+    svg {
+      width: 17px;
+      height: 17px;
+    }
+  }
+
+  .tx {
+    flex: 1;
+    min-width: 200px;
+    font-size: 13.5px;
+
+    b {
+      color: var(--red, #e0604e);
+    }
+  }
+}
+
+.switchrow {
+  margin-bottom: 16px;
+}
+
+.slotgrp {
+  overflow: hidden;
+  margin-bottom: 14px;
+  border: 1px solid var(--line, #23272d);
+  border-radius: 16px;
+  background: var(--card);
+
+  > .hd {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--line, #23272d);
+    background: var(--bg-elevated, #111316);
+    flex-wrap: wrap;
+
+    .who {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .nm {
+      font-size: 14.5px;
+      font-weight: 600;
+    }
+
+    .st {
+      color: var(--muted-2, #616772);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .sp {
+      flex: 1;
+    }
+  }
+}
+
+/* Цветная полоска слева: состояние строки видно, не читая её. */
+.slot {
+  position: relative;
+  border-bottom: 1px solid var(--line, #23272d);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    background: transparent;
+  }
+
+  &.late::before {
+    background: var(--red, #e0604e);
+  }
+
+  &.soon::before {
+    background: var(--amber, #e2a33c);
+  }
+
+  &.done::before {
+    background: var(--green-dim, #1f6f57);
+  }
+
+  .top {
+    display: grid;
+    // Название ролика — узкая колонка после номера: оно длинное, и
+    // тянуть его 1fr'ом значит съесть место у площадок.
+    grid-template-columns:
+      32px minmax(0, 150px) 116px 116px 1fr minmax(112px, max-content)
+      96px 30px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+
+    &.no-draft {
+      grid-template-columns: 32px minmax(0, 150px) 116px 1fr minmax(112px, max-content) 96px 30px;
+    }
+
+    &:hover {
+      background: rgb(255 255 255 / 1.8%);
+    }
+  }
+
+  .n {
+    color: var(--muted-2, #616772);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .vtitle {
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .views {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+
+    small {
+      display: block;
+      color: var(--green, #2fbd8f);
+      font-size: 11px;
+    }
+
+    .dash {
+      color: var(--muted-2, #616772);
+    }
+  }
+
+  /* Детали появляются по клику: пять площадок в каждой строке —
+     это триста строк на проект, если показывать их сразу. */
+  .det {
+    display: none;
+    padding: 2px 16px 14px 60px;
+    background: rgb(0 0 0 / 14%);
+  }
+
+  &.open .det {
+    display: block;
+  }
+
+  &.open .chev {
+    transform: rotate(180deg);
+    color: var(--text);
+  }
+}
+
+.dt {
+  .cap {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--muted-2, #616772);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .v {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+
+    small {
+      font-size: 11px;
+      opacity: 0.75;
+    }
+
+    &.late {
+      color: var(--red, #e0604e);
+    }
+
+    &.soon {
+      color: var(--amber, #e2a33c);
+    }
+
+    &.off {
+      color: var(--muted-2, #616772);
+    }
+  }
+}
+
+.chev {
+  width: 22px;
+  height: 22px;
+  color: var(--muted-2, #616772);
+  justify-self: end;
+  transition: 0.16s;
+}
+
+.slot-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+@media (max-width: 960px) {
+  .slot .top {
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+
+    &.no-draft {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .slot .n,
+  .slot .chev {
+    display: none;
+  }
+
+  .slot .det {
+    padding-left: 16px;
+  }
+}
+
+/* ===== ОЧЕРЕДЬ ПРИГЛАШЕНИЙ ===== */
+/* Перенос из макета ~/tmp/crm_project_manager (1).html (.rnk). Колонок
+   четыре, а не пять: кнопка в макете стояла в каждой строке, но звать
+   можно только следующего по приоритету — выбор строки здесь ничего не
+   значит, и кнопка одна на карточку. */
+.ranks {
+  margin-bottom: 16px;
+}
+
+.ranks-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+
+  > div {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  b {
+    color: var(--text);
+  }
+}
+
+.ranks-note {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--amber, #e2a33c);
+}
+
+.ranks-list {
+  margin-top: 12px;
+}
+
+.rnk {
+  display: grid;
+  grid-template-columns: 32px 32px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line, #23272d);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  /* Отказавшихся и просроченных не прячем: без них непонятно, почему
+     место освободилось и откуда в проекте четвёртый по приоритету. */
+  &.no {
+    opacity: 0.55;
+  }
+
+  .n {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--line-2, #2c313a);
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted, #8c94a0);
+  }
+
+  &.ok .n {
+    background: rgb(47 189 143 / 12%);
+    border-color: var(--green-dim, #1f6f57);
+    color: var(--green, #2fbd8f);
+  }
+
+  .nm {
+    min-width: 0;
+
+    b {
+      display: block;
+      font-size: 13.5px;
+    }
+
+    span {
+      font-size: 11.5px;
+      color: var(--muted-2, #616772);
+    }
+  }
+}
+
+/* ===== СОСТАВ ПРОЕКТА ===== */
+.creatorrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line, #23272d);
+  border-radius: 14px;
+  background: var(--card);
+  flex-wrap: wrap;
+
+  .nm {
+    display: flex;
+    flex: 1;
+    min-width: 180px;
+    flex-direction: column;
+    gap: 3px;
+
+    b {
+      font-size: 14px;
+    }
+
+    > span {
+      color: var(--muted-2, #616772);
+      font-size: 12px;
+    }
+  }
+
+  // Аккаунты строками, а не чипами: чип площадки в плане значит «ссылка
+  // сдана», и повторять его здесь в другом смысле нельзя.
+  .accounts {
+    display: flex;
+    align-items: baseline;
+    gap: 4px 10px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+  }
+
+  .acc-lbl {
+    color: var(--muted, #8c94a0);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .acc {
+    color: var(--muted, #8c94a0);
+    font-size: 12px;
+
+    b {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    &.empty {
+      color: var(--muted-2, #616772);
+    }
+  }
+
+  a.acc:hover b {
+    color: var(--coral-hover, #ff6a52);
+  }
+
+  .st {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
+.btn.dash.wide {
+  width: 100%;
+  margin-top: 6px;
+}

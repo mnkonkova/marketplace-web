@@ -288,10 +288,14 @@ export class ManagerBoardPage implements OnInit {
       next: (r) => {
         const byPipeline = new Map<string, ProjectManagerView[]>();
         for (const p of r.items) {
-          if (!byPipeline.has(p.pipeline_id)) {
-            byPipeline.set(p.pipeline_id, []);
+          // У общего проекта воронки нет, и поля тоже: раскладывать его
+          // по этапам нечем, а раньше он собирался в доску с пустым id.
+          const pipelineId = p.pipeline_id;
+          if (!pipelineId) continue;
+          if (!byPipeline.has(pipelineId)) {
+            byPipeline.set(pipelineId, []);
           }
-          byPipeline.get(p.pipeline_id)!.push(p);
+          byPipeline.get(pipelineId)!.push(p);
         }
 
         if (byPipeline.size === 0) {

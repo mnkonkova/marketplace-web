@@ -14,6 +14,8 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { FormsModule } from '@angular/forms';
 
 import { ClientProfile, ClientProfileApi } from '@entities/me/api/client-profile.api';
+import { OrderApi } from '@entities/order/api/order.api';
+import type { Order } from '@entities/order/model/order.types';
 import { ProjectApi } from '@entities/project/api/project.api';
 import { ProjectClientView } from '@entities/project/model/project.types';
 import { PROJECT_STATUS_COLOR, PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
@@ -45,6 +47,8 @@ export class ProjectsListPage {
 
   private readonly profileApi = inject(ClientProfileApi);
 
+  private readonly orderApi = inject(OrderApi);
+
   private readonly router = inject(Router);
 
   private readonly auth = inject(AuthSessionStore);
@@ -54,6 +58,9 @@ export class ProjectsListPage {
   public readonly loading = signal(true);
 
   public readonly projects = signal<ProjectClientView[]>([]);
+
+  /** Заказы, которые ещё в работе: по ним воронка не закончена. */
+  public readonly activeOrders = signal<Order[]>([]);
 
   public readonly contacts = signal<ClientProfile>({
     user_id: '',
@@ -152,10 +159,39 @@ export class ProjectsListPage {
         if (!this.contactsFilled()) this.contactsExpanded.set(true);
       },
     });
+    // Незаконченный заказ важнее кнопки «Под ключ»: без него человек
+    // заведёт второй такой же и будет ждать ответы по обоим.
+    this.orderApi.listOrders().subscribe({
+      next: (r) =>
+        this.activeOrders.set(
+          r.items.filter((o) => o.status !== 'cancelled' && o.status !== 'paid'),
+        ),
+      // Молча: воронка — не главное на этой странице, и сообщение об
+      // ошибке заказов поверх списка проектов только пугает.
+      error: () => this.activeOrders.set([]),
+    });
   }
 
   public open(p: ProjectClientView): void {
     void this.router.navigate(['/me/projects', p.id], withFromPage(this.router));
+  }
+
+  public startTurnkey(): void {
+    void this.router.navigate(['/me/orders/new'], withFromPage(this.router));
+  }
+
+  public openOrder(id: string): void {
+    void this.router.navigate(['/me/orders', id], withFromPage(this.router));
+  }
+
+  /**
+   * Подпись к незаконченному заказу: человек должен понимать, зачем туда
+   * возвращаться. «Продолжить» без состояния выглядит как второй заказ.
+   */
+  public orderStatusLabel(o: Order): string {
+    if (o.status === 'staffed') return 'состав собран';
+    if (o.status === 'draft') return 'приглашения не ушли';
+    return `ждём ответы, ${o.accepted} из ${o.needed}`;
   }
 
   public logout(): void {

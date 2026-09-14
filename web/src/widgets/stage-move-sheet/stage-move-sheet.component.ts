@@ -1,10 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  input,
-  output,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 
@@ -39,16 +33,10 @@ export class StageMoveSheetComponent {
   public readonly pipeline = input<PipelineFull | null>(null);
   public readonly currentStepId = input<string>('');
   public readonly projectTitle = input<string>('');
-  /** Показывать кнопку «Сменить воронку» (только в admin board). */
-  public readonly enableChangeFunnel = input<boolean>(false);
-
   public readonly close = output<void>();
   public readonly selectStep = output<string>();
   /** Открыть проект — отдельное действие из того же sheet. */
   public readonly openProject = output<void>();
-  /** Открыть диалог смены воронки. */
-  public readonly changeFunnel = output<void>();
-
   public readonly rows = computed<StageRow[]>(() => {
     const pl = this.pipeline();
     if (!pl) return [];
@@ -74,10 +62,14 @@ export class StageMoveSheetComponent {
 
   public ownerIcon(o: string): string {
     switch (o) {
-      case 'client': return '👤';
-      case 'team':   return '👥';
-      case 'system': return '🤖';
-      default:       return '•';
+      case 'client':
+        return '👤';
+      case 'team':
+        return '👥';
+      case 'system':
+        return '🤖';
+      default:
+        return '•';
     }
   }
 
@@ -92,9 +84,5 @@ export class StageMoveSheetComponent {
 
   public onOpenProject(): void {
     this.openProject.emit();
-  }
-
-  public onChangeFunnel(): void {
-    this.changeFunnel.emit();
   }
 }

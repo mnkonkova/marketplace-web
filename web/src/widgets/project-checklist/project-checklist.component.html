@@ -1,0 +1,88 @@
+<section class="ck-block">
+  <div class="ck-head">
+    <h2>Чеклист выкладки</h2>
+    <button nz-button nzSize="small" (click)="toggleLibrary()">
+      {{ libraryOpen() ? 'Свернуть библиотеку' : 'Библиотека' }}
+    </button>
+  </div>
+  <p class="note">
+    Креатор отмечает пункты перед тем, как сдать ссылки: без обязательных бэк не примет ссылки.
+    Пункты с меткой площадки показываются только для неё.
+  </p>
+
+  @if (snapshot(); as snap) {
+    <div class="tplbar">
+      <span class="tx">
+        <b>Шаблон «{{ snap.template_name }}» · v{{ snap.template_version }}</b>
+        <span>
+          @if (snap.connected_at) {
+            Подключён из библиотеки {{ snap.connected_at | date: 'd MMM' }}.
+          }
+          @if (newerVersion(); as v) {
+            В библиотеке с тех пор вышла v{{ v }}.
+          } @else {
+            Это последняя версия.
+          }
+        </span>
+      </span>
+      @if (upgradeTarget(); as t) {
+        <button nz-button nzSize="small" [nzLoading]="busy()" (click)="connect(t)">
+          Обновить до v{{ t.version }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (ordered().length) {
+    <p class="note strong">Подключено пунктов: {{ ordered().length }}</p>
+    <ul class="ck">
+      @for (i of ordered(); track i.id) {
+        <li>
+          <span class="txt">{{ i.text }}</span>
+          @if (i.is_required) {
+            <span class="req">обяз.</span>
+          }
+          @if (i.platform) {
+            <span class="plat">{{ platformLabel[i.platform] }}</span>
+          }
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="empty">
+      Чеклист не подключён — креатор сдаёт ссылки без проверок. Возьмите шаблон из библиотеки.
+    </p>
+  }
+
+  @if (libraryOpen()) {
+    <div class="lib">
+      <h3>Библиотека шаблонов</h3>
+      <p class="note">
+        Подключение делает снимок: последующая правка шаблона этот проект уже не меняет. Чтобы взять
+        новую версию, подключите её здесь заново — отдельной кнопки «обновить» в API нет.
+      </p>
+      <ul class="tpls">
+        @for (t of newest(); track t.id) {
+          <li>
+            <span class="nm">
+              <b>{{ t.name }} · v{{ t.version }}</b>
+              @if (t.description) {
+                <span>{{ t.description }}</span>
+              }
+            </span>
+            <span class="cnt">{{ t.items_count }} пунктов</span>
+            <button nz-button nzSize="small" [nzLoading]="busy()" (click)="connect(t)">
+              Подключить
+            </button>
+          </li>
+        } @empty {
+          <li class="empty">В библиотеке нет включённых шаблонов.</li>
+        }
+      </ul>
+    </div>
+  }
+
+  <p class="note">
+    Правки здесь остаются внутри проекта. Чтобы поменять для всех — правьте шаблон в библиотеке.
+  </p>
+</section>

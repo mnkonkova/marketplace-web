@@ -23,7 +23,7 @@ export class AuthSessionStore {
     // никто не подтянул, и у админа с менеджером пропадала кнопка в свой
     // кабинет до следующего входа паролем. Дочитываем один раз на старте.
     const s = this.session();
-    if (s?.access_token && s.is_admin === undefined) {
+    if (s?.access_token && (s.is_admin === undefined || !s.user_id || !s.display_name)) {
       // Через микротаск, а не сразу: auth-интерцептор сам инжектит этот
       // стор, и запрос из конструктора упирается в циклическую зависимость
       // — Angular бросает, ошибка гасится, запрос не уходит. К моменту
@@ -35,6 +35,13 @@ export class AuthSessionStore {
   public readonly isLoggedIn = computed(() => !!this.session()?.access_token);
 
   public readonly kind = computed(() => this.session()?.kind ?? '');
+
+  // Свой user_id. Пустая строка, пока /me не ответил: у сессии, сохранённой
+  // до появления поля, его нет — и подпись «Вы» просто не появится.
+  public readonly userId = computed(() => this.session()?.user_id ?? '');
+
+  // Имя для подписи «под кем работаю». Пустая строка, пока /me не ответил.
+  public readonly displayName = computed(() => this.session()?.display_name ?? '');
 
   public readonly isManager = computed(() => this.session()?.is_manager ?? false);
 
@@ -86,6 +93,8 @@ export class AuthSessionStore {
         if (!prev) return;
         const next: AuthSession = {
           ...prev,
+          user_id: u.user_id || prev.user_id,
+          display_name: u.display_name || prev.display_name,
           kind: u.kind || prev.kind,
           is_manager: u.is_manager,
           is_admin: u.is_admin,

@@ -82,7 +82,7 @@ h1 {
       tr {
         display: block;
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: var(--r-card);
         padding: 10px 12px;
         margin-bottom: 10px;
         background: var(--surface);

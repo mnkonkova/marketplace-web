@@ -1,0 +1,394 @@
+@if (isManager() || hasAnything()) {
+  <section class="bill">
+    <div class="bill-head">
+      <h2>{{ isManager() ? 'Начисления и оплата' : 'Условия и стоимость' }}</h2>
+      <div class="head-actions">
+        <label class="period-pick">
+          <span>Период</span>
+          <select [ngModel]="month()" (ngModelChange)="setMonth($event)" name="month">
+            @for (m of months; track m) {
+              <option [value]="m">{{ m }}</option>
+            }
+          </select>
+        </label>
+        @if (isManager()) {
+          <button nz-button nzSize="small" [nzLoading]="busy() === 'recalc'" (click)="recalc()">
+            Пересчитать
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Итог периода считает сервер: складывать строки ещё раз на фронте
+         значит получить на двух экранах два разных числа. -->
+    @if (totals(); as t) {
+      <div class="kpis">
+        <div class="kpi">
+          <span class="k">{{ salaryTitle() }} за {{ monthTitle() }}</span>
+          <b>{{ money(t.salaries) }}</b>
+        </div>
+        <div class="kpi">
+          <span class="k">Бонус за просмотры</span>
+          <b>{{ money(t.views_bonus) }}</b>
+          <span class="d">
+            {{ t.views | number }} {{ plural(t.views, 'просмотр', 'просмотра', 'просмотров') }}
+            @if (t.videos_delivered) {
+              по {{ t.videos_delivered }}
+              {{ plural(t.videos_delivered, 'ролику', 'роликам', 'роликам') }}
+            }
+          </span>
+        </div>
+        <div class="kpi">
+          <span class="k">Ролики</span>
+          <b>{{ t.videos_delivered }} из {{ t.videos }}</b>
+          <span class="d">закрыто за период</span>
+        </div>
+        @if (t.deductions) {
+          <div class="kpi">
+            <span class="k">Вычеты за недосданное</span>
+            <b class="minus">−{{ money(t.deductions) }}</b>
+          </div>
+        }
+        <!-- Стоимость тысячи — не пятая метрика в ряду, а производная от
+             итога: отдельной плиткой она оставалась висеть одна во второй
+             строке сетки, будто про неё забыли. -->
+        <div class="kpi">
+          <span class="k">{{ isManager() ? 'Итого к выплате' : 'К оплате' }}</span>
+          <b>{{ money(t.total) }}</b>
+          <span class="d">{{ money(t.cost_per_1000) }} за 1000 просмотров</span>
+        </div>
+      </div>
+    }
+
+    <!-- Условия -->
+    @if (terms(); as t) {
+      <div class="rates">
+        <div class="rate">
+          <span class="cap">Оклад</span>
+          <b>{{ money(t.salary_per_month) }}<small>/ мес</small></b>
+          @for (tier of salaryScope(); track tier.value + tier.note) {
+            <span class="tier">
+              <span class="v">{{ tier.value }}</span
+              ><span class="d">{{ tier.note }}</span>
+            </span>
+          }
+          <span class="tier-note">
+            Фиксированная оплата каждому креатору за производство с публикацией на всех площадках.
+          </span>
+        </div>
+        <div class="rate">
+          <span class="cap">За просмотры</span>
+          <b>{{ money(t.rate_per_1000_views) }}<small>/ 1000</small></b>
+          @for (tier of viewsRates(); track tier.value + tier.note) {
+            <span class="tier">
+              <span class="v">{{ tier.value }}</span
+              ><span class="d">{{ tier.note }}</span>
+            </span>
+          }
+          @if (t.bonus_views_threshold) {
+            <span class="tier-note">
+              Ставка падает после порога — так виральный ролик не съедает бюджет. Порог считается по
+              ролику целиком, суммой по всем пяти площадкам.
+            </span>
+          }
+        </div>
+        <div class="rate" [class.off]="clicksOff()">
+          <span class="cap">За переходы</span>
+          @if (clicksOff()) {
+            <!-- Единица измерения остаётся, даже когда ставки нет: голый
+                 прочерк читается как сломанная строка, а не как «ставка не
+                 задана». Самой ставки в тарифе нет — выдумывать её нельзя,
+                 поэтому строка гасится карточкой целиком (.off). -->
+            <b>—<small>/ переход</small></b>
+            <span class="tier-note">
+              Пока не считаем: нужен счётчик переходов — UTM-ссылка или пиксель. Подключим, и строка
+              появится в счёте.
+            </span>
+          } @else {
+            <b>{{ money(t.click_bonus_rate) }}<small>/ переход</small></b>
+            @for (tier of clickRates(); track tier.value + tier.note) {
+              <span class="tier">
+                <span class="v">{{ tier.value }}</span
+                ><span class="d">{{ tier.note }}</span>
+              </span>
+            }
+            <span class="tier-note">Порог здесь месячный, а не на ролик.</span>
+          }
+        </div>
+      </div>
+    } @else if (isManager()) {
+      <p class="empty">Условия не заданы — начисления считать не по чему.</p>
+    }
+
+    @if (isManager()) {
+      <!-- Ставки проекта руками не правятся: они снимаются с прайса,
+             под которым стоит согласие заказчика. Ставку меняют выпуском
+             новой версии прайса — иначе счёт разъезжается с тем, на что
+             клиент соглашался. -->
+      <div class="row-actions">
+        <button nz-button nzSize="small" [nzLoading]="busy() === 'terms'" (click)="adoptTerms()">
+          {{ terms() ? 'Обновить из прайса' : 'Взять из прайса' }}
+        </button>
+        <span class="note inline">
+          Ставки берутся из прайса площадки. Менять их — в разделе «Прайс»: там выпускается новая
+          версия, а этот проект досчитывается по той, с которой начинался.
+        </span>
+      </div>
+    }
+
+    <!-- Платежи заказчика -->
+    <h3 class="sub">Оплата от заказчика</h3>
+    <!-- Про предоплату пишем порядок, а не запрет: платёжного провайдера
+         нет, система деньгами не распоряжается и остановить работу ей
+         нечем. Обещать блокировку, которой не существует, — врать: проект
+         с вышедшим роликом и незаведённой предоплатой встречается прямо
+         сейчас. Расхождение видно строкой риска в шапке проекта. -->
+    <p class="note">
+      Два платежа на проект: предоплата до старта и финальный по итогам месяца. Сумму выставляет
+      менеджер, деньги приходят мимо системы, а «Деньги пришли» — отметка о получении. По
+      договорённости работа начинается после предоплаты, но система этого не сторожит: выкладки
+      заведутся и без неё, а расхождение покажет предупреждение в шапке проекта. Финальный платёж
+      считается после того, как посчитаны начисления креаторам.
+    </p>
+    <ul class="pays">
+      @for (kind of paymentKinds; track kind) {
+        @let p = paymentOf(kind);
+        <li class="pay">
+          <span class="nm">{{ paymentLabel[kind] }}</span>
+          <span class="amt">{{ p ? money(p.amount) : '—' }}</span>
+          @if (p) {
+            <nz-tag [nzColor]="payStatusColor[p.status]">
+              {{ payStatusLabel[p.status] }}
+              @if (p.status === 'confirmed' && p.confirmed_at) {
+                {{ p.confirmed_at | date: 'd MMM' }}
+              }
+            </nz-tag>
+          } @else {
+            <span class="muted">{{ paymentMissing[kind] }}</span>
+          }
+          @if (p?.note) {
+            <span class="pnote">{{ p!.note }}</span>
+          }
+          @if (isManager()) {
+            <span class="pay-actions">
+              @if (editablePayment(p)) {
+                <button class="linkish" type="button" (click)="openPayment(kind)">
+                  {{ p ? 'изменить' : 'задать' }}
+                </button>
+              }
+              @if (confirmablePayment(p)) {
+                <button
+                  nz-button
+                  nzSize="small"
+                  [nzLoading]="busy() === 'pay:' + kind"
+                  (click)="confirmPayment(kind)"
+                >
+                  Деньги пришли
+                </button>
+              }
+            </span>
+          }
+        </li>
+      }
+    </ul>
+    @if (isManager()) {
+      <p class="note">
+        Платёжного провайдера нет: деньги приходят мимо системы, и получение подтверждает менеджер.
+        Подтверждённый платёж задним числом не переписывается.
+      </p>
+    }
+
+    @if (editingPayment(); as kind) {
+      <form class="edit" (submit)="$event.preventDefault(); savePayment()">
+        <label class="fld">
+          <span>{{ paymentLabel[kind] }}, ₽</span>
+          <input nz-input type="number" min="0" [(ngModel)]="paymentRub" name="amount" />
+        </label>
+        <label class="fld">
+          <span>Заметка</span>
+          <input nz-input [(ngModel)]="paymentNote" name="note" placeholder="необязательно" />
+        </label>
+        <div class="edit-actions">
+          <button nz-button type="button" (click)="cancelPayment()">Отмена</button>
+          <button nz-button nzType="primary" [nzLoading]="busy() === 'pay:' + kind" type="submit">
+            Сохранить
+          </button>
+        </div>
+      </form>
+    }
+
+    <!-- «Команда месяца» у заказчика: кто сколько сдал и во сколько это
+         ему обошлось. Он за эту команду платит, поэтому строка «60 000 +
+         5 850» — его счёт, а не чужая зарплата. UTM-меток здесь нет:
+         это инструмент менеджера, и бэк их заказчику не отдаёт. -->
+    @if (!isManager() && team().length) {
+      <h3 class="sub">Команда месяца · {{ monthTitle() }}</h3>
+      <ul class="team">
+        @for (a of team(); track a.id) {
+          <li>
+            <span class="nm">{{ who(a) }}</span>
+            <span class="meta">
+              @if (a.priority) {
+                приоритет {{ a.priority }} ·
+              }
+              {{ a.videos_delivered }}
+              {{ plural(a.videos_delivered, 'ролик', 'ролика', 'роликов') }} ·
+              {{ a.views_total | number }}
+              {{ plural(a.views_total, 'просмотр', 'просмотра', 'просмотров') }}
+            </span>
+            <span class="sum">
+              <b>{{ money(a.total) }}</b>
+              <small>
+                {{ money(a.salary) }} + {{ money(bonusOf(a)) }}
+                @if (a.deduction) {
+                  − {{ money(a.deduction) }}
+                }
+              </small>
+            </span>
+          </li>
+        }
+      </ul>
+      @if (fromOrder()) {
+        <p class="note">
+          Собрана по вашему приоритету — вручную никого не выбирали. Отказавшегося заменял следующий
+          по списку, без вашего участия.
+        </p>
+      }
+    }
+
+    <!-- Начисления креаторам у менеджера: та же таблица, но с пересчётом,
+         утверждением и выплатой. -->
+    @if (isManager()) {
+      <h3 class="sub">Начисления креаторам · {{ monthTitle() }}</h3>
+      <div class="tbl-scroll">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Креатор</th>
+              <th>Ролики</th>
+              <th>Просмотры</th>
+              <th>Оклад</th>
+              <th>Бонус</th>
+              <th>Вычет</th>
+              <th>Итого</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of accruals(); track a.id) {
+              <tr>
+                <td>{{ who(a) }}</td>
+                <td>
+                  {{ a.videos_delivered }} из {{ a.videos_planned }}
+                  @if (missing(a)) {
+                    <small class="late"
+                      >не хватает {{ missing(a) }}
+                      {{ plural(missing(a), 'ролика', 'роликов', 'роликов') }}</small
+                    >
+                  }
+                </td>
+                <td>
+                  {{ a.views_total | number }}
+                  @if (a.views_over) {
+                    <small
+                      >{{ a.views_base | number }} по полной, {{ a.views_over | number }} по
+                      пониженной</small
+                    >
+                  }
+                </td>
+                <td>{{ money(a.salary) }}</td>
+                <td>{{ money(a.views_bonus) }}</td>
+                <td>{{ a.deduction ? '−' + money(a.deduction) : '—' }}</td>
+                <td>
+                  <b>{{ money(a.total) }}</b>
+                </td>
+                <td>
+                  <nz-tag [nzColor]="statusColor[a.status]">{{ statusLabel[a.status] }}</nz-tag>
+                </td>
+                <td class="acts">
+                  @if (approvable(a)) {
+                    <button
+                      nz-button
+                      nzSize="small"
+                      [nzLoading]="busy() === a.id"
+                      (click)="approve(a)"
+                    >
+                      Утвердить
+                    </button>
+                  } @else if (payable(a)) {
+                    <button
+                      nz-button
+                      nzSize="small"
+                      nzType="primary"
+                      [nzLoading]="busy() === a.id"
+                      (click)="markPaid(a)"
+                    >
+                      Выплачено
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="empty">Выкладок за этот месяц нет — считать нечего.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        @if (previewPeriod()) {
+          Месяц показан расчётом по фактам — выкладкам и просмотрам из ежедневного сбора. Чтобы
+          утвердить и выплатить, нажмите «Пересчитать»: он зафиксирует строки на сегодняшних цифрах.
+        }
+        Пересчёт трогает только открытые строки — утверждённые и выплаченные он не меняет.
+        @if (draftsCount() === 0 && accruals().length) {
+          Сейчас открытых нет: период закрыт целиком.
+        }
+        Выплатить можно только утверждённое: между «посчитали» и «отправили деньги» проходит время.
+      </p>
+
+      <h3 class="sub">UTM-метки</h3>
+      <ul class="utms">
+        @for (u of utm(); track u.creator_user_id) {
+          <li>
+            <span class="nm">{{ who(u) }}</span>
+            <a [href]="u.url" target="_blank" rel="noopener">{{ u.url }}</a>
+            <span class="clicks"
+              >{{ u.clicks | number }}
+              {{ plural(u.clicks, 'переход', 'перехода', 'переходов') }}</span
+            >
+            <button class="linkish" type="button" (click)="openUtm(u.creator_user_id)">
+              изменить
+            </button>
+          </li>
+        } @empty {
+          <li class="empty">Меток нет. Их ставит менеджер — креатор метку только видит.</li>
+        }
+      </ul>
+      @if (editingUtm(); as creatorId) {
+        <form class="edit" (submit)="$event.preventDefault(); saveUtm()">
+          <label class="fld wide">
+            <span>Ссылка с меткой</span>
+            <input nz-input type="url" [(ngModel)]="utmUrl" name="utm" placeholder="https://…" />
+          </label>
+          <div class="edit-actions">
+            <button nz-button type="button" (click)="cancelUtm()">Отмена</button>
+            <button
+              nz-button
+              nzType="primary"
+              [nzLoading]="busy() === 'utm:' + creatorId"
+              type="submit"
+            >
+              Сохранить метку
+            </button>
+          </div>
+        </form>
+      }
+      <p class="note">
+        Переходы заполняются снаружи, из аналитики. Пока бонус за них выключен, число справочное.
+      </p>
+    }
+  </section>
+}

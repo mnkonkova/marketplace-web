@@ -1,11 +1,13 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnInit,
   computed,
   inject,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -18,7 +20,15 @@ import { openClientRegister } from '@features/client-register/open-client-regist
 import { ProjectCartDialogComponent, ProjectCartStore } from '@features/project-cart';
 import { scrollToAnchorWhenReady } from '@shared/lib/scroll-to-anchor';
 
-type NavItem = 'home' | 'production' | 'promotion' | 'search' | 'cabinet' | 'manager' | 'admin';
+type NavItem =
+  | 'home'
+  | 'production'
+  | 'promotion'
+  | 'search'
+  | 'cabinet'
+  | 'creator-projects'
+  | 'manager'
+  | 'admin';
 type HomeSection = 'production' | 'promotion';
 
 @Component({
@@ -38,6 +48,8 @@ export class AppHeaderComponent implements OnInit {
 
   private readonly router = inject(Router);
 
+  private readonly destroyRef = inject(DestroyRef);
+
   public readonly isLoggedIn = this.auth.isLoggedIn;
 
   public readonly cartCount = this.cart.count;
@@ -53,12 +65,27 @@ export class AppHeaderComponent implements OnInit {
     return r === 'specialist' || r === '';
   });
 
-  // CTA «Создать проект» прячем только у специалиста — он сам себе клиент
-  // в этой кнопке не нуждается, путает интерфейс. Для гостя/клиента/менеджера/
-  // админа кнопка остаётся в шапке и на десктопе, и на мобайле (см. CSS:
-  // на мобайле прячутся только .link-текстовые пункты, кнопки .cta —
-  // и «Создать проект», и «Я специалист» — остаются справа от бургера).
-  public readonly showCreateProjectCTA = computed(() => this.auth.role() !== 'specialist');
+  /**
+   * Ссылка «Мои проекты» у креатора.
+   *
+   * Страница есть, а попасть на неё было неоткуда: «Кабинет» у специалиста
+   * ведёт на /me — портфолио и ставки, — и проекты оставались доступны
+   * только по прямому адресу.
+   */
+  public readonly showCreatorProjects = computed(() => this.auth.role() === 'specialist');
+
+  // CTA «Создать проект» — это корзина витрины: набрал специалистов,
+  // нажал, оформил заказ. Специалисту она не нужна — он сам себе клиент в
+  // этой кнопке не нуждается. Персоналу тоже: у менеджера на канбане своя
+  // кнопка «+ Создать проект», которая заводит проект в CRM, и две разные
+  // кнопки с одной подписью на одном экране означали разное. Для гостя и
+  // клиента кнопка остаётся и на десктопе, и на мобайле (см. CSS: на
+  // мобайле прячутся только .link-текстовые пункты, кнопки .cta остаются
+  // справа от бургера).
+  public readonly showCreateProjectCTA = computed(() => {
+    const r = this.auth.role();
+    return r !== 'specialist' && r !== 'manager' && r !== 'admin';
+  });
 
   // Куда ведёт «Кабинет» в зависимости от роли:
   // - specialist     → /me (портфолио, ставки, контакты — рабочее место);
@@ -89,8 +116,14 @@ export class AppHeaderComponent implements OnInit {
 
   public ngOnInit(): void {
     this.syncActiveNavFromUrl();
+    // Шапка живёт внутри layout'ов, а те пересоздаются на каждом
+    // переходе: без отписки подписки копятся вместе с мёртвыми копиями
+    // компонента.
     this.router.events
-      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe(() => this.syncActiveNavFromUrl());
   }
 
@@ -187,6 +220,9 @@ export class AppHeaderComponent implements OnInit {
     const path = this.currentPath();
     const hash = this.currentHash();
 
+    // Проекты креатора — свой пункт: он стоит рядом с «Кабинетом», и
+    // подсвечивать вместо него кабинет значило бы врать, где ты.
+    if (path.startsWith('/me/creator')) return 'creator-projects';
     // /me и /me/projects подсвечиваем одним пунктом «Кабинет» — фронт
     // подбирает URL по роли, но визуально это всегда один таб в шапке.
     if (path === '/me' || path.startsWith('/me/projects')) return 'cabinet';

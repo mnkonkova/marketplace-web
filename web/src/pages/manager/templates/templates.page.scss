@@ -1,0 +1,47 @@
+// Словарь макета (.card, .tag, .sub) — в shared/scss/_crm.scss.
+
+h1 {
+  margin: 0 0 6px;
+}
+
+.sub {
+  margin: 0 0 18px;
+}
+
+.tpls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.tpl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .hd {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  h3 {
+    margin: 0;
+  }
+
+  .sub {
+    margin: 0;
+  }
+
+  .cnt {
+    color: var(--muted-2, #616772);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+}
+
+.empty {
+  color: var(--text-muted);
+  font-size: 13.5px;
+}

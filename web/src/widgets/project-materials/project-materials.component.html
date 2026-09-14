@@ -1,0 +1,107 @@
+@if (isManager() || !empty()) {
+  <section class="mat-block">
+    <div class="mat-head">
+      <h2>Материалы проекта</h2>
+      @if (isManager() && !adding()) {
+        <button nz-button nzSize="small" (click)="openAdd()">Добавить материал</button>
+      }
+    </div>
+
+    @if (isManager()) {
+      <div class="group">
+        <h3>{{ audienceLabel['creators'] }}</h3>
+        <p class="note">{{ audienceNote['creators'] }}</p>
+        <ul class="mats">
+          @for (m of forCreators(); track m.id) {
+            <li class="mat" [class]="'kind-' + m.kind">
+              <span class="ic">{{ kindLabel[m.kind] }}</span>
+              <a [href]="m.url" target="_blank" rel="noopener">{{ m.title }}</a>
+              <button class="linkish" type="button" (click)="remove(m)">убрать</button>
+            </li>
+          } @empty {
+            <!-- Действие — в самом пустом состоянии, а не только в шапке
+                 карточки: до кнопки наверху от этой строки ещё надо
+                 догадаться, и аудиторию там легко выбрать чужую. -->
+            <li class="empty">
+              Пока ничего не приложено.
+              @if (!adding()) {
+                <button class="linkish" type="button" (click)="openAdd('creators')">
+                  Добавить материал креаторам
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+
+      <div class="group">
+        <h3>{{ audienceLabel['client'] }}</h3>
+        <p class="note">{{ audienceNote['client'] }}</p>
+        <ul class="mats">
+          @for (m of forClient(); track m.id) {
+            <li class="mat" [class]="'kind-' + m.kind">
+              <span class="ic">{{ kindLabel[m.kind] }}</span>
+              <a [href]="m.url" target="_blank" rel="noopener">{{ m.title }}</a>
+              <button class="linkish" type="button" (click)="remove(m)">убрать</button>
+            </li>
+          } @empty {
+            <li class="empty">
+              Пока ничего не приложено.
+              @if (!adding()) {
+                <button class="linkish" type="button" (click)="openAdd('client')">
+                  Добавить материал заказчику
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    } @else {
+      <p class="note">{{ singleNote() }}</p>
+      <ul class="mats">
+        @for (m of single(); track m.id) {
+          <li class="mat" [class]="'kind-' + m.kind">
+            <span class="ic">{{ kindLabel[m.kind] }}</span>
+            <a [href]="m.url" target="_blank" rel="noopener">{{ m.title }}</a>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (adding()) {
+      <form class="add" (submit)="$event.preventDefault(); add()">
+        <label class="fld">
+          <span>Название</span>
+          <input nz-input [(ngModel)]="newTitle" name="title" placeholder="Бренд-гайд PetFlat" />
+        </label>
+        <label class="fld">
+          <span>Ссылка</span>
+          <input nz-input type="url" [(ngModel)]="newUrl" name="url" placeholder="https://…" />
+        </label>
+        <label class="fld narrow">
+          <span>Тип</span>
+          <select [(ngModel)]="newKind" name="kind">
+            @for (k of kinds; track k) {
+              <option [value]="k">{{ kindLabel[k] }}</option>
+            }
+          </select>
+        </label>
+        <label class="fld narrow">
+          <span>Кому видно</span>
+          <select [(ngModel)]="newAudience" name="audience">
+            <option value="creators">Креаторам</option>
+            <option value="client">Заказчику</option>
+          </select>
+        </label>
+        <div class="add-actions">
+          <button nz-button type="button" (click)="cancelAdd()">Отмена</button>
+          <button nz-button nzType="primary" [nzLoading]="busy()" type="submit">Добавить</button>
+        </div>
+        <p class="note">
+          Файлы храним ссылкой: загрузчика документов в API нет, поэтому кладите ссылку на диск или
+          на видео.
+        </p>
+      </form>
+    }
+  </section>
+}

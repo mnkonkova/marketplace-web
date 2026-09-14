@@ -1,8 +1,14 @@
 @use 'breakpoints' as bp;
 
-/* Цвета бакетов — один источник правды для прогресс-баров и легенды. */
+/* Цвета бакетов — один источник правды для прогресс-баров и легенды.
+   Это доменная палитра воронки (новый, ждёт, на паузе, отменён), а не
+   дубль дизайн-системы: токенов под «жёлтый ждёт» в ней нет и заводить
+   их ради одного экрана незачем. */
 $c-new: #94a3b8;
-$c-active: #20a194; // var(--accent)
+// Акцент берём из палитры, а не копией: копия уже разошлась бы при
+// первой правке токена, и «активные» в дашборде отличались бы от
+// акцента на всех остальных экранах.
+$c-active: var(--accent);
 $c-waiting: #f5c542;
 $c-hold: #6b7280;
 $c-done: #6ee7b7;
@@ -35,7 +41,9 @@ $c-cancel: #ff7a7a;
   white-space: nowrap;
   padding-top: 6px;
 
-  &:hover { text-decoration: underline; }
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 /* === KPI tiles === */
@@ -55,7 +63,7 @@ $c-cancel: #ff7a7a;
   position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--r-card);
   padding: 18px 18px 16px;
   display: flex;
   flex-direction: column;
@@ -74,10 +82,20 @@ $c-cancel: #ff7a7a;
     z-index: -1;
   }
 
-  &.t-total::after  { background: $c-new; opacity: 0.5; }
-  &.t-active::after { background: $c-active; }
-  &.t-done::after   { background: $c-done; }
-  &.t-cancel::after { background: $c-cancel; opacity: 0.7; }
+  &.t-total::after {
+    background: $c-new;
+    opacity: 0.5;
+  }
+  &.t-active::after {
+    background: $c-active;
+  }
+  &.t-done::after {
+    background: $c-done;
+  }
+  &.t-cancel::after {
+    background: $c-cancel;
+    opacity: 0.7;
+  }
 }
 
 .t-icon {
@@ -101,9 +119,15 @@ $c-cancel: #ff7a7a;
   color: var(--text);
 }
 
-.t-active .t-value { color: $c-active; }
-.t-done   .t-value { color: $c-done; }
-.t-cancel .t-value { color: $c-cancel; }
+.t-active .t-value {
+  color: $c-active;
+}
+.t-done .t-value {
+  color: $c-done;
+}
+.t-cancel .t-value {
+  color: $c-cancel;
+}
 
 .t-sub {
   font-size: 12px;
@@ -143,17 +167,21 @@ $c-cancel: #ff7a7a;
   padding: 12px 14px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-card);
   color: var(--text);
   text-decoration: none;
   font-size: 13px;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 
   &.is-warn {
     border-color: rgba(255, 165, 60, 0.45);
     background: rgba(255, 165, 60, 0.08);
 
-    .h-value { color: #ffa53c; }
+    .h-value {
+      color: #ffa53c;
+    }
   }
 
   &[href]:hover {
@@ -188,7 +216,7 @@ $c-cancel: #ff7a7a;
 .funnel {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--r-card);
   padding: 18px 20px;
   transition: border-color 0.15s ease;
 
@@ -277,12 +305,24 @@ $c-cancel: #ff7a7a;
   }
 }
 
-.seg-new     { background: $c-new; }
-.seg-active  { background: $c-active; }
-.seg-waiting { background: $c-waiting; }
-.seg-hold    { background: $c-hold; }
-.seg-done    { background: $c-done; }
-.seg-cancel  { background: $c-cancel; }
+.seg-new {
+  background: $c-new;
+}
+.seg-active {
+  background: $c-active;
+}
+.seg-waiting {
+  background: $c-waiting;
+}
+.seg-hold {
+  background: $c-hold;
+}
+.seg-done {
+  background: $c-done;
+}
+.seg-cancel {
+  background: $c-cancel;
+}
 
 .legend {
   list-style: none;
@@ -315,12 +355,24 @@ $c-cancel: #ff7a7a;
   flex-shrink: 0;
 }
 
-.dot-new     { background: $c-new; }
-.dot-active  { background: $c-active; }
-.dot-waiting { background: $c-waiting; }
-.dot-hold    { background: $c-hold; }
-.dot-done    { background: $c-done; }
-.dot-cancel  { background: $c-cancel; }
+.dot-new {
+  background: $c-new;
+}
+.dot-active {
+  background: $c-active;
+}
+.dot-waiting {
+  background: $c-waiting;
+}
+.dot-hold {
+  background: $c-hold;
+}
+.dot-done {
+  background: $c-done;
+}
+.dot-cancel {
+  background: $c-cancel;
+}
 
 .funnel-foot {
   display: flex;

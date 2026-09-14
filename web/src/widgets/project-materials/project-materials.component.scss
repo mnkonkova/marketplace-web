@@ -1,0 +1,170 @@
+@use 'breakpoints' as bp;
+
+:host {
+  display: block;
+}
+
+.mat-block {
+  margin: 20px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: var(--r-card, 16px);
+  background: var(--surface);
+}
+
+.mat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0;
+    font-size: 17px;
+  }
+}
+
+.group {
+  margin-top: 16px;
+
+  h3 {
+    margin: 0;
+    font-size: 14px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+}
+
+.note {
+  margin: 6px 0 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.mats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+
+  a {
+    flex: 1;
+    min-width: 0;
+    color: var(--text);
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  a:hover {
+    color: var(--cta-hover);
+  }
+}
+
+.ic {
+  padding: 2px 8px;
+  border-radius: 7px;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.kind-video .ic {
+  background: rgba(75, 143, 214, 0.16);
+  color: #4b8fd6;
+}
+
+.kind-link .ic {
+  background: rgba(47, 189, 143, 0.14);
+  color: var(--accent);
+}
+
+.empty {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 13.5px;
+
+  // Действие прямо в пустом состоянии: кнопка в шапке карточки далеко и
+  // не отвечает на вопрос «а что делать с этой пустой группой».
+  .linkish {
+    margin-left: 6px;
+    color: var(--cta);
+    font-size: 13px;
+
+    &:hover {
+      color: var(--cta-hover);
+    }
+  }
+}
+
+.linkish {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--danger);
+  }
+}
+
+.add {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+
+  @media (max-width: bp.$touch) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fld {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+
+  select {
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-field, 10px);
+    background: var(--surface);
+    color: var(--text);
+  }
+}
+
+.add-actions {
+  display: flex;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.add .note {
+  grid-column: 1 / -1;
+  margin: 0;
+}

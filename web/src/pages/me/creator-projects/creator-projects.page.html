@@ -1,0 +1,50 @@
+<app-header />
+
+<main class="creator-projects">
+  <app-back-link defaultUrl="/me/specialist" />
+
+  <header class="hero">
+    <h1>Мои проекты</h1>
+    <p class="note">
+      Проекты, где вы в действующем составе. Счётчики — только по вашим выкладкам: чужие вы не
+      видите нигде.
+    </p>
+    @if (totalOverdue()) {
+    <p class="late-line">Просрочено выкладок: {{ totalOverdue() }}. Начните с них.</p>
+    }
+  </header>
+
+  @if (loading()) {
+  <div class="center"><nz-spin nzSize="large"></nz-spin></div>
+  } @else {
+  <ul class="cards">
+    @for (p of ordered(); track p.project_id) {
+    <li class="card" [class.late]="p.publications_overdue > 0">
+      <header>
+        <h2>{{ p.title }}</h2>
+        <nz-tag [nzColor]="p.publications_overdue ? 'red' : p.publications_open ? 'gold' : 'green'">
+          @if (p.publications_overdue) { {{ p.publications_overdue }} просрочено } @else if
+          (p.publications_open) { {{ p.publications_open }} в работе } @else { всё сдано }
+        </nz-tag>
+      </header>
+
+      <p class="counts">{{ closed(p) }} из {{ p.publications_total }} роликов закрыто</p>
+      <p class="meta">
+        @if (p.next_due_date) { Ближайший срок — {{ p.next_due_date | date: 'd MMM' }} · {{
+        due(p.next_due_date) }}. } @else { Несданного нет. } В проекте с {{ p.added_at | date: 'd
+        MMM y' }}.
+      </p>
+
+      <a class="go" [routerLink]="['/me/creator/projects', p.project_id]">
+        Мои выкладки в проекте →
+      </a>
+    </li>
+    } @empty {
+    <li class="empty">
+      Вас пока не добавили ни в один проект. Как добавят — материалы, чеклист и даты выкладок
+      откроются здесь.
+    </li>
+    }
+  </ul>
+  }
+</main>

@@ -1,0 +1,210 @@
+// Словарь макета (.stage, .steps, .kinds, .ccard, .basket, .inv, .notice,
+// .sumrow, .lock, .summary) живёт в shared/scss/_crm.scss под .crm-page —
+// страница носит этот класс. Здесь только то, что есть у одной этой
+// воронки: параметры заказа, зоны подборки и согласие с условиями.
+
+.order-funnel {
+  .lead {
+    margin: 8px 0 20px;
+  }
+
+  .center {
+    text-align: center;
+  }
+
+  .loading {
+    color: var(--muted-2, #616772);
+    font-size: 13px;
+    padding: 24px 0;
+    margin: 0;
+  }
+
+  // Параметры заказа стоят НАД подбором, а не под ним: месяц задаёт и
+  // лимит, и занятость, то есть меняет сам каталог. Спрашивать его после
+  // выбора людей значило бы отбирать уже сделанный выбор.
+  .params {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .param {
+    display: block;
+  }
+
+  .param-note {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted, #8c94a0);
+    line-height: 1.5;
+  }
+
+  .filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+
+    .inp {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .cat {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 160px;
+    }
+  }
+
+  .ccard {
+    .cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    // Занятого в этом месяце нельзя даже отметить: приглашение уходит
+    // только на реально свободное место, и «выбрать и получить отказ»
+    // читается как поломка, а не как правило.
+    &.busy {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .busy-note {
+      color: var(--amber, #e2a33c);
+      font-family: inherit;
+      font-weight: 500;
+    }
+  }
+
+  .catalog-note {
+    margin-top: 18px;
+    margin-bottom: 0;
+  }
+
+  .kind-soon {
+    margin-top: 20px;
+    margin-bottom: 0;
+  }
+
+  .basket-sub {
+    font-size: 12.5px;
+    margin-bottom: 10px;
+  }
+
+  // Граница между «зовём сразу» и «резервом» — не украшение: она
+  // показывает, где кончается лимит месяца и начинается очередь.
+  .zone {
+    margin: 12px 0 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-2, #616772);
+  }
+
+  .reserve-zone {
+    margin-top: 16px;
+  }
+
+  .reserve-hint {
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--amber, #e2a33c);
+  }
+
+  .brow {
+    &.reserve .nm {
+      color: var(--muted, #8c94a0);
+    }
+
+    .ord {
+      display: flex;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+
+    .x[disabled] {
+      opacity: 0.35;
+      cursor: default;
+    }
+  }
+
+  .forecast-note {
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted, #8c94a0);
+  }
+
+  .consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-top: 14px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--muted, #8c94a0);
+    cursor: pointer;
+
+    input {
+      margin: 2px 0 0;
+      flex: 0 0 auto;
+    }
+  }
+
+  .terms-body {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--muted-2, #616772);
+
+    summary {
+      cursor: pointer;
+    }
+
+    p {
+      margin: 8px 0 0;
+      white-space: pre-line;
+      line-height: 1.55;
+    }
+  }
+
+  .send {
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .basket.static {
+    position: static;
+  }
+
+  .sums {
+    margin-top: 12px;
+  }
+
+  .foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line, #23272d);
+
+    .sp {
+      flex: 1;
+    }
+  }
+
+  .done-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+}

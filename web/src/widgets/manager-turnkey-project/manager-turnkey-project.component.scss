@@ -1,0 +1,190 @@
+// Менеджерская шапка проекта «креаторы под ключ».
+//
+// Общий словарь макета (.card, .tabs, .tag, .av, .btn) живёт в
+// shared/scss/_crm.scss под .crm-page — здесь только то, что есть
+// исключительно на этом экране: шапка с составом и строка рисков.
+
+.phead {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+
+  .ttl {
+    flex: 1;
+    min-width: 260px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .meta {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--muted);
+
+    b {
+      color: var(--text);
+      font-weight: 600;
+    }
+  }
+}
+
+// Аватары наезжают друг на друга: состав читается как группа людей, а не
+// как список. Обводка цветом фона рисует зазор между кружками. Подпись
+// сверху — чтобы одинокий кружок с буквой в углу карточки не читался как
+// «чей-то аватар» неизвестно зачем.
+.crew {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+
+  .crew-lbl {
+    color: var(--muted, #8c94a0);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .avs {
+    display: flex;
+    align-items: center;
+  }
+
+  .av {
+    margin-left: -8px;
+    border: 2px solid var(--bg);
+
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+}
+
+// Что горит — над вкладками, а не внутри одной из них: с этого менеджер
+// начинает день, и прятать это за переключателем нельзя.
+.riskbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0 0;
+  padding: 13px 16px;
+  border: 1px solid var(--red-dim);
+  border-radius: 14px;
+  background: rgba(224, 96, 78, 0.08);
+
+  // Строк риска может быть две сразу — горящие выкладки и предоплата.
+  & + .riskbar {
+    margin-top: 10px;
+  }
+
+  .ic {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    border-radius: 9px;
+    background: rgba(224, 96, 78, 0.16);
+    color: var(--red);
+    font-weight: 700;
+  }
+
+  .tx {
+    flex: 1;
+    min-width: 200px;
+    font-size: 13.5px;
+
+    b {
+      color: var(--red);
+    }
+  }
+
+  // Предупреждение, а не авария: правило про предоплату нарушено, но
+  // ничего не горит и ничего не заблокировано.
+  &.warn {
+    border-color: var(--amber-dim, #5f4519);
+    background: rgb(226 163 60 / 8%);
+
+    .ic {
+      background: rgb(226 163 60 / 16%);
+      color: var(--amber, #e2a33c);
+    }
+
+    .tx b {
+      color: var(--amber, #e2a33c);
+    }
+  }
+}
+
+.tabs {
+  margin-top: 18px;
+}
+
+// Боковая колонка — из макета: список проектов, сводка дня, контакты.
+// .shell/.main/.aside-lbl/.plist/.pitem описаны в shared/scss/_crm.scss.
+.aside {
+  .empty {
+    margin: 0;
+    color: var(--muted-2, #616772);
+    font-size: 12.5px;
+  }
+}
+
+.todaybox .calm {
+  margin: 0;
+  color: var(--muted, #8c94a0);
+  font-size: 13px;
+}
+
+.todaybox .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+
+  & + .row {
+    margin-top: 8px;
+  }
+
+  span {
+    color: var(--muted, #8c94a0);
+  }
+
+  .late {
+    color: var(--red, #e0604e);
+  }
+
+  .warn {
+    color: var(--amber, #e2a33c);
+  }
+}
+
+.contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+
+  b {
+    font-size: 13.5px;
+  }
+
+  a {
+    color: var(--blue, #4b8fd6);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

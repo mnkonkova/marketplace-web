@@ -75,8 +75,10 @@ export class AdminDashboardPage implements OnInit {
       leadSumByPipeline.set(pl.id, { sum: 0, count: 0 });
     }
     for (const p of this.projects()) {
-      const s = byID.get(p.pipeline_id);
-      if (!s) continue; // проект на удалённой/неактивной воронке — игнорим
+      // Общий проект идёт без воронки — в разрезе по воронкам его нет.
+      const pipelineId = p.pipeline_id;
+      const s = pipelineId ? byID.get(pipelineId) : undefined;
+      if (!s || !pipelineId) continue; // проект на удалённой/неактивной воронке — игнорим
       s.total++;
       const bucket = BUCKETS[p.display_status];
       if (bucket) s[bucket]++;
@@ -85,7 +87,7 @@ export class AdminDashboardPage implements OnInit {
       if (p.display_status === 'completed' && p.started_at && p.completed_at) {
         const days = (Date.parse(p.completed_at) - Date.parse(p.started_at)) / DAY_MS;
         if (Number.isFinite(days) && days >= 0) {
-          const acc = leadSumByPipeline.get(p.pipeline_id)!;
+          const acc = leadSumByPipeline.get(pipelineId)!;
           acc.sum += days;
           acc.count++;
         }
@@ -159,7 +161,10 @@ export class AdminDashboardPage implements OnInit {
   public ngOnInit(): void {
     forkJoin({
       pipelines: this.pipelineApi.list(),
-      projects: this.projectApi.adminListProjects(),
+      // Сводка считается по всем проектам сразу («сколько без
+      // ответственного», «сколько встало»), поэтому просим весь набор
+      // явно: со страницей в 20 строк цифры были бы про эти 20 строк.
+      projects: this.projectApi.adminListProjects({ limit: 1000 }),
     }).subscribe({
       next: ({ pipelines, projects }) => {
         this.pipelines.set(pipelines.items ?? []);

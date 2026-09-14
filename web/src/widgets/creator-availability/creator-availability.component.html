@@ -1,0 +1,46 @@
+<section class="panel">
+  <h2 class="section-title">Занятость</h2>
+  <p class="note">
+    Это видят клиенты, когда расставляют приоритет. Держите честно — иначе приглашения будут мимо.
+    Неотмеченный месяц — не «свободен»: клиент видит его как неизвестность, и в подборе вы там не
+    первый.
+  </p>
+  <ul class="months">
+    @for (m of months(); track m.key) {
+      <li>
+        <span class="name">{{ m.label }}</span>
+        <span
+          class="state"
+          [class.free]="stateOf(m.key) === true"
+          [class.busy]="stateOf(m.key) === false"
+        >
+          @if (stateOf(m.key) === null) {
+            не отмечен
+          } @else if (stateOf(m.key)) {
+            свободен
+          } @else {
+            занят
+          }
+        </span>
+        <span class="month-actions">
+          <button
+            class="linkish"
+            type="button"
+            [disabled]="stateOf(m.key) === true"
+            (click)="set(m.key, true)"
+          >
+            свободен
+          </button>
+          <button
+            class="linkish"
+            type="button"
+            [disabled]="stateOf(m.key) === false"
+            (click)="set(m.key, false)"
+          >
+            занят
+          </button>
+        </span>
+      </li>
+    }
+  </ul>
+</section>

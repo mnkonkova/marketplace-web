@@ -1,0 +1,118 @@
+<app-admin-layout>
+  <div class="crm-page">
+    <header class="head">
+      <div>
+        <h1>Чеклисты креаторов</h1>
+        <p class="sub">
+          Что креатор отмечает перед тем, как сдать ссылки. Пункты одинаковы для всех проектов —
+          менеджер только подключает шаблон к проекту и правит копию внутри него. Правка здесь
+          выпускает новую версию: идущие проекты остаются на той, с которой начинались.
+        </p>
+      </div>
+      <button class="btn primary" type="button" (click)="startNew()">Новый чеклист</button>
+    </header>
+
+    @if (loading()) {
+    <p class="empty">Загружаем…</p>
+    } @else if (items().length) {
+    <div class="tpls">
+      @for (t of items(); track t.id) {
+      <article class="card tight tpl">
+        <div class="hd">
+          <h3>{{ t.name }}</h3>
+          <span class="tag">версия {{ t.version }}</span>
+        </div>
+        @if (t.description) {
+        <p class="sub">{{ t.description }}</p>
+        }
+        <span class="cnt">{{ t.items_count }} пунктов</span>
+        <div class="acts">
+          <button class="btn quiet sm" type="button" (click)="startEdit(t)">Изменить</button>
+          <button class="btn quiet sm" type="button" (click)="remove(t)">Убрать</button>
+        </div>
+      </article>
+      }
+    </div>
+    } @else {
+    <p class="empty">
+      Библиотека пуста. Пока в ней нет чеклистов, креатор сдаёт ссылки без проверок.
+    </p>
+    }
+  </div>
+
+  @if (editing() !== null) {
+  <div class="crm-page">
+    <div class="ovl on" (click)="close()">
+      <div class="modal wide" (click)="$event.stopPropagation()">
+        <div class="modal-hd">
+          <h2>{{ editing() ? 'Новая версия чеклиста' : 'Новый чеклист' }}</h2>
+          <p class="sub">
+            @if (editing()) { Прежняя версия погаснет, а проекты, где она подключена, останутся на
+            ней. } @else { Пункты с меткой площадки показываются креатору только для неё. }
+          </p>
+        </div>
+
+        <div class="modal-bd">
+          <p class="lbl">Название</p>
+          <input class="inp" [(ngModel)]="name" placeholder="Например: UGC для маркетплейса" />
+
+          <p class="lbl">Описание</p>
+          <input class="inp" [(ngModel)]="description" placeholder="Необязательно" />
+
+          <p class="lbl">Пункты</p>
+          @for (r of rows(); track r.key) {
+          <div class="row">
+            <input
+              class="inp"
+              [ngModel]="r.text"
+              (ngModelChange)="setText(r.key, $event)"
+              placeholder="Что проверить перед сдачей"
+            />
+            <select
+              class="inp pick"
+              [ngModel]="r.platform"
+              (ngModelChange)="setPlatform(r.key, $event)"
+            >
+              <option value="">Все площадки</option>
+              @for (p of platforms; track p) {
+              <option [value]="p">{{ platformLabel[p] }}</option>
+              }
+            </select>
+            <button
+              type="button"
+              class="btn sm"
+              [class.primary]="r.is_required"
+              [class.quiet]="!r.is_required"
+              (click)="toggleRequired(r.key)"
+              [title]="
+                    r.is_required
+                      ? 'Обязательный: без отметки ссылки не примут'
+                      : 'Необязательный: подсказка креатору'
+                  "
+            >
+              {{ r.is_required ? 'обязательный' : 'по желанию' }}
+            </button>
+            <button
+              type="button"
+              class="btn quiet sm"
+              (click)="removeRow(r.key)"
+              aria-label="Убрать пункт"
+            >
+              ×
+            </button>
+          </div>
+          }
+          <button class="btn dash wide" type="button" (click)="addRow()">Добавить пункт</button>
+        </div>
+
+        <div class="modal-ft">
+          <button class="btn ghost sm" type="button" (click)="close()">Отмена</button>
+          <button class="btn primary sm" type="button" [disabled]="saving()" (click)="save()">
+            {{ editing() ? 'Выпустить версию' : 'Сохранить' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+</app-admin-layout>

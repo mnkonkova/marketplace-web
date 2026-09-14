@@ -1,4 +1,14 @@
+@if (isAdmin() === 'admin') {
+<app-admin-layout [viewingAsManager]="true">
+  <ng-container [ngTemplateOutlet]="body" />
+</app-admin-layout>
+} @else {
 <app-manager-layout>
+  <ng-container [ngTemplateOutlet]="body" />
+</app-manager-layout>
+}
+
+<ng-template #body>
   <h1>Входящие проекты</h1>
 
   @if (loading()) {
@@ -34,4 +44,4 @@
       }
     </div>
   }
-</app-manager-layout>
+</ng-template>

@@ -61,6 +61,26 @@
     }
   </section>
 
+  <!-- Вход в воронку заказа. Стоит под контактами намеренно: без телефона
+       или телеграма менеджер не свяжется, а заказ без связи не собрать. -->
+  <section class="turnkey-panel">
+    <div class="turnkey-text">
+      <strong>Проект под ключ</strong>
+      <small>
+        Соберём команду креаторов на месяц: вы отмечаете людей в каталоге, они сами берут заявку.
+        Смету видно до создания заказа.
+      </small>
+    </div>
+    <div class="turnkey-actions">
+      @for (o of activeOrders(); track o.id) {
+      <button nz-button type="button" (click)="openOrder(o.id)">
+        Продолжить — {{ orderStatusLabel(o) }}
+      </button>
+      }
+      <button nz-button nzType="primary" type="button" (click)="startTurnkey()">Под ключ</button>
+    </div>
+  </section>
+
   @if (loading()) {
   <div class="center"><nz-spin nzSize="large"></nz-spin></div>
   } @else if (projects().length === 0) {

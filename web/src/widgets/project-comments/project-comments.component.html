@@ -1,0 +1,124 @@
+<section class="talk">
+  <div class="talk-head">
+    <h2>Комментарии</h2>
+    @if (tabs().length > 1) {
+      <div class="tabs" role="tablist">
+        @for (t of tabs(); track t.key) {
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            [class.on]="activeTab()?.key === t.key"
+            [class.internal]="t.thread === 'internal'"
+            [attr.aria-selected]="activeTab()?.key === t.key"
+            (click)="pick(t)"
+          >
+            {{ t.label }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  @if (activeTab(); as tab) {
+    <p class="talk-note">{{ tab.note }}</p>
+  }
+
+  @if (loading()) {
+    <p class="empty">Загружаем переписку…</p>
+  } @else {
+    <div class="thread">
+      @for (c of visible(); track c.id) {
+        <article class="msg" [class.internal]="c.internal" [class.mine]="c.mine">
+          <header>
+            <strong>{{ c.mine ? 'Вы' : c.author }}</strong>
+            @if (c.internal) {
+              <span class="lock" title="Видно только менеджерам">только менеджерам</span>
+            }
+            <time>{{ c.createdAt | date: 'd MMM, HH:mm' }}</time>
+          </header>
+          <div class="body" [innerHTML]="c.html"></div>
+        </article>
+      } @empty {
+        <p class="empty">Здесь пока пусто — напишите первым.</p>
+      }
+    </div>
+
+    <div class="tt">
+      <div class="tt-bar">
+        <button
+          type="button"
+          title="Жирный"
+          (mousedown)="$event.preventDefault()"
+          (click)="format('bold')"
+        >
+          <b>B</b>
+        </button>
+        <button
+          type="button"
+          title="Курсив"
+          (mousedown)="$event.preventDefault()"
+          (click)="format('italic')"
+        >
+          <i>I</i>
+        </button>
+        <button
+          type="button"
+          title="Зачёркнутый"
+          (mousedown)="$event.preventDefault()"
+          (click)="format('strikeThrough')"
+        >
+          <s>S</s>
+        </button>
+        <button
+          type="button"
+          title="Список"
+          (mousedown)="$event.preventDefault()"
+          (click)="format('insertUnorderedList')"
+        >
+          ⋮≡
+        </button>
+        <span class="sep"></span>
+        <button
+          type="button"
+          title="Упомянуть"
+          [class.on]="mentionOpen()"
+          (mousedown)="$event.preventDefault()"
+          (click)="toggleMentions()"
+        >
+          &#64;
+        </button>
+      </div>
+
+      @if (mentionOpen()) {
+        <ul class="mentions">
+          @for (p of participants(); track p.user_id) {
+            <li>
+              <button type="button" (mousedown)="$event.preventDefault()" (click)="mention(p)">
+                <span class="nm">{{ p.display_name }}</span>
+                <span class="role">{{ p.role }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      <div
+        #editor
+        class="tt-body"
+        contenteditable="true"
+        role="textbox"
+        aria-multiline="true"
+        aria-label="Комментарий"
+        data-placeholder="Напишите вопрос или правку…"
+      ></div>
+
+      <div class="tt-foot">
+        <button nz-button nzType="primary" [nzLoading]="sending()" (click)="send()">
+          Отправить
+        </button>
+        <span class="hint">Упоминание уводит уведомление в бот.</span>
+      </div>
+    </div>
+  }
+</section>

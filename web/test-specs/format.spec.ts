@@ -1,7 +1,9 @@
 import {
+  formatAgo,
   formatRate,
   formatPublicRate,
   formatDuration,
+  plural,
   pluralCategories,
   pluralSpecialists,
 } from '@shared/lib/format';
@@ -114,5 +116,82 @@ describe('pluralSpecialists', () => {
     expect(pluralSpecialists(5)).toBe('5 специалистов');
     expect(pluralSpecialists(11)).toBe('11 специалистов');
     expect(pluralSpecialists(21)).toBe('21 специалист');
+  });
+});
+
+/**
+ * Плюрализация счётчиков.
+ *
+ * На экранах проекта числа подставлялись к слову в одной форме: «1
+ * выкладок», «по 1 роликам», «1 роликов закрыто». Это не опечатки, а
+ * отсутствие правила, поэтому правило одно на всё приложение и проверяется
+ * здесь, а не в каждом виджете по отдельности.
+ */
+describe('plural', () => {
+  it('1, 2, 5 — три разные формы', () => {
+    expect(plural(1, 'ролик', 'ролика', 'роликов')).toBe('ролик');
+    expect(plural(2, 'ролик', 'ролика', 'роликов')).toBe('ролика');
+    expect(plural(5, 'ролик', 'ролика', 'роликов')).toBe('роликов');
+  });
+
+  it('11–14 — всегда третья форма, несмотря на последнюю цифру', () => {
+    expect(plural(11, 'выкладка', 'выкладки', 'выкладок')).toBe('выкладок');
+    expect(plural(12, 'выкладка', 'выкладки', 'выкладок')).toBe('выкладок');
+    expect(plural(14, 'выкладка', 'выкладки', 'выкладок')).toBe('выкладок');
+  });
+
+  it('за сотней правило то же: 101, 102, 111', () => {
+    expect(plural(101, 'ссылка', 'ссылки', 'ссылок')).toBe('ссылка');
+    expect(plural(102, 'ссылка', 'ссылки', 'ссылок')).toBe('ссылки');
+    expect(plural(111, 'ссылка', 'ссылки', 'ссылок')).toBe('ссылок');
+  });
+
+  it('ноль — третья форма: «0 роликов», а не «0 ролик»', () => {
+    expect(plural(0, 'ролик', 'ролика', 'роликов')).toBe('роликов');
+  });
+
+  it('отрицательные считаются по модулю — так живёт «−1 день»', () => {
+    expect(plural(-1, 'день', 'дня', 'дней')).toBe('день');
+    expect(plural(-3, 'день', 'дня', 'дней')).toBe('дня');
+  });
+});
+
+describe('formatAgo', () => {
+  // Точка отсчёта фиксированная: иначе «три дня назад» зависит от того,
+  // в какую секунду запустился тест.
+  const now = new Date('2026-09-14T12:00:00Z').getTime();
+  const ago = (ms: number) => new Date(now - ms).toISOString();
+  const MIN = 60_000;
+  const HOUR = 60 * MIN;
+  const DAY = 24 * HOUR;
+
+  it('меньше минуты — «только что»', () => {
+    expect(formatAgo(ago(20_000), now)).toBe('только что');
+  });
+
+  it('минуты и часы', () => {
+    expect(formatAgo(ago(5 * MIN), now)).toBe('5 мин назад');
+    expect(formatAgo(ago(3 * HOUR), now)).toBe('3 ч назад');
+  });
+
+  // Ради этого случая колонка и заведена: «что не двигалось неделю».
+  it('дни — с правильной формой слова', () => {
+    expect(formatAgo(ago(DAY), now)).toBe('1 день назад');
+    expect(formatAgo(ago(3 * DAY), now)).toBe('3 дня назад');
+    expect(formatAgo(ago(7 * DAY), now)).toBe('7 дней назад');
+    expect(formatAgo(ago(11 * DAY), now)).toBe('11 дней назад');
+    expect(formatAgo(ago(21 * DAY), now)).toBe('21 день назад');
+  });
+
+  it('дальше двух месяцев считает месяцами', () => {
+    expect(formatAgo(ago(90 * DAY), now)).toBe('3 месяца назад');
+  });
+
+  it('часы браузера впереди серверных — «только что», а не «через»', () => {
+    expect(formatAgo(new Date(now + 5 * MIN).toISOString(), now)).toBe('только что');
+  });
+
+  it('мусор вместо даты — пустая строка, а не NaN', () => {
+    expect(formatAgo('не дата', now)).toBe('');
   });
 });

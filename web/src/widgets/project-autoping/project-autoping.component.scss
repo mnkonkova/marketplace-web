@@ -1,0 +1,54 @@
+:host {
+  display: block;
+}
+
+.ping-block {
+  margin: 20px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: var(--r-card, 16px);
+  background: var(--surface);
+
+  h2 {
+    margin: 0;
+    font-size: 17px;
+  }
+}
+
+.note {
+  margin: 6px 0 14px;
+  max-width: 72ch;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.switchrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-hover);
+
+  & + .switchrow {
+    margin-top: 10px;
+  }
+
+  .tx {
+    flex: 1;
+    min-width: 200px;
+    font-size: 13.5px;
+  }
+
+  .tx b {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 14px;
+  }
+
+  .tx span {
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+}

@@ -1,0 +1,105 @@
+@if (denied()) {
+  <p class="empty">Показ статистики по этому проекту выключен — цифры скрыты менеджером.</p>
+} @else if (collapsed()) {
+  <p class="empty">Проект закрыт — подробная статистика по роликам больше не хранится.</p>
+} @else if (report()) {
+  @let r = report()!;
+
+  @if (showKpis()) {
+    <div class="tiles">
+      <div class="tile">
+        <span>Просмотры, всего</span>
+        <b>{{ r.views | number }}</b>
+        <small>+{{ r.growth_24h | number }} за сутки</small>
+      </div>
+      <div class="tile">
+        <span>Лайки</span>
+        <b>{{ r.likes | number }}</b>
+      </div>
+      <div class="tile">
+        <span>Комментарии</span>
+        <b>{{ r.comments | number }}</b>
+      </div>
+      <div class="tile">
+        <span>ER средний</span>
+        <b>
+          @if (r.er_percent == null) {
+            —
+          } @else {
+            {{ r.er_percent | number: '1.0-1' }}%
+          }
+        </b>
+        <small
+          >по {{ r.videos | number }} {{ plural(r.videos, 'ролику', 'роликам', 'роликам') }}</small
+        >
+      </div>
+    </div>
+  }
+
+  @if (hasChart()) {
+    <div class="chart">
+      <svg
+        [attr.viewBox]="'0 0 ' + W + ' ' + H"
+        role="img"
+        aria-label="Просмотры нарастающим итогом"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <!-- Сетка и подписи значений: без них у линии нет масштаба, и
+             «выросло» невозможно отличить от «выросло вдвое». -->
+        @for (t of yTicks(); track t.value) {
+          <line class="grid" [attr.x1]="PL" [attr.x2]="W - PR" [attr.y1]="t.y" [attr.y2]="t.y" />
+          <text class="tick" [attr.x]="PL - 8" [attr.y]="t.y + 3.5" text-anchor="end">
+            {{ t.value | number }}
+          </text>
+        }
+
+        <path class="area" [attr.d]="area()" />
+        <polyline class="line" [attr.points]="polyline()" />
+
+        <line
+          class="axis"
+          [attr.x1]="PL"
+          [attr.x2]="W - PR"
+          [attr.y1]="axisY()"
+          [attr.y2]="axisY()"
+        />
+        @for (t of xTicks(); track t.date) {
+          <text class="tick" [attr.x]="t.x" [attr.y]="H - 8" text-anchor="middle">
+            {{ t.date | date: 'd MMM' }}
+          </text>
+        }
+      </svg>
+      <!-- Ряд накопительный: точка дня — это «всего просмотров на эту
+           дату», а не прирост за сутки. Прирост стоит отдельно, в плитке
+           «Просмотры, всего». -->
+      <div class="legend">
+        <span><i class="dot"></i> Просмотры нарастающим итогом</span>
+        @if (lastPoint(); as last) {
+          <span class="muted"> на {{ last.date | date: 'd MMM' }}: {{ last.views | number }} </span>
+        }
+      </div>
+    </div>
+  }
+
+  <p class="note">
+    Счётчики снимаются раз в сутки. Последний сбор — {{ r.as_of | date: 'd MMM, HH:mm' }}.
+  </p>
+
+  @if (showPlatforms() && r.by_platform.length) {
+    <h3>Какая площадка тянет</h3>
+    <ul class="byplat">
+      @for (row of r.by_platform; track row.platform) {
+        <li>
+          <span class="badge">{{ platformShort[row.platform] }}</span>
+          <span class="name">{{ platformLabel[row.platform] }}</span>
+          <span class="bar">
+            <i [style.width.%]="r.views ? (row.views / r.views) * 100 : 0"></i>
+          </span>
+          <b>{{ row.views | number }}</b>
+        </li>
+      }
+    </ul>
+  }
+} @else {
+  <p class="empty">Цифр пока нет — они появятся после первой выкладки.</p>
+}
