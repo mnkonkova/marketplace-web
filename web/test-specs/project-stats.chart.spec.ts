@@ -36,6 +36,14 @@ describe('ProjectStatsComponent: график', () => {
     };
   }
 
+  /** Накопительный ряд на n дней подряд, начиная с 1 сентября. */
+  function days(n: number) {
+    return Array.from({ length: n }, (_, i) => ({
+      date: `2026-09-${String(i + 1).padStart(2, '0')}`,
+      views: (i + 1) * 100_000,
+    }));
+  }
+
   function setup(r: PublicationReport | null) {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({});
@@ -63,6 +71,32 @@ describe('ProjectStatsComponent: график', () => {
     // именно это и делает «максимум за день» бессмысленным.
     expect(cmp.lastPoint()?.views).toBe(3_000_000);
     expect(cmp.lastPoint()?.views).toBe(report().views);
+  });
+
+  it('переключатель глубины появляется, только когда есть что переключать', () => {
+    // Ряд из двух дней: «7 дней» и «30 дней» нарисуют одно и то же, и
+    // кнопка, которая ничего не меняет, читается как сломанная.
+    expect(setup(report()).componentInstance.canSwitchRange()).toBeFalse();
+
+    const long = report({ by_day: days(12) });
+    expect(setup(long).componentInstance.canSwitchRange()).toBeTrue();
+  });
+
+  it('«7 дней» режет ряд до последней недели, «30» возвращает месяц', () => {
+    const fixture = setup(report({ by_day: days(12) }));
+    const cmp = fixture.componentInstance;
+
+    expect(cmp.days().length).toBe(12);
+
+    cmp.setRange(7);
+    fixture.detectChanges();
+    expect(cmp.days().length).toBe(7);
+    // Режем ХВОСТ: неделя — это последние семь дней, а не первые.
+    expect(cmp.days()[cmp.days().length - 1].date).toBe('2026-09-12');
+
+    cmp.setRange(30);
+    fixture.detectChanges();
+    expect(cmp.days().length).toBe(12);
   });
 
   it('у графика говорящая подпись для скринридера', () => {

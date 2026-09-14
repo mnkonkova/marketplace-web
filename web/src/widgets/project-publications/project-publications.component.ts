@@ -246,8 +246,6 @@ export class ProjectPublicationsComponent {
 
   public readonly pubBusy = signal<string | null>(null);
 
-  public readonly chartRange = signal<7 | 30>(30);
-
   public readonly blocks = computed(() =>
     projectBlocks('manager', { kind: this.kind(), statsAllowed: true }),
   );
@@ -561,10 +559,6 @@ export class ProjectPublicationsComponent {
       return;
     }
     for (const p of rows) this.remind(p);
-  }
-
-  public setRange(days: 7 | 30): void {
-    this.chartRange.set(days);
   }
 
   public readonly csvBusy = signal(false);

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { DayPoint, PublicationReport } from '@entities/publication/model/publication.types';
@@ -14,6 +14,13 @@ import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
 // Ряд графика накопительный, и подписи обязаны это говорить: «за день»
 // поверх накопительного ряда — не мелкая неточность, а другое число на
 // порядок, которое читается как рекордный день.
+//
+// Глубина ряда (7 или 30 дней) — состояние самого виджета, а не входной
+// параметр. Раньше это был вход `range`, и менять его было нечем нигде,
+// кроме одного экрана менеджера: на остальных график всегда рисовал
+// тридцать дней, а параметр стоял в коде и выглядел настройкой. Теперь
+// переключатель едет вместе с виджетом и появляется везде, где он стоит,
+// — а не там, где кто-то не забыл дорисовать кнопки.
 @Component({
   selector: 'app-project-stats',
   standalone: true,
@@ -47,14 +54,37 @@ export class ProjectStatsComponent {
 
   public readonly platformShort = PLATFORM_SHORT;
 
-  public readonly range = input<7 | 30>(30);
+  /**
+   * Глубина ряда. Тридцать дней по умолчанию: месяц — это период проекта,
+   * и именно на нём видно, как ролик набирает после выхода.
+   *
+   * Выбор живёт только пока смотрят: в адрес не уезжает и не запоминается.
+   * Настройка, которая переживает вкладку, требует объяснения, где её
+   * потом отменить, — а здесь это один клик туда и обратно.
+   */
+  public readonly range = signal<7 | 30>(30);
 
-  public readonly days = computed<DayPoint[]>(() => {
+  public setRange(days: 7 | 30): void {
+    this.range.set(days);
+  }
+
+  /** Весь ряд, по возрастанию дат. Из него режется окно. */
+  private readonly allDays = computed<DayPoint[]>(() => {
     const r = this.report();
     if (!r) return [];
-    const all = [...r.by_day].sort((a, b) => a.date.localeCompare(b.date));
-    return all.slice(-this.range());
+    return [...r.by_day].sort((a, b) => a.date.localeCompare(b.date));
   });
+
+  public readonly days = computed<DayPoint[]>(() => this.allDays().slice(-this.range()));
+
+  /**
+   * Показывать ли переключатель.
+   *
+   * Только когда неделя и месяц дают разные картинки: на ряде из пяти
+   * дней обе кнопки рисуют одно и то же, и кнопка, которая ничего не
+   * меняет, читается как сломанная.
+   */
+  public readonly canSwitchRange = computed(() => this.allDays().length > 7);
 
   // Геометрия графика — из макета: слева место под подписи оси, снизу
   // под даты. Рисуем в пикселях, а не в 0..100 с растянутым viewBox:

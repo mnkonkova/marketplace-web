@@ -469,14 +469,9 @@
     <div class="pub-head">
       <h2>Статистика</h2>
       <div class="pub-actions">
-        <div class="range">
-          <button type="button" [class.on]="chartRange() === 7" (click)="setRange(7)">
-            7 дней
-          </button>
-          <button type="button" [class.on]="chartRange() === 30" (click)="setRange(30)">
-            30 дней
-          </button>
-        </div>
+        <!-- Переключатель 7/30 переехал внутрь самого графика: он меняет
+             только его и обязан ехать вместе с ним, а не дорисовываться
+             на каждом экране заново. -->
         @if (blocks().csvExport) {
           <button nz-button nzSize="small" [nzLoading]="csvBusy()" (click)="downloadCsv()">
             Выгрузить CSV
@@ -485,7 +480,7 @@
       </div>
     </div>
 
-    <app-project-stats [report]="report()" [range]="chartRange()" />
+    <app-project-stats [report]="report()" />
 
     @if (report(); as r) {
       @if (r.by_creator.length) {

@@ -182,8 +182,6 @@ export class ClientTurnkeyProjectComponent {
 
   public readonly prefs = signal<NotificationPrefs | null>(null);
 
-  public readonly chartRange = signal<7 | 30>(30);
-
   public readonly blocks = computed(() => {
     const p = this.project();
     return projectBlocks('client', { kind: p.kind, statsAllowed: !this.statsDenied() });
@@ -288,10 +286,6 @@ export class ClientTurnkeyProjectComponent {
         this.msg.error(parseApiError(e, 'Не удалось выгрузить отчёт.').message);
       },
     });
-  }
-
-  public setRange(days: 7 | 30): void {
-    this.chartRange.set(days);
   }
 
   public onMonthChange(month: string): void {

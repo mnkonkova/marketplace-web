@@ -56,6 +56,31 @@ h3 {
 .chart {
   margin-top: 16px;
 
+  // Переключатель глубины: стоит над графиком и прижат вправо, чтобы не
+  // спорить с заголовком блока на экране, где он есть.
+  .range {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-bottom: 8px;
+
+    button {
+      padding: 4px 11px;
+      border: 1px solid var(--border-strong, #2c313a);
+      border-radius: 999px;
+      background: var(--bg-elevated, #111316);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    button.on {
+      border-color: var(--cta, #f0553c);
+      color: var(--text);
+    }
+  }
+
   svg {
     display: block;
     width: 100%;
