@@ -43,6 +43,9 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './line-chart.component.html',
   styleUrl: './line-chart.component.scss',
+  // Класс на хосте, чтобы стили сжатого вида жили рядом с остальными
+  // стилями графика, а не расползались по местам вызова.
+  host: { '[class.compact]': 'compact()' },
 })
 export class LineChartComponent {
   public readonly points = input<readonly SeriesPoint[]>([]);

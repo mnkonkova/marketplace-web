@@ -280,94 +280,6 @@
   text-decoration: none;
 }
 
-// ---- рынок ----
-
-.market {
-  padding: 18px 20px;
-  border: 1px solid var(--border-strong, #2c313a);
-  border-radius: var(--r-card, 16px);
-  background: var(--surface);
-}
-
-.ours {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-
-  .label {
-    color: var(--text-muted);
-    font-size: 13px;
-  }
-
-  b {
-    font-size: clamp(24px, 2.4vw + 14px, 34px);
-    font-weight: 600;
-    line-height: 1.1;
-  }
-
-  .unit {
-    color: var(--text-muted);
-    font-size: 13px;
-  }
-}
-
-.mrows {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  li {
-    display: grid;
-    gap: 2px 12px;
-    grid-template-columns: 1fr auto;
-    align-items: baseline;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  li:last-child {
-    border-bottom: 0;
-  }
-
-  .mt {
-    font-size: 14px;
-  }
-
-  b {
-    font-size: 15px;
-    font-weight: 600;
-  }
-
-  .mx {
-    grid-column: 2;
-    grid-row: 2;
-    color: var(--ok, #2fbd8f);
-    font-size: 12.5px;
-    text-align: right;
-  }
-
-  // Источник и дата замера — не мелкий шрифт для юристов, а то, чем
-  // число проверяют. Поэтому строкой под ним, а не сноской внизу.
-  .src {
-    grid-column: 1;
-    grid-row: 2;
-    color: var(--text-dim);
-    font-size: 12px;
-  }
-}
-
-.caveat {
-  margin: 12px 0 0;
-  padding-top: 12px;
-  border-top: 1px dashed var(--border-strong, #2c313a);
-  color: var(--text-muted);
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-
 // ---- площадки ----
 
 .grid {
@@ -464,10 +376,13 @@
 
 // ---- залетевшие ролики ----
 
+// Три колонки жёстко, а не по месту: залетевших роликов бывает и один
+// (у нового проекта так и будет), а растянутая на всю ширину карточка с
+// одним роликом читается как «больше у нас ничего нет».
 .viral {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .clip {
@@ -584,7 +499,8 @@
 }
 
 @media (max-width: 760px) {
-  .kpis {
+  .kpis,
+  .viral {
     grid-template-columns: 1fr;
   }
 

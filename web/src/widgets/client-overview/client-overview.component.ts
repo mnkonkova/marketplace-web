@@ -1,7 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map } from 'rxjs/operators';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
 import { formatMoney } from '@entities/billing/lib/money';
@@ -64,6 +73,8 @@ export class ClientOverviewComponent {
 
   private readonly router = inject(Router);
 
+  private readonly destroyRef = inject(DestroyRef);
+
   /** Имя заказчика для шапки дашборда. Страница его уже загрузила. */
   public readonly clientName = input('');
 
@@ -99,6 +110,7 @@ export class ClientOverviewComponent {
       .pipe(
         map((q) => parseRange(q.get('range'))),
         distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((r) => {
         this.range.set(r);
