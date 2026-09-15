@@ -5,18 +5,14 @@ import { formatMoney } from '@entities/billing/lib/money';
 import {
   LADDER_STEP,
   LadderVideo,
-  MATURE_DAYS,
   TYPICAL_SOURCE_NOTE,
   countLine,
   hitLine,
-  hitVideo,
-  isYoung,
   ladderState,
   shortViews,
   stepPlan,
-  stepShare,
-  stepShareText,
 } from '@entities/billing/lib/ladder';
+import { videosInPeriod } from '@entities/billing/lib/creator-highlights';
 import { isOpenPeriod, periodTitle, snapshotNote } from '@entities/billing/lib/period';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
 import { isSelfAdded } from '@entities/publication/lib/extra-publication';
@@ -76,13 +72,9 @@ export class CreatorLadderComponent {
 
   public readonly step = LADDER_STEP;
 
-  public readonly matureDays = MATURE_DAYS;
-
   public readonly views = shortViews;
 
   public readonly money = formatMoney;
-
-  public readonly shareText = stepShareText;
 
   public plural(n: number, one: string, few: string, many: string): string {
     return plural(n, one, few, many);
@@ -125,17 +117,16 @@ export class CreatorLadderComponent {
       })),
   );
 
-  /** Ролики этого периода: вышли между его границами, включительно. */
-  public readonly periodVideos = computed<LadderVideo[]>(() => {
-    const p = this.period();
-    if (!p) return [];
-    const from = p.starts_on.slice(0, 10);
-    const to = p.ends_on.slice(0, 10);
-    return this.allVideos().filter((v) => {
-      const day = (v.published_at ?? '').slice(0, 10);
-      return !!day && day >= from && day <= to;
-    });
-  });
+  /**
+   * Ролики этого периода: вышли между его границами, включительно.
+   *
+   * Отбор вынесен в lib и общий с блоком достижений: два экрана, которые
+   * считают «ролики периода» каждый по-своему, рано или поздно назовут
+   * разные ролики одного и того же периода.
+   */
+  public readonly periodVideos = computed<LadderVideo[]>(() =>
+    videosInPeriod(this.allVideos(), this.period()),
+  );
 
   /** Перенос с прошлого периода: он уже в счёте ступеней. */
   public readonly carryIn = computed(() => this.period()?.carry_in_creator ?? 0);
@@ -226,11 +217,6 @@ export class CreatorLadderComponent {
     return b ? TYPICAL_SOURCE_NOTE[b.typical_video_source] : '';
   });
 
-  /** Свой рекорд. Пусто, если он неотличим от обычного ролика. */
-  public readonly hit = computed(() =>
-    hitVideo(this.allVideos(), this.typical()?.typical_video_views ?? null),
-  );
-
   /**
    * Сколько роликов периода ещё впереди.
    *
@@ -309,38 +295,9 @@ export class CreatorLadderComponent {
    */
   public readonly planDone = computed(() => !!this.period() && this.plannedLeft() === 0);
 
-  /**
-   * Ролики периода со свежими сверху — у каждого виден его вклад.
-   *
-   * Вклад долей ступени и есть главное, чего экрану не хватало: «20 000»
-   * само по себе не говорит, много это или мало, а «пятая часть ступени»
-   * понятно сразу.
-   */
-  public readonly contributions = computed(() =>
-    [...this.periodVideos()]
-      .sort((a, b) => b.views - a.views)
-      .map((v) => ({
-        id: v.id,
-        title: v.title,
-        views: v.views,
-        share: stepShareText(v.views),
-        percent: Math.min(100, Math.round(stepShare(v.views) * 100)),
-        young: isYoung(v),
-      })),
-  );
-
-  /** Вышли, но ещё растут: младше двух недель. */
-  public readonly inProgress = computed(() => this.periodVideos().filter((v) => isYoung(v)));
-
-  /**
-   * Его место по медиане ролика, обезличенно. Нет числа — нет и блока,
-   * без объяснений и пустого места: сравнивать не с чем.
-   *
-   * Процентиль — доля роликов проекта НИЖЕ него, поэтому «в топ-N%» это
-   * 100 − процентиль.
-   */
-  public readonly topPercent = computed(() => {
-    const p = this.earnings()?.benchmark?.my_percentile;
-    return p === undefined ? null : Math.max(1, 100 - p);
-  });
+  // Список роликов периода, их вклад в ступень и обезличенное место по
+  // медиане переехали в блок достижений (widgets/creator-highlights).
+  // Здесь они спорили за внимание с главным числом экрана: человек
+  // приходит на эту карточку с вопросом «сколько мне за это будет», и
+  // ответ на него должен стоять один.
 }

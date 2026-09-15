@@ -69,40 +69,107 @@
             период до {{ ends | date: 'd MMM' }} } }
           </span>
         </div>
-
-        @if (earnings()?.terms; as t) {
-        <div class="terms">
-          <span class="t1">
-            <b>{{ money(t.salary_per_month) }}<small>/ мес</small></b>
-            @if (t.videos_first_month) { оклад за {{ t.videos_first_month }} {{
-            plural(t.videos_first_month, 'ролик', 'ролика', 'роликов') }} на {{
-            projectPlatforms().length }} {{ plural(projectPlatforms().length, 'площадке',
-            'площадках', 'площадках') }} } @else { оклад за месяц }
-          </span>
-          <span class="t1">
-            <b>{{ money(t.rate_per_1000_views) }}<small>/ 1000</small></b>
-            бонус за просмотры каждого ролика
-          </span>
-          @if (t.bonus_views_threshold) {
-          <span class="t1">
-            <b>{{ money(t.rate_per_1000_views_over) }}<small>/ 1000</small></b>
-            после {{ t.bonus_views_threshold | number }} просмотров на ролик
-          </span>
-          }
-        </div>
-        }
       </div>
 
-      <!-- ── ближайшее дело ──────────────────────────────── -->
-      @if (urgent(); as u) {
-      <div class="next" [class.late]="u.overdue">
-        <span class="cd"> {{ daysLeft(u) }}<small>{{ daysWord(u) }}</small> </span>
+      <!-- ── 1. Сколько заработал и сколько заработаю ─────
+           Первым и во всю ширину, без соседей: человек приходит сюда с
+           этим вопросом, и ответ на него должен стоять один. Условия
+           тарифа стоят НИЖЕ карточки, а не выше: раньше они шли в шапке
+           тем же кеглем и спорили с главным числом. -->
+      <app-creator-ladder
+        [earnings]="earnings()"
+        [publications]="items()"
+        (addVideo)="openAddPublication()"
+      />
+
+      @if (earnings()?.terms; as t) {
+      <div class="terms">
+        <span class="t1">
+          <b>{{ money(t.salary_per_month) }}<small>/ мес</small></b>
+          @if (t.videos_first_month) { оклад за {{ t.videos_first_month }} {{
+          plural(t.videos_first_month, 'ролик', 'ролика', 'роликов') }} на {{
+          projectPlatforms().length }} {{ plural(projectPlatforms().length, 'площадке', 'площадках',
+          'площадках') }} } @else { оклад за месяц }
+        </span>
+        <span class="t1">
+          <b>{{ money(t.rate_per_1000_views) }}<small>/ 1000</small></b>
+          бонус за просмотры каждого ролика
+        </span>
+        @if (t.bonus_views_threshold) {
+        <span class="t1">
+          <b>{{ money(t.rate_per_1000_views_over) }}<small>/ 1000</small></b>
+          после {{ t.bonus_views_threshold | number }} просмотров на ролик
+        </span>
+        }
+      </div>
+      }
+
+      <!-- ── 2. Что получается лучше всего ──────────────── -->
+      <app-creator-highlights
+        [earnings]="earnings()"
+        [publications]="items()"
+        [report]="report()"
+      />
+
+      <!-- ── 2b. Трудовая биография: период за периодом ─── -->
+      <app-creator-history [earnings]="earnings()" />
+
+      <!-- ── 3. Что делать дальше ────────────────────────
+           Одно действие одной строкой. Ни поздравлений, ни списка из
+           трёх советов сразу: список читается не как задачи, а как
+           упрёк. Нечего делать — строки нет вовсе. -->
+      @if (nextStep(); as kind) {
+      <div
+        class="next"
+        [class.late]="kind === 'submit' && !!urgent()?.overdue"
+        [class.calm]="kind !== 'submit'"
+      >
+        @if (kind === 'submit') { @if (urgent(); as u) {
+        <span class="cd">{{ daysLeft(u) }}<small>{{ daysWord(u) }}</small></span>
         <span class="tx">
           <b>Выкладка {{ index(u) }} — {{ collectedLabel(u) }}</b>
           {{ urgentHint(u) }}
         </span>
         <button type="button" class="btn primary sm" (click)="openSubmit(u)">Сдать ролик</button>
+        } } @else if (kind === 'step') { @if (forecast(); as f) {
+        <span class="tx">
+          <b
+            >Добрать {{ views(f.views_to_go) }} {{ plural(f.views_to_go, 'просмотр', 'просмотра',
+            'просмотров') }} до ступени — это примерно +{{ money(f.forecast_payout) }}</b
+          >
+          Прогноз по условиям проекта, а не начисленное. Ближайших сроков нет: можно снять ролик по
+          своей дате.
+        </span>
+        <button type="button" class="btn primary sm" (click)="openAddPublication()">
+          Добавить ролик
+        </button>
+        } } @else if (kind === 'profile') {
+        <!-- Говорим ровно то, что знаем: в профиле пусто. Не «вы теряете
+             просмотры» — просмотры считаются по сданным ссылкам, а не по
+             профилю, и такое утверждение было бы неправдой у того, кто
+             аккаунт имеет, но в профиль не вписал. -->
+        <span class="tx">
+          <b>Указать в профиле аккаунты: {{ missingAccountsList() }}</b>
+          Проект идёт на {{ projectPlatforms().length }} {{ plural(projectPlatforms().length,
+          'площадку', 'площадки', 'площадок') }}, один ролик уходит на все, и просмотры по ним
+          складываются в один бонус. Площадки, на которой у вас нет аккаунта, в этом бонусе не
+          будет.
+        </span>
+        <a class="btn primary sm" routerLink="/me" [queryParams]="{ tab: 'contacts' }">В профиль</a>
+        }
       </div>
+      }
+
+      <!-- Незаполненные площадки — отдельной тихой строкой, когда
+           ближайшим делом стало что-то другое. Повторять их в двух
+           местах сразу не надо, но и молчать о них нельзя: это его
+           деньги. -->
+      @if (missingAccounts().length && nextStep() !== 'profile') {
+      <p class="gap">
+        В профиле не указаны аккаунты: <b>{{ missingAccountsList() }}</b>. Один ролик идёт на все
+        площадки проекта, и просмотры по ним складываются в один бонус —
+        <a routerLink="/me" [queryParams]="{ tab: 'contacts' }">добавить ссылки</a>.
+      </p>
       }
 
       <div class="two">
@@ -216,17 +283,11 @@
         </div>
 
         <!-- ── правая колонка ──────────────────────────────
-             Порядок: сначала деньги и ближайшая цель, потом материалы,
-             потом история. Второстепенное ниже и мельче. -->
+             Здесь осталось только то, что не отвечает ни на один из трёх
+             вопросов кабинета: справочные материалы и занятость.
+             Деньги, достижения и история переехали наверх и во всю
+             ширину. -->
         <div>
-          <!-- Что заработано за период и что добавит следующая ступень.
-               Главное, ради чего креатор сюда заходит. -->
-          <app-creator-ladder
-            [earnings]="earnings()"
-            [publications]="items()"
-            (addVideo)="openAddPublication()"
-          />
-
           @if (materials().length) {
           <div class="card" style="margin-bottom: 16px">
             <h2>Материалы проекта</h2>
@@ -239,29 +300,6 @@
                 <span>{{ m.kind | uppercase }}</span>
               </span>
               <a class="btn quiet sm" [href]="m.url" target="_blank" rel="noopener"> Открыть </a>
-            </div>
-            }
-          </div>
-          }
-
-          <!-- История: только прошлые периоды. Текущий стоит выше, крупно
-               и с прогнозом, — второй такой же блок был бы не
-               «подробнее», а той же суммой дважды на одном экране. -->
-          @if (pastAccruals().length) {
-          <div class="card past" style="margin-bottom: 16px">
-            <h2>Прошлые периоды</h2>
-            <p class="sub" style="margin-bottom: 10px">Подытожено и пересчёту не подлежит.</p>
-            @for (a of pastAccruals(); track a.id) {
-            <div class="money">
-              <span class="k">
-                {{ periodOfAccrual(a.period_start) }}
-                <small
-                  >{{ a.videos_delivered }} из {{ a.videos_planned }} {{ plural(a.videos_planned,
-                  'ролик', 'ролика', 'роликов') }} · {{ a.views_total | number }} {{
-                  plural(a.views_total, 'просмотр', 'просмотра', 'просмотров') }}</small
-                >
-              </span>
-              <span class="v">{{ money(a.total) }}</span>
             </div>
             }
           </div>

@@ -460,7 +460,6 @@ export interface OverviewWindow {
    * говорит звёздочка у самой цифры, а не сноска внизу экрана.
    */
   er_without_shares?: boolean;
-  engagement_without_shares?: boolean;
 }
 
 /**

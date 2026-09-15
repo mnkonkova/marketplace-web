@@ -1,0 +1,78 @@
+<!-- Период за периодом: что заработано, из чего сложилось и как шли
+     просмотры. Идущий период сюда не попадает — он выше, крупно и с
+     прогнозом. -->
+@if (rows().length) {
+  <div class="card hist">
+    <div class="hhead">
+      <div>
+        <h2>Период за периодом</h2>
+        <p class="sub">Подытожено и пересчёту не подлежит.</p>
+      </div>
+      @if (earned().periods > 1) {
+        <!-- Итог за проект — тоже достижение, и считать его в уме по
+             строкам человек не должен. Сумма готовых начислений, а не
+             расчёт по ставкам. -->
+        <div class="allsum">
+          <i>заработано за проект</i>
+          <b>{{ money(earned().total) }}</b>
+          <i
+            >за {{ earned().periods }}
+            {{ plural(earned().periods, 'период', 'периода', 'периодов') }}</i
+          >
+        </div>
+      }
+    </div>
+
+    <ul class="plist">
+      @for (r of rows(); track r.id) {
+        <li>
+          <div class="top">
+            <span class="pt">{{ r.title }}</span>
+            <span class="sum">{{ money(r.total) }}</span>
+          </div>
+
+          <div class="parts">
+            <span>{{ money(r.salary) }} оклад</span>
+            <span>+ {{ money(r.viewsBonus) }} за просмотры</span>
+            @if (r.deduction) {
+              <!-- Вычет виден так же, как заработок: спрятать его —
+                   значит устроить сюрприз в день выплаты. -->
+              <span class="cut">− {{ money(r.deduction) }} за недосданное</span>
+            }
+          </div>
+
+          <div class="views">
+            <span class="track"><i [style.width.%]="r.barPercent"></i></span>
+            <span class="v">{{ views(r.views) }}</span>
+            @if (r.viewsDelta !== null) {
+              <!-- Рост и падение — одинаково заметно. Кабинет, который
+                   умеет показывать только хорошее, перестают открывать. -->
+              <span class="delta" [class.up]="r.viewsDelta > 0" [class.down]="r.viewsDelta < 0">
+                @if (r.viewsDelta > 0) {
+                  +{{ views(r.viewsDelta) }}
+                } @else if (r.viewsDelta < 0) {
+                  −{{ views(-r.viewsDelta) }}
+                } @else {
+                  без изменений
+                }
+                @if (r.viewsDeltaPercent !== null && r.viewsDelta !== 0) {
+                  <i>
+                    @if (r.viewsDelta > 0) {
+                      +{{ r.viewsDeltaPercent }}%
+                    } @else {
+                      −{{ -r.viewsDeltaPercent }}%
+                    }
+                  </i>
+                }
+              </span>
+            }
+            <span class="vid">
+              {{ r.videosDelivered }} из {{ r.videosPlanned }}
+              {{ plural(r.videosPlanned, 'ролик', 'ролика', 'роликов') }}
+            </span>
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+}

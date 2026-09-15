@@ -1,0 +1,171 @@
+<!-- Личные достижения на его собственных числах. Порядок: рекорд, потом
+     площадка, потом рост, потом остальные ролики периода. Ни одного
+     числа, посчитанного не из его же роликов. -->
+<div class="card hl">
+  <div class="hhead">
+    <h2>Что получается лучше всего</h2>
+    <p class="sub">Только ваши ролики и ваши просмотры.</p>
+  </div>
+
+  @if (hasAnything()) {
+    <!-- Рекорд. Сначала период: он про «сейчас», и его можно побить
+         следующим роликом. Рекорд проекта стоит рядом мельче — это
+         планка, а не задание. -->
+    <div class="records">
+      @if (bestOfPeriod(); as b) {
+        <div class="rec best">
+          <p class="lbl">Лучший ролик периода</p>
+          <b class="n">{{ views(b.views) }}</b>
+          <p class="t">{{ b.title || 'Без названия' }}</p>
+          <p class="m">
+            {{ shareText(b.views) }}
+            @if (b.published_at) {
+              · вышел {{ day(b.published_at) }}
+            }
+            @if (isYoung(b)) {
+              · ещё растёт
+            }
+          </p>
+          @if (bestIsRecord()) {
+            <!-- Один и тот же ролик в обеих строках читался бы как
+                 ошибка вёрстки. Говорим один раз. -->
+            <p class="crown">Он же лучший за всё время проекта.</p>
+          }
+        </div>
+      } @else {
+        <div class="rec empty">
+          <p class="lbl">Лучший ролик периода</p>
+          <b class="n muted">—</b>
+          <p class="m">В этом периоде пока не вышло ни одного ролика.</p>
+        </div>
+      }
+
+      @if (bestEver(); as e) {
+        @if (!bestIsRecord()) {
+          <div class="rec">
+            <p class="lbl">Рекорд за всё время</p>
+            <b class="n">{{ views(e.views) }}</b>
+            <p class="t">{{ e.title || 'Без названия' }}</p>
+            <p class="m">
+              {{ shareText(e.views) }}
+              @if (e.published_at) {
+                · вышел {{ day(e.published_at) }}
+              }
+            </p>
+          </div>
+        }
+      }
+
+      @if (trend(); as t) {
+        <!-- Рост считается по двум ЗАКОНЧЕННЫМ периодам: идущий против
+             целого — сравнение половины с целым. Падение называем
+             падением: кабинет, который умеет показывать только хорошее,
+             перестают открывать. -->
+        <div
+          class="rec trend"
+          [class.up]="t.direction === 'up'"
+          [class.down]="t.direction === 'down'"
+        >
+          <p class="lbl">Просмотры к прошлому периоду</p>
+          <b class="n">
+            @if (t.direction === 'up') {
+              +{{ views(t.delta) }}
+            } @else if (t.direction === 'down') {
+              −{{ views(-t.delta) }}
+            } @else {
+              без изменений
+            }
+          </b>
+          <p class="m">
+            {{ views(t.views) }} против {{ views(t.prevViews) }} в прошлом периоде
+            @if (t.percent !== null) {
+              , это
+              @if (t.direction === 'down') {
+                −{{ -t.percent }}%
+              } @else {
+                +{{ t.percent }}%
+              }
+            }
+            .
+          </p>
+          <p class="m sub2">{{ t.title }}</p>
+        </div>
+      }
+    </div>
+
+    <!-- Площадки: где он сильнее. Сравниваем просмотрами НА РОЛИК —
+         по сумме площадка с шестью роликами обгонит площадку с двумя
+         просто числом роликов. -->
+    @if (platforms().length) {
+      <div class="plat">
+        @if (lead(); as l) {
+          <h3>
+            Сильнее всего — {{ platformLabel[l.best.platform] }}: {{ views(l.best.perVideo) }} на
+            ролик против {{ views(l.runnerUp.perVideo) }} на
+            {{ platformLabel[l.runnerUp.platform] }}.
+          </h3>
+        } @else {
+          <!-- Лидера нет: площадки идут вровень. Разрез показываем, а
+               лидера не назначаем. -->
+          <h3>Просмотров на ролик по площадкам</h3>
+        }
+        <ul class="plist">
+          @for (p of platforms(); track p.platform) {
+            <li>
+              <span class="nm">{{ platformLabel[p.platform] }}</span>
+              <span class="track"><i [style.width.%]="p.percent"></i></span>
+              <span class="pv">{{ views(p.perVideo) }}</span>
+              <span class="cnt">
+                {{ p.videos }} {{ plural(p.videos, 'ролик', 'ролика', 'роликов') }} ·
+                {{ views(p.views) }} всего
+              </span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
+    <!-- Остальные ролики периода: тот же список, что раньше стоял в
+         денежной шкале. Здесь он на своём месте — это и есть ответ на
+         вопрос «что у меня получается», по убыванию. -->
+    @if (contributions().length > 1) {
+      <div class="rest">
+        <h3>Ролики периода</h3>
+        <ul class="vids">
+          @for (v of contributions(); track v.id) {
+            <li>
+              <span class="t">
+                {{ v.title || 'Без названия' }}
+                @if (v.young) {
+                  <i class="growing">ещё растёт</i>
+                }
+              </span>
+              <span class="n">{{ views(v.views) }}</span>
+              <span class="share">
+                <span class="track"><i [style.width.%]="v.percent"></i></span>
+                {{ v.share }}
+              </span>
+            </li>
+          }
+        </ul>
+        @if (growing().length) {
+          <p class="hint">
+            Ролики младше {{ matureDays }} дней ещё набирают просмотры — их вклад вырастет.
+          </p>
+        }
+      </div>
+    }
+
+    @if (topPercent(); as pc) {
+      <!-- Обезличенно и только если сервер прислал: у сравнения свой
+           порог обезличивания, ниже него это результат соседа. -->
+      <p class="rank">Вы в топ-{{ pc }}% по медиане ролика в этом проекте.</p>
+    }
+  } @else {
+    <!-- Ни одного вышедшего ролика: хвалить не за что, и пустая карточка
+         достижений поздравляла бы с ничем. -->
+    <p class="sub none">
+      Здесь появятся ваши рекорды — как только выйдет первый ролик и мы соберём по нему просмотры.
+    </p>
+  }
+</div>

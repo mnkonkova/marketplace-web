@@ -9,6 +9,16 @@
 .ladder {
   margin-bottom: 16px;
 
+  // Строка в полторы тысячи пикселей не читается: карточка во всю
+  // ширину, а текст в ней — нет.
+  .gain,
+  .views-line,
+  .lead,
+  .plan,
+  .typ {
+    max-width: 64ch;
+  }
+
   .lhead {
     display: flex;
     align-items: baseline;
@@ -64,11 +74,15 @@
     flex-direction: column;
     gap: 2px;
 
+    // Карточка теперь во всю ширину и стоит первой: главное число может
+    // позволить себе расти вместе с экраном. clamp, а не медиазапрос, —
+    // между 32 и 44 нет точки, в которой что-то переключается.
     b {
       font-family: var(--mono);
-      font-size: 32px;
+      font-size: clamp(32px, 4.5vw, 44px);
       font-weight: 600;
       letter-spacing: -0.02em;
+      line-height: 1.05;
     }
 
     .muted {
@@ -220,84 +234,8 @@
     }
   }
 
-  .rank {
-    margin: 0 0 12px;
-    color: var(--blue, #4a90d9);
-    font-size: 12.5px;
-  }
-
-  .hint {
-    margin: -6px 0 8px;
-    color: var(--muted-2, #616772);
-    font-size: 12px;
-  }
-
-  .vids {
-    margin: 0 0 4px;
-    padding: 0;
-    list-style: none;
-
-    li {
-      display: flex;
-      align-items: baseline;
-      gap: 10px;
-      padding: 7px 0;
-      border-bottom: 1px solid var(--line, #23272d);
-      flex-wrap: wrap;
-
-      &:last-child {
-        border-bottom: none;
-      }
-    }
-
-    .t {
-      flex: 1;
-      min-width: 140px;
-      font-size: 13px;
-    }
-
-    .n {
-      color: var(--text);
-      font-family: var(--mono);
-      font-size: 13px;
-    }
-
-    // Вклад ролика: полоска и подпись долей ступени. Полоска нужна,
-    // чтобы разницу между «пятой частью» и «половиной» было видно, не
-    // читая чисел.
-    .share {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      color: var(--muted-2, #616772);
-      font-size: 11.5px;
-    }
-
-    .track {
-      display: block;
-      overflow: hidden;
-      width: 120px;
-      height: 4px;
-      flex: 0 0 auto;
-      border-radius: 999px;
-      background: var(--line, #23272d);
-
-      i {
-        display: block;
-        height: 100%;
-        border-radius: 999px;
-        background: var(--coral);
-      }
-    }
-
-    // «Ещё растёт» стоит у названия, а не отдельной строкой: это про
-    // этот ролик, а не про весь список.
-    .growing {
-      margin-left: 6px;
-      color: var(--muted-2, #616772);
-      font-size: 11px;
-      font-style: normal;
-    }
-  }
+  // Список роликов периода и обезличенное место по медиане отсюда
+  // убраны — вместе со своими стилями. Они переехали в блок достижений
+  // (widgets/creator-highlights): на этой карточке они спорили за
+  // внимание с главным числом экрана.
 }

@@ -47,11 +47,16 @@ import {
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { CreatorAvailabilityComponent } from '@widgets/creator-availability/creator-availability.component';
+import { CreatorHighlightsComponent } from '@widgets/creator-highlights/creator-highlights.component';
+import { CreatorHistoryComponent } from '@widgets/creator-history/creator-history.component';
 import { CreatorLadderComponent } from '@widgets/creator-ladder/creator-ladder.component';
 import { BillingApi } from '@entities/billing/api/billing.api';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
+import { missingAccountLinks, nextStepKind } from '@entities/billing/lib/creator-highlights';
+import { shortViews } from '@entities/billing/lib/ladder';
 import { formatMoney } from '@entities/billing/lib/money';
-import { periodDay, periodOf, periodTitle } from '@entities/billing/lib/period';
+import { MeRepository } from '@entities/me/repository/me.repository';
+import type { MeProfile } from '@entities/me/model/me.types';
 import type { Material } from '@entities/publication/model/publication.types';
 import { parseApiError } from '@shared/api/api-error';
 import { plural } from '@shared/lib/format';
@@ -79,6 +84,8 @@ import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
     NzTagModule,
     AppHeaderComponent,
     CreatorAvailabilityComponent,
+    CreatorHighlightsComponent,
+    CreatorHistoryComponent,
     CreatorLadderComponent,
     ProjectCommentsComponent,
     ErValueComponent,
@@ -91,6 +98,16 @@ export class CreatorProjectPage {
   private readonly api = inject(PublicationApi);
 
   private readonly billing = inject(BillingApi);
+
+  /**
+   * Профиль специалиста — ради ссылок на аккаунты площадок.
+   *
+   * Своего состава проекта креатору API не отдаёт (там account_links
+   * есть только у менеджера), а площадки без аккаунта — это его деньги:
+   * один ролик идёт на все площадки проекта, и та, на которой человека
+   * нет, просмотров не приносит.
+   */
+  private readonly me = inject(MeRepository);
 
   private readonly route = inject(ActivatedRoute);
 
@@ -105,6 +122,9 @@ export class CreatorProjectPage {
 
   /** Суммы приходят в копейках: на экран — рублями. */
   public readonly money = formatMoney;
+
+  /** «80 тыс.», «1,2 млн» — просмотры короткой строкой. */
+  public readonly views = shortViews;
 
   public readonly loading = signal(true);
 
@@ -136,40 +156,44 @@ export class CreatorProjectPage {
    */
   public readonly earnings = signal<CreatorEarnings | null>(null);
 
-  /**
-   * Какому периоду принадлежит строка заработка.
-   *
-   * Строка знает только дату начала своего периода, а «с какого по
-   * какое» лежит в списке периодов из того же ответа. Не нашлось —
-   * показываем саму дату: достраивать границы прибавлением месяца
-   * нельзя, правило периода живёт на сервере.
-   */
-  public periodOfAccrual(periodStart: string): string {
-    return periodTitle(periodOf(this.earnings()?.periods ?? [], periodStart));
-  }
-
   /** Текущий период — его границы и состояние. */
   public readonly period = computed(() => this.earnings()?.period ?? null);
 
   /** Конец текущего периода: «до 12 окт.» в подписи плана. */
   public readonly periodEnds = computed(() => this.period()?.ends_on ?? null);
 
-  /**
-   * Прошлые начисления — история.
-   *
-   * Текущий период показывает шкала сверху, крупно и с прогнозом. Второй
-   * такой же блок рядом был бы не «подробнее», а дублем: одна и та же
-   * сумма дважды на одном экране.
-   */
-  public readonly pastAccruals = computed(() => {
-    const cur = this.period()?.starts_on.slice(0, 10);
-    return (this.earnings()?.accruals ?? []).filter(
-      (a) => !cur || a.period_start.slice(0, 10) !== cur,
-    );
-  });
+  // Прошлые периоды страница больше не перечисляет сама: их показывает
+  // app-creator-history. Сопоставление «начисление → границы периода»
+  // жило здесь второй копией и разъезжалось бы с ним по мелочам.
 
   /** Материалы проекта: бренд-гайд, обучение, ссылки на аккаунты. */
   public readonly materials = signal<Material[]>([]);
+
+  /** Свой профиль специалиста. null — не загрузился, блок не показываем. */
+  public readonly profile = signal<MeProfile | null>(null);
+
+  /**
+   * Площадки проекта, для которых в профиле не указан аккаунт.
+   *
+   * Пока профиль не пришёл — пусто: «заполните три площадки» на
+   * незагруженных данных было бы упрёком ни за что.
+   *
+   * Likee в этот счёт не входит: поля под неё в редакторе профиля нет
+   * вовсе (см. PROFILE_PLATFORMS), и звать заполнить то, что нечем
+   * заполнить, — худший вид совета.
+   */
+  public readonly missingAccounts = computed(() =>
+    this.profile()
+      ? missingAccountLinks(this.projectPlatforms(), this.profile()?.social_links)
+      : [],
+  );
+
+  /** «YouTube, ВКонтакте» — перечисление площадок одной строкой. */
+  public readonly missingAccountsList = computed(() =>
+    this.missingAccounts()
+      .map((p) => PLATFORM_LABEL[p])
+      .join(', '),
+  );
 
   // Отчёт закрытого проекта: 410 collapsed_no_detail. Не ошибка, а
   // состояние — показываем текстом вместо цифр.
@@ -229,11 +253,58 @@ export class CreatorProjectPage {
   public readonly monthlyPlan = computed(() => this.card()?.monthly_plan ?? 0);
 
   // Самая горящая открытая выкладка: сначала просроченные, потом ближайшая
-  // по сроку. Её и показывает баннер в шапке.
-  public readonly urgent = computed(() => {
+  // по сроку. Её и называет строка «что дальше».
+  // Тип указан явно: без него TypeScript считает, что open[0] всегда
+  // есть, и `urgent()?.overdue` в шаблоне становится «лишним» вопросом —
+  // при том что на проекте без открытых выкладок здесь ровно null.
+  public readonly urgent = computed<Publication | null>(() => {
     const open = this.ordered().filter((p) => canSubmitLinks(p));
     return open.find((p) => p.overdue) ?? open[0] ?? null;
   });
+
+  /**
+   * Через сколько дней срок считается «ближайшим».
+   *
+   * Три дня, потому что ролик за это время ещё можно снять и выложить.
+   * Выкладка, до которой две недели, ближайшим делом не является: назвать
+   * её так значит держать человека в режиме аврала постоянно, и тогда
+   * настоящий аврал ничем не отличается от обычного дня.
+   */
+  private readonly soonDays = 3;
+
+  /**
+   * По выкладке ждут ссылки ПРЯМО СЕЙЧАС.
+   *
+   * Три случая: просрочена, сдана наполовину (часть площадок уже есть, и
+   * дослать их можно сегодня) или срок в ближайшие дни. Иначе ближайшим
+   * делом становится то, что человек может сделать по своей воле, —
+   * добрать до ступени или заполнить площадку в профиле.
+   */
+  public readonly pendingNow = computed(() => {
+    const u = this.urgent();
+    if (!u) return false;
+    return u.overdue || u.links.length > 0 || this.daysDiff(u) <= this.soonDays;
+  });
+
+  /**
+   * Одно ближайшее действие, и только одно. Порядок выбора — в
+   * nextStepKind: работа, за которую спросят, идёт раньше денег, которые
+   * человек может взять сам.
+   *
+   * null — делать прямо сейчас нечего, и придумывать занятие не надо.
+   */
+  public readonly nextStep = computed(() => {
+    const f = this.earnings()?.next_step_forecast ?? null;
+    return nextStepKind({
+      hasPending: this.pendingNow(),
+      toStepViews: f?.views_to_go ?? 0,
+      stepPayout: f?.forecast_payout ?? null,
+      missingAccounts: this.missingAccounts().length,
+    });
+  });
+
+  /** Остаток до ступени и что она добавит — для строки «что дальше». */
+  public readonly forecast = computed(() => this.earnings()?.next_step_forecast ?? null);
 
   /**
    * Доли полосы прогресса. Считаются по выкладкам, а не по ссылкам:
@@ -725,6 +796,13 @@ export class CreatorProjectPage {
     this.api.creatorMaterials(id).subscribe({
       next: (r) => this.materials.set(r.items),
       error: () => this.materials.set([]),
+    });
+    // Профиль грузим отдельно и молча: он нужен ровно одному блоку, и
+    // ронять из-за него страницу выкладок незачем. Не пришёл — блока про
+    // незаполненные площадки просто нет.
+    this.me.getProfile().subscribe({
+      next: (p) => this.profile.set(p),
+      error: () => this.profile.set(null),
     });
     this.billing.creatorEarnings(id).subscribe({
       next: (e) => this.earnings.set(e),

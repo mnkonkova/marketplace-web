@@ -179,6 +179,8 @@ describe('CreatorLadderComponent', () => {
     const cmp = setup({ periods: [] });
     expect(cmp.period()).toBeNull();
     expect(cmp.plannedLeft()).toBe(0);
-    expect(cmp.contributions().length).toBe(0);
+    // Роликов периода без периода не бывает: границ, по которым их
+    // отбирают, просто нет.
+    expect(cmp.periodVideos().length).toBe(0);
   });
 });
