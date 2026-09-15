@@ -67,26 +67,12 @@
           [class.down]="t.direction === 'down'"
         >
           <p class="lbl">Просмотры к прошлому периоду</p>
-          <b class="n">
-            @if (t.direction === 'up') {
-              +{{ views(t.delta) }}
-            } @else if (t.direction === 'down') {
-              −{{ views(-t.delta) }}
-            } @else {
-              без изменений
-            }
-          </b>
+          <b class="n">{{ trendDeltaText() }}</b>
           <p class="m">
-            {{ views(t.views) }} против {{ views(t.prevViews) }} в прошлом периоде
-            @if (t.percent !== null) {
-              , это
-              @if (t.direction === 'down') {
-                −{{ -t.percent }}%
-              } @else {
-                +{{ t.percent }}%
-              }
+            {{ views(t.views) }} против {{ views(t.prevViews) }} в прошлом периоде.
+            @if (trendPercentText()) {
+              Это {{ trendPercentText() }}.
             }
-            .
           </p>
           <p class="m sub2">{{ t.title }}</p>
         </div>
