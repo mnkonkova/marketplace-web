@@ -14,7 +14,7 @@
     <div class="records">
       @if (bestOfPeriod(); as b) {
         <div class="rec best">
-          <p class="lbl">Лучший ролик периода</p>
+          <p class="hl-lbl">Лучший ролик периода</p>
           <b class="n">{{ views(b.views) }}</b>
           <p class="t">{{ b.title || 'Без названия' }}</p>
           <p class="m">
@@ -36,7 +36,7 @@
         <!-- Два разных «пусто», и путать их нельзя: ролика нет вовсе —
              или ролик вышел, а просмотров по нему ещё не собрали. -->
         <div class="rec empty">
-          <p class="lbl">Лучший ролик периода</p>
+          <p class="hl-lbl">Лучший ролик периода</p>
           <b class="n muted">—</b>
           @if (periodVideos().length) {
             <p class="m">
@@ -51,7 +51,7 @@
       @if (bestEver(); as e) {
         @if (!bestIsRecord()) {
           <div class="rec">
-            <p class="lbl">Рекорд за всё время</p>
+            <p class="hl-lbl">Рекорд за всё время</p>
             <b class="n">{{ views(e.views) }}</b>
             <p class="t">{{ e.title || 'Без названия' }}</p>
             <p class="m">
@@ -74,7 +74,7 @@
           [class.up]="t.direction === 'up'"
           [class.down]="t.direction === 'down'"
         >
-          <p class="lbl">Просмотры к прошлому периоду</p>
+          <p class="hl-lbl">Просмотры к прошлому периоду</p>
           <b class="n">{{ trendDeltaText() }}</b>
           <p class="m">
             {{ views(t.views) }} против {{ views(t.prevViews) }} в прошлом периоде.
@@ -91,7 +91,7 @@
          по сумме площадка с шестью роликами обгонит площадку с двумя
          просто числом роликов. -->
     @if (platforms().length) {
-      <div class="plat">
+      <div class="hl-plats">
         @if (lead(); as l) {
           <h3>
             Сильнее всего — {{ platformLabel[l.best.platform] }}: {{ views(l.best.perVideo) }} на
@@ -103,7 +103,7 @@
                лидера не назначаем. -->
           <h3>Просмотров на ролик по площадкам</h3>
         }
-        <ul class="plist">
+        <ul class="hl-rows">
           @for (p of platforms(); track p.platform) {
             <li>
               <span class="nm">{{ platformLabel[p.platform] }}</span>
