@@ -1,17 +1,21 @@
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { ActivatedRoute, Params, Router, convertToParamMap } from '@angular/router';
+import { BehaviorSubject, map, of, throwError } from 'rxjs';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
-import type { ClientOverview } from '@entities/billing/model/billing.types';
+import type { ClientOverview, OverviewRange } from '@entities/billing/model/billing.types';
 import { ClientOverviewComponent } from '@widgets/client-overview/client-overview.component';
 
 /**
  * Сводка заказчика по всем проектам.
  *
- * Считает здесь только то, что нельзя посчитать на сервере, — геометрию
- * графика и раскладку площадок. Суммы, стоимость тысячи и сам ряд
- * приходят готовыми: второй расчёт дал бы на двух экранах два разных
- * числа.
+ * Считает здесь только то, что нельзя посчитать на сервере, — ряд
+ * графика и порядок проектов. Суммы, стоимость тысячи, доли площадок и
+ * приросты приходят готовыми: второй расчёт дал бы на двух экранах два
+ * разных числа.
+ *
+ * Отдельно проверяем окно: оно живёт в адресе, а не в памяти вкладки, —
+ * этот экран показывают начальству и на него дают ссылку.
  */
 describe('ClientOverviewComponent', () => {
   function overview(over: Partial<ClientOverview> = {}): ClientOverview {
@@ -30,35 +34,113 @@ describe('ClientOverviewComponent', () => {
     };
   }
 
-  function setup(data: ClientOverview | null) {
-    TestBed.resetTestingModule();
-    const api = {
-      clientOverview: () => (data ? of(data) : throwError(() => new Error('нет связи'))),
+  /** Адрес под нашим управлением: меняем query — компонент реагирует. */
+  function routeStub(initial: Params) {
+    const q$ = new BehaviorSubject<Params>(initial);
+    return {
+      q$,
+      route: {
+        snapshot: { queryParamMap: convertToParamMap(initial) },
+        queryParamMap: q$.pipe(map((p) => convertToParamMap(p))),
+      } as unknown as ActivatedRoute,
     };
-    TestBed.configureTestingModule({ providers: [{ provide: BillingApi, useValue: api }] });
+  }
+
+  function setup(data: ClientOverview | null, query: Params = {}) {
+    TestBed.resetTestingModule();
+    const asked: (OverviewRange | undefined)[] = [];
+    const api = {
+      clientOverview: (range?: OverviewRange) => {
+        asked.push(range);
+        return data ? of(data) : throwError(() => new Error('нет связи'));
+      },
+    };
+    const { q$, route } = routeStub(query);
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: BillingApi, useValue: api },
+        { provide: ActivatedRoute, useValue: route },
+        {
+          provide: Router,
+          useValue: jasmine.createSpyObj<Router>('Router', ['navigate'], { url: '/me/projects' }),
+        },
+      ],
+    });
     TestBed.overrideComponent(ClientOverviewComponent, { set: { template: '' } });
     const fixture = TestBed.createComponent(ClientOverviewComponent);
     fixture.detectChanges();
-    return fixture.componentInstance;
+    return { cmp: fixture.componentInstance, asked, go: (q: Params) => q$.next(q) };
   }
 
-  /**
-   * Пропавший столбик читается как сбой, а не как ноль: человек ищет,
-   * куда делся Likee, вместо того чтобы прочитать «на Likee пока ничего».
-   */
-  it('площадок всегда пять, включая те, где ничего нет', () => {
-    const rows = setup(overview()).platforms();
-    expect(rows.length).toBe(5);
-    expect(rows.map((r) => r.platform)).toEqual(['tiktok', 'instagram', 'youtube', 'vk', 'likee']);
-    const likee = rows.find((r) => r.platform === 'likee')!;
-    expect(likee.views).toBe(0);
-    expect(likee.percent).toBe(0);
+  describe('окно', () => {
+    it('окно берётся из адреса и уходит в запрос', () => {
+      const { cmp, asked } = setup(overview(), { range: 'quarter' });
+      expect(cmp.range()).toBe('quarter');
+      expect(asked).toEqual(['quarter']);
+    });
+
+    it('адреса без окна хватает: по умолчанию месяц', () => {
+      const { cmp, asked } = setup(overview());
+      expect(cmp.range()).toBe('month');
+      expect(asked).toEqual(['month']);
+    });
+
+    /**
+     * «Назад» в браузере обязан вернуть прошлое окно вместе с числами —
+     * иначе ссылка на квартал открывает квартал только с первого раза.
+     */
+    it('смена окна в адресе перезапрашивает числа', () => {
+      const { cmp, asked, go } = setup(overview(), { range: 'month' });
+      go({ range: 'week' });
+      expect(cmp.range()).toBe('week');
+      expect(asked).toEqual(['month', 'week']);
+    });
+
+    it('то же окно второй раз не перезапрашивается', () => {
+      const { asked, go } = setup(overview(), { range: 'month' });
+      go({ range: 'month', other: '1' });
+      expect(asked).toEqual(['month']);
+    });
   });
 
-  it('полоска площадки считается от лучшей, а не от суммы', () => {
-    const rows = setup(overview()).platforms();
-    expect(rows.find((r) => r.platform === 'tiktok')!.percent).toBe(100);
-    expect(rows.find((r) => r.platform === 'instagram')!.percent).toBe(25);
+  /**
+   * Сравнение с рынком стоит рядом с деньгами, а не под оконным героем:
+   * считается оно от цены тысячи за всё время. Без своей цены сравнивать
+   * не с чем, и блока тогда нет вовсе — сравнение с пустым местом
+   * выглядело бы подтасовкой.
+   */
+  describe('сравнение с рынком', () => {
+    const market = [
+      {
+        key: 'bloggers',
+        title: 'Реклама у блогеров',
+        price_per_1000: 100_000,
+        source: 'Прайсы агентств, август 2026',
+        measured_on: '2026-09-01',
+        times_cheaper: 17.9,
+      },
+    ];
+
+    it('есть и наша цена, и рынок — блок показываем', () => {
+      expect(setup(overview({ market })).cmp.hasMarket()).toBeTrue();
+    });
+
+    it('своей цены тысячи нет — сравнивать не с чем', () => {
+      expect(setup(overview({ market, cost_per_1000: undefined })).cmp.hasMarket()).toBeFalse();
+    });
+
+    it('рынок не приехал — блока нет', () => {
+      expect(setup(overview()).cmp.hasMarket()).toBeFalse();
+    });
+
+    it('кратность — с запятой, и слово при ней по-русски', () => {
+      const { cmp } = setup(overview({ market }));
+      expect(cmp.times(17.9)).toBe('17,9');
+      expect(cmp.timesWord(17.9)).toBe('раза');
+      expect(cmp.times(2)).toBe('2');
+      expect(cmp.timesWord(2)).toBe('раза');
+      expect(cmp.timesWord(5)).toBe('раз');
+    });
   });
 
   /**
@@ -80,7 +162,7 @@ describe('ClientOverviewComponent', () => {
     ];
 
     it('в график уходит прирост за день, а не накопленный итог', () => {
-      const pts = setup(overview({ series })).chartPoints();
+      const pts = setup(overview({ series })).cmp.chartPoints();
       expect(pts.map((p) => p.date)).toEqual(['2026-09-10', '2026-09-11', '2026-09-12']);
       expect(pts.map((p) => p.value)).toEqual([40_000, 0, 20_000]);
     });
@@ -90,13 +172,13 @@ describe('ClientOverviewComponent', () => {
      * измерен, и подменять его дырой нельзя: это тоже ответ.
      */
     it('нулевой день остаётся нулём, а не выбрасывается из ряда', () => {
-      const pts = setup(overview({ series })).chartPoints();
+      const pts = setup(overview({ series })).cmp.chartPoints();
       expect(pts.length).toBe(3);
       expect(pts[1].value).toBe(0);
     });
 
     it('лучший день — максимум прироста, а не последний', () => {
-      expect(setup(overview({ series })).bestDay()?.date).toBe('2026-09-10');
+      expect(setup(overview({ series })).cmp.bestDay()?.date).toBe('2026-09-10');
     });
 
     it('ряд из одних нулей графика не даёт: рисовать нечего', () => {
@@ -104,12 +186,12 @@ describe('ClientOverviewComponent', () => {
         { date: '2026-09-10', views_gained: 0 },
         { date: '2026-09-11', views_gained: 0 },
       ];
-      expect(setup(overview({ series: flat })).hasChart()).toBeFalse();
+      expect(setup(overview({ series: flat })).cmp.hasChart()).toBeFalse();
     });
   });
 
   it('идущие проекты идут перед не начавшимися', () => {
-    const cmp = setup(
+    const { cmp } = setup(
       overview({
         projects: [
           { project_id: 'a', title: 'Не начали', state: 'not_started', views: 0, total: 0 },
@@ -125,12 +207,12 @@ describe('ClientOverviewComponent', () => {
    * сильнее, чем помогает: сами проекты при этом открываются и работают.
    */
   it('не доехало — блока просто нет, без плашки поверх проектов', () => {
-    const cmp = setup(null);
+    const { cmp } = setup(null);
     expect(cmp.failed()).toBeTrue();
     expect(cmp.loading()).toBeFalse();
   });
 
   it('проектов нет — сводке нечего сводить', () => {
-    expect(setup(overview({ projects_total: 0 })).hasProjects()).toBeFalse();
+    expect(setup(overview({ projects_total: 0 })).cmp.hasProjects()).toBeFalse();
   });
 });

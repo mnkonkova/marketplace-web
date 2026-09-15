@@ -1,16 +1,22 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
+import { distinctUntilChanged, map } from 'rxjs/operators';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
 import { formatMoney } from '@entities/billing/lib/money';
 import { shortViews } from '@entities/billing/lib/ladder';
 import { periodTitle } from '@entities/billing/lib/period';
-import type { ClientOverview, OverviewProject } from '@entities/billing/model/billing.types';
-import { PLATFORM_LABEL } from '@entities/publication/lib/publication-status';
-import { ALL_PLATFORMS, Platform } from '@entities/publication/model/publication.types';
+import { parseRange } from '@entities/billing/lib/overview';
+import type {
+  ClientOverview,
+  OverviewProject,
+  OverviewRange,
+} from '@entities/billing/model/billing.types';
 import type { SeriesPoint } from '@shared/lib/chart-series';
 import { plural } from '@shared/lib/format';
 import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
+import { ClientDashboardComponent } from '@widgets/client-dashboard/client-dashboard.component';
 
 /**
  * Сводка заказчика по всем проектам сразу.
@@ -20,29 +26,46 @@ import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
  * экрана в проекте по отдельности не имеет ответа вовсе: «во сколько мне
  * обходится тысяча просмотров».
  *
- * Это число и стоит на экране главным. Оно падает по мере роста — и это
- * лучший аргумент, какой можно показать: не «мы сделали много роликов»,
- * а «каждая следующая тысяча дешевле предыдущей».
+ * Экран разложен на два разговора, и они НЕ смешиваются:
  *
- * Слово «охват» здесь не встречается ни разу, и это не придирка к
- * словам: мы считаем ПРОСМОТРЫ, а на различии «показ против просмотра»
- * построена вся коммерческая аргументация. Назвать одно другим — обещать
- * то, чего мы не собираем.
+ *  • Сверху — дашборд за выбранное окно: сколько посмотрели, откуда и
+ *    как откликнулись. Это то, что показывают начальству, и там у
+ *    каждого числа в подписи стоит период.
+ *  • Ниже — деньги и проекты за ВСЁ ВРЕМЯ: сколько стоит работа, сколько
+ *    внесено и во сколько обходится тысяча. Эти числа не должны скакать
+ *    при переключении окна — вопрос «сколько мне это стоило всего» от
+ *    окна не зависит.
  *
- * Ничего не считаем сами: суммы, стоимость тысячи и ряд графика приходят
+ * Оконное число рядом с общим без подписи человек складывает в одно, и
+ * получается величина, которой нет нигде, — поэтому подписи здесь не
+ * украшение, а часть смысла.
+ *
+ * Слово «охват» не встречается ни разу, и это не придирка к словам: мы
+ * считаем ПРОСМОТРЫ, а на различии «показ против просмотра» построена
+ * вся коммерческая аргументация. Назвать одно другим — обещать то, чего
+ * мы не собираем.
+ *
+ * Ничего не считаем сами: суммы, стоимость тысячи, доли и ряды приходят
  * с сервера готовыми. Складывать их заново значило бы получить на двух
  * экранах два разных числа.
  */
 @Component({
   selector: 'app-client-overview',
   standalone: true,
-  imports: [CommonModule, LineChartComponent],
+  imports: [CommonModule, LineChartComponent, ClientDashboardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './client-overview.component.html',
   styleUrl: './client-overview.component.scss',
 })
 export class ClientOverviewComponent {
   private readonly api = inject(BillingApi);
+
+  private readonly route = inject(ActivatedRoute);
+
+  private readonly router = inject(Router);
+
+  /** Имя заказчика для шапки дашборда. Страница его уже загрузила. */
+  public readonly clientName = input('');
 
   public readonly loading = signal(true);
 
@@ -56,16 +79,49 @@ export class ClientOverviewComponent {
    */
   public readonly failed = signal(false);
 
+  /**
+   * Выбранное окно.
+   *
+   * Живёт в адресе, а не в памяти вкладки: этот экран показывают
+   * начальству и на него дают ссылку, а ссылка на «квартал» обязана
+   * открыться кварталом. Заодно работают «назад» и «вперёд» в браузере.
+   */
+  public readonly range = signal<OverviewRange>('month');
+
   public readonly money = formatMoney;
 
   public readonly views = shortViews;
 
-  public readonly platformLabel = PLATFORM_LABEL;
-
   public constructor() {
-    this.api.clientOverview().subscribe({
-      next: (r) => {
-        this.data.set(r);
+    // Подписка, а не разовое чтение снимка: окно меняется навигацией, и
+    // назад по истории обязано вернуть прошлое окно вместе с числами.
+    this.route.queryParamMap
+      .pipe(
+        map((q) => parseRange(q.get('range'))),
+        distinctUntilChanged(),
+      )
+      .subscribe((r) => {
+        this.range.set(r);
+        this.load(r);
+      });
+  }
+
+  /** Переключение окна — это навигация: окно живёт в адресе. */
+  public setRange(r: OverviewRange): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { range: r },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private load(r: OverviewRange): void {
+    this.loading.set(true);
+    this.api.clientOverview(r).subscribe({
+      next: (resp) => {
+        this.data.set(resp);
+        this.failed.set(false);
         this.loading.set(false);
       },
       error: () => {
@@ -82,24 +138,6 @@ export class ClientOverviewComponent {
   /** Показывать сводку есть смысл, только когда есть хоть один проект. */
   public readonly hasProjects = computed(() => (this.data()?.projects_total ?? 0) > 0);
 
-  /**
-   * Просмотры по площадкам — все пять всегда, включая нулевые.
-   *
-   * Пропавший столбик читается как сбой, а не как ноль: человек ищет,
-   * куда делся TikTok, вместо того чтобы прочитать «на TikTok пока
-   * ничего».
-   */
-  public readonly platforms = computed(() => {
-    const d = this.data();
-    const by = d?.views.by_platform ?? {};
-    const max = Math.max(1, ...ALL_PLATFORMS.map((p) => by[p] ?? 0));
-    return ALL_PLATFORMS.map((p: Platform) => ({
-      platform: p,
-      views: by[p] ?? 0,
-      percent: Math.round(((by[p] ?? 0) / max) * 100),
-    }));
-  });
-
   /** Проекты: сначала те, где что-то происходит. */
   public readonly projects = computed(() =>
     [...(this.data()?.projects ?? [])].sort((a, b) => {
@@ -110,6 +148,38 @@ export class ClientOverviewComponent {
 
   public periodOf(p: OverviewProject): string {
     return p.period ? periodTitle(p.period) : '';
+  }
+
+  // ---- сравнение с рынком ----
+  //
+  // Стоит рядом с деньгами, а не под героем дашборда, потому что
+  // считается от цены тысячи ЗА ВСЁ ВРЕМЯ: под оконным числом оно
+  // сравнивало бы разные вещи.
+  //
+  // Источник и дата замера — не мелкий шрифт для юристов: цифра рынка
+  // без них через год начнёт врать, а с ними её можно открыть и
+  // проверить. Продаёт здесь именно проверяемость, а не размер разрыва.
+  //
+  // Блока может не быть вовсе: пока просмотров нет, своей цены тысячи у
+  // нас тоже нет, и сравнение с пустым местом выглядело бы подтасовкой.
+
+  public readonly market = computed(() => this.data()?.market ?? []);
+
+  public readonly hasMarket = computed(
+    () => !!this.data()?.cost_per_1000 && this.market().length > 0,
+  );
+
+  /** «в 17,8 раза» — дробь с запятой, как во всех русских числах. */
+  public times(n: number): string {
+    return n.toFixed(1).replace('.', ',').replace(/,0$/, '');
+  }
+
+  /**
+   * Слово после кратности. У дробного всегда «раза» («в 17,8 раза»), у
+   * целого — по общему правилу: «в 2 раза», но «в 5 раз».
+   */
+  public timesWord(n: number): string {
+    return Number.isInteger(n) ? plural(n, 'раз', 'раза', 'раз') : 'раза';
   }
 
   // ---- график прироста ----

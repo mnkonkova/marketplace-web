@@ -1,0 +1,231 @@
+<!-- Прирост одним значком. Один шаблон на все четыре места: «прироста
+     нет» и «прирост нулевой» — разные вещи, и четыре копии этого правила
+     разошлись бы в первую же правку. Прочерк означает «сравнивать не с
+     чем», ноль — «сравнили, не изменилось»; стрелка бывает только там,
+     где есть направление. -->
+<ng-template #delta let-d>
+  @if (d.known) {
+    <span class="delta" [class.up]="d.tone === 'up'" [class.down]="d.tone === 'down'">
+      @if (d.arrow) {
+        <span class="arrow" aria-hidden="true">{{ d.arrow }}</span>
+      }
+      <span class="n">{{ d.text }}</span>
+    </span>
+  } @else {
+    <span class="delta none" title="Сравнивать не с чем: прошлого такого же окна ещё нет">—</span>
+  }
+</ng-template>
+
+<section class="dash">
+  <header class="top">
+    <div class="who">
+      <span class="ava" aria-hidden="true">{{ avatar() }}</span>
+      <div class="whotext">
+        <h2>{{ who() }}</h2>
+        <p>{{ caption() }}</p>
+      </div>
+    </div>
+
+    <!-- Окно: три кнопки, а не календарь. Этот экран показывают
+         начальству, и выбирают в нём не «17 августа», а «месяц». -->
+    <div class="seg" role="tablist" aria-label="Окно">
+      @for (t of tabs; track t) {
+        <button
+          type="button"
+          role="tab"
+          [class.on]="t === range()"
+          [attr.aria-selected]="t === range()"
+          (click)="pick(t)"
+        >
+          {{ rangeLabel[t] }}
+        </button>
+      }
+    </div>
+  </header>
+
+  <!-- Главное число и состав. Одна строка отвечает сразу на «сколько» и
+       «откуда»: объём без состава читается как круглая цифра из
+       презентации, которую нечем проверить. -->
+  <div class="hero">
+    <div class="hero-top">
+      <div>
+        <p class="label">Просмотры {{ rangeOf() }}</p>
+        <p class="big mono" [appCountUp]="views()">0</p>
+      </div>
+      <!-- Прироста может не быть вовсе: у нового проекта прошлого такого
+           же окна ещё нет. Тогда говорим об этом словами, а не ставим
+           прочерк рядом с «к прошлому месяцу» — из такой пары читается
+           «прирост нулевой», то есть ровно то, чего мы не знаем. -->
+      @if (viewsDelta().known) {
+        <span class="hero-delta">
+          <ng-container *ngTemplateOutlet="delta; context: { $implicit: viewsDelta() }" />
+          <span class="to">{{ rangePrev() }}</span>
+        </span>
+      } @else {
+        <span class="hero-delta">
+          <span class="to">Сравнивать не с чем: прошлого такого окна ещё не было</span>
+        </span>
+      }
+    </div>
+
+    @if (hasShares()) {
+      <div class="stack" aria-hidden="true">
+        @for (s of shares(); track s.platform) {
+          @if (s.width > 0) {
+            <span [style.width.%]="s.width" [style.background]="platformColor[s.platform]"></span>
+          }
+        }
+      </div>
+      <ul class="legend">
+        @for (s of shares(); track s.platform) {
+          <li [class.zero]="!s.views">
+            <i [style.background]="platformColor[s.platform]"></i>
+            {{ platformLabel[s.platform] }}
+            @if (s.views) {
+              <b class="mono">{{ s.percent }}%</b>
+            } @else {
+              <b class="muted">пока ничего</b>
+            }
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="hint">Состав по площадкам появится с первыми роликами: пока делить нечего.</p>
+    }
+  </div>
+
+  <!-- Отклик за то же окно. Три числа, и они про разное: сколько
+       написали руками, сколько откликнулись всего и какая доля зрителей
+       откликнулась. -->
+  @if (window(); as w) {
+    <div class="kpis">
+      <div class="kpi">
+        <p class="label">Комментарии {{ rangeOf() }}</p>
+        <div class="v mono" [appCountUp]="w.comments">0</div>
+        <ng-container *ngTemplateOutlet="delta; context: { $implicit: commentsDelta() }" />
+      </div>
+      <div class="kpi">
+        <p class="label">
+          Взаимодействия {{ rangeOf() }}
+          @if (w.engagement_without_shares) {
+            <!-- Репосты отдают не все площадки. Там, где их нет, сумма
+                 занижена, и сказать об этом обязана сама цифра, а не
+                 сноска внизу экрана. -->
+            <abbr
+              class="star"
+              title="Посчитано без репостов: площадка их не отдаёт. Настоящий отклик выше."
+              >*</abbr
+            >
+          }
+        </p>
+        <div class="v mono" [appCountUp]="w.engagement">0</div>
+        <ng-container *ngTemplateOutlet="delta; context: { $implicit: engagementDelta() }" />
+      </div>
+      <div class="kpi">
+        <p class="label">ER · вовлечённость {{ rangeOf() }}</p>
+        <div class="v mono">
+          <app-er-value [percent]="w.er_percent" [withoutShares]="!!w.er_without_shares" />
+        </div>
+        <ng-container *ngTemplateOutlet="delta; context: { $implicit: erDelta() }" />
+      </div>
+    </div>
+  }
+
+  <!-- Площадки: все пять всегда, включая пустые. Пропавшая карточка
+       читается как сбой, а не как ноль. -->
+  @if (hasShares()) {
+    <p class="eyebrow">По площадкам</p>
+    <div class="grid">
+      @for (s of shares(); track s.platform) {
+        <article class="net" [class.zero]="!s.views">
+          <div class="nhead">
+            <span class="dot" [style.background]="platformColor[s.platform]">
+              {{ platformShort[s.platform] }}
+            </span>
+            <span class="name">{{ platformLabel[s.platform] }}</span>
+          </div>
+          <div class="nviews mono">{{ s.views | number }}</div>
+          <div class="nsub">
+            просмотров {{ rangeOf() }}
+            @if (s.erPercent != null) {
+              · ER
+              <app-er-value [percent]="s.erPercent" [withoutShares]="s.erWithoutShares" />
+            }
+          </div>
+
+          <!-- Мини-график тем же компонентом, что и большой: ломаная, без
+               сглаживания, с разрывом на днях, когда не собирали. Своя
+               копия «нарисуй ряд мелко» разошлась бы с этими правилами. -->
+          @if (s.series.length > 1) {
+            <app-line-chart
+              class="spark"
+              [points]="seriesOf(s.series)"
+              [compact]="true"
+              [height]="30"
+              [color]="platformColor[s.platform]"
+              [label]="'Просмотры по дням: ' + platformLabel[s.platform]"
+            />
+          } @else {
+            <div class="spark empty" aria-hidden="true"></div>
+          }
+
+          <div class="nfoot">
+            <!-- Подпись «к прошлому месяцу» — только когда прирост есть.
+                 Рядом с прочерком она превращает «не знаем» в «ноль». -->
+            <span class="per">{{
+              deltaOf(s.deltaPct).known ? rangePrev() : 'нет с чем сравнить'
+            }}</span>
+            @if (deltaOf(s.deltaPct).known) {
+              <ng-container
+                *ngTemplateOutlet="delta; context: { $implicit: deltaOf(s.deltaPct) }"
+              />
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+
+  <!-- Залетевшие ролики. Каждая карточка — ссылка: весь смысл в том, что
+       ролик можно открыть и проверить, чего не умеет ни один рекламный
+       отчёт. -->
+  @if (topVideos().length) {
+    <p class="eyebrow">Залетевшие ролики</p>
+    <div class="viral">
+      @for (v of topVideos(); track v.publication_id) {
+        <a class="clip" [href]="v.url" target="_blank" rel="noopener">
+          <span class="thumb" [style.background]="tint(v.platform)">
+            <span class="play" aria-hidden="true"></span>
+            <span class="pl" [style.color]="platformColor[platformOf(v)]">
+              {{ platformLabel[platformOf(v)] }}
+            </span>
+          </span>
+          <span class="body">
+            <span class="meta">{{ v.published_at | date: 'd MMM y' }}</span>
+            <span class="ttl">{{ v.title || 'Без названия' }}</span>
+            <span class="n mono">
+              {{ v.views | number }}
+              <i>{{ plural(v.views, 'просмотр', 'просмотра', 'просмотров') }}</i>
+            </span>
+          </span>
+        </a>
+      }
+    </div>
+  }
+
+  <!-- Свежесть. Число без даты сбора нечем проверить: «1,1 млн»
+       вчерашний и «1,1 млн» месячной давности выглядят одинаково.
+       Отметки может не быть совсем — у нового проекта сборщик ещё не
+       проходил ни по одной ссылке. Тогда так и пишем: пустое «данные
+       на …» хуже отсутствия строки. -->
+  <p class="updated">
+    @if (collectedAt()) {
+      <span class="pulse" aria-hidden="true"></span>
+      Данные площадок собраны {{ collectedAgo() }}
+      <span class="exact">· {{ collectedAt() | date: 'd MMM, HH:mm' }}</span>
+    } @else {
+      <span class="pulse idle" aria-hidden="true"></span>
+      Первый сбор ещё не прошёл — цифры появятся после него.
+    }
+  </p>
+</section>
