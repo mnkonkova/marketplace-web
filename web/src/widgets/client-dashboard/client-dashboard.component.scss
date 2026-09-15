@@ -97,12 +97,26 @@
 }
 
 .eyebrow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
   margin: 26px 0 12px;
   color: var(--text-dim);
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+
+  // Оговорка при заголовке — обычным предложением, а не заголовочными
+  // капителями: это пояснение, а не вторая рубрика.
+  .note {
+    color: var(--text-muted);
+    font-size: 12.5px;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+  }
 }
 
 // ---- герой ----
@@ -294,6 +308,9 @@
   border-radius: var(--r-card, 16px);
   background: var(--surface);
   transition: border-color 0.15s;
+  // Ничто из содержимого не должно оказаться снаружи рамки: карточка —
+  // это и есть граница, по которой ряд читается как ряд.
+  overflow: hidden;
 
   &:hover {
     border-color: var(--border-hover, #3a4049);
@@ -365,12 +382,12 @@
 
 // Место под мини-график держим всегда: без него карточка площадки без
 // ряда на полтора десятка пикселей ниже соседних, и ряд карточек едет.
-.spark {
+//
+// Высоту самого графика задаёт его же компонент, по переданному height.
+// Здесь только заглушка на случай, когда рисовать нечего.
+.spark.empty {
   display: block;
   height: 30px;
-}
-
-.spark.empty {
   border-bottom: 1px dashed var(--border);
 }
 

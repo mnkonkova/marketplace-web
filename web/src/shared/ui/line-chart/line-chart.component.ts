@@ -45,7 +45,15 @@ import {
   styleUrl: './line-chart.component.scss',
   // Класс на хосте, чтобы стили сжатого вида жили рядом с остальными
   // стилями графика, а не расползались по местам вызова.
-  host: { '[class.compact]': 'compact()' },
+  //
+  // Высота сжатого — тоже отсюда и в пикселях: место вызова уже сказало,
+  // сколько отвести (`height`), и коробка обязана быть ровно такой.
+  // Процентом её задать нельзя — карточка площадки своей высоты не
+  // знает, и процент от неё превращается в ноль.
+  host: {
+    '[class.compact]': 'compact()',
+    '[style.height.px]': 'compact() ? height() : null',
+  },
 })
 export class LineChartComponent {
   public readonly points = input<readonly SeriesPoint[]>([]);

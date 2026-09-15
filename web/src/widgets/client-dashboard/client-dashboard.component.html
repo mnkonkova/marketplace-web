@@ -137,7 +137,17 @@
   <!-- Площадки: все пять всегда, включая пустые. Пропавшая карточка
        читается как сбой, а не как ноль. -->
   @if (hasShares()) {
-    <p class="eyebrow">По площадкам</p>
+    <!-- Оговорка про прирост — одна на весь блок. Пять одинаковых
+         «сравнивать не с чем» в пяти карточках подряд читаются как
+         сломанная вёрстка, а не как честность. -->
+    <p class="eyebrow">
+      По площадкам
+      @if (noPlatformDeltas()) {
+        <span class="note"
+          >прирост {{ rangePrev() }} пока не считаем — такого окна ещё не было</span
+        >
+      }
+    </p>
     <div class="grid">
       @for (s of shares(); track s.platform) {
         <article class="net" [class.zero]="!s.views">
@@ -172,18 +182,18 @@
             <div class="spark empty" aria-hidden="true"></div>
           }
 
-          <div class="nfoot">
-            <!-- Подпись «к прошлому месяцу» — только когда прирост есть.
-                 Рядом с прочерком она превращает «не знаем» в «ноль». -->
-            <span class="per">{{
-              deltaOf(s.deltaPct).known ? rangePrev() : 'нет с чем сравнить'
-            }}</span>
-            @if (deltaOf(s.deltaPct).known) {
+          <!-- Подвала нет вовсе, когда прироста нет: прочерк рядом с «к
+               прошлому месяцу» читается как «ноль», а повторённая в
+               каждой карточке оговорка — как сбой. Сказано один раз,
+               выше, при заголовке блока. -->
+          @if (deltaOf(s.deltaPct).known) {
+            <div class="nfoot">
+              <span class="per">{{ rangePrev() }}</span>
               <ng-container
                 *ngTemplateOutlet="delta; context: { $implicit: deltaOf(s.deltaPct) }"
               />
-            }
-          </div>
+            </div>
+          }
         </article>
       }
     </div>

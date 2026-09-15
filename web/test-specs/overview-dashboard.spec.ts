@@ -1,3 +1,5 @@
+import { TestBed } from '@angular/core/testing';
+
 import {
   RANGE_TABS,
   formatDelta,
@@ -6,7 +8,9 @@ import {
   platformShares,
   windowCaption,
 } from '@entities/billing/lib/overview';
-import type { OverviewPlatform } from '@entities/billing/model/billing.types';
+import type { ClientOverview, OverviewPlatform } from '@entities/billing/model/billing.types';
+import { ALL_PLATFORMS } from '@entities/publication/model/publication.types';
+import { ClientDashboardComponent } from '@widgets/client-dashboard/client-dashboard.component';
 
 /**
  * Дашборд заказчика: разбор окна, доли площадок и приросты.
@@ -233,5 +237,88 @@ describe('дашборд заказчика', () => {
       expect(initials('')).toBe('·');
       expect(initials(undefined)).toBe('·');
     });
+  });
+});
+
+/**
+ * Карточка площадки рисуется в реальном браузере и меряется линейкой.
+ *
+ * Мини-график вылезал из-под рамки карточки и висел снаружи вторым,
+ * сломанным рядом: высота сжатого графика задавалась процентом, а
+ * процент от карточки, у которой высота своя, по содержимому, — это
+ * auto, то есть ноль. Коробка схлопывалась, а ломаная продолжала
+ * рисоваться.
+ *
+ * Глазами это ловится только на снимке в нужную ширину, поэтому
+ * проверяем геометрией: всё, что есть в карточке, обязано лежать внутри
+ * её рамки.
+ */
+describe('дашборд заказчика: карточка площадки не течёт', () => {
+  function overview(): ClientOverview {
+    const series = [
+      { date: '2026-09-10', views_gained: 1200 },
+      { date: '2026-09-11', views_gained: 800 },
+      // Дыра: линия здесь рвётся, и это тоже часть картинки.
+      { date: '2026-09-14', views_gained: 2400 },
+    ];
+    return {
+      projects_total: 1,
+      projects: [],
+      views: { total: 3_000_000 },
+      money: { locked: 0, current: 0, total: 0, paid: 0 },
+      series: [],
+      generated_at: '2026-09-14T00:00:00Z',
+      range: 'month',
+      range_label: '17 авг. — 15 сент. 2026',
+      window: { views: 3_000_000, engagement: 48_700, comments: 2752, er_percent: 3.3 },
+      platforms: ALL_PLATFORMS.map((platform, i) => ({
+        platform,
+        views: 1000 * (5 - i),
+        share_pct: 20,
+        window_views: 1000 * (5 - i),
+        window_share_pct: 20,
+        er_percent: 3.3,
+        series,
+      })),
+    };
+  }
+
+  function render(): HTMLElement {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const fixture = TestBed.createComponent(ClientDashboardComponent);
+    fixture.componentRef.setInput('data', overview());
+    fixture.componentRef.setInput('range', 'month');
+    fixture.componentRef.setInput('clientName', 'Олег Исаев');
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('график и подвал лежат внутри рамки карточки', () => {
+    const cards = Array.from(render().querySelectorAll<HTMLElement>('.net'));
+    expect(cards.length).toBe(5);
+
+    for (const card of cards) {
+      const box = card.getBoundingClientRect();
+      for (const child of Array.from(card.querySelectorAll<HTMLElement>('*'))) {
+        const c = child.getBoundingClientRect();
+        // Полпикселя допуска: субпиксельная раскладка на дробных
+        // размерах карточки, а не протёкший наружу элемент.
+        expect(c.bottom).toBeLessThanOrEqual(box.bottom + 0.5);
+        expect(c.right).toBeLessThanOrEqual(box.right + 0.5);
+      }
+    }
+  });
+
+  /**
+   * Прироста нет ни у одной площадки — это обычное состояние нового
+   * проекта. Оговорка про это стоит одна, при заголовке блока: пять
+   * одинаковых подписей в пяти карточках подряд читаются как сломанная
+   * вёрстка, а не как честность.
+   */
+  it('«сравнивать не с чем» сказано один раз на блок, а не в каждой карточке', () => {
+    const el = render();
+    expect(el.querySelectorAll('.eyebrow .note').length).toBe(1);
+    expect(el.querySelectorAll('.net .nfoot').length).toBe(0);
   });
 });
