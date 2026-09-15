@@ -298,6 +298,25 @@ export class ClientTurnkeyProjectComponent {
     return v.platforms ?? [];
   }
 
+  /**
+   * Площадки ролика со ссылками на сам ролик.
+   *
+   * Ради этого заказчик сюда и приходит: не «мы отчитались о просмотрах»,
+   * а «вот ролик, откройте и сверьте». Ссылка лежала под раскрытием «По
+   * площадкам» вместе с разбором чисел, то есть в двух кликах от главного
+   * доказательства.
+   *
+   * Ссылки может не быть: площадка отмечена, а URL ещё не сдан. Тогда
+   * значок остаётся значком — мёртвая ссылка хуже её отсутствия.
+   */
+  public linksOf(v: ClientVideo): { platform: Platform; url: string }[] {
+    const rows = this.platformRows(v);
+    return this.platformsOf(v).map((platform) => ({
+      platform,
+      url: rows.find((r) => r.platform === platform)?.url ?? '',
+    }));
+  }
+
   public togglePref(field: 'on_new_video' | 'on_weekly_digest' | 'on_date_shift'): void {
     const p = this.project();
     const current = this.prefs();
