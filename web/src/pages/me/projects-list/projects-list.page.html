@@ -11,6 +11,15 @@
     <button nz-button nzDanger type="button" (click)="logout()">Выйти</button>
   </header>
 
+  <!-- Дашборд и сводка по всем проектам — ПЕРВЫМ экраном, до контактов и
+       до воронки заказа. Этот экран заказчик показывает своему
+       начальству, и первым вопросом там «что я получаю за свои деньги», а
+       не «заполнены ли у меня контакты». У заказчика без проектов блок
+       ничего не рисует, и наверх возвращаются контакты.
+       Имя передаём из уже загруженных контактов: второй запрос за тем же
+       именем этому экрану не нужен. -->
+  <app-client-overview [clientName]="contacts().display_name" />
+
   <section class="contacts-panel" [class.expanded]="contactsExpanded()">
     <button type="button" class="contacts-head" (click)="toggleContacts()">
       <span class="icon-wrap">
@@ -80,13 +89,6 @@
       <button nz-button nzType="primary" type="button" (click)="startTurnkey()">Под ключ</button>
     </div>
   </section>
-
-  <!-- Дашборд и сводка по всем проектам сразу — над списком. Внутри
-       одного проекта на их главный вопрос ответа нет: сколько людей
-       посмотрело всё, что для вас делают, и во сколько обходится тысяча.
-       Имя передаём из уже загруженных контактов: второй запрос за тем же
-       именем этому экрану не нужен. -->
-  <app-client-overview [clientName]="contacts().display_name" />
 
   @if (loading()) {
   <div class="center"><nz-spin nzSize="large"></nz-spin></div>
