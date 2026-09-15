@@ -94,13 +94,15 @@ test.describe('заказчик', () => {
     const w = world();
     await page.goto(`/me/projects/${w.projectId}`);
 
-    // Итоги у заказчика стоят плитками наверху страницы, а не внутри
-    // блока статистики: в блоке остался только график по дням.
-    const tile = page.locator('.kpi').filter({ hasText: 'Просмотры, всего' });
-    await expect(tile, 'заказчик и менеджер смотрят на один отчёт').toBeVisible({
+    // Итог стоит первым числом карточки: экран отвечает заказчику на
+    // «сколько людей это посмотрели» раньше, чем на всё остальное.
+    // Раньше это была плитка «Просмотры, всего» — проверяем обещание, а
+    // не прежнюю подпись.
+    const hero = page.locator('.vhero .vcell').filter({ hasText: 'Ролики посмотрели' });
+    await expect(hero, 'заказчик и менеджер смотрят на один отчёт').toBeVisible({
       timeout: 15_000,
     });
-    await expect(tile.locator('.v')).toHaveText(grouped(STATS.totalToday));
+    await expect(hero.locator('.v')).toHaveText(grouped(STATS.totalToday));
 
     // Лента: ролик, его автор и просмотры по ролику целиком.
     const body = page.locator('body');

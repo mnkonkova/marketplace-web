@@ -559,8 +559,17 @@ DELETE FROM projects WHERE client_user_id IN
     'PetFlat · прошлые периоды (e2e)',
     'Идёт второй период, первый уже подытожен',
   );
+  // Период проекта начинается датой первой публикации, и спека про
+  // подписи требует, чтобы он НЕ начинался первым числом: иначе
+  // «сентябрь» оказался бы правдой и подмену даты на месяц стало бы
+  // нечем поймать. Самый старый ролик в зависимости от дня запуска
+  // попадает то на первое, то нет, поэтому сдвигаем весь набор на день —
+  // относительные расстояния сохраняются, а якорь перестаёт зависеть от
+  // того, когда прогоняют тесты.
+  const oldest = new Date(Date.now() - HISTORY_AGES[0] * 86_400_000);
+  const shift = oldest.getUTCDate() === 1 ? 1 : 0;
   const day = (ago: number): string =>
-    new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10);
+    new Date(Date.now() - (ago + shift) * 86_400_000).toISOString().slice(0, 10);
   const historyBatch = await call(
     'post',
     `/api/v1/manager/projects/${historyProjectId}/publications/batch`,
