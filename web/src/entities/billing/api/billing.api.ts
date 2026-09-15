@@ -9,6 +9,7 @@ import {
   BillingTerms,
   BillingTermsInput,
   CreatorEarnings,
+  OverviewRange,
   Payment,
   PaymentInput,
   PaymentKind,
@@ -164,8 +165,12 @@ export class BillingApi {
    * просмотров и график роста. В проекте по отдельности такого ответа
    * нет — там всё считается внутри одного проекта.
    */
-  public clientOverview(): Observable<ClientOverview> {
-    return this.http.get<ClientOverview>(`${this.api}/me/overview`);
+  public clientOverview(range?: OverviewRange): Observable<ClientOverview> {
+    // Окно уходит в query, только если его выбрали: пустой `range=`
+    // сервер обязан был бы трактовать как окно с именем «ничего».
+    return this.http.get<ClientOverview>(`${this.api}/me/overview`, {
+      params: range ? new HttpParams().set('range', range) : undefined,
+    });
   }
 
   // ---- креатор ----

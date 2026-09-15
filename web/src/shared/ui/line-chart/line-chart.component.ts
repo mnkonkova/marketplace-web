@@ -58,22 +58,53 @@ export class LineChartComponent {
 
   public readonly height = input(172);
 
-  // Геометрия: слева место под подписи значений, снизу под даты.
-  public readonly W = 720;
+  /**
+   * Сжатый вид: одна линия без осей, сетки и подписей.
+   *
+   * Нужен карточкам площадок в дашборде, где на график отведено тридцать
+   * пикселей высоты: подписи там всё равно нечитаемы, а ось и сетка
+   * превращаются в серую кашу. Это НЕ второй график: правила остаются те
+   * же — ломаная, разрыв на пропущенных днях, позиция по дате. Ровно
+   * ради этого сжатый вид и живёт здесь, а не отдельным компонентом:
+   * своя копия «нарисуй ряд мелко» разошлась бы с этими правилами в
+   * первую же правку.
+   *
+   * Там, где график стоит один и на него смотрят, сжатым его включать
+   * нельзя: без подписей «выросло» не отличить от «выросло вдвое».
+   */
+  public readonly compact = input(false);
 
-  public readonly PL = 54;
+  /**
+   * Цвет линии. Пусто — акцент темы.
+   *
+   * Задаётся только в карточке площадки, где цвет несёт смысл: он и есть
+   * опознавательный знак площадки. На обычном графике цвет один.
+   */
+  public readonly color = input('');
 
-  public readonly PR = 10;
+  // Геометрия: слева место под подписи значений, снизу под даты. В сжатом
+  // виде подписей нет — поля схлопываются до толщины самой линии, иначе
+  // на тридцати пикселях половину высоты занимало бы пустое поле.
+  //
+  // Ширина системы координат в сжатом виде другая. Пропорции viewBox мы
+  // НЕ ломаем — растянутый плющит линию неравномерно, — а высоту задаёт
+  // место вызова, значит ширина обязана быть ей соразмерна: 720×30 в
+  // карточке шириной в четверть экрана дали бы линию в девять пикселей.
+  public readonly W = computed(() => (this.compact() ? 220 : 720));
 
-  public readonly PT = 12;
+  public readonly PL = computed(() => (this.compact() ? 2 : 54));
 
-  public readonly PB = 26;
+  public readonly PR = computed(() => (this.compact() ? 2 : 10));
 
-  private readonly plotW = this.W - this.PL - this.PR;
+  public readonly PT = computed(() => (this.compact() ? 3 : 12));
 
-  private readonly plotH = computed(() => this.height() - this.PT - this.PB);
+  public readonly PB = computed(() => (this.compact() ? 3 : 26));
 
-  public readonly axisY = computed(() => this.height() - this.PB);
+  private readonly plotW = computed(() => this.W() - this.PL() - this.PR());
+
+  private readonly plotH = computed(() => this.height() - this.PT() - this.PB());
+
+  public readonly axisY = computed(() => this.height() - this.PB());
 
   /** Ряд по возрастанию дат, с позицией каждой точки в днях от начала. */
   public readonly placed = computed(() => placeSeries(this.points()));
@@ -91,13 +122,13 @@ export class LineChartComponent {
     const span = this.lastDay();
     // Одна точка: середина поля. У левого края она читалась бы как
     // начало ряда, которого нет.
-    if (span <= 0) return this.PL + this.plotW / 2;
-    return this.PL + (day / span) * this.plotW;
+    if (span <= 0) return this.PL() + this.plotW() / 2;
+    return this.PL() + (day / span) * this.plotW();
   }
 
   private y(value: number): number {
     const h = this.plotH();
-    return this.PT + h - (Math.max(0, value) / this.scaleMax()) * h;
+    return this.PT() + h - (Math.max(0, value) / this.scaleMax()) * h;
   }
 
   /** Горизонтальные линии сетки с подписями значений. */
@@ -120,9 +151,11 @@ export class LineChartComponent {
    * Заливка считается по тому же куску и до оси: она показывает объём под
    * линией, а не под всем полем, — и в дыре её тоже быть не должно.
    */
+  private readonly runs = computed(() => splitGaps(this.placed()));
+
   public readonly segments = computed(() => {
     const base = this.axisY();
-    return splitGaps(this.placed())
+    return this.runs()
       .filter((run) => run.length > 1)
       .map((run) => {
         const line = run
@@ -154,6 +187,24 @@ export class LineChartComponent {
   );
 
   /**
+   * Узлы, которые видно.
+   *
+   * В сжатом виде — только одиночные замеры: линии из них не выходит, и
+   * без точки такой день пропал бы с графика совсем. Остальные узлы на
+   * тридцати пикселях высоты сливаются в цепочку кружков и съедают саму
+   * линию, ради которой график и стоит.
+   */
+  public readonly visibleDots = computed(() => {
+    if (!this.compact()) return this.dots();
+    const solo = new Set(
+      this.runs()
+        .filter((r) => r.length === 1)
+        .map((r) => r[0].date),
+    );
+    return this.dots().filter((d) => solo.has(d.date));
+  });
+
+  /**
    * Радиус узла. На длинном ряде точки стоят через несколько пикселей, и
    * в обычном размере линия превращается в цепочку кружков.
    */
@@ -165,11 +216,11 @@ export class LineChartComponent {
    */
   public readonly hits = computed(() => {
     const dots = this.dots();
-    if (dots.length < 2) return dots.map((d) => ({ ...d, hx: this.PL, hw: this.plotW }));
-    const w = this.plotW / (dots.length - 1);
+    if (dots.length < 2) return dots.map((d) => ({ ...d, hx: this.PL(), hw: this.plotW() }));
+    const w = this.plotW() / (dots.length - 1);
     return dots.map((d) => ({
       ...d,
-      hx: Math.max(this.PL, d.x - w / 2),
+      hx: Math.max(this.PL(), d.x - w / 2),
       hw: w,
     }));
   });
