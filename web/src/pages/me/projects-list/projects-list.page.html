@@ -1,25 +1,122 @@
 <app-header />
 
 <main class="projects-list">
+  <!-- Два разговора кабинета разведены по вкладкам: «что у меня в
+       работе» и «что я за это получил».
+
+       Вкладки — ПОДЧЁРКНУТЫЕ, а не таблетки, и это не косметика. Ниже, в
+       семидесяти пикселях отсюда, стоит переключатель окна дашборда —
+       тоже три кнопки в ряд. Пока обе группы выглядели одинаковыми
+       таблетками, они обещали одинаковое последствие: одна меняет экран,
+       вторая — числа на нём, и жали наугад. Разные роли — разные формы.
+
+       Выхода здесь нет и быть не должно: он живёт один на весь сайт — в
+       шапке. Вкладка «Выйти» рядом с разделами кабинета обещает раздел,
+       а уносит со страницы. -->
+  <nav class="tabs" role="tablist" aria-label="Разделы кабинета">
+    @for (t of tabs; track t.key) {
+    <button
+      type="button"
+      role="tab"
+      class="tab"
+      [class.on]="t.key === tab()"
+      [attr.aria-selected]="t.key === tab()"
+      (click)="setTab(t.key)"
+    >
+      {{ t.title }}
+    </button>
+    }
+  </nav>
+
+  <!-- Заголовок про РЕЗУЛЬТАТ, а не про раздел. «Мои проекты» называет
+       место, в которое человек уже пришёл, и не говорит ничего; этот же
+       экран показывают начальству и вставляют в коммерческое
+       предложение, и первая строка в нём обязана отвечать на вопрос, с
+       которым его открыли. -->
   <header class="head">
-    <div>
-      <h1>Мои проекты</h1>
-      <p class="subtitle">
-        Здесь — все проекты с командой. Цветной бейдж сверху показывает, на ком сейчас «мяч».
-      </p>
-    </div>
-    <button nz-button nzDanger type="button" (click)="logout()">Выйти</button>
+    <h1>{{ headline() }}</h1>
   </header>
 
-  <!-- Дашборд и сводка по всем проектам — ПЕРВЫМ экраном, до контактов и
-       до воронки заказа. Этот экран заказчик показывает своему
-       начальству, и первым вопросом там «что я получаю за свои деньги», а
-       не «заполнены ли у меня контакты». У заказчика без проектов блок
-       ничего не рисует, и наверх возвращаются контакты.
-       Имя передаём из уже загруженных контактов: второй запрос за тем же
-       именем этому экрану не нужен. -->
-  <app-client-overview [clientName]="contacts().display_name" />
+  @if (tab() === 'projects') {
+  <!-- Реестр — тот же компонент, что под дашбордом, и те же числа: он
+       владелец сводки и рисует строку проекта одним способом. Вторая
+       копия строки разошлась бы с первой на ближайшей правке. -->
+  <app-client-overview [clientName]="contacts().display_name" [withDashboard]="false" />
 
+  <!-- Проекты ПО ВОРОНКЕ — отдельным списком и другой карточкой.
+       У них нет ни роликов, ни площадок, ни цены тысячи: их содержание —
+       стадии и согласования, и мерить их просмотрами нечем. В реестре
+       выше они стояли бы пустыми строками. -->
+  @if (loading()) {
+  <div class="center"><nz-spin nzSize="large"></nz-spin></div>
+  } @else if (funnelProjects().length) {
+  <h2 class="fhead">Проекты по этапам</h2>
+  <p class="subtitle">Цветной бейдж показывает, на ком сейчас «мяч».</p>
+  <div class="cards">
+    @for (p of funnelProjects(); track p.id) {
+    <article
+      class="card"
+      [class.waiting]="p.display_status === 'waiting_action'"
+      [class.completed]="p.display_status === 'completed'"
+      (click)="open(p)"
+    >
+      <header class="card-head">
+        <nz-tag [nzColor]="color(p.display_status)"> {{ label(p.display_status) }} </nz-tag>
+        <span class="progress-num">{{ p.progress | number: '1.0-0' }}%</span>
+      </header>
+
+      <h3>{{ p.title }}</h3>
+
+      @if (funnelProjects().length > 1 && (p.specialist_primary_category ||
+      p.specialist_display_name)) {
+      <p class="spec-badge">
+        @if (p.specialist_primary_category) {
+        <span class="spec-cat">{{ p.specialist_primary_category }}</span>
+        } @if (p.specialist_display_name) {
+        <span class="spec-name">· {{ p.specialist_display_name }}</span>
+        }
+      </p>
+      } @if (p.current_step_title) {
+      <p class="cur">
+        <span class="cur-label">Сейчас:</span>
+        <strong>{{ p.current_step_title }}</strong>
+      </p>
+      }
+
+      <nz-progress
+        [nzPercent]="p.progress"
+        nzSize="small"
+        [nzShowInfo]="false"
+        [nzStrokeColor]="
+              p.display_status === 'waiting_action' ? '#f59e0b' :
+              p.display_status === 'completed' ? '#10b981' :
+              '#2dd4bf'
+            "
+      ></nz-progress>
+
+      <footer class="card-foot">
+        <span>
+          <span nz-icon nzType="calendar" nzTheme="outline"></span>
+          {{ p.created_at | date: 'd MMM y' }}
+        </span>
+        @if (p.budget) {
+        <span>
+          <span nz-icon nzType="dollar" nzTheme="outline"></span>
+          {{ p.budget | number }} ₽
+        </span>
+        }
+      </footer>
+    </article>
+    }
+  </div>
+  } @else if (!projects().length) {
+  <nz-empty nzNotFoundContent="Пока нет проектов"></nz-empty>
+  }
+
+  <!-- Контакты — ПОД проектами. Это настройка, а не работа: заполняют её
+       один раз, а место она занимала первым экраном навсегда. Пока
+       способа связи нет, блок раскрыт сам (см. contactsExpanded) — в
+       этом случае он и правда важнее списка. -->
   <section class="contacts-panel" [class.expanded]="contactsExpanded()">
     <button type="button" class="contacts-head" (click)="toggleContacts()">
       <span class="icon-wrap">
@@ -69,87 +166,56 @@
     </div>
     }
   </section>
+  } @else {
+  <!-- Имя передаём из уже загруженных контактов: второй запрос за тем же
+       именем этому экрану не нужен. -->
+  <app-client-overview [clientName]="contacts().display_name" />
+  }
 
-  <!-- Вход в воронку заказа. Стоит под контактами намеренно: без телефона
-       или телеграма менеджер не свяжется, а заказ без связи не собрать. -->
+  <!-- Вход в воронку заказа — ВНИЗУ и тихим видом.
+       Он стоял первым экраном и держал единственный коралл страницы,
+       хотя коралл значит «действие», а действие здесь — не «закажите
+       ещё», а то, ради чего экран открыли. Человек, который уже платит
+       за проект, приходит сюда смотреть результат; предложение завести
+       второй проект читается после результата, а не вместо него.
+
+       Незаконченный заказ — другое дело: это долг перед человеком, а не
+       предложение, и он поднимается наверх плашкой с действием. -->
   <section class="turnkey-panel">
     <div class="turnkey-text">
-      <strong>Проект под ключ</strong>
+      <strong>Нужен ещё один проект под ключ?</strong>
+      <!-- Середина фразы — в отдельном span, и на телефоне тач-слой её
+           гасит (см. .turnkey-text .long в projects-list.page.touch.scss).
+           Текст один на оба размера намеренно: два разных в шаблоне
+           разошлись бы при первой же правке. -->
       <small>
-        Соберём команду креаторов на месяц: вы отмечаете людей в каталоге, они сами берут заявку.
-        Смету видно до создания заказа.
+        Соберём команду креаторов на месяц<span class="long"
+          >: вы отмечаете людей в каталоге, они сами берут заявку</span
+        >. Смету видно до создания заказа.
       </small>
     </div>
     <div class="turnkey-actions">
-      @for (o of activeOrders(); track o.id) {
-      <button nz-button type="button" (click)="openOrder(o.id)">
-        Продолжить — {{ orderStatusLabel(o) }}
-      </button>
-      }
-      <button nz-button nzType="primary" type="button" (click)="startTurnkey()">Под ключ</button>
+      <button type="button" class="quiet-btn" (click)="startTurnkey()">Посчитать смету</button>
     </div>
   </section>
 
-  @if (loading()) {
-  <div class="center"><nz-spin nzSize="large"></nz-spin></div>
-  } @else if (projects().length === 0) {
-  <nz-empty nzNotFoundContent="Пока нет проектов"></nz-empty>
-  } @else {
-  <div class="cards">
-    @for (p of projects(); track p.id) {
-    <article
-      class="card"
-      [class.waiting]="p.display_status === 'waiting_action'"
-      [class.completed]="p.display_status === 'completed'"
-      (click)="open(p)"
-    >
-      <header class="card-head">
-        <nz-tag [nzColor]="color(p.display_status)"> {{ label(p.display_status) }} </nz-tag>
-        <span class="progress-num">{{ p.progress | number: '1.0-0' }}%</span>
-      </header>
-
-      <h3>{{ p.title }}</h3>
-
-      @if (projects().length > 1 && (p.specialist_primary_category || p.specialist_display_name)) {
-      <p class="spec-badge">
-        @if (p.specialist_primary_category) {
-        <span class="spec-cat">{{ p.specialist_primary_category }}</span>
-        } @if (p.specialist_display_name) {
-        <span class="spec-name">· {{ p.specialist_display_name }}</span>
-        }
-      </p>
-      } @if (p.current_step_title) {
-      <p class="cur">
-        <span class="cur-label">Сейчас:</span>
-        <strong>{{ p.current_step_title }}</strong>
-      </p>
-      }
-
-      <nz-progress
-        [nzPercent]="p.progress"
-        nzSize="small"
-        [nzShowInfo]="false"
-        [nzStrokeColor]="
-              p.display_status === 'waiting_action' ? '#f59e0b' :
-              p.display_status === 'completed' ? '#10b981' :
-              '#2dd4bf'
-            "
-      ></nz-progress>
-
-      <footer class="card-foot">
-        <span>
-          <span nz-icon nzType="calendar" nzTheme="outline"></span>
-          {{ p.created_at | date: 'd MMM y' }}
-        </span>
-        @if (p.budget) {
-        <span>
-          <span nz-icon nzType="dollar" nzTheme="outline"></span>
-          {{ p.budget | number }} ₽
-        </span>
-        }
-      </footer>
-    </article>
-    }
-  </div>
+  <!-- Незаконченный заказ. Отдельно от предложения и НАД ним: без него
+       человек заведёт второй такой же и будет ждать ответы по обоим. -->
+  @for (o of activeOrders(); track o.id) {
+  <section class="order-resume">
+    <span class="ot">
+      <strong>Заказ в работе</strong>
+      <small>{{ orderStatusLabel(o) }}</small>
+    </span>
+    <button type="button" class="quiet-btn" (click)="openOrder(o.id)">Продолжить заказ</button>
+  </section>
   }
 </main>
+
+<!-- Футер. Тот же, что на публичных страницах, а не свой: поддержка,
+     оферта и политика должны жить в одном месте, иначе телефон
+     поддержки однажды поправят в одном футере из двух. До этой правки
+     в кабинете футера не было вовсе — со дна списка проектов уйти было
+     некуда, кроме как прокрутить обратно. -->
+<app-support-footer />
+

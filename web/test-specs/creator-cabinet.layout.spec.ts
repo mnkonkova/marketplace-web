@@ -268,13 +268,71 @@ describe('кабинет креатора: блоки не текут за св�
   });
 
   describe('заработок за период', () => {
-    it('всё содержимое лежит внутри карточки', () => {
-      const card = mount(CreatorLadderComponent, {
+    function ladder(): HTMLElement {
+      return mount(CreatorLadderComponent, {
         earnings: earnings(),
         publications: PUBS,
       }).querySelector<HTMLElement>('.ladder')!;
+    }
+
+    function size(el: Element | null): number {
+      expect(el).not.toBeNull();
+      return parseFloat(getComputedStyle(el as HTMLElement).fontSize);
+    }
+
+    it('всё содержимое лежит внутри карточки', () => {
+      const card = ladder();
       expect(card).not.toBeNull();
       expectInside(card, 'карточка заработка');
+    });
+
+    /**
+     * ИЕРАРХИЯ ПРИБАВКИ.
+     *
+     * Владелец продукта: «≈ +4 950 ₽ · осталось 100 тыс. просмотров —
+     * сделать крупнее, чтобы была мотивация добавить ролик». Строка
+     * стояла подписью 12,5 px рядом со сплошной коралловой кнопкой:
+     * экран звал нажать, не сказав зачем.
+     *
+     * Меряем отношениями, а не пикселями: конкретный кегль — вопрос
+     * вкуса и поменяется, а порядок громкости — решение, и ломаться он
+     * не должен.
+     */
+    it('прибавка звучит громче остатка и мотивирующей фразы', () => {
+      const card = ladder();
+      const sum = size(card.querySelector('.gain b'));
+
+      expect(sum)
+        .withContext('остаток в просмотрах — подпись к сумме, а не второе такое же число')
+        .toBeGreaterThan(size(card.querySelector('.gain i')));
+      expect(sum)
+        .withContext('прибавка снова тише строки «до ступени — один ролик»')
+        .toBeGreaterThan(size(card.querySelector('.lead')));
+    });
+
+    /**
+     * Но не громче заработанного за период: прибавка — надбавка к нему.
+     * Перебив итог, она сказала бы, что главное на карточке — то, чего
+     * ещё нет.
+     */
+    it('главным числом карточки остаётся заработанное за период', () => {
+      const card = ladder();
+      expect(size(card.querySelector('.gain b'))).toBeLessThan(
+        size(card.querySelector('.money-now .num-xl')),
+      );
+    });
+
+    /**
+     * Прибавка и кнопка — про одно действие, и связь их должна
+     * читаться, а не достраиваться в голове. Поэтому они в одной рамке,
+     * а не двумя абзацами в общем потоке карточки.
+     */
+    it('прибавка и «Добавить ролик» лежат в одной рамке', () => {
+      const box = ladder().querySelector<HTMLElement>('.nextstep');
+      expect(box).withContext('рамки прибавки нет вовсе').not.toBeNull();
+      expect(box!.querySelector('.gain')).withContext('сумма не в рамке').not.toBeNull();
+      expect(box!.querySelector('.addv')).withContext('кнопка не в рамке').not.toBeNull();
+      expectInside(box!, 'рамка прибавки');
     });
   });
 });

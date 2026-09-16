@@ -1,5 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { AUTH_KEY, world } from '../fixtures/world';
+import { call, createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Оболочка админки: сводка, поиск, счётчики, журнал, команда и карточка
@@ -30,6 +31,29 @@ async function navCount(page: Page, label: string): Promise<number> {
 }
 
 test.describe('сводка', () => {
+  /**
+   * Свой проект БЕЗ ответственного.
+   *
+   * Блок «Без менеджера» рисуется, только когда такой проект на стенде
+   * есть. Раньше он там просто случался — то от чужой проверки, то от
+   * соседней специи, — и спека зеленела не потому, что экран прав, а
+   * потому что повезло. В день, когда стенд подчистили, она покраснела,
+   * не поменявшись ни строкой. Теперь условие заводим сами.
+   */
+  let orphan: Sandbox;
+
+  test.beforeAll(async () => {
+    orphan = await createSandbox(`orphan${String(Date.now()).slice(-5)}`, {
+      shape: 'empty',
+      isTest: false,
+    });
+    await call(orphan, 'admin', 'post', `/api/v1/admin/projects/${orphan.projectId}/assign`, {
+      manager_user_id: null,
+    });
+  });
+
+  test.afterAll(() => dropSandbox(orphan));
+
   test.beforeEach(async ({ context, page }) => {
     await signIn(context, 'admin');
     await page.goto('/admin');
@@ -138,6 +162,28 @@ test.describe('журнал', () => {
 });
 
 test.describe('команда', () => {
+  /**
+   * Свой менеджер, у которого есть незакрытый проект.
+   *
+   * Предупреждение «сначала спросим, кому их передать» показывают только
+   * занятому менеджеру. Спека брала для этого `manager.test` со стенда —
+   * человека, чьи проекты заводил и сносил кто угодно. Как только их
+   * снесли, предупреждать стало не о чем, и спека покраснела, ничего не
+   * проверив. Теперь занятого менеджера она заводит сама.
+   */
+  let busy: Sandbox;
+
+  test.beforeAll(async () => {
+    busy = await createSandbox(`busy${String(Date.now()).slice(-5)}`, {
+      shape: 'empty',
+      // Не тестовый: счёт «проектов в работе» у менеджера считает
+      // настоящие, и на помеченном тестовым предупреждать не о чем.
+      isTest: false,
+    });
+  });
+
+  test.afterAll(() => dropSandbox(busy));
+
   test.beforeEach(async ({ context, page }) => {
     await signIn(context, 'admin');
     await page.goto('/admin/team');
@@ -173,7 +219,10 @@ test.describe('команда', () => {
     // 409 от сервера — не ошибка, а продолжение сценария: сначала дела,
     // потом роль. Проверяем, что экран говорит это до нажатия, а не после,
     // и что отказаться можно, ничего не сняв.
-    const row = page.locator('[data-test="team-row"]').filter({ hasText: 'manager.test' });
+    const row = page.locator('[data-test="team-row"]').filter({ hasText: busy.manager.email });
+    await expect(row, 'занятый менеджер песочницы виден в команде').toBeVisible({
+      timeout: 15_000,
+    });
     await row.getByRole('button', { name: /Действия/ }).click();
     await page.getByRole('menuitem', { name: 'Снять роль менеджера' }).click();
 

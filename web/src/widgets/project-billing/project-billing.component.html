@@ -52,7 +52,16 @@
         }
       </div>
       @if (preliminary()) {
-        <p class="note tight">Период идёт до {{ periodEnd() }}. Суммы ещё изменятся.</p>
+        <!-- Менеджеру здесь же и про кнопку: «Утвердить» у идущего
+             периода не появляется вовсе, и человек ищет её глазами в
+             таблице, пока не решит, что сломалось. Раньше про это врал
+             абзац под таблицей — обещал, что хватит «Пересчитать». -->
+        <p class="note tight">
+          Период идёт до {{ periodEnd() }}. Суммы ещё изменятся.
+          @if (isManager()) {
+            Утвердить и выплатить — после подытога периода.
+          }
+        </p>
       }
       @if (approximate()) {
         <p class="note tight">
@@ -73,59 +82,83 @@
     }
 
     <!-- Итог периода считает сервер: складывать строки ещё раз на фронте
-         значит получить на двух экранах два разных числа. -->
-    @if (totals(); as t) {
-      <div class="kpis">
-        <div class="kpi">
-          <span class="k">{{ salaryTitle() }} за период</span>
-          <b>{{ money(t.salaries) }}</b>
-        </div>
-        <div class="kpi">
-          <span class="k">Бонус за просмотры</span>
-          <b>{{ money(t.views_bonus) }}</b>
-          <span class="d">
-            {{ t.views | number }} {{ plural(t.views, 'просмотр', 'просмотра', 'просмотров') }}
-            @if (t.videos_delivered) {
-              по {{ t.videos_delivered }}
-              {{ plural(t.videos_delivered, 'ролику', 'роликам', 'роликам') }}
-            }
-          </span>
-        </div>
-        <div class="kpi">
-          <span class="k">Ролики</span>
-          <b>{{ t.videos_delivered }} из {{ t.videos }}</b>
-          <span class="d">закрыто за период</span>
-        </div>
-        @if (t.deductions) {
+         значит получить на двух экранах два разных числа.
+
+         Шаблоном, а не на месте: заказчику сводка нужна первым экраном —
+         он пришёл за суммой к оплате; менеджеру она нужна вплотную к
+         таблице начислений, которую объясняет. Второй копией эти два
+         места разъехались бы на первой же правке. -->
+    <ng-template #totalsTpl>
+      @if (totals(); as t) {
+        <div class="kpis">
           <div class="kpi">
-            <span class="k">Вычеты за недосданное</span>
-            <b class="minus">−{{ money(t.deductions) }}</b>
+            <span class="k">{{ salaryTitle() }} за период</span>
+            <b>{{ money(t.salaries) }}</b>
           </div>
-        }
-        <!-- Стоимость тысячи — не пятая метрика в ряду, а производная от
+          <div class="kpi">
+            <span class="k">Бонус за просмотры</span>
+            <b>{{ money(t.views_bonus) }}</b>
+            <span class="d">
+              {{ t.views | number }} {{ plural(t.views, 'просмотр', 'просмотра', 'просмотров') }}
+              @if (t.videos_delivered) {
+                по {{ t.videos_delivered }}
+                {{ plural(t.videos_delivered, 'ролику', 'роликам', 'роликам') }}
+              }
+            </span>
+          </div>
+          <div class="kpi">
+            <span class="k">Ролики</span>
+            <b>{{ t.videos_delivered }} из {{ t.videos }}</b>
+            <span class="d">закрыто за период</span>
+          </div>
+          @if (t.subscriber_bonus) {
+            <div class="kpi">
+              <span class="k">KPI по подписчикам</span>
+              <b>{{ money(t.subscriber_bonus) }}</b>
+              <span class="d">
+                {{ t.subscribers | number }}
+                {{ plural(t.subscribers ?? 0, 'подписчик', 'подписчика', 'подписчиков') }} — вписано
+                руками
+              </span>
+            </div>
+          }
+          @if (t.deductions) {
+            <div class="kpi">
+              <span class="k">Вычеты за недосданное</span>
+              <b class="minus">−{{ money(t.deductions) }}</b>
+            </div>
+          }
+          <!-- Стоимость тысячи — не пятая метрика в ряду, а производная от
              итога: отдельной плиткой она оставалась висеть одна во второй
              строке сетки, будто про неё забыли. -->
-        <div class="kpi">
-          <span class="k">{{ isManager() ? 'Итого к выплате' : 'К оплате' }}</span>
-          <b>{{ money(t.total) }}</b>
-          <span class="d">{{ money(t.cost_per_1000) }} за 1000 просмотров</span>
+          <div class="kpi">
+            <span class="k">{{ isManager() ? 'Итого к выплате' : 'К оплате' }}</span>
+            <b>{{ money(t.total) }}</b>
+            <span class="d">{{ money(t.cost_per_1000) }} за 1000 просмотров</span>
+          </div>
         </div>
-      </div>
+      }
+    </ng-template>
+
+    @if (!isManager()) {
+      <ng-container [ngTemplateOutlet]="totalsTpl" />
     }
 
     <!-- Условия.
-         Менеджеру разбор ставок нужен по работе — рядом стоит «Обновить
-         из прайса». Заказчику он отвечает на вопрос «как мы считаем», а
-         у него вопрос «сколько платить и выгодно ли это»: на него
-         отвечают сумма к оплате и стоимость тысячи просмотров выше.
-         Поэтому ему разбор свёрнут: доступен, но не занимает экран. -->
+         Разбор ставок — «Оклад / За просмотры / За переходы» — остался
+         только у заказчика и креатора: им он отвечает на вопрос «как это
+         посчитано». Менеджеру он не отвечает ни на один его вопрос:
+         правит ставки он не здесь, а в прайсе, а проверяет он суммы по
+         таблице начислений ниже. Три карточки занимали у него пол-экрана
+         над этой таблицей — за них и не видно было самой работы. -->
     @if (terms(); as t) {
-      @if (isManager()) {
-        <ng-container [ngTemplateOutlet]="ratesTpl" [ngTemplateOutletContext]="{ $implicit: t }" />
-      } @else {
+      @if (!isManager()) {
         <details class="rates-fold">
           <summary>Как считается эта сумма</summary>
-          <ng-container [ngTemplateOutlet]="ratesTpl" [ngTemplateOutletContext]="{ $implicit: t }" />
+          <ng-container
+            [ngTemplateOutlet]="ratesTpl"
+            [ngTemplateOutletContext]="{ $implicit: t }"
+          />
         </details>
       }
     } @else if (isManager()) {
@@ -337,6 +370,10 @@
          утверждением и выплатой. -->
     @if (isManager()) {
       <h3 class="sub">Начисления креаторам · {{ periodRange() }}</h3>
+      <!-- Сводка стоит прямо над таблицей, которую объясняет: три числа
+           отвечают на «сколько оклада, сколько бонуса и сколько роликов
+           закрыто», а таблица раскладывает их по людям. -->
+      <ng-container [ngTemplateOutlet]="totalsTpl" />
       <div class="tbl-scroll">
         <table class="tbl">
           <thead>
@@ -415,17 +452,56 @@
           </tbody>
         </table>
       </div>
-      <p class="note">
-        @if (previewPeriod()) {
-          Период показан расчётом по фактам — выкладкам и просмотрам из ежедневного сбора. Чтобы
-          утвердить и выплатить, нажмите «Пересчитать»: он зафиксирует строки на сегодняшних цифрах.
+      <!-- Подписчики: KPI объявлен в тарифе, а собирать их нам нечем.
+           Число за период вписывает менеджер руками — тот же порядок, что
+           у переходов по UTM. Блока нет вовсе, когда ставка не объявлена:
+           поле, за которое никто не платит, только сбивает. -->
+      @if (subsOn()) {
+        <h3 class="sub">Подписчики за период</h3>
+        <p class="note">
+          Сборщика подписчиков у нас нет — число сводит менеджер руками. Ставка объявлена в прайсе,
+          и по ней считает сервер: в суммах выше это отдельная строка, а не часть бонуса за
+          просмотры.
+        </p>
+        <ul class="utms">
+          @for (a of accruals(); track a.id) {
+            <li>
+              <span class="nm">{{ who(a) }}</span>
+              <span class="clicks">
+                {{ a.subscribers ?? 0 | number }}
+                {{ plural(a.subscribers ?? 0, 'подписчик', 'подписчика', 'подписчиков') }}
+                @if (a.subscriber_bonus) {
+                  · {{ money(a.subscriber_bonus) }}
+                }
+              </span>
+              <button class="linkish" type="button" (click)="openSubs(a.creator_user_id)">
+                изменить
+              </button>
+            </li>
+          } @empty {
+            <li class="empty">Креаторов в периоде нет — вписывать подписчиков некому.</li>
+          }
+        </ul>
+        @if (editingSubs(); as creatorId) {
+          <form class="edit" (submit)="$event.preventDefault(); saveSubs()">
+            <label class="fld">
+              <span>Подписчиков за период</span>
+              <input nz-input type="number" min="0" [(ngModel)]="subsValue" name="subs" />
+            </label>
+            <div class="edit-actions">
+              <button nz-button type="button" (click)="cancelSubs()">Отмена</button>
+              <button
+                nz-button
+                nzType="primary"
+                [nzLoading]="busy() === 'subs:' + creatorId"
+                type="submit"
+              >
+                Записать
+              </button>
+            </div>
+          </form>
         }
-        Пересчёт трогает только открытые строки — утверждённые и выплаченные он не меняет.
-        @if (draftsCount() === 0 && accruals().length) {
-          Сейчас открытых нет: период закрыт целиком.
-        }
-        Выплатить можно только утверждённое: между «посчитали» и «отправили деньги» проходит время.
-      </p>
+      }
 
       <h3 class="sub">UTM-метки</h3>
       <ul class="utms">
@@ -449,7 +525,13 @@
         <form class="edit" (submit)="$event.preventDefault(); saveUtm()">
           <label class="fld wide">
             <span>Ссылка с меткой</span>
-            <input nz-input type="url" [(ngModel)]="utmUrl" name="utm" placeholder="https://…" />
+            <input
+              nz-input
+              type="url"
+              [(ngModel)]="utmUrl"
+              name="utm"
+              placeholder="site.ru/?utm_source=vk"
+            />
           </label>
           <div class="edit-actions">
             <button nz-button type="button" (click)="cancelUtm()">Отмена</button>

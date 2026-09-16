@@ -25,29 +25,185 @@
 
   .meta {
     display: flex;
-    gap: 14px;
+    align-items: center;
+    gap: 6px 14px;
     flex-wrap: wrap;
     margin-top: 8px;
-    font-size: 13px;
     color: var(--muted);
+    font-size: 13px;
 
     b {
       color: var(--text);
       font-weight: 600;
     }
+
+    .per {
+      color: var(--text);
+      font-weight: 600;
+    }
+  }
+
+  // Состояние периода — точкой и словом. Открытый и подытоженный период
+  // это два разных счёта: у первого сумма ещё вырастет, у второго она
+  // окончательная, и по датам одно от другого не отличить.
+  .dotstate {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    &::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ice);
+    }
+
+    &.open::before {
+      background: var(--ok);
+    }
   }
 }
 
-.two {
-  display: grid;
-  grid-template-columns: 1fr 336px;
-  gap: 22px;
-  align-items: start;
+.pacts {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 980px) {
-  .two {
+// ── ОТВЕТ: объём и цена тысячи рядом ─────────────────────
+//
+// Было шесть равных плиток: просмотры, цена тысячи, «можно проверить»,
+// лайки, комментарии, ER. Шесть одинаковых рамок объявляют шесть чисел
+// одинаково важными, то есть ни одно — главным, и «56 ₽ за тысячу»
+// стояло тем же кеглем, что «Комментарии». Здесь две половины одной
+// мысли: объём растёт — цена тысячи падает, и продаёт их отношение.
+
+.answer {
+  display: grid;
+  gap: 0;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 20px;
+  border: 1px solid var(--line-2);
+  border-radius: 18px;
+  background: var(--card);
+  overflow: hidden;
+
+  .half {
+    padding: 24px 26px;
+  }
+
+  // Латунная кромка у объёма, ледяная подложка у цены: два цвета смысла
+  // держат половины различимыми и без линейки между ними.
+  .half.views {
+    border-left: 3px solid var(--brass);
+  }
+
+  .half.price {
+    border-left: 1px solid var(--line);
+    background: var(--card-2);
+  }
+
+  .eyebrow {
+    margin: 0 0 10px;
+    color: var(--muted-2);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .big {
+    display: block;
+    font-family: var(--font-head);
+    font-size: clamp(34px, 4vw, 54px);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 0.94;
+  }
+
+  .big.brass {
+    color: var(--brass);
+  }
+
+  .big.ice {
+    color: var(--ice);
+  }
+
+  .big .unit {
+    margin-left: 0.14em;
+    color: var(--muted);
+    font: 700 0.42em/1 var(--font-body);
+    font-style: normal;
+  }
+
+  .say {
+    max-width: 60ch;
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+
+  .say.small {
+    font-size: 12.5px;
+  }
+
+  app-steps {
+    margin-top: 16px;
+  }
+
+  .scale {
+    margin: 8px 0 0;
+    color: var(--muted-2);
+    font-size: 11.5px;
+  }
+
+  // Отклик одной строкой: лайки, комментарии и ER — один разложенный
+  // показатель, а не три независимых.
+  .react {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .react-row {
+    display: flex;
+    gap: 10px 26px;
+    flex-wrap: wrap;
+  }
+
+  .react-row .r {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .react-row .rv {
+    font-family: var(--font-head);
+    font-size: 21px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .react-row i {
+    color: var(--muted-2);
+    font-size: 11.5px;
+    font-style: normal;
+  }
+}
+
+@media (max-width: 900px) {
+  .answer {
     grid-template-columns: 1fr;
+  }
+
+  .answer .half.price {
+    border-left: 0;
+    border-top: 1px solid var(--line);
   }
 }
 
@@ -112,33 +268,42 @@
       }
     }
   }
-
-  .ft {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
 }
 
 // Обложка вертикальная: ролик снимают в 9:16, и заглушка должна об этом
 // напоминать, а не показывать горизонтальный прямоугольник.
+// Место обложки. Настоящего кадра у нас нет и не будет, пока ролик
+// живёт на чужой площадке: мы храним про него ссылку, счётчики и дату —
+// ни кадра, ни адреса превью в publication_links не лежит.
+//
+// Поэтому здесь не «картинка, которая не загрузилась», а подпись: знак
+// площадки на её цвете. Пропорция 2:3 — вертикаль, как сами ролики.
 .cover {
   position: relative;
-  width: 64px;
-  height: 96px;
-  border-radius: 10px;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 72px;
+  // 9:16 ровно — родная пропорция вертикального ролика. Было 2:3, то
+  // есть «примерно вертикально»: рядом с насечками, у каждой из которых
+  // честные 9:16, это читалось как небрежность.
+  aspect-ratio: 9 / 16;
   flex: 0 0 auto;
+  padding: 7px;
   border: 1px solid var(--line-2);
-  display: grid;
-  place-items: center;
-  color: rgb(255 255 255 / 50%);
-}
+  border-radius: 10px;
+  // Цвет площадки подложкой задаётся инлайном, из PLATFORM_COLOR:
+  // площадку узнают по цвету раньше, чем прочтут название. Сплошная
+  // рамка вокруг ровного серого пятна — это и есть то, как выглядит
+  // незагрузившееся фото, и именно от этого мы уходим.
+  overflow: hidden;
 
-.c2 {
-  background: linear-gradient(160deg, #16241f, #0a0f0d);
-  box-shadow: inset -26px -18px 54px rgb(47 189 143 / 18%);
+  .pl {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
 }
 
 // ── доли площадок ────────────────────────────────────────
@@ -196,13 +361,70 @@
     border-bottom: none;
   }
 
+  // Кружок исполнителя — ссылка с портретом внутри. Кружок побольше
+  // обычного (.av 32px): в него теперь смотрят, а не читают букву.
+  .pers {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    overflow: hidden;
+    text-decoration: none;
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.12s ease;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+  }
+
+  // Кружок без ссылки: страницы у человека ещё нет (профиль не прошёл
+  // модерацию — публичная ручка отдаёт на него 404). Портрет остаётся,
+  // подъём и обводка на наведении — нет: ими кружок обещает переход,
+  // которого не будет, а обещание, за которым ничего не следует, хуже
+  // прямого «идти некуда».
+  .pers-off {
+    cursor: default;
+
+    &:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+
   .bd {
     flex: 1;
     min-width: 0;
 
-    b {
+    b,
+    .pers-name {
       font-size: 13.5px;
+      font-weight: 600;
       display: block;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    // Имя БЕЗ ссылки — <b class="pers-name">: та же строка, тот же кегль,
+    // но без цвета наведения. Подсветка на неведущем имени читается как
+    // сломанная ссылка.
+    a.pers-name:hover {
+      color: var(--accent);
+    }
+
+    // Почему по одному кликается, а по другому нет. Строчка мелкая и
+    // приглушённая: это оговорка о человеке, а не претензия к нему.
+    .hidden-note {
+      font-style: normal;
+      color: var(--muted-2);
     }
 
     span {
@@ -226,143 +448,126 @@
   }
 }
 
-.divider {
-  height: 1px;
-  background: var(--line);
-  margin: 18px 0;
+// ── открыть и проверить ──────────────────────────────────
+//
+// Были значки в 26 пикселей: «TT», «IG», «YT» в ряд. Палец по ним
+// промахивался, а сам значок не говорил ни сколько там просмотров, ни
+// что он куда-то ведёт, — числа лежали под вторым кликом, в раскрытии
+// «По площадкам». Теперь это кнопка в 44 пикселя с названием площадки,
+// её числом и стрелкой наружу: главное доказательство продукта не
+// должно прятаться под раскрытием.
+.ft {
+  display: block;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 
-// Ответ на «что я получил за свои деньги» — первым экраном и крупно.
-// Три ячейки в том порядке, в каком эти вопросы задают: сколько людей
-// посмотрело, во сколько обошлась тысяча просмотров и что из этого можно
-// открыть и проверить самому.
-.vhero {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  margin-bottom: 16px;
+.ft .eyebrow {
+  margin: 0 0 8px;
+  color: var(--muted-2);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.vcell {
+.opens {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 18px 20px;
-  border: 1px solid var(--line-2, #2c313a);
-  border-radius: 16px;
-  background: var(--card-2, #181c22);
-
-  .k {
-    color: var(--muted);
-    font-size: 12px;
-    letter-spacing: 0.02em;
-  }
-
-  // Числа моноширинным и крупно: это те цифры, ради которых экран и
-  // открывают, и в столбце они обязаны стоять разряд под разрядом.
-  .v {
-    font-family: var(--mono);
-    font-size: clamp(28px, 2.6vw + 16px, 40px);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.05;
-  }
-
-  .d {
-    color: var(--muted-2);
-    font-size: 12px;
-    line-height: 1.45;
-  }
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-// Заголовок нижней половины страницы. Деньги идут после доказательств:
-// «сколько платить» — второй вопрос заказчика, а не первый.
-.mtitle {
-  margin: 26px 0 12px;
-}
-
-// Подпись под списком роликов: значок площадки — ссылка. Говорим об этом
-// прямо, потому что это и есть то, чего нет ни в одном рекламном отчёте.
-.proof {
-  margin-bottom: 12px;
-}
-
-// Значок площадки, ведущий на сам ролик. Подчёркивания нет: значок и так
-// читается как кнопка, а подчёркнутые «TT» и «IG» превращаются в кашу.
-.plat.link {
-  cursor: pointer;
+.go {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: var(--card-2);
+  color: var(--text);
   text-decoration: none;
+  transition: border-color 0.15s;
 
   &:hover {
-    border-color: var(--green);
-    filter: brightness(1.25);
+    border-color: var(--line-3);
+  }
+
+  .pdot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+  }
+
+  .gl {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .gv {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .arr {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  // Ссылки нет: площадка отмечена, а URL не сдан. Мёртвая ссылка хуже
+  // её отсутствия, поэтому кнопкой это и не выглядит — нажимать нечего.
+  &.off {
+    border-style: dashed;
+    background: none;
+    color: var(--muted);
+    cursor: default;
+  }
+
+  .nolink {
+    color: var(--muted-2);
+    font-size: 12px;
   }
 }
 
-// Счёт месяца отдельной полосой: «сколько платить» — не пятый кубик в
-// ряду с лайками, а свой вопрос со своей строкой.
+// Счёт периода. «Сколько платить» — не пятый кубик в ряду с лайками, а
+// свой вопрос со своей строкой, и сумма в нём набрана тем же кеглем и
+// той же гарнитурой, что просмотры наверху: это числа одного разговора.
 .billbar {
   display: flex;
   align-items: center;
   gap: 22px;
   margin-bottom: 16px;
-  padding: 16px 20px;
-  border: 1px solid var(--line-2, #2c313a);
+  padding: 20px 22px;
+  border: 1px solid var(--line-2);
   border-radius: 16px;
-  background: var(--card-2, #181c22);
+  background: var(--card-2);
   flex-wrap: wrap;
 
   .sum {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-
-    .k {
-      color: var(--muted, #8c94a0);
-      font-size: 11.5px;
-      letter-spacing: 0.02em;
-    }
-
-    b {
-      font-family: var(--mono);
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-    }
+    gap: 5px;
   }
 
-  .parts {
-    display: flex;
-    gap: 22px;
-    flex: 1;
-    min-width: 240px;
-    flex-wrap: wrap;
-    color: var(--muted, #8c94a0);
-    font-size: 12.5px;
-
-    b {
-      display: block;
-      margin-top: 2px;
-      color: var(--text);
-      font-family: var(--mono);
-      font-size: 14px;
-    }
-
-    i {
-      color: var(--muted-2, #616772);
-      font-style: normal;
-    }
+  .sum > b {
+    font-family: var(--font-head);
+    font-size: 34px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
   }
-}
 
-// Плашки состояния периода в строке счёта. Их две, и выглядят они
-// по-разному намеренно: «предварительно» значит «подожди, изменится»,
-// «приблизительно» — «период подытожен, но мерить было нечем».
-.billbar .sum {
+  // Плашки состояния периода. Их две, и выглядят они по-разному
+  // намеренно: «предварительно» значит «подожди, изменится»,
+  // «приблизительно» — «период подытожен, но мерить было нечем».
   .state {
     align-self: flex-start;
-    border-radius: 999px;
     padding: 1px 9px;
+    border-radius: 999px;
     font-size: 11px;
     line-height: 1.6;
   }
@@ -374,100 +579,244 @@
   }
 
   .approx {
-    border: 1px dashed var(--line-2, #2c313a);
-    color: var(--muted, #8c94a0);
+    border: 1px dashed var(--line-2);
+    color: var(--muted);
+  }
+
+  // Порядок оплаты словами, не кнопкой: спрашивают здесь «сколько и
+  // куда платить», а не «как вы это посчитали».
+  .how {
+    flex: 1;
+    min-width: 280px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+}
+
+// ── уведомления: полоса внизу, а не вкладка ──────────────
+//
+// Вкладки «Уведомления» больше нет вовсе. Это настройка — галочки «что
+// мне слать в бот», — а не раздел отчёта, и даже отодвинутая к краю ряда
+// она стояла среди разделов и обещала содержание того же рода. Экран
+// показывают начальству; личные галочки в одном клике от отчёта однажды
+// покажут вместе с ним.
+//
+// Имена классов проверены по словарю .crm-page: правила оттуда достают до
+// содержимого компонента (инкапсуляция защищает наружу, но не внутрь), и
+// занятое имя увозит блок неизвестно куда. .prefs/.prefs-toggle/.prefs-body
+// в словаре свободны. А вот .ck внутри — НАРОЧНО из словаря: это тот же
+// чекбокс, что везде в CRM, и свой был бы вторым.
+.prefs {
+  margin: 28px 0 0;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.prefs-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--muted-2);
+  font-size: 12.5px;
+
+  &:hover {
+    color: var(--text);
+  }
+
+  .chev {
+    font-size: 11px;
+    line-height: 1;
+  }
+}
+
+.prefs-body {
+  padding-top: 6px;
+  max-width: 52ch;
+}
+
+// «Из чего сложилась сумма» на вкладке «Деньги» больше нет: разбор по
+// ставкам стоит наверху страницы, над вкладками, и виден с любой из них.
+// Два разложения одной суммы на одном экране человек первым делом идёт
+// сверять.
+
+// Подпись суммы — одним словарём на обе плашки.
+.billbar .sum .k,
+.duebar .dd .k {
+  color: var(--muted-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+// Состав счёта — один словарь на обе плашки: и у текущего периода, и у
+// подытоженного это одни и те же слагаемые. Две копии разошлись бы
+// кеглем на первой же правке, и один и тот же счёт выглядел бы
+// по-разному в зависимости от того, закрыт период или нет.
+.duebar .parts {
+  display: flex;
+  gap: 22px;
+  flex: 1;
+  min-width: 240px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12.5px;
+
+  b {
+    display: block;
+    margin-top: 2px;
+    color: var(--text);
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  b.ice {
+    color: var(--ice);
+  }
+
+  i {
+    display: block;
+    color: var(--muted-2);
+    font-style: normal;
   }
 }
 
 // Счёт за подытоженный прошлый период. Заметнее обычной плитки: это
 // единственное место, где от заказчика ждут действия с деньгами.
+// Счёт за прошлый период. Единственное на странице, что требует
+// действия, — и выглядеть он обязан соответственно.
+//
+// Прежняя плашка была ростом со строку и стояла между двумя другими
+// такими же: «к оплате 1 050 000 ₽» читалось наравне с подписью к
+// графику, и в глаза бросалась ровно настолько же. Здесь она крупнее
+// всего вокруг: поля вдвое шире, сумма кеглем заголовка, слева цветная
+// полоса — на неё натыкаешься, а не ищешь её.
+//
+// Зелёный, а не красный: заказчик ничего не нарушил, счёт просто
+// закрыт и ждёт оплаты. Красным мы показываем сломанное.
 .duebar {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 22px;
-  margin-bottom: 16px;
-  padding: 16px 20px;
-  border: 1px solid rgb(82 196 26 / 30%);
-  border-radius: 16px;
-  background: rgb(82 196 26 / 6%);
+  gap: 28px;
+  margin-bottom: 22px;
+  padding: 24px 26px 24px 30px;
+  border: 1px solid rgb(82 196 26 / 34%);
+  border-radius: 18px;
+  background: rgb(82 196 26 / 7%);
   flex-wrap: wrap;
 
+  // Полоса слева: плашка узнаётся боковым зрением раньше, чем её
+  // прочтут. Псевдоэлементом, а не border-left — скругление угла
+  // рамкой в 4px выглядит сколом.
+  &::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    bottom: 14px;
+    left: 0;
+    width: 4px;
+    border-radius: 0 4px 4px 0;
+    background: var(--green);
+  }
+
+  // Числа те же, что у текущего периода, и набраны так же: разница
+  // между «пока идёт» и «пора платить» — в рамке и полосе слева, а не
+  // в кегле. Своя типографика здесь означала бы, что это другой счёт.
   .dd {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-
-    .k {
-      color: var(--muted, #8c94a0);
-      font-size: 11.5px;
-      letter-spacing: 0.02em;
-    }
-
-    b {
-      font-family: var(--mono);
-      font-size: 26px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-    }
-
-    .r {
-      color: var(--muted-2, #616772);
-      font-size: 12px;
-    }
+    gap: 5px;
   }
 
-  .parts {
-    display: flex;
-    gap: 22px;
-    flex: 1;
-    min-width: 200px;
-    flex-wrap: wrap;
-    color: var(--muted, #8c94a0);
-    font-size: 12.5px;
+  .dd > b {
+    font-family: var(--font-head);
+    font-size: 38px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
 
-    b {
-      display: block;
-      margin-top: 2px;
+  .dd .r {
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  // Признак приблизительности стоит СНАРУЖИ ката, у самой суммы: то, что
+  // часть чисел подтянута, — это про счёт, а не про порядок оплаты, и
+  // прятать его нельзя. Под катом лежит объяснение почему.
+  .approx {
+    padding: 1px 8px;
+    border: 1px dashed rgb(82 196 26 / 34%);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  // Кат. Оговорки — про «как так вышло», а не про «сколько и куда
+  // платить»: развёрнутыми они давали плашке четыре абзаца, в которых
+  // сумма читалась наравне с объяснением, почему просмотры подтянуты.
+  .how-toggle {
+    margin: 4px 0 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 12.5px;
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    cursor: pointer;
+
+    &:hover {
       color: var(--text);
-      font-family: var(--mono);
-      font-size: 14px;
-    }
-
-    i {
-      display: block;
-      color: var(--muted-2, #616772);
-      font-style: normal;
     }
   }
 
-  .warn {
+  .how {
     width: 100%;
-    margin: 0;
-    color: var(--muted, #8c94a0);
+    margin: 10px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid rgb(82 196 26 / 20%);
+    color: var(--muted);
     font-size: 12.5px;
-    line-height: 1.5;
-  }
-}
+    line-height: 1.55;
 
-// Разбор ролика по площадкам. .prow/.pu/.pv описаны в _crm.scss —
-// здесь только раскрытие и колонка ER, которой у менеджера нет.
-.det {
-  margin-top: 10px;
-  padding-top: 4px;
-  border-top: 1px solid var(--line, #23272d);
+    p {
+      margin: 0 0 8px;
+    }
 
-  .er {
-    min-width: 74px;
-    color: var(--muted, #8c94a0);
-    font-family: var(--mono);
-    font-size: 12px;
-    text-align: right;
+    p:last-child {
+      margin-bottom: 0;
+    }
   }
 }
 
 // Дата выхода рядом с названием: подпись — название, дата уточняет.
 .t .when {
-  color: var(--muted-2, #616772);
+  color: var(--muted-2);
   font-family: var(--mono);
   font-size: 11.5px;
+}
+
+// Пустая вкладка, названная словами.
+//
+// «Нет данных» и «сбой загрузки» на экране различаются только тем, что
+// первое подписано. Тон приглушённый: это не тревога и не ошибка, а
+// состояние проекта, у которого просто ещё ничего не вышло.
+.empty-note {
+  margin: 18px 0;
+  max-width: 64ch;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.55;
 }

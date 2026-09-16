@@ -152,6 +152,13 @@ export function linksCollected(items: Publication[]): { done: number; total: num
   };
 }
 
+// Выкладка закрыта: сдана целиком или закрыта менеджером руками.
+// Отдельным предикатом, а не повтором условия по месту: по этому же
+// признаку тач-слой сворачивает уже сделанное.
+export function isClosed(pub: Publication): boolean {
+  return pub.status === 'done' || pub.status === 'closed_manually';
+}
+
 export function closedCount(items: Publication[]): number {
-  return items.filter((p) => p.status === 'done' || p.status === 'closed_manually').length;
+  return items.filter(isClosed).length;
 }

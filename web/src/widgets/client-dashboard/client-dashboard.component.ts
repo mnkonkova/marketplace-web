@@ -1,13 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+import { formatMoney } from '@entities/billing/lib/money';
+import { LADDER_STEP } from '@entities/billing/lib/ladder';
 import {
   RANGE_LABEL,
   RANGE_OF,
   RANGE_PREV,
   RANGE_TABS,
-  formatDelta,
-  initials,
   platformShares,
   windowCaption,
 } from '@entities/billing/lib/overview';
@@ -21,11 +21,16 @@ import {
   PLATFORM_LABEL,
   PLATFORM_SHORT,
 } from '@entities/publication/lib/publication-status';
+import { ALL_PLATFORMS } from '@entities/publication/model/publication.types';
 import type { Platform } from '@entities/publication/model/publication.types';
 import { formatAgo, plural } from '@shared/lib/format';
+import { cumulativeSeries, sumSeries } from '@shared/lib/chart-series';
 import type { SeriesPoint } from '@shared/lib/chart-series';
-import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
 import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
+import type { ChartSeries } from '@shared/ui/line-chart/line-chart.component';
+import { NodataComponent } from '@shared/ui/nodata/nodata.component';
+import { StepsComponent } from '@shared/ui/steps/steps.component';
+import { TariffLadderComponent } from '@widgets/tariff-ladder/tariff-ladder.component';
 
 import { CountUpDirective } from './count-up.directive';
 
@@ -57,10 +62,17 @@ import { CountUpDirective } from './count-up.directive';
 @Component({
   selector: 'app-client-dashboard',
   standalone: true,
-  imports: [CommonModule, ErValueComponent, LineChartComponent, CountUpDirective],
+  imports: [
+    CommonModule,
+    LineChartComponent,
+    NodataComponent,
+    StepsComponent,
+    TariffLadderComponent,
+    CountUpDirective,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './client-dashboard.component.html',
-  styleUrl: './client-dashboard.component.scss',
+  styleUrls: ['./client-dashboard.component.scss', './client-dashboard.component.touch.scss'],
 })
 export class ClientDashboardComponent {
   public readonly data = input<ClientOverview | null>(null);
@@ -88,15 +100,80 @@ export class ClientDashboardComponent {
 
   public readonly platformColor = PLATFORM_COLOR;
 
+  public readonly money = formatMoney;
+
+  /**
+   * Цена тысячи просмотров — за ВСЁ ВРЕМЯ, в отличие от всего остального
+   * в этом ряду. Приходит с сервера посчитанной из фактических сумм: у
+   * разных проектов разные версии условий, и средняя ставка тарифа
+   * соврала бы. Пусто, пока просмотров нет, — делить не на что.
+   */
+  public readonly costPer1000 = computed(() => this.data()?.cost_per_1000 ?? 0);
+
+  /**
+   * Цена тысячи крупно: число одним кеглем, единица — мелкой пометкой.
+   *
+   * Режем готовую строку formatMoney по неразрывному пробелу, а не
+   * форматируем второй раз своими руками: правило «дробную часть только
+   * когда она есть» живёт там, и вторая его копия здесь однажды
+   * показала бы «56,00 ₽» рядом с «56 ₽».
+   */
+  private readonly costParts = computed(() => this.money(this.costPer1000()).split(' '));
+
+  public readonly costHead = computed(() => this.costParts()[0] ?? '');
+
+  public readonly costUnit = computed(() => this.costParts()[1] ?? '');
+
+  /**
+   * Тарифная лесенка: почему тысяча стоит столько, сколько показано.
+   *
+   * Приходит с сервера ПОСЧИТАННОЙ и только тогда, когда сходится с
+   * ценой тысячи рядом. В браузере тариф не считаем никогда: вторая
+   * реализация ступеней разошлась бы со счётом молча, и заметили бы это
+   * в день оплаты.
+   */
+  public readonly tariff = computed(() => this.data()?.tariff ?? null);
+
+  /** Шаг шкалы насечек. Тот же, что у креатора и у менеджера. */
+  public readonly ladderStep = LADDER_STEP;
+
+  /** Сколько площадок под один ролик. «5» числом в разметке — враньё на будущее. */
+  public readonly platformsTotal = ALL_PLATFORMS.length;
+
+  /** «30 ступеней» — подпись к насечкам, со склонением. */
+  public readonly steps = computed(() => {
+    const n = Math.floor(this.views() / LADDER_STEP);
+    return `${n} ${plural(n, 'ступень', 'ступени', 'ступеней')}`;
+  });
+
+  /**
+   * ER строкой: «3,3%».
+   *
+   * Звёздочки здесь нет намеренно — оговорка про репосты раскрыта
+   * словами в той же строке. Сноска-звёздочка отправляла читателя искать
+   * расшифровку, которой рядом не было.
+   */
+  public readonly erText = computed(() => {
+    const p = this.window()?.er_percent;
+    return p == null ? '' : `${p.toFixed(1).replace('.', ',')}%`;
+  });
+
   public plural(n: number, one: string, few: string, many: string): string {
     return plural(n, one, few, many);
   }
 
-  public readonly who = computed(() => this.clientName().trim() || 'Ваши проекты');
-
-  public readonly avatar = computed(() => initials(this.clientName()));
-
   public readonly caption = computed(() => windowCaption(this.range(), this.data()?.range_label));
+
+  /**
+   * Заголовок блока с роликами.
+   *
+   * «Залетевшие ролики» обещали отбор из многих, а показывали всё, что
+   * есть: у проекта с одним роликом «залетевшим» объявлялся
+   * единственный. Слово должно обещать ровно то, что под ним лежит.
+   */
+  public readonly clipsTitle = computed(() =>
+    this.topVideos().length === 1 ? 'Ролик, который это сделал' : 'Ролики, которые это сделали',
+  );
 
   public pick(r: OverviewRange): void {
     if (r !== this.range()) this.rangeChange.emit(r);
@@ -117,8 +194,6 @@ export class ClientDashboardComponent {
 
   public readonly views = computed(() => this.window()?.views ?? 0);
 
-  public readonly viewsDelta = computed(() => formatDelta(this.window()?.views_delta_pct));
-
   /**
    * Состав просмотров по площадкам.
    *
@@ -132,44 +207,100 @@ export class ClientDashboardComponent {
   /** Есть ли что рисовать полосой: у проекта без роликов состава нет. */
   public readonly hasShares = computed(() => this.shares().some((s) => s.views > 0));
 
-  // ---- отклик, тоже за окно ----
+  // ---- приростов на этом экране больше нет ----
+  //
+  // Было четыре плитки с прочерком «—» под каждым числом: у нового
+  // проекта прошлого такого же окна ещё нет, и сравнивать не с чем
+  // НИГДЕ. Прочерк при этом читается как ноль, то есть как «не выросло»,
+  // — мы утверждали то, чего не знаем, в четырёх местах сразу. Пустого
+  // слота под неизвестное число быть не должно вовсе: когда сравнивать
+  // будет с чем, прирост вернётся туда, где он что-то значит, а не в
+  // ряд одинаковых рамок.
+  //
+  // Разбор приростов (formatDelta) остался в entities/billing/lib —
+  // он ещё нужен другим экранам.
 
-  public readonly commentsDelta = computed(() => formatDelta(this.window()?.comments_delta_pct));
+  // ---- главный график: разбор по площадкам плюс общая ----
+  //
+  // НАКОПИТЕЛЬНЫЙ, и это не вкусовщина. Над графиком стоит итог за окно,
+  // и линия обязана показывать ту же величину: поденный прирост
+  // естественно затухает — ролик выстреливает и остывает, — и под
+  // числом-итогом такая линия читается как падение самого итога. Именно
+  // из-за этого график здесь раньше не рисовался вовсе: порог в неделю
+  // прятал падающую линию на коротком ряде. Накопление приходит ровно в
+  // то число, что стоит сверху, и прятать становится нечего.
+  //
+  // Площадки своими цветами — теми же, что у кружков в составе
+  // просмотров строкой выше. Общая линия поверх и толще: она итог, а не
+  // шестая площадка, и цвет у неё не брендовый, а цвет текста — это «всё
+  // вместе», а не ещё одна площадка, которую забыли назвать.
 
-  public readonly engagementDelta = computed(() =>
-    formatDelta(this.window()?.engagement_delta_pct),
-  );
-
-  /** У ER прирост в ПУНКТАХ: «вырос на 7%» от 4,4% читается двояко. */
-  public readonly erDelta = computed(() => formatDelta(this.window()?.er_delta_pp, 'pp'));
-
-  // ---- площадки ----
-
-  public deltaOf(pct: number | undefined) {
-    return formatDelta(pct);
-  }
+  /** Есть ли из чего рисовать: хотя бы у одной площадки ряд из двух дней. */
+  public readonly hasChart = computed(() => this.chartSeries().length > 0);
 
   /**
-   * Прироста нет ни у одной площадки.
+   * График роста на телефоне свёрнут.
    *
-   * У нового проекта это обычное состояние: прошлого такого же окна ещё
-   * не было, и сравнивать не с чем нигде. Сказать об этом надо один раз
-   * на весь блок — пять одинаковых оговорок в пяти карточках подряд
-   * читаются как сломанная вёрстка, а не как честность, и за ними
-   * перестают видеть саму мысль.
+   * Он про «как набралось», а число над ним — про «сколько». Шесть
+   * линий на 358 пикселях ширины без курсора не читаются: подсказку по
+   * дню, ради которой график и держат, пальцем не вызвать. Четыреста
+   * пикселей за это — слишком дорого, и сразу под ними идут площадки,
+   * которые отвечают на тот же вопрос числами.
    *
-   * Когда прирост есть хотя бы у одной, общей оговорки нет: она была бы
-   * неправдой. Там, где прироста нет, подвал карточки просто не рисуется
-   * — пустое место честнее прочерка, который читается как ноль.
+   * Прячет только медиазапрос в тач-слое; на десктопе график открыт.
    */
-  public readonly noPlatformDeltas = computed(
-    () => this.hasShares() && !this.shares().some((s) => formatDelta(s.deltaPct).known),
-  );
+  public readonly chartFolded = signal(true);
 
-  /** Ряд мини-графика. Ноль остаётся нулём, пропущенного дня в ряду нет. */
-  public seriesOf(points: readonly { date: string; views_gained: number }[]): SeriesPoint[] {
-    return points.map((p) => ({ date: p.date, value: p.views_gained }));
+  public toggleChartFold(): void {
+    this.chartFolded.set(!this.chartFolded());
   }
+
+  public readonly chartSeries = computed<ChartSeries[]>(() => {
+    // В разбор идут только площадки, по которым ряд вообще есть: линия
+    // из нуля точек — это не пустая линия, это пустая подпись в легенде.
+    const rows = this.shares().filter((s) => s.series.length >= 2);
+    if (!rows.length) return [];
+
+    const gains = rows.map((s) => s.series.map((p) => ({ date: p.date, value: p.views_gained })));
+    const platforms: ChartSeries[] = rows.map((s, i) => ({
+      key: s.platform,
+      label: PLATFORM_LABEL[s.platform],
+      color: PLATFORM_COLOR[s.platform],
+      points: cumulativeSeries(gains[i]),
+    }));
+
+    // Общая линия — сумма тех же слагаемых, а не второй ряд с сервера:
+    // складываем поденный прирост площадок, который сервер и разложил.
+    // Поэтому её правый конец в точности равен числу над графиком; ряд
+    // за всё время (90 дней) там дал бы другую величину под тем же
+    // заголовком.
+    const total: ChartSeries = {
+      key: 'all',
+      label: 'Все площадки',
+      color: 'var(--text)',
+      points: cumulativeSeries(sumSeries(gains)),
+      lead: true,
+    };
+    // Одна площадка — общая линия ляжет ровно на неё: вторая линия по
+    // тем же точкам не добавляет ничего, кроме лишней строки в легенде.
+    return platforms.length === 1 ? platforms : [...platforms, total];
+  });
+
+  /**
+   * Лучший день окна — подпись под графиком.
+   *
+   * Считается по ПРИРОСТУ, а не по накоплению: у накопительной линии
+   * «лучший день» всегда последний, и подпись превратилась бы в
+   * бессмыслицу. Накопление отвечает на «сколько всего», прирост — на
+   * «когда выстрелило»; на графике стоит первое, в подписи второе.
+   */
+  public readonly bestDay = computed<SeriesPoint | null>(() => {
+    const daily = sumSeries(
+      this.shares().map((s) => s.series.map((p) => ({ date: p.date, value: p.views_gained }))),
+    );
+    if (!daily.length) return null;
+    return daily.reduce((best, p) => (p.value > best.value ? p : best), daily[0]);
+  });
 
   // ---- залетевшие ролики ----
   //

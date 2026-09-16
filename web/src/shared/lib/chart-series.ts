@@ -50,16 +50,41 @@ export function dayNumber(date: string): number | null {
  * это не два дня, а один, посчитанный дважды.
  */
 export function placeSeries(points: readonly SeriesPoint[]): PlacedPoint[] {
-  const byDay = new Map<number, PlacedPoint>();
-  for (const p of points) {
-    const n = dayNumber(p.date);
-    if (n === null || !Number.isFinite(p.value)) continue;
-    byDay.set(n, { date: p.date, value: p.value, day: n });
+  return placeAll([points])[0] ?? [];
+}
+
+/**
+ * Несколько рядов на ОДНОЙ оси времени.
+ *
+ * Нужно там, где на графике больше одной линии: у площадок разные дни
+ * первого замера, и разложенные каждый от своего начала ряды встали бы
+ * друг относительно друга со сдвигом — TikTok, начавший на три дня
+ * раньше, рисовался бы над теми же днями, что и Reels. Ось времени
+ * общая, значит и ноль на ней обязан быть общий: берём самый ранний
+ * день из всех рядов.
+ *
+ * Порядок рядов на выходе тот же, что на входе: вызывающий сопоставляет
+ * их со своими цветами и подписями по индексу.
+ */
+export function placeAll(series: readonly (readonly SeriesPoint[])[]): PlacedPoint[][] {
+  const cleaned = series.map((points) => {
+    const byDay = new Map<number, PlacedPoint>();
+    for (const p of points) {
+      const n = dayNumber(p.date);
+      if (n === null || !Number.isFinite(p.value)) continue;
+      byDay.set(n, { date: p.date, value: p.value, day: n });
+    }
+    return [...byDay.values()].sort((a, b) => a.day - b.day);
+  });
+
+  let base: number | null = null;
+  for (const run of cleaned) {
+    if (!run.length) continue;
+    if (base === null || run[0].day < base) base = run[0].day;
   }
-  const sorted = [...byDay.values()].sort((a, b) => a.day - b.day);
-  if (!sorted.length) return [];
-  const base = sorted[0].day;
-  return sorted.map((p) => ({ ...p, day: p.day - base }));
+  if (base === null) return cleaned;
+  const zero = base;
+  return cleaned.map((run) => run.map((p) => ({ ...p, day: p.day - zero })));
 }
 
 /**
@@ -117,4 +142,83 @@ export function labelledPoints(placed: readonly PlacedPoint[], max = 6): PlacedP
   const last = placed[placed.length - 1];
   if (out[out.length - 1]?.day !== last.day) out.push(last);
   return out;
+}
+
+/**
+ * Сколько дней должно быть в ряду, чтобы линия что-то значила.
+ *
+ * Неделя. На двух точках график рисует «тренд» из ниоткуда: заголовок
+ * обещает рост, а линия идёт вниз просто потому, что вторая точка меньше
+ * первой. Форма врёт даже тогда, когда оба числа верны.
+ *
+ * Константа одна на все графики продукта намеренно: свои пороги в каждом
+ * виджете разъехались бы, и объяснять, почему здесь линия есть, а там на
+ * тех же данных нет, пришлось бы голосом.
+ */
+export const SERIES_MIN_DAYS = 7;
+
+/**
+ * Ряда не хватает даже на неделю.
+ *
+ * Что с этим делать — решает место: большой график и мини-график просто
+ * не рисуются, а переключатель глубины в статистике проекта остаётся, но
+ * говорит, за сколько дней вообще есть числа (кнопка, от которой ничего
+ * не меняется, читается как сломанная).
+ */
+export function seriesTooShort(days: number): boolean {
+  return days <= SERIES_MIN_DAYS;
+}
+
+/**
+ * Поденные приросты — в накопление.
+ *
+ * Нужно там, где рядом с линией стоит ИТОГ за окно. Прирост по дням
+ * естественно затухает — ролик выстреливает и остывает, — и линия
+ * прироста под числом-итогом читается как падение того самого итога.
+ * Накопление приходит ровно в число, которое стоит над графиком, и
+ * спорить с ним перестаёт.
+ *
+ * Даты сохраняются как есть: пропущенный день остаётся пропущенным, и
+ * линию на нём по-прежнему рвёт splitGaps. Накопленная сумма через дыру
+ * переносится — это верно: просмотры за непромеренные дни не исчезли,
+ * мы их просто не мерили.
+ */
+export function cumulativeSeries(points: readonly SeriesPoint[]): SeriesPoint[] {
+  const sorted = [...points]
+    .map((p) => ({ p, n: dayNumber(p.date) }))
+    .filter((x): x is { p: SeriesPoint; n: number } => x.n !== null)
+    .sort((a, b) => a.n - b.n);
+  let sum = 0;
+  return sorted.map(({ p }) => {
+    sum += Number.isFinite(p.value) ? p.value : 0;
+    return { date: p.date, value: sum };
+  });
+}
+
+/**
+ * Сумма нескольких рядов по дням — «общая» линия над разбором.
+ *
+ * Считать сумму в браузере можно ровно потому, что это те же слагаемые:
+ * сервер разложил один и тот же поденный прирост по площадкам, и его
+ * сумма по определению равна тому итогу, который сервер поставил над
+ * графиком. Никакой второй арифметики здесь нет — будь у нас хоть одна
+ * своя ставка или доля, считать пришлось бы там же, где считают деньги.
+ *
+ * День, которого нет ни в одном ряду, не появляется и в сумме:
+ * подставить ему ноль значило бы нарисовать провал в день, когда просто
+ * не собирали. День, который есть хотя бы у одной площадки, в сумму
+ * идёт — по остальным в этот день прироста мы не знаем, и складываем
+ * то, что измерено.
+ */
+export function sumSeries(series: readonly (readonly SeriesPoint[])[]): SeriesPoint[] {
+  const byDay = new Map<number, SeriesPoint>();
+  for (const run of series) {
+    for (const p of run) {
+      const n = dayNumber(p.date);
+      if (n === null || !Number.isFinite(p.value)) continue;
+      const prev = byDay.get(n);
+      byDay.set(n, { date: p.date, value: (prev?.value ?? 0) + p.value });
+    }
+  }
+  return [...byDay.entries()].sort((a, b) => a[0] - b[0]).map(([, p]) => p);
 }

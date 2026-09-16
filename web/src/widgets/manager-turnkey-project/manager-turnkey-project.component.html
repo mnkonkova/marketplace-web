@@ -48,7 +48,13 @@
            клиенту из любой вкладки, а не только с последней. -->
       <p class="aside-lbl">Контакты</p>
       <div class="card tight contacts">
-        <b>{{ project().client?.display_name || '—' }}</b>
+        <!-- Имени может не быть: клиент не заполнил профиль. Прочерк на
+             этом месте выглядел как «поле сломано». -->
+        @if (project().client?.display_name; as name) {
+          <b>{{ name }}</b>
+        } @else {
+          <b class="noname">имя не указано</b>
+        }
         @if (project().client?.email) {
           <a [href]="'mailto:' + project().client!.email">{{ project().client!.email }}</a>
         }
@@ -126,42 +132,123 @@
 
       <!-- Предоплата. Система порядок не сторожит: деньги приходят мимо
            неё, и остановить проект ей нечем. Поэтому не запрет, а
-           предупреждение — и ровно тогда, когда расхождение уже есть. -->
+           предупреждение — и ровно тогда, когда расхождение уже есть.
+
+           Было три строки прозы одним кеглем, и СУММЫ в них не было
+           вовсе — ни сколько получено, ни сколько начислено. То есть
+           тревога не говорила, на сколько тревожиться. Теперь порядок
+           обратный: слева сумма, которой не хватает, посередине факт
+           одной строкой, справа кнопка. Объяснение — мельче, под фактом:
+           его читают один раз, а сумму каждый день.
+
+           Полученное — это НОЛЬ, а не «нет данных»: платежей не было ни
+           одного, и это измеренный факт. Отсюда app-zero полным
+           типографским весом. -->
       @if (prepaymentRisk()) {
-        <div class="riskbar warn">
-          <span class="ic">₽</span>
-          <span class="tx">
-            <b>Работа идёт, предоплата не подтверждена</b> —
-            @if (prepaymentAwaited()) {
-              сумма выставлена, но деньги не отмечены полученными.
-            } @else {
-              предоплата по проекту вообще не заведена.
-            }
-            Выкладки уже стоят в плане: договорённость — предоплата до старта, и сейчас она
-            нарушена. Сумма и отметка «Деньги пришли» — во вкладке «Начисления».
+        <div class="riskbar warn money">
+          <span class="ic" aria-hidden="true">!</span>
+          <span class="sum">
+            <app-zero [value]="money(receivedFromClient())" note="получено от клиента" size="m" />
           </span>
+          <span class="tx">
+            <b>
+              @if (prepaymentAwaited()) {
+                Предоплата выставлена, но деньги не отмечены полученными.
+              } @else {
+                Предоплата не заведена, а выкладки уже идут.
+              }
+            </b>
+            <span class="cap">
+              Договорённость — предоплата до старта, и сейчас она нарушена. Сдано
+              {{ closedCount() }}
+              {{ plural(closedCount(), 'выкладка', 'выкладки', 'выкладок') }}, начислено
+              {{ money(accruedTotal()) }} за период.
+            </span>
+          </span>
+          <!-- Кнопка — только когда начисления НЕ открыты. Полоса стоит
+               над вкладками и рисуется всегда, а на самой вкладке
+               «Начисления» этот переход вёл туда, где человек уже стоит:
+               нажатие не меняло ничего. Мёртвая кнопка в главном месте
+               тревожной полосы хуже её отсутствия — она обещает
+               действие, которого нет. Сам факт при этом остаётся: полоса
+               по-прежнему говорит, чего не хватает и на сколько. -->
+          @if (tab() !== 'pay') {
+            <button type="button" class="btn primary sm" (click)="setTab('pay')">
+              Открыть начисления
+            </button>
+          }
         </div>
       }
 
       <!-- Порядок вкладок — по частоте обращения: переписка ежедневная,
-           статистика и деньги — отчётность раз в период. -->
-      <div class="tabs" role="tablist">
-        <button type="button" class="tab" [class.on]="tab() === 'plan'" (click)="setTab('plan')">
+           статистика и деньги — отчётность раз в период.
+
+           role="tab" и aria-selected — не формальность. Полоса объявлена
+           tablist'ом, а внутри лежали обычные кнопки: программа чтения с
+           экрана называла список вкладок, в котором вкладок нет, и не
+           говорила, какая открыта. Заодно исчезает двусмысленность для
+           всех, кто ищет кнопку по названию: «Начисления» — вкладка,
+           «Открыть начисления» — быстрый переход из предупреждения над
+           ней, и совпадать они не должны. -->
+      <div class="tabs" role="tablist" aria-label="Разделы проекта">
+        <button
+          type="button"
+          class="tab"
+          role="tab"
+          [class.on]="tab() === 'plan'"
+          [attr.aria-selected]="tab() === 'plan'"
+          (click)="setTab('plan')"
+        >
           План выкладок<span class="cnt">{{ livePublications().length }}</span>
         </button>
-        <button type="button" class="tab" [class.on]="tab() === 'crew'" (click)="setTab('crew')">
+        <button
+          type="button"
+          class="tab"
+          role="tab"
+          [class.on]="tab() === 'crew'"
+          [attr.aria-selected]="tab() === 'crew'"
+          (click)="setTab('crew')"
+        >
           Креаторы<span class="cnt">{{ crew().length }}</span>
         </button>
-        <button type="button" class="tab" [class.on]="tab() === 'talk'" (click)="setTab('talk')">
+        <button
+          type="button"
+          class="tab"
+          role="tab"
+          [class.on]="tab() === 'talk'"
+          [attr.aria-selected]="tab() === 'talk'"
+          (click)="setTab('talk')"
+        >
           Комментарии
         </button>
-        <button type="button" class="tab" [class.on]="tab() === 'stats'" (click)="setTab('stats')">
+        <button
+          type="button"
+          class="tab"
+          role="tab"
+          [class.on]="tab() === 'stats'"
+          [attr.aria-selected]="tab() === 'stats'"
+          (click)="setTab('stats')"
+        >
           Статистика
         </button>
-        <button type="button" class="tab" [class.on]="tab() === 'pay'" (click)="setTab('pay')">
+        <button
+          type="button"
+          class="tab"
+          role="tab"
+          [class.on]="tab() === 'pay'"
+          [attr.aria-selected]="tab() === 'pay'"
+          (click)="setTab('pay')"
+        >
           Начисления
         </button>
-        <button type="button" class="tab" [class.on]="tab() === 'mat'" (click)="setTab('mat')">
+        <button
+          type="button"
+          class="tab"
+          role="tab"
+          [class.on]="tab() === 'mat'"
+          [attr.aria-selected]="tab() === 'mat'"
+          (click)="setTab('mat')"
+        >
           Материалы
         </button>
       </div>

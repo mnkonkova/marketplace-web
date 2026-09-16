@@ -24,12 +24,12 @@ import {
   MATERIAL_AUDIENCE_LABEL,
   MATERIAL_AUDIENCE_NOTE,
   MATERIAL_KIND_LABEL,
-  isValidMaterialUrl,
   materialsFor,
   sortMaterials,
   visibleTo,
 } from '@entities/publication/lib/materials';
 import { parseApiError } from '@shared/api/api-error';
+import { withScheme } from '@shared/lib/url';
 
 export type MaterialsRole = 'client' | 'creator' | 'manager';
 
@@ -139,16 +139,20 @@ export class ProjectMaterialsComponent {
       this.msg.error('Название обязательно — по нему материал ищут глазами.');
       return;
     }
-    // Ссылка обязана быть http(s): на другом бэк ответит invalid_input.
-    if (!isValidMaterialUrl(url)) {
-      this.msg.error('Ссылка должна начинаться с http:// или https://');
+    // Схему дописываем сами. Адрес копируют из строки браузера, а она
+    // давно показывает «vk.com/...» без «https://», и отказ на таком
+    // адресе — требование к человеку сделать то, что машина делает
+    // сама. Отказываем только когда это и не ссылка вовсе.
+    const link = withScheme(url);
+    if (!link) {
+      this.msg.error('Это не похоже на ссылку — нужен адрес вида vk.com/... или https://vk.com/...');
       return;
     }
     this.busy.set(true);
     this.api
       .managerAddMaterial(this.projectId(), {
         title,
-        url,
+        url: link,
         kind: this.newKind,
         audience: this.newAudience,
       })

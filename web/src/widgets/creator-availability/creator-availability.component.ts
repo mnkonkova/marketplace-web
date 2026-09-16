@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { OrderApi } from '@entities/order/api/order.api';
+import { plural } from '@shared/lib/format';
 import { parseApiError } from '@shared/api/api-error';
 
 // Своя занятость по месяцам. Её видят клиенты, когда расставляют
@@ -17,7 +18,10 @@ import { parseApiError } from '@shared/api/api-error';
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-availability.component.html',
-  styleUrl: './creator-availability.component.scss',
+  styleUrls: [
+    './creator-availability.component.scss',
+    './creator-availability.component.touch.scss',
+  ],
 })
 export class CreatorAvailabilityComponent {
   private readonly orders = inject(OrderApi);
@@ -54,6 +58,31 @@ export class CreatorAvailabilityComponent {
     }
     return out;
   });
+
+  /**
+   * Сколько месяцев видно на телефоне до разворота.
+   *
+   * Три: ближайший месяц отмечают почти всегда, следующий — часто, а
+   * дальше это уже планирование, за которым в кабинет не заходят. Шесть
+   * строк по две кнопки на 390px — экран с лишним под второстепенным.
+   * Прячет лишние строки только медиазапрос в тач-слое; на десктопе
+   * карточка остаётся целиком.
+   */
+  public readonly visibleOnPhone = 3;
+
+  public readonly folded = signal(true);
+
+  public readonly hiddenCount = computed(() =>
+    Math.max(0, this.months().length - this.visibleOnPhone),
+  );
+
+  public monthWord(): string {
+    return plural(this.hiddenCount(), 'месяц', 'месяца', 'месяцев');
+  }
+
+  public toggleFold(): void {
+    this.folded.set(!this.folded());
+  }
 
   // null — месяц не отмечен. Третье состояние, а не «занят по умолчанию».
   public stateOf(month: string): boolean | null {

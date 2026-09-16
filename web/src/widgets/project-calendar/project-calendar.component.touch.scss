@@ -1,0 +1,18 @@
+// Тач-слой календаря выкладок.
+//
+// Клетки дней и так растут по ширине карточки (aspect-ratio: 1), а вот
+// перелистывание месяца оставалось кнопкой 28×28 — самой мелкой целью
+// на всём экране проекта.
+
+@use 'touch' as touch;
+
+@include touch.phone {
+  .cal-head {
+    margin-bottom: 12px;
+
+    button {
+      width: touch.$tap-sm;
+      height: touch.$tap-sm;
+    }
+  }
+}

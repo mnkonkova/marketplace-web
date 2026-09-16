@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { AUTH_KEY, world } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Отбор в списках проектов: и у менеджера, и у админа.
@@ -23,6 +24,21 @@ const signIn = (context: import('@playwright/test').BrowserContext, role: 'manag
   );
 
 const total = (page: Page) => page.locator('[data-test="projects-total"]');
+
+/**
+ * Пункт РАСКРЫТОГО списка.
+ *
+ * Именно раскрытого: ng-zorro оставляет прежнюю выпадашку в разметке
+ * скрытой, и поиск по всем пунктам сразу находит два одинаковых — один
+ * живой, один из прошлого раскрытия.
+ */
+const option = (page: Page, label: string) =>
+  page
+    .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option')
+    .filter({ hasText: label })
+    // Последний: ng-zorro на каждое раскрытие вешает НОВЫЙ слой поверх
+    // прежнего, и прежний остаётся в разметке. Живой — тот, что сверху.
+    .last();
 
 test('менеджер сужает свой список запросом, и ссылка открывает ту же выборку', async ({
   context,
@@ -63,6 +79,30 @@ test('менеджер сужает свой список запросом, и �
   await expect(page.getByText('Под текущие фильтры ничего не попало.')).toBeVisible();
 });
 
+/**
+ * Свой проект под админский отбор.
+ *
+ * Прежде ветка проверялась на том, что лежало на стенде: «проектов с
+ * воронкой больше, чем с креаторами» — и это держалось ровно до тех пор,
+ * пока состав стенда не менялся. Сначала двести нагрузочных строк
+ * сделали сужение невидимым, потом их снесли — и на пустом стенде
+ * сужать стало нечего. В обоих случаях краснела эта спека, а причина
+ * была снаружи.
+ *
+ * Теперь она заводит своё и ищет его по уникальной метке: набор до
+ * фильтра известен, набор после — тоже.
+ */
+let kindBox: Sandbox;
+
+test.beforeAll(async () => {
+  kindBox = await createSandbox(`filters${String(Date.now()).slice(-5)}`, {
+    shape: 'empty',
+    isTest: false,
+  });
+});
+
+test.afterAll(() => dropSandbox(kindBox));
+
 test('у админа выбор ветки меняет набор, а не подсветку кнопки', async ({ context, page }) => {
   await signIn(context, 'admin');
 
@@ -87,10 +127,25 @@ test('у админа выбор ветки меняет набор, а не п�
 
   await page.goto('/admin/projects');
   await expect(page.locator('[data-test="project-row"]').first()).toBeVisible({ timeout: 15_000 });
+
+  // Сужаем до своего проекта: дальше и «до», и «после» — про него, а не
+  // про то, что сегодня оказалось на стенде.
+  await page.locator('[data-test="projects-search"]').fill(kindBox.tag);
+  await expect(total(page)).toHaveText('1', { timeout: 15_000 });
   const before = Number(await total(page).innerText());
 
+  // Чужая ветка: своё под неё не попадает, и это видно числом.
   await page.locator('[data-test="projects-kind"] .ant-select-selector').click();
-  await page.locator('.ant-select-item-option').filter({ hasText: 'Креаторы' }).click();
+  await option(page, 'Продакшн').click();
+  await expect(page).toHaveURL(/kind=production_turnkey/);
+  await expect(total(page), 'проект не той ветки в выдачу не попал').toHaveText('0', {
+    timeout: 15_000,
+  });
+  await expect(page.getByText('Под текущие фильтры ничего не попало.')).toBeVisible();
+
+  // А своя — возвращает его на место.
+  await page.locator('[data-test="projects-kind"] .ant-select-selector').click();
+  await option(page, 'Креаторы').click();
   await expect(page).toHaveURL(/kind=creators_turnkey/);
 
   // Отбор идёт на сервере, и главное здесь — что параметр туда доехал.
@@ -101,13 +156,14 @@ test('у админа выбор ветки меняет набор, а не п�
     })
     .toBeGreaterThan(0);
 
-  // И набор действительно другой: проектов с воронкой на стенде больше,
-  // чем с креаторами, так что сужение видно числом.
+  // И набор действительно менялся: под чужой веткой было ноль, под своей
+  // снова единица. Сравнение с «до» здесь и есть проверка, что фильтр
+  // работает набором, а не подсветкой кнопки.
   await expect
     .poll(() => total(page).innerText().then(Number), {
-      message: 'после выбора ветки список обязан стать другим',
+      message: 'под своей веткой проект обязан вернуться в выдачу',
     })
-    .toBeLessThan(before);
+    .toBe(before);
 
   // И в таблице остались только они. Вида в колонках нет — смотрим в
   // ответ, который эту таблицу и наполнил: «на экране стало меньше» само

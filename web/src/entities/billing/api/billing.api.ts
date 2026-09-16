@@ -17,6 +17,7 @@ import {
   ProjectPeriod,
   PublishTermsInput,
   TermsVersion,
+  CreatorSubscribers,
   UtmLink,
 } from '../model/billing.types';
 
@@ -131,6 +132,25 @@ export class BillingApi {
     return this.http.put<UtmLink>(
       `${this.api}/manager/projects/${projectId}/creators/${creatorId}/utm`,
       { url },
+    );
+  }
+
+  /**
+   * Вписать подписчиков за период.
+   *
+   * Сборщика подписчиков в продукте нет, и выдумывать его нельзя: ставку
+   * объявляет прайс, а число за период вводит менеджер — ровно так же,
+   * как заведены переходы по UTM. Деньги от этого числа считает сервер.
+   */
+  public managerSaveSubscribers(
+    projectId: string,
+    creatorId: string,
+    subscribers: number,
+    period: number,
+  ): Observable<CreatorSubscribers> {
+    return this.http.put<CreatorSubscribers>(
+      `${this.api}/manager/projects/${projectId}/creators/${creatorId}/subscribers`,
+      { subscribers, period },
     );
   }
 

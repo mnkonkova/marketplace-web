@@ -65,7 +65,7 @@ interface CommentView {
   imports: [CommonModule, NzButtonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-comments.component.html',
-  styleUrl: './project-comments.component.scss',
+  styleUrls: ['./project-comments.component.scss', './project-comments.component.touch.scss'],
 })
 export class ProjectCommentsComponent {
   private readonly api = inject(ProjectApi);

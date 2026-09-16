@@ -5,11 +5,12 @@ import {
   periodOf,
   periodOptions,
   periodRange,
+  periodSettled,
   periodTitle,
   previousSeq,
   snapshotNote,
 } from '@entities/billing/lib/period';
-import type { CreatorPeriod, ProjectPeriod } from '@entities/billing/model/billing.types';
+import type { CreatorPeriod, Payment, ProjectPeriod } from '@entities/billing/model/billing.types';
 
 // Период не совпадает с календарным месяцем: он начинается датой первой
 // публикации и катится от неё. Вышел первый ролик 15 сентября — периоды
@@ -146,5 +147,78 @@ describe('начисление и его период', () => {
     // завести вторую копию правила периода.
     expect(periodOf(periods, '2026-09-01T00:00:00Z')).toBeNull();
     expect(periodOf(periods, '')).toBeNull();
+  });
+});
+
+/**
+ * По периоду рассчитались.
+ *
+ * Счёт за подытоженный период — единственное на экране заказчика, что
+ * требует действия, и снимать его обязано поступление денег, а не смена
+ * календаря. Раньше плашка «К оплате за прошлый период» жила ровно один
+ * период: начинался следующий — и напоминание исчезало само, заплатили
+ * по нему или нет.
+ *
+ * Платёжного провайдера у нас нет: деньги идут мимо системы, и
+ * единственная отметка о получении — та, что менеджер ставит кнопкой
+ * «Деньги пришли». Строка платежа в базе одна на проект и вид, а
+ * периодов много, поэтому дата подтверждения здесь не формальность: без
+ * неё оплата первого периода гасила бы счета за все следующие.
+ */
+describe('расчёт по периоду', () => {
+  const closed = {
+    seq: 1,
+    starts_on: '2026-07-31',
+    ends_on: '2026-08-30',
+    status: 'locked' as const,
+  };
+
+  function pay(over: Partial<Payment> = {}): Payment {
+    return {
+      id: 'pay1',
+      project_id: 'pr1',
+      kind: 'final',
+      amount: 1_050_000,
+      status: 'confirmed',
+      confirmed_at: '2026-09-02T10:00:00Z',
+      created_at: '2026-08-01T00:00:00Z',
+      ...over,
+    };
+  }
+
+  it('подтверждённый финальный платёж после конца периода закрывает его', () => {
+    expect(periodSettled(closed, [pay()])).toBeTrue();
+  });
+
+  it('подтверждение в день окончания периода засчитывается', () => {
+    // Граница включительная с обеих сторон — как и сами границы периода.
+    expect(periodSettled(closed, [pay({ confirmed_at: '2026-08-30T23:00:00Z' })])).toBeTrue();
+  });
+
+  it('подтверждение ДО конца периода относится не к нему', () => {
+    // Платить за период, который ещё не кончился, было не за что: это
+    // отметка по прошлому счёту, и гасить ею текущий нельзя.
+    expect(periodSettled(closed, [pay({ confirmed_at: '2026-08-01T10:00:00Z' })])).toBeFalse();
+  });
+
+  it('выставленный, но не подтверждённый платёж не считается', () => {
+    // awaiting — «сумму назвали, денег ещё нет».
+    expect(
+      periodSettled(closed, [pay({ status: 'awaiting', confirmed_at: undefined })]),
+    ).toBeFalse();
+  });
+
+  it('предоплата период не закрывает', () => {
+    // Предоплата — про старт работ, финальный — про закрытие периода.
+    expect(periodSettled(closed, [pay({ kind: 'prepayment' })])).toBeFalse();
+  });
+
+  it('платежей нет — не рассчитались', () => {
+    expect(periodSettled(closed, [])).toBeFalse();
+    expect(periodSettled(closed, undefined)).toBeFalse();
+  });
+
+  it('периода нет — судить не о чем', () => {
+    expect(periodSettled(null, [pay()])).toBeFalse();
   });
 });

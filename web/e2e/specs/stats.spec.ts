@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
-import { AUTH_KEY, STATS, world } from '../fixtures/world';
+import { AUTH_KEY, STATS } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { openCreatorTab, openManagerTab } from '../fixtures/ui';
 
 /**
  * Отрисовка статистики.
@@ -22,12 +24,29 @@ import { AUTH_KEY, STATS, world } from '../fixtures/world';
 const grouped = (n: number): RegExp =>
   new RegExp('(?<!\\d)' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\\s?') + '(?!\\d)');
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('statsbox');
+});
+
+test.afterAll(() => dropSandbox(box));
+
 function signIn(page: Page, role: 'manager' | 'client' | 'creator') {
   return page
     .context()
     .addInitScript(
       ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-      [AUTH_KEY, world().sessions[role]] as const,
+      [AUTH_KEY, box.sessions[role]] as const,
     );
 }
 
@@ -35,10 +54,9 @@ test.describe('менеджер', () => {
   test.beforeEach(async ({ page }) => signIn(page, 'manager'));
 
   test('плитки, график и разбивка по площадкам показывают собранные цифры', async ({ page }) => {
-    const w = world();
-    await page.goto(`/manager/projects/${w.projectId}`);
+    await page.goto(`/manager/projects/${box.projectId}`);
     // Статистика у «креаторов под ключ» — отдельная вкладка.
-    await page.getByRole('button', { name: /^Статистика/ }).click();
+    await openManagerTab(page, 'Статистика');
 
     const stats = page.locator('app-project-stats');
     await expect(stats).toBeVisible({ timeout: 15_000 });
@@ -74,15 +92,14 @@ test.describe('менеджер', () => {
   });
 
   test('в сравнении креаторов имя, а не uuid', async ({ page }) => {
-    const w = world();
-    await page.goto(`/manager/projects/${w.projectId}`);
+    await page.goto(`/manager/projects/${box.projectId}`);
 
     // Сравнение креаторов живёт в виджете выкладок, а не в блоке
     // статистики: там же, где таблица роликов.
     const table = page.locator('app-project-publications');
-    await expect(table.getByText('Анастасия Креатор').first()).toBeVisible({ timeout: 15_000 });
+    await expect(table.getByText(box.creator.name).first()).toBeVisible({ timeout: 15_000 });
     await expect(table, 'в таблицах имя, а не идентификатор').not.toContainText(
-      w.projectId.slice(0, 8),
+      box.projectId.slice(0, 8),
     );
   });
 });
@@ -91,22 +108,23 @@ test.describe('заказчик', () => {
   test.beforeEach(async ({ page }) => signIn(page, 'client'));
 
   test('видит те же цифры, что менеджер, и вышедший ролик в ленте', async ({ page }) => {
-    const w = world();
-    await page.goto(`/me/projects/${w.projectId}`);
+    await page.goto(`/me/projects/${box.projectId}`);
 
     // Итог стоит первым числом карточки: экран отвечает заказчику на
     // «сколько людей это посмотрели» раньше, чем на всё остальное.
-    // Раньше это была плитка «Просмотры, всего» — проверяем обещание, а
-    // не прежнюю подпись.
-    const hero = page.locator('.vhero .vcell').filter({ hasText: 'Ролики посмотрели' });
+    // Подпись за год менялась трижды («Просмотры, всего», «Ролики
+    // посмотрели», «Просмотры за период»), и привязываться к ней значит
+    // переписывать спеку на каждую редактуру. Проверяем обещание:
+    // главное число карточки — просмотры, и они те же, что у менеджера.
+    const hero = page.locator('.answer .half.views');
     await expect(hero, 'заказчик и менеджер смотрят на один отчёт').toBeVisible({
       timeout: 15_000,
     });
-    await expect(hero.locator('.v')).toHaveText(grouped(STATS.totalToday));
+    await expect(hero.locator('.big')).toHaveText(grouped(STATS.totalToday));
 
     // Лента: ролик, его автор и просмотры по ролику целиком.
     const body = page.locator('body');
-    await expect(body).toContainText('Анастасия Креатор');
+    await expect(body).toContainText(box.creator.name);
     await expect(body).toContainText(grouped(STATS.totalToday));
   });
 });
@@ -115,16 +133,14 @@ test.describe('креатор', () => {
   test.beforeEach(async ({ page }) => signIn(page, 'creator'));
 
   test('видит свои цифры по каждой площадке', async ({ page }) => {
-    const w = world();
-    await page.goto(`/me/creator/projects/${w.projectId}`);
+    await page.goto(`/me/creator/projects/${box.projectId}`);
 
-    const body = page.locator('body');
-    await expect(body.getByText('Мои выкладки').first()).toBeVisible({ timeout: 15_000 });
+    await openCreatorTab(page, 'Мои выкладки');
 
     // Ищем внутри карточки посеянной выкладки, а не по всей странице: в
     // проекте могут стоять и другие ролики, и у каждого свои пять строк
     // площадок — без привязки к карточке локатор находит их все.
-    const card = page.locator('.slotcard').filter({ hasText: 'Выкладка 01' });
+    const card = page.locator('.slotcard').filter({ hasText: box.publicationTitle });
     await expect(card).toHaveCount(1);
 
     // Цифры по площадкам спрятаны под «Показать ссылки» — так в макете:

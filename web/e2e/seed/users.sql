@@ -47,6 +47,54 @@ BEGIN
             r.tbl, r.col, r.col);
     END LOOP;
 END $$;
+-- Колонки, которые NOT NULL, обнулить нельзя — а ключ они держат так
+-- же крепко. Через эту дверь падение вернулось: посевного креатора
+-- поставили руками на живой проект, у него появилась выкладка, и мир
+-- перестал собираться целиком — «сломался докер», если читать вывод.
+--
+-- Такие строки принадлежат самому посевному человеку: его выкладки, его
+-- начисления, его комментарии. Это следы прошлого прогона, и снимаются
+-- они вместе с ним — в отличие от чужих строк выше, где посевной человек
+-- только упомянут и трогать их мы не вправе.
+--
+-- Порядок между таблицами заранее неизвестен (одна ссылается на другую),
+-- поэтому проходим списком несколько раз: то, что не удалилось из-за
+-- зависимости, удалится следующим проходом.
+DO $$
+DECLARE
+    r RECORD;
+    pass INT;
+    stuck TEXT;
+BEGIN
+    FOR pass IN 1..5 LOOP
+        stuck := NULL;
+        FOR r IN
+            SELECT c.conrelid::regclass::text AS tbl, a.attname AS col
+            FROM pg_constraint c
+            JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+            WHERE c.contype = 'f'
+              AND c.confrelid = 'users'::regclass
+              AND array_length(c.conkey, 1) = 1
+              AND a.attnotnull
+              AND c.confdeltype IN ('a', 'r')
+        LOOP
+            BEGIN
+                EXECUTE format(
+                    'DELETE FROM %s WHERE %I IN '
+                    '(SELECT id FROM users WHERE email LIKE ''e2e-%%@example.com'')',
+                    r.tbl, r.col);
+            EXCEPTION WHEN foreign_key_violation THEN
+                stuck := r.tbl;
+            END;
+        END LOOP;
+        EXIT WHEN stuck IS NULL;
+    END LOOP;
+    -- Молча оставить строку нельзя: посев упадёт следующей командой, и
+    -- разбираться придётся по номеру ключа вместо имени таблицы.
+    IF stuck IS NOT NULL THEN
+        RAISE EXCEPTION 'посев e2e: % держит посевного пользователя и не удаляется', stuck;
+    END IF;
+END $$;
 DELETE FROM users WHERE email LIKE 'e2e-%@example.com';
 -- И то же самое с версией прайса: чужой проект мог снять с неё числа, и
 -- тогда она не удаляется. Снимок в проекте от этого не портится — суммы

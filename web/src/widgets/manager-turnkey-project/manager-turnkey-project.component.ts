@@ -12,13 +12,15 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
-import type { Payment } from '@entities/billing/model/billing.types';
+import { formatMoney } from '@entities/billing/lib/money';
+import type { PeriodTotals, Payment } from '@entities/billing/model/billing.types';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import type { ProjectPerson, Publication } from '@entities/publication/model/publication.types';
 import { ProjectApi } from '@entities/project/api/project.api';
 import type { ProjectFullView, ProjectManagerView } from '@entities/project/model/project.types';
-import { daysLeft } from '@entities/publication/lib/publication-status';
+import { closedCount, daysLeft } from '@entities/publication/lib/publication-status';
 import { plural } from '@shared/lib/format';
+import { ZeroComponent } from '@shared/ui/zero/zero.component';
 import { ProjectBillingComponent } from '@widgets/project-billing/project-billing.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
 import { ProjectMaterialsComponent } from '@widgets/project-materials/project-materials.component';
@@ -57,10 +59,14 @@ type PubSection = 'plan' | 'crew' | 'stats' | 'mat';
     ProjectCommentsComponent,
     ProjectMaterialsComponent,
     ProjectPublicationsComponent,
+    ZeroComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './manager-turnkey-project.component.html',
-  styleUrl: './manager-turnkey-project.component.scss',
+  styleUrls: [
+    './manager-turnkey-project.component.scss',
+    './manager-turnkey-project.component.touch.scss',
+  ],
 })
 export class ManagerTurnkeyProjectComponent {
   private readonly api = inject(PublicationApi);
@@ -84,6 +90,39 @@ export class ManagerTurnkeyProjectComponent {
 
   /** Платежи заказчика: нужны шапке, чтобы предупредить про предоплату. */
   public readonly payments = signal<Payment[]>([]);
+
+  /**
+   * Итоги периода с сервера: начисленное, просмотры, себестоимость.
+   *
+   * Нужны тревоге про предоплату. В ней не было ни одного числа — ни
+   * сколько получено, ни сколько начислено, — то есть она сообщала, что
+   * что-то не так, и не сообщала, на сколько. Складывать начисления
+   * самим незачем: сервер уже отдаёт `totals` тем же расчётом, которым
+   * считает выплату.
+   */
+  public readonly totals = signal<PeriodTotals | null>(null);
+
+  /**
+   * Сколько денег ПРИШЛО от заказчика по этому проекту.
+   *
+   * Только подтверждённые: выставленный, но не полученный платёж — это
+   * ожидание, а не деньги, и складывать одно с другим значило бы
+   * отчитаться о чужих намерениях как о поступлении.
+   */
+  public readonly receivedFromClient = computed(() =>
+    this.payments()
+      .filter((p) => p.status === 'confirmed')
+      .reduce((sum, p) => sum + p.amount, 0),
+  );
+
+  /** Начислено креаторам за показанный период — итогом с сервера. */
+  public readonly accruedTotal = computed(() => this.totals()?.total ?? 0);
+
+  /** Сколько выкладок закрыто — вторая половина факта в тревоге. */
+  public readonly closedCount = computed(() => closedCount(this.livePublications()));
+
+  /** Суммы приходят в копейках: на экран — рублями. */
+  public readonly money = formatMoney;
 
   /**
    * Действующие выкладки — то же множество, что показывает план.
@@ -222,8 +261,14 @@ export class ManagerTurnkeyProjectComponent {
     // Платежи проекта, а не месяца: предоплата у проекта одна. Условий у
     // проекта может не быть вовсе — тогда и предупреждать не о чем.
     this.billingApi.managerBilling(id).subscribe({
-      next: (r) => this.payments.set(r.payments ?? []),
-      error: () => this.payments.set([]),
+      next: (r) => {
+        this.payments.set(r.payments ?? []);
+        this.totals.set(r.totals ?? null);
+      },
+      error: () => {
+        this.payments.set([]);
+        this.totals.set(null);
+      },
     });
   }
 }

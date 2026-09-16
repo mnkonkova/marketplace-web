@@ -48,14 +48,56 @@ svg {
   overflow: hidden;
 }
 
+// Легенда многорядного графика. Стоит НАД полем, а не под ним: линии
+// читают сверху вниз, и словарь к ним нужен до того, как на них
+// посмотрели, а не после.
+.lclegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  color: var(--text-dim, #6b7280);
+  font-size: 11.5px;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  // Общая линия выделена и в легенде: она итог, а не шестая площадка.
+  li.lead {
+    color: var(--text, #e8eaed);
+    font-weight: 600;
+  }
+
+  i {
+    width: 10px;
+    height: 3px;
+    border-radius: 2px;
+    flex: 0 0 auto;
+  }
+
+  li.lead i {
+    height: 4px;
+    width: 14px;
+  }
+}
+
 // Ломаная, а не сглаженная кривая: сглаживание показывает между двумя
 // замерами значения, которых не было.
+//
+// Толщина приходит атрибутом из компонента: она зависит от того, одна
+// линия на графике или разбор с общей поверх, — и решать это в двух
+// местах сразу значило бы держать два набора правил про одно.
 .line {
   fill: none;
   stroke: var(--accent, #2fbd8f);
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2;
 }
 
 // Мягкая заливка до оси: линия читается как объём, а не как случайная
@@ -73,12 +115,12 @@ svg {
 }
 
 .grid {
-  stroke: var(--border, #23272d);
+  stroke: var(--border, #1c2422);
   stroke-width: 1;
 }
 
 .axis {
-  stroke: var(--border-strong, #2c313a);
+  stroke: var(--border-strong, #2a3532);
   stroke-width: 1;
 }
 

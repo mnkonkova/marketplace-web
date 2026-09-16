@@ -62,7 +62,7 @@ const NARROW = '(max-width: 1000px)';
   imports: [NgTemplateOutlet, RouterLink, RouterOutlet, CrmIconComponent, CrmSearchComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './crm-layout.component.html',
-  styleUrl: './crm-layout.component.scss',
+  styleUrls: ['./crm-layout.component.scss', './crm-layout.component.touch.scss'],
 })
 export class CrmLayoutComponent implements OnInit {
   private readonly auth = inject(AuthSessionStore);

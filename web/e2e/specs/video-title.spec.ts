@@ -1,5 +1,7 @@
 import { test, expect, request as pwRequest } from '@playwright/test';
-import { AUTH_KEY, psql, world } from '../fixtures/world';
+import { AUTH_KEY, psql } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { openCreatorTab } from '../fixtures/ui';
 
 /**
  * Название ролика даёт креатор при сдаче.
@@ -14,10 +16,27 @@ import { AUTH_KEY, psql, world } from '../fixtures/world';
 const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 const TITLE = `Распаковка корма ${Date.now()}`;
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('vtitle');
+});
+
+test.afterAll(() => dropSandbox(box));
+
 async function managerApi() {
   return pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${world().sessions.manager.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.manager.access_token}` },
   });
 }
 
@@ -29,12 +48,11 @@ async function managerApi() {
  * своей строки.
  */
 async function seedOpenPublication(daysAhead: number): Promise<string> {
-  const w = world();
   const api = await managerApi();
-  const crew = await api.get(`/api/v1/manager/projects/${w.projectId}/creators`);
+  const crew = await api.get(`/api/v1/manager/projects/${box.projectId}/creators`);
   const creatorId = (await crew.json()).items[0].user_id as string;
   const due = new Date(Date.now() + daysAhead * 86_400_000).toISOString().slice(0, 10);
-  const res = await api.post(`/api/v1/manager/projects/${w.projectId}/publications/batch`, {
+  const res = await api.post(`/api/v1/manager/projects/${box.projectId}/publications/batch`, {
     data: { creator_user_ids: [creatorId], dates: [due] },
   });
   const batchId = (await res.json()).batch_id as string;
@@ -69,7 +87,7 @@ const signIn = (
 ) =>
   context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, world().sessions[role]] as const,
+    [AUTH_KEY, box.sessions[role]] as const,
   );
 
 test('креатор называет ролик, и название видят менеджер и заказчик', async ({
@@ -80,7 +98,7 @@ test('креатор называет ролик, и название видят
   const batchId = await seedOpenPublication(2);
   try {
     await signIn(context, 'creator');
-    await page.goto(`/me/creator/projects/${world().projectId}`);
+    await page.goto(`/me/creator/projects/${box.projectId}`);
 
     await page.getByRole('button', { name: 'Сдать ролик' }).first().click();
     const modal = page.locator('.modal').filter({ hasText: 'сдать ролик' });
@@ -102,7 +120,9 @@ test('креатор называет ролик, и название видят
     expect(saved.status(), await saved.text()).toBe(200);
     expect((await saved.json()).title, 'название уходит вместе со ссылками').toBe(TITLE);
 
-    // Креатор видит его вместо номера выкладки.
+    // Креатор видит его вместо номера выкладки — в своём разделе
+    // выкладок: список кабинета ушёл под вкладку.
+    await openCreatorTab(page, 'Мои выкладки');
     await expect(page.locator('.slotcard').filter({ hasText: TITLE })).toHaveCount(1);
 
     // И то, ради чего название вообще заводили: менеджер видит его в
@@ -112,7 +132,7 @@ test('креатор называет ролик, и название видят
     try {
       await signIn(asManager, 'manager');
       const mgr = await asManager.newPage();
-      await mgr.goto(`/manager/projects/${world().projectId}`);
+      await mgr.goto(`/manager/projects/${box.projectId}`);
       await expect(mgr.locator('.slot').filter({ hasText: TITLE })).toHaveCount(1, {
         timeout: 15_000,
       });
@@ -124,7 +144,7 @@ test('креатор называет ролик, и название видят
     try {
       await signIn(asClient, 'client');
       const cli = await asClient.newPage();
-      await cli.goto(`/me/projects/${world().projectId}`);
+      await cli.goto(`/me/projects/${box.projectId}`);
       await expect(cli.getByText(TITLE)).toBeVisible({ timeout: 15_000 });
     } finally {
       await asClient.close();
@@ -137,13 +157,12 @@ test('креатор называет ролик, и название видят
 test('досылая площадки, название не приходится вписывать заново', async ({ context, page }) => {
   const batchId = await seedOpenPublication(4);
   try {
-    const w = world();
     // Первая сдача — с названием, через API: тут важна вторая.
     const creatorApi = await pwRequest.newContext({
       baseURL: API,
-      extraHTTPHeaders: { Authorization: `Bearer ${w.sessions.creator.access_token}` },
+      extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.creator.access_token}` },
     });
-    const list = await creatorApi.get(`/api/v1/me/creator/projects/${w.projectId}/publications`);
+    const list = await creatorApi.get(`/api/v1/me/creator/projects/${box.projectId}/publications`);
     const open = ((await list.json()).items as any[]).find((p) => p.status === 'planned');
     await creatorApi.post(`/api/v1/me/creator/publications/${open.id}/links`, {
       data: { urls: [`https://www.tiktok.com/@nastya/video/${Date.now()}`], title: TITLE },
@@ -151,7 +170,7 @@ test('досылая площадки, название не приходитс�
     await creatorApi.dispose();
 
     await signIn(context, 'creator');
-    await page.goto(`/me/creator/projects/${w.projectId}`);
+    await page.goto(`/me/creator/projects/${box.projectId}`);
 
     // Второй заход: поле подставлено, а не пустое.
     await page

@@ -1,0 +1,132 @@
+// Тач-слой проекта заказчика (ветка со стадиями и согласованиями).
+// Проект с креаторами рисует отдельный виджет — у него свой тач-файл.
+
+@use 'touch' as touch;
+
+@include touch.phone {
+  .project-detail {
+    margin: 14px auto 64px;
+    padding: 0 touch.$pad;
+  }
+
+  .back-link {
+    // Ссылка «назад» — самая частая цель на экране проекта: с неё
+    // возвращаются после каждого просмотра.
+    display: inline-flex;
+    align-items: center;
+    min-height: touch.$tap;
+    margin-bottom: 8px;
+  }
+
+  .hero {
+    padding: 18px 16px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+  }
+
+  .hero-row {
+    // Тег статуса не обязан стоять справа от заголовка: на 390px он
+    // сжимает название проекта до двух слов в строке.
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+
+    h1 {
+      font-size: 22px;
+    }
+  }
+
+  .progress-row {
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .hero-meta {
+    gap: 12px;
+  }
+
+  .now-block {
+    padding: 11px 13px;
+  }
+
+  .meta-grid {
+    // Две колонки, а не auto-fit по 140: четыре подписи по одной в ряд
+    // растягивают шапку на пол-экрана, а числа в них короткие.
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+
+    > div,
+    > a.meta-link {
+      padding: 9px 11px;
+    }
+
+    strong {
+      font-size: 14px;
+    }
+  }
+
+  // ── лента этапов ───────────────────────────────────────
+  .timeline > h2 {
+    margin-bottom: 12px;
+    font-size: 15px;
+  }
+
+  .timeline-row {
+    // Рельса с точками ужимается: 32px колонки + 16px зазор забирали
+    // 48px из 362px под текст этапа.
+    grid-template-columns: 22px 1fr;
+    gap: 10px;
+  }
+
+  .stage-body {
+    padding: 14px;
+    margin-bottom: 12px;
+
+    > header {
+      gap: 10px;
+      margin-bottom: 12px;
+
+      h3 {
+        font-size: 15.5px;
+      }
+    }
+  }
+
+  .step {
+    // Шаг перестаёт быть строкой «слева название, справа плашка»:
+    // плашка встаёт под названием, иначе от названия остаётся треть.
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 11px 0;
+
+    // Плашка статуса выравнивается по левому краю вместе с названием:
+    // повисшая справа, она читается как относящаяся к соседней строке.
+    nz-tag {
+      justify-self: start;
+    }
+
+    &.is-current {
+      margin: 0 -14px;
+      padding: 12px 14px;
+    }
+
+    .actions {
+      flex-wrap: wrap;
+      gap: 8px;
+
+      button[nz-button] {
+        flex: 1 1 140px;
+        min-height: touch.$tap;
+      }
+    }
+
+    .review-form {
+      padding: 12px;
+
+      textarea {
+        font-size: 16px;
+      }
+    }
+  }
+}

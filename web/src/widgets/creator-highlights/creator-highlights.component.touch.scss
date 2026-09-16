@@ -1,0 +1,69 @@
+// Тач-слой блока достижений креатора.
+
+@use 'touch' as touch;
+
+@include touch.phone {
+  .card.hl {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  // Разбор свёрнут. Рекорд периода отвечает на вопрос карточки одной
+  // строкой; площадки и список роликов — это уже разбирательство, и на
+  // 390px оно стояло между человеком и его выкладками.
+  .hl .hl-plats.mfold,
+  .hl .rest.mfold {
+    display: none;
+  }
+
+  .hl .foldrow {
+    display: block;
+    width: 100%;
+    min-height: touch.$tap;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: none;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .hl {
+    .records {
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .rec {
+      padding: 12px 13px;
+
+      .n {
+        font-size: 24px;
+      }
+    }
+
+    // Строка площадки: имя — полоска — число — сколько роликов.
+    // Полоска ужимается первой: она показывает соотношение, и для
+    // этого ей хватает и восьмидесяти пикселей, а числу рядом нет.
+    .hl-rows {
+      .nm {
+        width: 70px;
+      }
+
+      .pv {
+        min-width: 66px;
+      }
+    }
+
+    .track {
+      width: 80px;
+    }
+
+    .vids .t {
+      min-width: 120px;
+    }
+  }
+}

@@ -33,7 +33,7 @@ import { plural } from '@shared/lib/format';
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-history.component.html',
-  styleUrl: './creator-history.component.scss',
+  styleUrls: ['./creator-history.component.scss', './creator-history.component.touch.scss'],
 })
 export class CreatorHistoryComponent {
   public readonly earnings = input<CreatorEarnings | null>(null);

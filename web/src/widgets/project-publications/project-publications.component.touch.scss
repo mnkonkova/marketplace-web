@@ -1,0 +1,52 @@
+// Тач-слой плана выкладок у менеджера.
+//
+// Раскладка плана уже сжимается на 960px в основном листе виджета.
+// Здесь — кнопки под палец и окно закрытия периода нижним листом:
+// «Закрыть период» и «Проставить даты» это действия, меняющие деньги, и
+// промахиваться по ним нельзя.
+
+@use 'touch' as touch;
+
+@include touch.phone {
+  // .btn объявлена глобально в shared/scss/_crm.scss под .crm-page,
+  // и этот виджет свою разметку этим классом помечает (.pub-block.crm-page).
+  .crm-page .btn {
+    min-height: touch.$tap;
+
+    &.sm {
+      min-height: touch.$tap - 6px;
+    }
+  }
+
+  .pub-actions,
+  .acts,
+  .slot-actions,
+  .date-req-actions {
+    .btn {
+      flex: 1 1 140px;
+    }
+  }
+
+  // Окно закрытия периода — снизу, как и остальные окна кабинетов.
+  .ovl {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    max-width: none;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+    border-right: none;
+    border-bottom: none;
+    border-left: none;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .modal-actions {
+    .btn,
+    button[nz-button] {
+      flex: 1;
+      min-height: touch.$tap;
+    }
+  }
+}

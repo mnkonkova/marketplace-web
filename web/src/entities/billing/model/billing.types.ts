@@ -34,9 +34,37 @@ export interface BillingTerms {
   creator_salary_per_month?: number;
   creator_rate_per_1000_views?: number;
   creator_rate_per_1000_views_over?: number;
+  // Ступени тарифа: произвольное число порогов объёма и цена периода на
+  // каждом. Непустая лесенка отменяет прежнюю пару «ставка за тысячу до
+  // и после порога» — это другое правило счёта.
+  steps?: TariffStep[];
+  // KPI по подписчикам. Сборщика подписчиков в продукте нет: ставка
+  // объявляется, а само число вписывает менеджер — как переходы по UTM.
+  // Пусто — KPI не считается вовсе.
+  subscriber_rate?: number;
+  creator_subscriber_rate?: number;
   // С какой версии прайса сняты числа. Только для истории.
   terms_version_id?: string;
   updated_at?: string;
+}
+
+/**
+ * Ступень тарифа.
+ *
+ * Порог ОБЪЁМА и цена ПЕРИОДА на нём, а не цена за каждые сто тысяч
+ * просмотров: так звучит коммерческое предложение («оклад плюс KPI на
+ * 300 000 просмотров»), и так его читает заказчик. Набрали за период
+ * столько-то — период стоит столько-то.
+ *
+ * Деньги здесь, как и везде, в КОПЕЙКАХ, и считает их только сервер.
+ */
+export interface TariffStep {
+  /** С какого объёма просмотров за период действует ступень. */
+  from_views: number;
+  /** Сколько стоит период заказчику на этой ступени. */
+  client_fee: number;
+  /** Оклад креатору на ступени. Пусто — столько же, сколько у заказчика. */
+  creator_fee?: number | null;
 }
 
 export interface BillingTermsInput {
@@ -55,6 +83,13 @@ export interface BillingTermsInput {
   creator_salary_per_month?: number | null;
   creator_rate_per_1000_views?: number | null;
   creator_rate_per_1000_views_over?: number | null;
+  // Лесенка целиком: сервер переписывает её заменой, а не правкой по
+  // одной строке — ступень удаляют не реже, чем добавляют.
+  steps?: TariffStep[];
+  // null — KPI по подписчикам не считаем вовсе. Отличается от 0, который
+  // значит «ставка задана и равна нулю».
+  subscriber_rate?: number | null;
+  creator_subscriber_rate?: number | null;
 }
 
 // ---- прайс площадки (админ) ----
@@ -212,6 +247,18 @@ export interface Accrual {
   project_id: string;
   creator_user_id: string;
   creator_name?: string;
+  // Чем человек подписан в составе периода: портрет и адрес его страницы.
+  // Пусто у того, кто аватар не поставил или не выбрал себе адрес, — и
+  // тогда в кружке остаётся буква, а ссылка идёт по user_id.
+  creator_avatar_url?: string;
+  creator_username?: string;
+  // Открывается ли страница этого человека снаружи. Адрес есть всегда, а
+  // страницы по нему может не быть: публичная карточка специалиста живёт
+  // только при is_published AND moderation_status='approved', на всё
+  // остальное отдаёт 404. Ссылку ставим ТОЛЬКО по этому признаку —
+  // мёртвая ссылка в составе, за который заказчик платит, читается как
+  // «человека у вас нет», хотя человек есть.
+  creator_profile_public?: boolean;
   // Начало периода, которому принадлежит начисление. Периоды катятся от
   // даты первой публикации проекта, а не по календарю, — первым числом
   // месяца это не бывает.
@@ -231,6 +278,11 @@ export interface Accrual {
   views_bonus: number;
   clicks: number;
   click_bonus: number;
+  // KPI по подписчикам за период. Число вписывает менеджер: сборщика
+  // подписчиков нет. Отдельной парой, а не внутри бонуса за просмотры —
+  // начисление объясняет, ПОЧЕМУ вышла такая сумма.
+  subscribers?: number;
+  subscriber_bonus?: number;
   // Недосданное не оплачивается, вычет пропорционален недостаче.
   videos_planned: number;
   videos_delivered: number;
@@ -243,6 +295,7 @@ export interface Accrual {
   payout_deduction?: number;
   payout_views_bonus?: number;
   payout_click_bonus?: number;
+  payout_subscriber_bonus?: number;
   payout_total?: number;
   calculated_at?: string;
   approved_at?: string;
@@ -255,6 +308,10 @@ export interface PeriodTotals {
   salaries: number;
   views_bonus: number;
   click_bonus: number;
+  // KPI по подписчикам: сколько их вписал менеджер и во что это обошлось.
+  // Отдельно от бонуса за просмотры — это разные величины.
+  subscribers?: number;
+  subscriber_bonus?: number;
   deductions: number;
   total: number;
   views: number;
@@ -292,6 +349,12 @@ export interface ProjectBilling {
   accruals?: Accrual[];
   utm?: UtmLink[];
   totals?: PeriodTotals;
+  /**
+   * Из чего сложился этот счёт: ступени тарифа и работа команды.
+   * Считает сервер и отдаёт готовым — то же разложение, что в сводке.
+   * Пусто, когда лесенка не сошлась бы с итогом рядом. См. OverviewTariff.
+   */
+  tariff?: OverviewTariff;
   // Какой период показан и в каком он состоянии. Отсюда же понятно,
   // почему строки помечены «предварительно», и на какую дату сняты
   // числа, если период уже подытожен.
@@ -329,8 +392,51 @@ export interface NextStepForecast {
 
 // Взгляд креатора: условия, свои начисления по всем месяцам проекта
 // (свежие первыми) и своя метка. Чужих цифр здесь нет.
+/**
+ * Ступень одной стороны сделки: порог объёма и цена на нём.
+ *
+ * Своя структура, а не TariffStep: у того две цены сразу — заказчика и
+ * креатора, — а здесь стороны уже разведены сервером. Вторая цена тут
+ * означала бы, что креатору показывают цену клиента, и он опять считал
+ * бы её своим заработком.
+ */
+export interface SideTariffStep {
+  from_views: number;
+  fee: number;
+}
+
+/**
+ * Тариф ОДНОЙ стороны: его ставки под теми же именами полей.
+ *
+ * Клиентских чисел здесь нет ни под каким именем — сервер собирает этот
+ * ответ отдельным типом, а не чисткой менеджерской структуры.
+ */
+export interface SideTerms {
+  project_id?: string;
+  terms_version_id?: string;
+  salary_per_month: number;
+  videos_first_month?: number;
+  videos_next_months?: number;
+  rate_per_1000_views: number;
+  bonus_views_threshold: number;
+  rate_per_1000_views_over: number;
+  click_bonus_rate?: number;
+  click_bonus_threshold?: number;
+  click_bonus_rate_over?: number;
+  /**
+   * Лесенка его стороны. Непустая ОТМЕНЯЕТ оклад и ставку за тысячу
+   * выше: на ступенчатой версии условий они в расчёте не участвуют, и
+   * показывать их рядом со ступенями значит назвать два разных числа
+   * одним и тем же заработком.
+   */
+  steps?: SideTariffStep[];
+  /** Сколько стоит подписчик. Пусто — KPI по подписчикам не считается. */
+  subscriber_rate?: number;
+  updated_at?: string;
+}
+
 export interface CreatorEarnings {
-  terms?: BillingTerms;
+  terms?: SideTerms;
   accruals?: Accrual[];
   utm?: UtmLink;
   // Текущий период его глазами — по нему строится шкала.
@@ -396,8 +502,14 @@ export interface ProjectBenchmark {
 // вся коммерческая аргументация. Назвать одно другим — обещать то, чего
 // мы не собираем.
 
-/** Проект в сводке: идёт или ещё не начался. */
-export type OverviewState = 'running' | 'not_started';
+/**
+ * Проект в сводке: идёт, ещё не начался или закончен.
+ *
+ * Завершённость считает СЕРВЕР (projects.status = 'done'). Выводить её в
+ * браузере по косвенным признакам — «период закрыт и новый не начался» —
+ * значит завести вторую версию правды, которая разойдётся с первой молча.
+ */
+export type OverviewState = 'running' | 'not_started' | 'completed';
 
 /**
  * Окно, за которое считается сводка.
@@ -536,17 +648,69 @@ export interface OverviewMoney {
   paid: number;
 }
 
+/**
+ * Подписчики креатора за период.
+ *
+ * Число вписывает менеджер: сборщика подписчиков в продукте нет, а KPI по
+ * ним в тарифе объявлен. Тот же порядок, что у переходов по UTM.
+ */
+export interface CreatorSubscribers {
+  creator_user_id: string;
+  creator_name?: string;
+  period_start: string;
+  subscribers: number;
+  updated_at: string;
+}
+
 export interface OverviewProject {
   project_id: string;
   title: string;
   state: OverviewState;
   /** Текущий период. Нет у не начавшегося проекта. */
   period?: ClientPeriod;
+  /** Когда закончили. Есть только у завершённого. */
+  completed_at?: string;
   views: number;
   /** Счёт по проекту: подытоженные периоды плюс текущий. */
   total: number;
   /** Пусто, пока просмотров нет: делить не на что. */
   cost_per_1000?: number;
+}
+
+/**
+ * Тарифная лесенка: почему тысяча стоит столько, сколько показано.
+ *
+ * На экране стоял ТОЛЬКО результат формулы — «56 ₽» — и ни слова о самой
+ * формуле, а коммерческий аргумент именно в ней: первые просмотры
+ * каждого ролика идут по стартовой ставке, всё сверх — по пониженной,
+ * и чем дальше ролик расходится, тем ниже средняя цена тысячи. Без
+ * разложения это читается как «повезло», хотя так устроен договор.
+ *
+ * Порог — НА РОЛИК, а не на проект: у пяти роликов по 400 000
+ * сверхпорогового объёма нет вовсе, и подпись обязана это говорить.
+ *
+ * Все суммы в копейках и посчитаны на сервере. В браузере тариф не
+ * считаем никогда: вторая реализация ступеней разошлась бы со счётом.
+ *
+ * Пусто, когда разложение не сошлось бы с итогом рядом (подытоженные
+ * периоды, разные ставки у разных проектов, ступенчатая версия условий).
+ * Лесенка, которая не делится в стоящую рядом цену тысячи, хуже
+ * отсутствующей: её проверяют калькулятором первым же заходом.
+ */
+export interface OverviewTariff {
+  /** Сколько просмотров КАЖДОГО ролика идёт по стартовой ставке. */
+  threshold_views: number;
+  rate_per_1000: number;
+  rate_per_1000_over: number;
+  views_base: number;
+  views_over: number;
+  base_amount: number;
+  over_amount: number;
+  /** Работа команды за период: оклады за вычетом недосдачи. */
+  fixed: number;
+  /** Что разложено: ровно те просмотры и ровно та сумма. */
+  views: number;
+  total: number;
 }
 
 /**
@@ -575,6 +739,8 @@ export interface ClientOverview {
    * соврала бы. Пусто, пока просмотров нет.
    */
   cost_per_1000?: number;
+  /** Разложение этой цены по ступеням тарифа. См. OverviewTariff. */
+  tariff?: OverviewTariff;
   /**
    * Хотя бы у одного подытоженного периода числа подтянуты: поденную
    * статистику к моменту подытога уже удалили. Сводка, часть чисел

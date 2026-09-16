@@ -51,14 +51,3 @@ export function sortMaterials(items: Material[]): Material[] {
     (a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at),
   );
 }
-
-// Ссылка обязана быть http(s) — на другом бэк ответит invalid_input.
-// Проверяем до отправки, чтобы менеджер видел причину рядом с полем.
-export function isValidMaterialUrl(url: string): boolean {
-  try {
-    const u = new URL(url.trim());
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}

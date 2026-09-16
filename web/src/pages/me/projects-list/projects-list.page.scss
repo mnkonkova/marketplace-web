@@ -1,7 +1,16 @@
+@use 'layout';
+// Кабинет живёт в том же контейнере, что и шапка над ним: свой потолок
+// в 1100px оставлял на 1440-м мониторе по 170px пустого поля с каждой
+// стороны, и дашборд — пять карточек площадок, график и ряд KPI —
+// тесал сам себя в колонку уже, чем меню над ним.
+//
+// Инклуд последним — см. комментарий в specialist-profile.page.scss:
+// миксин раскрывается во вложенные правила, а объявление после
+// вложенного Sass встречает предупреждением mixed-decls.
 .projects-list {
-  max-width: 1100px;
-  margin: 32px auto;
-  padding: 0 16px;
+  margin: 32px auto 64px;
+
+  @include layout.page-container;
 }
 
 .head {
@@ -334,19 +343,24 @@
   }
 }
 
-// Вход в воронку заказа. Стоит под контактами: без телефона или
-// телеграма менеджер не свяжется, а заказ без связи не собрать.
+// Вход в воронку заказа. Стоит ВНИЗУ и тихим видом.
+//
+// Он был первым экраном кабинета и держал единственный коралл страницы —
+// а коралл значит «действие». Действие на этом экране одно: открыть
+// проект и посмотреть, что получилось. Человек, который уже платит,
+// приходит сюда за результатом; предложение завести второй проект
+// читается ПОСЛЕ результата, а не вместо него.
 .turnkey-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  background: var(--surface);
+  margin-top: 30px;
+  padding: 16px 20px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 16px 20px;
-  margin-bottom: 28px;
+  background: var(--bg-elevated);
 }
 
 .turnkey-text {
@@ -371,4 +385,133 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+// Разделы кабинета — ПОДЧЁРКНУТЫЕ вкладки.
+//
+// Форма здесь третья по счёту, и каждая смена была по делу.
+//
+// Сначала это были два слова в пустоте с линией на всю ширину под ними:
+// нажималась только надпись, полоса шла до края и приклеивала вкладки к
+// карточке снизу, а подчёркивание было бирюзовым — цвета, которого в
+// палитре нет.
+//
+// Потом их сделали таблеткой, как окно дашборда. Это вылечило область
+// нажатия и цвет, но завело новую беду: в семидесяти пикселях ниже
+// стоит переключатель окна — такая же таблетка из трёх кнопок. Две
+// одинаковые формы обещают одинаковое последствие, а последствия разные:
+// здесь меняется ЭКРАН, там — ЧИСЛА на нём. Жали наугад.
+//
+// Теперь подчёркивание — но с исправленными бедами первой версии:
+// нажимается вся кнопка целиком (её видно по подложке на наведении),
+// линия идёт только под самими вкладками, а не до края экрана, и цвет
+// её — цвет текста из палитры. Форма отличается от окна данных, роли
+// больше не путаются.
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  position: relative;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.15s;
+
+  &:hover {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  // Подчёркивание рисует псевдоэлемент, а не border: border сдвигал бы
+  // текст на пиксель при переключении.
+  &::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    bottom: -1px;
+    left: 10px;
+    height: 2px;
+    border-radius: 2px;
+    background: transparent;
+  }
+
+  &.on {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  &.on::after {
+    background: var(--text);
+  }
+}
+
+// Заголовок списка проектов по воронке. Второй список на вкладке, и без
+// названия он читался бы как продолжение реестра — а числа в нём другие.
+.fhead {
+  margin: 30px 0 4px;
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+// Тихая кнопка: обводка и текст, без заливки. Коралл на этом экране
+// значит «действие, которого от вас ждут», а от заказчика здесь ничего
+// не ждут — предложение завести ещё один проект действием не является.
+.quiet-btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+
+  &:hover {
+    border-color: var(--border-hover);
+  }
+}
+
+// Незаконченный заказ — это долг перед человеком, а не предложение:
+// без него он заведёт второй такой же и будет ждать ответы по обоим.
+// Поэтому у него, в отличие от плашки выше, есть пометка состояния.
+.order-resume {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 14px 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--surface);
+
+  .ot {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  strong {
+    font-size: 14.5px;
+  }
+
+  small {
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
 }

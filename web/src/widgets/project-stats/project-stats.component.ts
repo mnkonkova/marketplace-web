@@ -2,7 +2,12 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
 import { CommonModule } from '@angular/common';
 
 import { DayPoint, PublicationReport } from '@entities/publication/model/publication.types';
-import { PLATFORM_LABEL, PLATFORM_SHORT } from '@entities/publication/lib/publication-status';
+import {
+  PLATFORM_COLOR,
+  PLATFORM_LABEL,
+  PLATFORM_SHORT,
+} from '@entities/publication/lib/publication-status';
+import { seriesTooShort } from '@shared/lib/chart-series';
 import type { SeriesPoint } from '@shared/lib/chart-series';
 import { plural } from '@shared/lib/format';
 import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
@@ -29,7 +34,7 @@ import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
   imports: [CommonModule, ErValueComponent, LineChartComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-stats.component.html',
-  styleUrl: './project-stats.component.scss',
+  styleUrls: ['./project-stats.component.scss', './project-stats.component.touch.scss'],
 })
 export class ProjectStatsComponent {
   public readonly report = input<PublicationReport | null>(null);
@@ -55,6 +60,16 @@ export class ProjectStatsComponent {
   public readonly platformLabel = PLATFORM_LABEL;
 
   public readonly platformShort = PLATFORM_SHORT;
+
+  /**
+   * Фирменные цвета площадок.
+   *
+   * Разбор ПО ПЛОЩАДКАМ, крашенный одной краской, заставляет читать
+   * подписи, чтобы понять, где чья полоса. Площадку узнают по цвету
+   * раньше, чем прочтут название, и это единственное место экрана, где
+   * цвет несёт данные, а не настроение.
+   */
+  public readonly platformColor = PLATFORM_COLOR;
 
   /**
    * Глубина ряда. Тридцать дней по умолчанию: месяц — это период проекта,
@@ -87,7 +102,7 @@ export class ProjectStatsComponent {
    * кнопка, от которой ничего не меняется, читается как сломанная.
    * Поэтому говорим прямо, за сколько дней вообще есть числа.
    */
-  public readonly shortSeries = computed(() => this.allDays().length <= 7);
+  public readonly shortSeries = computed(() => seriesTooShort(this.allDays().length));
 
   /** Сколько дней в ряду всего — для подписи рядом с переключателем. */
   public readonly seriesDays = computed(() => this.allDays().length);

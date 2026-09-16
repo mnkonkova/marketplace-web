@@ -5,7 +5,8 @@ import {
   request as pwRequest,
   type APIRequestContext,
 } from '@playwright/test';
-import { AUTH_KEY, world } from '../fixtures/world';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Период проекта: как он подписан и что про него сказано.
@@ -30,13 +31,30 @@ import { AUTH_KEY, world } from '../fixtures/world';
  */
 const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('period', { shape: 'history' });
+});
+
+test.afterAll(() => dropSandbox(box));
+
 const signIn = (
   context: import('@playwright/test').BrowserContext,
   role: 'manager' | 'client' | 'admin',
 ) =>
   context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, world().sessions[role]] as const,
+    [AUTH_KEY, box.sessions[role]] as const,
   );
 
 interface Period {
@@ -51,7 +69,7 @@ interface Period {
 async function managerApi(): Promise<APIRequestContext> {
   return pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${world().sessions.manager.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.manager.access_token}` },
   });
 }
 
@@ -108,12 +126,14 @@ const periodLine = (page: Page) => page.locator('.period-line');
 /** Открыть вкладку «Начисления» в карточке проекта у менеджера. */
 async function openBilling(page: Page, projectId: string): Promise<void> {
   await page.goto(`/manager/projects/${projectId}`);
-  await page.getByRole('button', { name: 'Начисления' }).click();
+  // Именно вкладка: над ней в предупреждении о предоплате стоит
+  // «Открыть начисления», и поиск по кнопке находил обе.
+  await page.getByRole('tab', { name: 'Начисления' }).click();
   await expect(periodLine(page)).toBeVisible({ timeout: 15_000 });
 }
 
 test('период подписан датами, а не названием месяца', async ({ context, page }) => {
-  const periods = await periodsOf(world().historyProjectId);
+  const periods = await periodsOf(box.projectId);
   const current = periods.find((p) => p.status === 'open');
   expect(current, 'у проекта с прошлым должен идти текущий период').toBeTruthy();
 
@@ -126,7 +146,7 @@ test('период подписан датами, а не названием м�
   ).not.toBe('01');
 
   await signIn(context, 'manager');
-  await openBilling(page, world().historyProjectId);
+  await openBilling(page, box.projectId);
 
   await expect(periodLine(page)).toContainText(title(current!));
 
@@ -144,7 +164,7 @@ test('«предварительно» и «приблизительно» — �
   context,
   page,
 }) => {
-  const periods = await periodsOf(world().historyProjectId);
+  const periods = await periodsOf(box.projectId);
   const open = periods.find((p) => p.status === 'open')!;
   const locked = periods.find((p) => p.status === 'locked' && p.snapshot_approx);
   expect(
@@ -153,7 +173,7 @@ test('«предварительно» и «приблизительно» — �
   ).toBeTruthy();
 
   await signIn(context, 'manager');
-  await openBilling(page, world().historyProjectId);
+  await openBilling(page, box.projectId);
 
   // Идущий период: числа ещё изменятся — «подожди». Про приблизительность
   // говорить нечего: поденная статистика за него на месте.
@@ -180,11 +200,11 @@ test('«предварительно» и «приблизительно» — �
 });
 
 test('заказчик видит ту же оговорку на счёте за прошлый период', async ({ context, page }) => {
-  const periods = await periodsOf(world().historyProjectId);
+  const periods = await periodsOf(box.projectId);
   const locked = periods.find((p) => p.status === 'locked' && p.snapshot_approx)!;
 
   await signIn(context, 'client');
-  await page.goto(`/me/projects/${world().historyProjectId}`);
+  await page.goto(`/me/projects/${box.projectId}`);
 
   // Счёт за прошлый период — отдельная плашка: наверху стоит текущий, а
   // он ещё идёт, и платить по нему нечего.
@@ -193,8 +213,23 @@ test('заказчик видит ту же оговорку на счёте з�
   await expect(due).toContainText(title(locked));
 
   // Оговорка та же и сказана словами, а не оттенком плашки: заказчик
-  // сверяет этот счёт со своими ожиданиями, и «данные приблизительные»
-  // для него — повод спросить, а не повод ждать.
-  await expect(due).toContainText('Данные приблизительные');
+  // сверяет этот счёт со своими ожиданиями, и приблизительность для него
+  // — повод спросить, а не повод ждать.
+  //
+  // Развёрнутое объяснение уехало под кат, и это осознанное решение:
+  // двумя абзацами про поденную статистику плашка топила сумму, ради
+  // которой она есть. Снаружи от этого обязан остаться ПРИЗНАК — иначе
+  // кат нечем открыть, и оговорка перестаёт существовать для всех, кто
+  // не нажимает всё подряд.
+  await expect(due, 'признак приблизительности виден без нажатий').toContainText(
+    'часть чисел приблизительная',
+  );
   await expect(due).toContainText(`${day(locked.starts_on)} — ${day(locked.ends_on)}`);
+
+  // А само объяснение — в кате, целиком и теми же словами, что у
+  // менеджера. Спрятать его совсем значило бы сказать «часть чисел
+  // приблизительная» и не ответить, какая именно и почему.
+  await due.getByRole('button', { name: /Как платить и почему столько/ }).click();
+  await expect(due).toContainText('Данные приблизительные');
+  await expect(due).toContainText('подтянуты по последнему известному состоянию');
 });

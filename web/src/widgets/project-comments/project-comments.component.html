@@ -2,12 +2,12 @@
   <div class="talk-head">
     <h2>Комментарии</h2>
     @if (tabs().length > 1) {
-      <div class="tabs" role="tablist">
+      <div class="talk-tabs" role="tablist">
         @for (t of tabs(); track t.key) {
           <button
             type="button"
             role="tab"
-            class="tab"
+            class="talk-tab"
             [class.on]="activeTab()?.key === t.key"
             [class.internal]="t.thread === 'internal'"
             [attr.aria-selected]="activeTab()?.key === t.key"

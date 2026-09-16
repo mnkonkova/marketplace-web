@@ -1,8 +1,10 @@
-// Дашборд заказчика. Композиция перенесена с прототипа, но всё, кроме
-// цветов площадок, — токены дизайн-системы: фон, карточки, рамки, текст
-// и акценты у нас свои. Фирменные цвета площадок приходят из
-// PLATFORM_COLOR инлайном: площадку узнают по цвету раньше, чем прочтут
-// название.
+// Дашборд заказчика. Цвета площадок приходят из PLATFORM_COLOR инлайном:
+// площадку узнают по цвету раньше, чем прочтут название. Всё остальное —
+// токены дизайн-системы.
+//
+// Два цвета смысла работают здесь буквально: латунь на просмотрах
+// («выросло»), лёд на цене тысячи («упало»). Коралл на этом экране не
+// встречается вовсе — он значит «действие», а действий здесь нет.
 
 :host {
   display: block;
@@ -12,73 +14,57 @@
   margin: 0 0 20px;
 }
 
-// Числа моноширинным: разряды в соседних карточках обязаны стоять друг
-// под другом, иначе два числа рядом не сравнить взглядом.
-.mono {
-  font-family: var(--crm-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-// ---- шапка ----
+// ---- шапка: окно данных ----
+//
+// Подписанный переключатель, а не таблетки в ряд с разделами кабинета.
+// Раньше две одинаковые таблетки стояли в семидесяти пикселях друг от
+// друга: одна меняла экран, вторая — числа. Одинаковая форма обещает
+// одинаковое последствие.
 
 .top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px 20px;
   flex-wrap: wrap;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
-.who {
-  display: flex;
+.when {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.seg-wrap {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-
-  .ava {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 42px;
-    height: 42px;
-    flex: 0 0 auto;
-    border: 1px solid var(--border-strong, #2c313a);
-    border-radius: 50%;
-    background: var(--surface-hover, #181c22);
-    font-size: 15px;
-    font-weight: 600;
-  }
-
-  h2 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-
-  p {
-    margin: 1px 0 0;
-    color: var(--text-muted);
-    font-size: 13px;
-  }
+  gap: 9px;
 }
 
-// Переключатель окна. Три кнопки, а не календарь: выбирают здесь не
-// «17 августа», а «месяц».
+.seg-label {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .seg {
   display: inline-flex;
   padding: 3px;
   border: 1px solid var(--border);
-  border-radius: var(--r-btn, 11px);
-  background: var(--bg-elevated, #111316);
+  border-radius: 11px;
+  background: var(--bg-elevated);
 
   button {
-    padding: 7px 16px;
+    min-height: 32px;
+    padding: 0 14px;
     border: 0;
     border-radius: 8px;
     background: transparent;
-    color: var(--text-muted);
+    color: var(--text-dim);
     font: inherit;
     font-size: 13px;
     cursor: pointer;
@@ -90,447 +76,469 @@
   }
 
   button.on {
-    background: var(--surface-hover, #181c22);
-    box-shadow: inset 0 0 0 1px var(--border-strong, #2c313a);
+    background: var(--surface-hover);
+    box-shadow: inset 0 0 0 1px var(--border-strong);
     color: var(--text);
   }
 }
 
+// ---- общий словарь блока ----
+
 .eyebrow {
+  margin: 0 0 10px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+// Пояснение при числе. Ширина ограничена: строка длиннее 62 знаков
+// перестаёт читаться с одного прохода, а читают её один раз.
+.say {
+  max-width: 62ch;
+  margin: 14px 0 0;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+
+  b {
+    color: var(--text);
+    font-weight: 600;
+  }
+}
+
+.say.small {
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+
+.card {
+  padding: 20px 22px;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.chead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+
+  h3 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .say {
+    margin-top: 4px;
+  }
+}
+
+// ---- ОТВЕТ: объём и цена тысячи рядом ----
+//
+// Одна рамка на две половины, а не карточка-герой и плитка четвёртой в
+// ряду. Продаёт их ОТНОШЕНИЕ: объём растёт — цена тысячи падает; порознь
+// ни одно из этих чисел не аргумент.
+
+.answer {
+  display: grid;
+  gap: 0;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.half {
+  display: flex;
+  flex-direction: column;
+  padding: 26px 28px;
+}
+
+// Латунная кромка у объёма, ледяная у цены: два цвета смысла держат
+// половины различимыми и без линейки между ними.
+.half.views {
+  border-left: 3px solid var(--brass);
+}
+
+.half.price {
+  border-left: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.big {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: clamp(40px, 5vw, 64px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.94;
+}
+
+.big.brass {
+  color: var(--brass);
+}
+
+.big.ice {
+  color: var(--ice);
+}
+
+.big .unit {
+  margin-left: 0.14em;
+  color: var(--text-dim);
+  font: 700 0.42em/1 var(--font-body);
+  font-style: normal;
+}
+
+// Насечки: подпись продукта. 9:16 у каждой — родная форма ролика.
+app-steps {
+  margin-top: 18px;
+}
+
+.scale {
+  margin: 8px 0 0;
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+
+// ---- отклик одной строкой ----
+//
+// Взаимодействия, комментарии и ER — не три показателя, а один
+// разложенный: ER считается из тех же действий, что стоят слева. Четыре
+// равные плитки объявляли их независимыми, и три из четырёх стояли с
+// прочерком.
+
+.react {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.react-row {
+  display: flex;
+  gap: 12px 28px;
+  flex-wrap: wrap;
+}
+
+.react-row .r {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.react-row .num {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.react-row i {
+  color: var(--text-dim);
+  font-size: 11.5px;
+  font-style: normal;
+}
+
+// Лучший день окна. Прижат к низу половины: она выше соседней ровно на
+// столько, на сколько лесенка длиннее отклика, и пустота под последней
+// строкой читается как «здесь что-то не догрузилось».
+.best {
   display: flex;
   align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
-  margin: 26px 0 12px;
-  color: var(--text-dim);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  margin: auto 0 0;
+  padding-top: 18px;
 
-  // Оговорка при заголовке — обычным предложением, а не заголовочными
-  // капителями: это пояснение, а не вторая рубрика.
-  .note {
-    color: var(--text-muted);
-    font-size: 12.5px;
-    font-weight: 400;
-    letter-spacing: normal;
-    text-transform: none;
+  .bk {
+    color: var(--text-faint);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  b {
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  .bv {
+    color: var(--brass);
+    font-family: var(--font-head);
+    font-size: 19px;
+    font-variant-numeric: tabular-nums;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 }
 
-// ---- герой ----
+// ---- доказательства ----
 
-.hero {
-  padding: 24px 26px;
-  border: 1px solid var(--border-strong, #2c313a);
-  border-radius: var(--r-card, 16px);
-  background: var(--surface);
+.proofs {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1.35fr 1fr;
+  margin-top: 16px;
 }
 
-.hero-top {
+// Одна карточка из двух: растягивать её на полторы колонки незачем — от
+// этого в ней появляется пустота, которая читается как «вторую забыли».
+.proofs.one {
+  grid-template-columns: 1fr;
+}
+
+.viral {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.clip {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 86px 1fr;
+}
+
+// Кадр 9:16 — родная форма ролика. Настоящей обложки у нас нет и взяться
+// ей неоткуда: ролик лежит на чужой площадке, а мы храним ссылку,
+// счётчики и дату. Поэтому здесь ЗНАК ПЛОЩАДКИ на её цвете, а не серая
+// заглушка: заглушка читается как несработавшая загрузка, то есть как
+// поломка, и заставляет искать, что сломалось.
+.cover {
+  position: relative;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.hero .label {
-  margin: 0 0 6px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.hero .big {
-  margin: 0;
-  font-size: clamp(38px, 6vw, 62px);
-  font-weight: 600;
-  line-height: 1;
-}
-
-.hero-delta {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 7px;
-  flex-wrap: wrap;
-
-  .to {
-    color: var(--text-dim);
-    font-size: 12.5px;
-  }
-}
-
-.hero .hint {
-  margin: 18px 0 0;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-// Полоса состава — подпись этого экрана. Зазоры между кусками не
-// украшение: три из пяти площадок красноватые, и без зазора соседние
-// куски сливаются в один.
-.stack {
-  display: flex;
-  gap: 2px;
-  height: 10px;
-  margin-top: 22px;
-  border-radius: 99px;
-  background: var(--bg-elevated, #111316);
+  aspect-ratio: 9 / 16;
+  padding: 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
   overflow: hidden;
 
-  span {
-    height: 100%;
-    transition: width 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
+  .pl {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .cfoot {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .cdate {
+    color: var(--text-dim);
+    font-size: 10px;
+  }
+
+  .cn {
+    color: var(--text);
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 }
 
-.legend {
+.clip .body {
   display: flex;
-  gap: 12px 20px;
-  flex-wrap: wrap;
-  margin: 14px 0 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  justify-content: center;
+  min-width: 0;
+}
+
+.clip .ttl {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+// Цель 44 px с числом и стрелкой наружу. Значок в 26 пикселей не обещал
+// ничего, не говорил, сколько там просмотров, и промахивался пальцем.
+.go {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s;
+
+  &:hover {
+    border-color: var(--border-hover);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+  }
+
+  .gl {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .gv {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .arr {
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+}
+
+// ---- ранжированные площадки ----
+//
+// Список с пропорциональными полосами вместо пяти одинаковых карточек.
+// При разнице в сорок раз одинаковые карточки рисовали TikTok и Likee
+// одного размера — то есть скрывали ровно то, ради чего разбор смотрят.
+
+.rank {
+  margin: 0;
   padding: 0;
   list-style: none;
 
   li {
-    display: flex;
+    display: grid;
+    gap: 10px;
     align-items: center;
-    gap: 7px;
-    color: var(--text-muted);
-    font-size: 12.5px;
+    grid-template-columns: 8px minmax(72px, auto) 1fr auto;
+    padding: 9px 0;
+    border-top: 1px solid var(--border);
   }
 
-  i {
-    width: 9px;
-    height: 9px;
-    flex: 0 0 auto;
-    border-radius: 3px;
+  li:first-child {
+    border-top: 0;
   }
 
-  b {
-    color: var(--text);
-    font-weight: 500;
-  }
-
-  .muted {
-    color: var(--text-dim);
-    font-weight: 400;
-  }
-
-  li.zero i {
-    opacity: 0.4;
-  }
-}
-
-// ---- прирост ----
-//
-// Цветом только там, где есть направление. Прочерк и ноль — серые:
-// зелёная стрелка у неизвестного прироста это обещание, которого мы не
-// проверяли.
-.delta {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  color: var(--text-muted);
-  font-size: 14px;
-  font-weight: 500;
-
-  .n {
-    font-family: var(--crm-mono);
-    font-size: 13.5px;
-    font-variant-numeric: tabular-nums;
-  }
-
-  &.up {
-    color: var(--ok, #2fbd8f);
-  }
-
-  &.down {
-    color: var(--bad, #e0604e);
-  }
-
-  &.none {
-    color: var(--text-dim);
-    cursor: help;
-  }
-}
-
-// ---- отклик ----
-
-.kpis {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(3, 1fr);
-  margin-top: 14px;
-}
-
-.kpi {
-  padding: 17px 19px;
-  border: 1px solid var(--border-strong, #2c313a);
-  border-radius: var(--r-card, 16px);
-  background: var(--surface);
-
-  .label {
-    margin: 0 0 8px;
-    color: var(--text-muted);
-    font-size: 13px;
-  }
-
-  .v {
-    margin-bottom: 8px;
-    font-size: 29px;
-    font-weight: 600;
-    line-height: 1;
-  }
-}
-
-// Звёздочка «посчитано без репостов» — такая же, как у ER: это одно и
-// то же утверждение о данных.
-.star {
-  border: none;
-  color: var(--text-dim);
-  cursor: help;
-  text-decoration: none;
-}
-
-// ---- площадки ----
-
-.grid {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-}
-
-.net {
-  padding: 15px 17px;
-  border: 1px solid var(--border-strong, #2c313a);
-  border-radius: var(--r-card, 16px);
-  background: var(--surface);
-  transition: border-color 0.15s;
-  // Ничто из содержимого не должно оказаться снаружи рамки: карточка —
-  // это и есть граница, по которой ряд читается как ряд.
-  overflow: hidden;
-
-  &:hover {
-    border-color: var(--border-hover, #3a4049);
-  }
-
-  &.zero {
-    opacity: 0.6;
-  }
-
-  .nhead {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    margin-bottom: 12px;
+  li.zero {
+    opacity: 0.55;
   }
 
   .dot {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    flex: 0 0 auto;
-    border-radius: 7px;
-    color: #0b0c0e;
-    font-family: var(--crm-mono);
-    font-size: 11px;
-    font-weight: 700;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
   }
 
-  .name {
-    font-size: 14px;
+  .nm {
+    font-size: 13px;
     font-weight: 500;
   }
 
-  .nviews {
-    font-size: 23px;
-    font-weight: 600;
-    line-height: 1;
-  }
-
-  .nsub {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-    flex-wrap: wrap;
-    margin: 6px 0 12px;
-    color: var(--text-muted);
-    font-size: 12px;
-  }
-
-  .nfoot {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-top: 11px;
-  }
-
-  .per {
-    color: var(--text-dim);
-    font-size: 12px;
-  }
-
-  .delta {
-    font-size: 12.5px;
-  }
-}
-
-// Место под мини-график держим всегда: без него карточка площадки без
-// ряда на полтора десятка пикселей ниже соседних, и ряд карточек едет.
-//
-// Высоту самого графика задаёт его же компонент, по переданному height.
-// Здесь только заглушка на случай, когда рисовать нечего.
-.spark.empty {
-  display: block;
-  height: 30px;
-  border-bottom: 1px dashed var(--border);
-}
-
-// ---- залетевшие ролики ----
-
-// Три колонки жёстко, а не по месту: залетевших роликов бывает и один
-// (у нового проекта так и будет), а растянутая на всю ширину карточка с
-// одним роликом читается как «больше у нас ничего нет».
-.viral {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.clip {
-  display: block;
-  border: 1px solid var(--border-strong, #2c313a);
-  border-radius: var(--r-card, 16px);
-  background: var(--surface);
-  color: inherit;
-  text-decoration: none;
-  overflow: hidden;
-  transition: border-color 0.15s;
-
-  &:hover {
-    border-color: var(--border-hover, #3a4049);
-  }
-
-  .thumb {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 92px;
-  }
-
-  .play {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: rgb(11 12 14 / 55%);
-  }
-
-  .play::after {
-    content: '';
-    margin-left: 3px;
-    border-top: 7px solid transparent;
-    border-bottom: 7px solid transparent;
-    border-left: 11px solid #fff;
-  }
-
-  .pl {
-    position: absolute;
-    top: 9px;
-    left: 11px;
-    font-size: 11px;
-    font-weight: 600;
-  }
-
-  .body {
+  .track {
     display: block;
-    padding: 12px 14px;
-  }
-
-  .meta {
-    display: block;
-    color: var(--text-dim);
-    font-size: 11.5px;
-  }
-
-  .ttl {
-    display: -webkit-box;
-    height: 36px;
-    margin: 5px 0 9px;
-    font-size: 13px;
-    line-height: 1.35;
+    height: 7px;
+    border-radius: 99px;
+    background: var(--bg-elevated);
     overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
   }
 
-  .n {
+  .track b {
     display: block;
-    font-size: 17px;
-    font-weight: 600;
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
-  .n i {
-    color: var(--text-muted);
-    font-size: 11px;
-    font-style: normal;
+  .val {
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .val.none {
+    color: var(--text-faint);
+    font-family: var(--font-body);
+    font-size: 12px;
     font-weight: 400;
   }
 }
 
-// ---- свежесть ----
+// ---- график ----
+//
+// Стоит ПОСЛЕ ответа: он про «как рос», а страницу открывают ради
+// «сколько и почём». На телефоне свёрнут — шесть линий на 358 пикселях
+// без курсора не читаются.
 
-.updated {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 22px 0 0;
-  color: var(--text-dim);
-  font-size: 12.5px;
+.chartcard {
+  margin-top: 26px;
+}
 
-  .pulse {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--ok, #2fbd8f);
+.chartcard h3 {
+  margin: 0 0 12px;
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.chartcard .foldrow {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .answer,
+  .proofs {
+    grid-template-columns: 1fr;
   }
 
-  // Сбора ещё не было: точка гаснет. Зелёная рядом со словами «сбор не
-  // прошёл» читалась бы как «всё в порядке, данные свежие».
-  .pulse.idle {
-    background: var(--text-dim);
+  .half.price {
+    border-left: 0;
+    border-top: 1px solid var(--border);
   }
 
-  .exact {
-    font-family: var(--crm-mono);
+  .prow {
+    grid-template-columns: 1fr auto;
+  }
+
+  .prow .pempty {
+    grid-column: auto;
   }
 }
 
 @media (max-width: 760px) {
-  .kpis,
-  .viral {
-    grid-template-columns: 1fr;
+  .half {
+    padding: 20px 18px;
   }
 
-  .hero {
-    padding: 18px 16px;
+  .clip {
+    grid-template-columns: 70px 1fr;
   }
 }
 
-// Уменьшенное движение: полоса состава встаёт сразу на свою ширину.
-// Набор числа выключается в самой директиве — там это решение про
-// данные, а не про css.
+// Уменьшенное движение: полосы встают сразу на свою ширину. Набор числа
+// выключается в самой директиве — там это решение про данные, а не про css.
 @media (prefers-reduced-motion: reduce) {
-  .stack span {
+  .rank .track b {
     transition: none;
   }
 }

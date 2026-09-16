@@ -1,7 +1,23 @@
+@use 'layout';
+
 .project-detail {
   max-width: 880px;
   margin: 24px auto 80px;
   padding: 0 16px;
+}
+
+// Проект с креаторами — в том же контейнере, что и шапка над ним. Колонка
+// в 880px на 1440-м мониторе оставляла по трети экрана пустого поля с
+// каждой стороны, а внутри ужимала ленту роликов и календарь.
+//
+// Инклуд последним — см. комментарий в specialist-profile.page.scss:
+// объявление после раскрытого миксина Sass встречает предупреждением
+// mixed-decls.
+.project-detail.wide {
+  max-width: none;
+  padding: 0;
+
+  @include layout.page-container;
 }
 
 .center {

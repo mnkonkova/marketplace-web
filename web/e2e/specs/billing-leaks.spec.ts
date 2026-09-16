@@ -1,5 +1,28 @@
 import { test, expect, type Page, request as pwRequest } from '@playwright/test';
-import { AUTH_KEY, world } from '../fixtures/world';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { openCabinetTab } from '../fixtures/ui';
+
+/**
+ * Проекты — свои: и обычный, и с прошлым.
+ *
+ * Спека читает ОТВЕТЫ, а не разметку, и состав ответа зависит от того,
+ * что в проекте лежит. На общем посеянном проекте любая соседняя специя
+ * меняла этот состав, и «лишнего поля не нашлось» могло значить «в
+ * ответе вообще нечего смотреть».
+ */
+let box: Sandbox;
+let history: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('leaks');
+  history = await createSandbox('leakshist', { shape: 'history' });
+});
+
+test.afterAll(() => {
+  dropSandbox(box);
+  dropSandbox(history);
+});
 
 /**
  * Что уезжает в браузер вместе с деньгами.
@@ -28,7 +51,7 @@ const signIn = (
 ) =>
   context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, world().sessions[role]] as const,
+    [AUTH_KEY, box.sessions[role]] as const,
   );
 
 interface Captured {
@@ -126,10 +149,20 @@ test('заказчику не приезжают ни выплаты креат�
   // Карточка проекта и список: деньги показывают обе, а запрашивает их
   // одна — но лишнее поле всё равно ищем в обоих заходах, иначе оно
   // переедет вместе с первой же новой плашкой.
-  await page.goto(`/me/projects/${world().projectId}`);
-  await expect(page.getByText('PetFlat · UGC (e2e)').first()).toBeVisible({ timeout: 15_000 });
+  await page.goto(`/me/projects/${box.projectId}`);
+  await expect(page.getByText(box.title).first()).toBeVisible({ timeout: 15_000 });
   await page.goto('/me/projects');
-  await expect(page.getByText('PetFlat · UGC (e2e)').first()).toBeVisible({ timeout: 15_000 });
+  // Кабинет открывается дашбордом — реестр проектов теперь соседняя
+  // вкладка. Нам нужен именно он: лишнее поле переезжает вместе с
+  // плашкой, а плашки со счётом живут в реестре.
+  await openCabinetTab(page, 'Проекты');
+  // Ждём СТРОКУ РЕЕСТРА, а не наш проект: песочница помечена тестовой, а
+  // реестр тестовые проекты заказчику не показывает — и правильно
+  // делает. Проверяем, что экран доехал и запросы с него ушли; что
+  // именно в них лежит, спрашиваем ниже у ответов, а не у разметки.
+  await expect(page.locator('.prow').first(), 'реестр проектов нарисован').toBeVisible({
+    timeout: 15_000,
+  });
 
   const captured = await settled();
   const billing = captured.filter((c) => /^\/api\/v1\/me\/projects\/[^/]+\/billing$/.test(c.path));
@@ -153,7 +186,7 @@ test('креатор в своём кабинете не видит ни кли�
 }) => {
   const api = await pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${world().sessions.creator.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.creator.access_token}` },
   });
   const meId = (await (await api.get('/api/v1/me')).json()).user_id as string;
   await api.dispose();
@@ -161,7 +194,7 @@ test('креатор в своём кабинете не видит ни кли�
   await signIn(context, 'creator');
   const settled = watchApi(page);
 
-  await page.goto(`/me/creator/projects/${world().historyProjectId}`);
+  await page.goto(`/me/creator/projects/${history.projectId}`);
   // Ждём сам блок, а не заголовок в нём: заголовок — вопрос подачи, и
   // специя про утечки не должна падать от того, что его переписали.
   await expect(page.locator('app-creator-ladder')).toBeVisible({ timeout: 15_000 });
@@ -219,7 +252,7 @@ test('смета заказа не показывает заказчику кр�
   const settled = watchApi(page);
 
   await page.goto('/me/projects');
-  await page.getByRole('button', { name: 'Под ключ' }).click();
+  await page.getByRole('button', { name: 'Посчитать смету' }).click();
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
   await page.locator('.kind.k1').click();
   await expect(page.locator('.ccard').first()).toBeVisible({ timeout: 15_000 });

@@ -1,5 +1,6 @@
 import { test, expect, request as pwRequest, type Page } from '@playwright/test';
-import { AUTH_KEY, psql, world } from '../fixtures/world';
+import { AUTH_KEY, psql } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Шапка проекта у менеджера говорит то же, что план.
@@ -32,7 +33,7 @@ async function call(
 ): Promise<{ status: number; body: any }> {
   const api = await pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${world().sessions.manager.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.manager.access_token}` },
   });
   try {
     const res = await api[method](path, { data: data ?? undefined });
@@ -44,12 +45,29 @@ async function call(
   }
 }
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('phead');
+});
+
+test.afterAll(() => dropSandbox(box));
+
 function signIn(page: Page) {
   return page
     .context()
     .addInitScript(
       ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-      [AUTH_KEY, world().sessions.manager] as const,
+      [AUTH_KEY, box.sessions.manager] as const,
     );
 }
 
@@ -88,29 +106,31 @@ test.describe('счётчики выкладок', () => {
   });
 
   test('отменённая пачка не попадает ни в шапку, ни в бейдж вкладки', async ({ page }) => {
-    const w = world();
-
     // До: сколько действующих выкладок в проекте сейчас.
-    await page.goto(`/manager/projects/${w.projectId}`);
+    await page.goto(`/manager/projects/${box.projectId}`);
     await expect(page.locator('.phead .meta')).toBeVisible({ timeout: 15_000 });
     const before = await headCount(page);
     const cancelledBefore = await cancelledCount(page);
 
     // Заводим пачку на будущее и тут же снимаем её целиком.
-    const creators = await call('get', `/api/v1/manager/projects/${w.projectId}/creators`);
+    const creators = await call('get', `/api/v1/manager/projects/${box.projectId}/creators`);
     const creatorID = creators.body.items[0].user_id as string;
     const dates = ['2099-01-01', '2099-01-02', '2099-01-03'];
-    const batch = await call('post', `/api/v1/manager/projects/${w.projectId}/publications/batch`, {
-      creator_user_ids: [creatorID],
-      dates,
-    });
+    const batch = await call(
+      'post',
+      `/api/v1/manager/projects/${box.projectId}/publications/batch`,
+      {
+        creator_user_ids: [creatorID],
+        dates,
+      },
+    );
     expect(batch.status, 'пачка заведена').toBe(201);
     batchID = batch.body.batch_id as string;
     cancelled = dates.length;
 
     const drop = await call(
       'post',
-      `/api/v1/manager/projects/${w.projectId}/publications/cancel_batch`,
+      `/api/v1/manager/projects/${box.projectId}/publications/cancel_batch`,
       { batch_id: batchID },
     );
     expect(drop.status, 'пачка снята').toBe(200);
@@ -145,8 +165,7 @@ test.describe('обратный отсчёт', () => {
   test.beforeEach(async ({ page }) => signIn(page));
 
   test('у закрытой выкладки в плане только дата, без «−N дней»', async ({ page }) => {
-    const w = world();
-    await page.goto(`/manager/projects/${w.projectId}`);
+    await page.goto(`/manager/projects/${box.projectId}`);
 
     // Посеянная выкладка сдана на все пять площадок — у неё в счётчике 5/5.
     const slot = page.locator('.slot').filter({ hasText: '5/5' }).first();
@@ -165,18 +184,21 @@ test.describe('предоплата', () => {
   test.afterEach(async () => {
     // Платёж заводил тест — подтверждённый платёж API задним числом не
     // трогает, поэтому убираем SQL'ем.
-    psql(`DELETE FROM project_payments WHERE project_id = '${world().projectId}';`);
+    psql(`DELETE FROM project_payments WHERE project_id = '${box.projectId}';`);
   });
 
   test('работа идёт без предоплаты — предупреждаем; подтвердили — убираем', async ({ page }) => {
-    const w = world();
-    psql(`DELETE FROM project_payments WHERE project_id = '${w.projectId}';`);
+    psql(`DELETE FROM project_payments WHERE project_id = '${box.projectId}';`);
 
-    await page.goto(`/manager/projects/${w.projectId}`);
-    const bar = page.locator('.riskbar', { hasText: 'предоплата не подтверждена' });
+    await page.goto(`/manager/projects/${box.projectId}`);
+    // Полоса опознаётся КЛАССОМ, а не фразой: текста в ней два разных, и
+    // привязка к одному из них означала бы, что второе состояние не
+    // проверяет никто.
+    const bar = page.locator('.riskbar.money');
     await expect(bar, 'выкладки есть, предоплаты нет').toBeVisible({ timeout: 15_000 });
+    await expect(bar, 'сказано, что предоплаты нет вовсе').toContainText('Предоплата не заведена');
 
-    const set = await call('put', `/api/v1/manager/projects/${w.projectId}/payments/prepayment`, {
+    const set = await call('put', `/api/v1/manager/projects/${box.projectId}/payments/prepayment`, {
       amount: 10_000_000,
     });
     expect(set.status, 'сумма выставлена').toBe(200);
@@ -185,10 +207,16 @@ test.describe('предоплата', () => {
     await expect(bar, 'сумма есть, денег нет — предупреждение остаётся').toBeVisible({
       timeout: 15_000,
     });
+    // И говорит уже ДРУГОЕ: «не заведена» и «выставлена, но не оплачена»
+    // — разные дела менеджера, и одинаковый текст на них посылал бы его
+    // заводить сумму, которая уже заведена.
+    await expect(bar, 'счёт выставлен, деньги не пришли').toContainText(
+      'деньги не отмечены полученными',
+    );
 
     const confirm = await call(
       'post',
-      `/api/v1/manager/projects/${w.projectId}/payments/prepayment/confirm`,
+      `/api/v1/manager/projects/${box.projectId}/payments/prepayment/confirm`,
     );
     expect(confirm.status, 'деньги отмечены полученными').toBe(200);
 

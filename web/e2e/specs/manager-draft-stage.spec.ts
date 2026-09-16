@@ -1,5 +1,6 @@
 import { test, expect, request as pwRequest } from '@playwright/test';
-import { AUTH_KEY, world } from '../fixtures/world';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Этап согласования черновика — переключатель проекта.
@@ -12,13 +13,29 @@ import { AUTH_KEY, world } from '../fixtures/world';
  */
 const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('draft');
+});
+
+test.afterAll(() => dropSandbox(box));
+
 async function setDraft(required: boolean): Promise<void> {
-  const w = world();
   const api = await pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${w.sessions.manager.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.manager.access_token}` },
   });
-  await api.put(`/api/v1/manager/projects/${w.projectId}/settings`, {
+  await api.put(`/api/v1/manager/projects/${box.projectId}/settings`, {
     data: { draft_required: required, client_sees_stats: true },
   });
   await api.dispose();
@@ -34,9 +51,9 @@ test.beforeEach(async ({ context, page }) => {
   await setDraft(false);
   await context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, world().sessions.manager] as const,
+    [AUTH_KEY, box.sessions.manager] as const,
   );
-  await page.goto(`/manager/projects/${world().projectId}`);
+  await page.goto(`/manager/projects/${box.projectId}`);
 });
 
 test.afterEach(async () => {
@@ -50,8 +67,7 @@ test('включённый этап черновика переживает пе
   const [response] = await Promise.all([
     page.waitForResponse(
       (r) =>
-        r.url().includes(`/projects/${world().projectId}/settings`) &&
-        r.request().method() === 'PUT',
+        r.url().includes(`/projects/${box.projectId}/settings`) && r.request().method() === 'PUT',
     ),
     toggle(page).click(),
   ]);

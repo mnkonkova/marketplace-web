@@ -84,10 +84,12 @@
     height: 13px;
   }
 
+  // Тёмная надпись на коралле: белая давала 3.46:1 — см. .btn.primary
+  // в shared/scss/_crm.scss.
   &.is-main {
     border-color: var(--cta);
     background: var(--cta);
-    color: #fff;
+    color: var(--ink);
   }
 }
 

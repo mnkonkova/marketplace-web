@@ -1,5 +1,6 @@
 import { test, expect, request as pwRequest } from '@playwright/test';
-import { AUTH_KEY, psql, world } from '../fixtures/world';
+import { AUTH_KEY, psql } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Убрать созданную пачку.
@@ -19,7 +20,7 @@ async function cancelBatch(projectId: string, batchId: string): Promise<void> {
   const api = await pwRequest.newContext({
     baseURL: process.env.E2E_API ?? 'http://127.0.0.1:8080',
     extraHTTPHeaders: {
-      Authorization: `Bearer ${world().sessions.manager.access_token}`,
+      Authorization: `Bearer ${box.sessions.manager.access_token}`,
     },
   });
   await api.post(`/api/v1/manager/projects/${projectId}/publications/cancel_batch`, {
@@ -38,18 +39,34 @@ async function cancelBatch(projectId: string, batchId: string): Promise<void> {
  * другое: что запрос вообще доходит и строки появляются в плане.
  */
 test.beforeEach(async ({ context, page }) => {
-  const w = world();
   await context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, w.sessions.manager] as const,
+    [AUTH_KEY, box.sessions.manager] as const,
   );
-  await page.goto(`/manager/projects/${w.projectId}`);
+  await page.goto(`/manager/projects/${box.projectId}`);
 });
 
 // nz-modal не связывает заголовок с ролью dialog через aria-labelledby,
 // поэтому ищем по самому окну, а не по доступному имени.
 const dialog = (page: import('@playwright/test').Page) =>
   page.locator('.ant-modal-content', { hasText: 'Дни выкладки' });
+
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('sched');
+});
+
+test.afterAll(() => dropSandbox(box));
 
 test('выбранные в календаре дни создают выкладки', async ({ page }) => {
   const plan = page.locator('.slot');
@@ -86,7 +103,7 @@ test('выбранные в календаре дни создают выкла�
   await expect(d).toBeHidden();
   await expect.poll(() => plan.count(), { timeout: 10_000 }).toBeGreaterThan(before);
 
-  await cancelBatch(world().projectId, body.batch_id);
+  await cancelBatch(box.projectId, body.batch_id);
 });
 
 test('без выбранного креатора создать нельзя', async ({ page }) => {
@@ -113,6 +130,6 @@ test('без выбранного креатора создать нельзя',
   await expect(submit).toBeDisabled();
 
   // А с человеком — можно.
-  await d.getByRole('button', { name: /Анастасия/ }).click();
+  await d.getByRole('button', { name: box.creator.name }).click();
   await expect(submit).toBeEnabled();
 });

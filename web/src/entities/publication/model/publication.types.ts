@@ -230,6 +230,10 @@ export interface CalendarDay {
 export interface CalendarResponse {
   month: string;
   days: CalendarDay[];
+  // Месяцы (ГГГГ-ММ), в которых у проекта вообще есть выкладки. Сетка
+  // показывает один месяц, и без этого списка пустой месяц неотличим от
+  // «данные не доехали»: выкладки могут стоять в соседнем.
+  months?: string[];
 }
 
 export interface NotificationPrefs {

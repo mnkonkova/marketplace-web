@@ -15,11 +15,13 @@
 .crm-page {
   --card: var(--surface);
   --card-2: var(--surface-hover);
-  --line: #23272d;
-  --line-2: #2c313a;
-  --line-3: #3a4049;
-  --muted: #8c94a0;
-  --muted-2: #616772;
+  --line: var(--border);
+  --line-2: var(--border-strong);
+  --line-3: var(--border-hover);
+  // Ярусы подписей — псевдонимы к общим t3/t4. Свои значения здесь
+  // расходились с дизайн-системой: --muted-2 (#616772) давал 3.4:1.
+  --muted: var(--text-dim);
+  --muted-2: var(--text-faint);
   --coral: var(--cta);
   --coral-hover: var(--cta-hover);
   // Статусная палитра переехала в :root (см. styles.scss): те же цвета
@@ -27,6 +29,9 @@
   // остались псевдонимы — макетные имена, которыми размечены эти экраны.
   --green: var(--ok);
   --green-dim: var(--ok-line);
+  // «Янтарное» имя осталось от макета v1, цвет за ним — коралловый
+  // предупреждающий (см. --warn в styles.scss). Янтарь теперь занят
+  // латунью и значит «выросло».
   --amber: var(--warn);
   --amber-dim: var(--warn-line);
   --red: var(--bad);
@@ -183,11 +188,75 @@
     margin: 0 0 8px;
   }
 
-  // Числа — моноширинные и с табличными цифрами: в столбце просмотров
-  // разряды обязаны стоять друг под другом.
+  // Числа — Archivo с табличными цифрами и тугим трекингом.
+  // Моноширинный отсюда убран: на 54–92 px он давал «3   000   000» с
+  // провалами между разрядами — это читалось как автомобильный номер, а
+  // не как сумма. Столбец при этом не разъехался: tabular-nums держит
+  // разряды друг под другом ровно так же.
   .num {
-    font-family: var(--mono);
+    font-family: var(--font-head);
     font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+    letter-spacing: -0.02em;
+  }
+
+  // Машинная строка: адрес, идентификатор, код приглашения. Здесь
+  // моноширинный и остаётся — он сообщает «это не текст, это данные».
+  .mono {
+    font-family: var(--mono);
+  }
+
+  // Шкала чисел-героев из kit.css: ответ экрана, крупное число карточки,
+  // число строки. Трекинг тем туже, чем крупнее кегль.
+  // 88 px в макете — при ширине окна 1440. Ниже этого «258 000 ₽»
+  // выезжает за карточку, поэтому здесь clamp с тем же потолком: кегль
+  // макета сохранён там, где макет и мерили.
+  .num-xl {
+    font-size: clamp(48px, 6.2vw, 88px);
+    font-weight: 800;
+    line-height: 0.92;
+    letter-spacing: -0.035em;
+  }
+
+  .num-l {
+    font-size: clamp(34px, 3.8vw, 52px);
+    font-weight: 800;
+    line-height: 0.94;
+    letter-spacing: -0.035em;
+  }
+
+  .num-m {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .num-s {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  // Единица при числе: рубль, «из 5», «/ 1000». Кегль привязан к числу,
+  // поэтому em, а не px, — одна запись на все четыре размера.
+  .unit {
+    margin-left: 0.34em;
+    color: var(--muted);
+    font: 600 0.34em/1 var(--font-body);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  // Два цвета смысла. Не «хорошо/плохо»: упавшая себестоимость тысячи —
+  // это хорошо, и .fell её как раз хвалит.
+  .grew {
+    color: var(--brass);
+  }
+
+  .fell {
+    color: var(--ice);
   }
 
   // ── карточки, кнопки, чипы ─────────────────────────────
@@ -224,7 +293,12 @@
 
     &.primary {
       background: var(--coral);
-      color: #fff;
+      // Надпись цветом земли, а не белым. Белое на коралле даёт 3.46:1 —
+      // ниже порога 4.5 для обычного текста, и это главная кнопка
+      // продукта. Затемнять сам коралл нельзя: он один на весь сайт, и
+      // второй его оттенок мы уже однажды сводили. Тёмная надпись на
+      // ярком коралле даёт 5.68:1 и палитру не трогает.
+      color: var(--ink);
 
       &:hover {
         background: var(--coral-hover);
@@ -300,10 +374,21 @@
       background: rgb(47 189 143 / 10%);
     }
 
+    // Предупреждение. Цвет коралловый (см. --warn), и одним цветом его
+    // теперь не отличить ни от действия, ни от .red — поэтому плашка
+    // несёт восклицательный знак. Он рисуется здесь, а не в разметке:
+    // мест, где стоит .tag.amber, больше десятка, и вписать значок в
+    // каждое — значит забыть его в одном.
     &.amber {
       color: var(--amber);
       border-color: var(--amber-dim);
-      background: rgb(226 163 60 / 10%);
+      background: var(--warn-bg);
+
+      &::before {
+        content: '!';
+        font-weight: 800;
+        line-height: 1;
+      }
     }
 
     &.red {
@@ -322,6 +407,48 @@
       color: var(--coral);
       border-color: #5a2e26;
       background: rgb(240 85 60 / 10%);
+    }
+  }
+
+  // МЕТКА СОСТОЯНИЯ — точка и слово, а не заливка.
+  //
+  // Плашка (.tag) меряет площадь: тринадцать зелёных подряд заливают
+  // реестр цветом, и одна коралловая в нём теряется. Состояний же по
+  // одному на строку, и весить они должны одинаково. Точка весит ровно
+  // себя. Слово при ней обязательно: цветом одним состояние не назвать
+  // — тем более теперь, когда коралл носят и предупреждение, и действие.
+  .mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      flex: none;
+      border-radius: 50%;
+      background: var(--muted-2);
+    }
+
+    &.ok::before {
+      background: var(--green);
+    }
+
+    &.warn::before {
+      background: var(--amber);
+    }
+
+    &.bad::before {
+      background: var(--red);
+    }
+
+    &.info::before {
+      background: var(--blue);
     }
   }
 
@@ -410,7 +537,7 @@
     flex: 0 0 auto;
     font-size: 12.5px;
     font-weight: 700;
-    color: #0b0c0e;
+    color: var(--ink);
 
     &.lg {
       width: 40px;
@@ -860,7 +987,7 @@
       &.sel {
         border-color: var(--coral);
         background: var(--coral);
-        color: #fff;
+        color: var(--ink);
         font-weight: 600;
       }
     }
@@ -1231,7 +1358,7 @@
     &.on .check {
       background: var(--coral);
       border-color: var(--coral);
-      color: #fff;
+      color: var(--ink);
     }
 
     .meta {
@@ -1452,12 +1579,16 @@
       }
     }
 
+    // Предупреждение теперь коралловое (--warn). Значок в .ic
+    // обязателен: цветом предупреждение от действия больше не отличить,
+    // и плашка без значка читалась бы как большая кнопка.
     &.warn {
-      background: rgb(226 163 60 / 8%);
+      background: var(--warn-bg);
       border: 1px solid var(--amber-dim);
+      border-left: 3px solid var(--amber);
 
       .ic {
-        background: rgb(226 163 60 / 16%);
+        background: rgb(240 85 60 / 16%);
         color: var(--amber);
       }
 

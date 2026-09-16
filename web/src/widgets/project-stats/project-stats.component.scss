@@ -97,13 +97,17 @@ h3 {
   color: var(--text-muted);
   font-size: 12.5px;
 
+  // Латунь, а не бирюза: этой линией показан РОСТ просмотров, а латунь
+  // в палитре и значит «выросло». Бирюзовый акцент остался от прежней
+  // темы и ничего не сообщал — им были выкрашены и линия, и полосы
+  // площадок, и кнопки.
   .dot {
     display: inline-block;
     width: 9px;
     height: 9px;
     margin-right: 6px;
     border-radius: 3px;
-    background: var(--accent, #2fbd8f);
+    background: var(--brass);
   }
 
   .muted {
@@ -139,11 +143,15 @@ h3 {
     background: var(--bg-elevated, #111316);
   }
 
+  // Цвет площадки, а не один общий: разбор ПО ПЛОЩАДКАМ, крашенный
+  // одной краской, заставляет читать подписи, чтобы понять, где чья
+  // полоса. Площадку узнают по цвету раньше, чем прочтут имя. Задаёт
+  // его разметка инлайном, из PLATFORM_COLOR.
   .bar i {
     display: block;
     height: 100%;
     border-radius: 999px;
-    background: var(--accent, #20a194);
+    background: var(--brass);
   }
 
   b {

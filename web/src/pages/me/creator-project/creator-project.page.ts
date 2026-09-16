@@ -1,6 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -28,6 +36,7 @@ import {
   closedCount,
   daysLeft,
   dueLabel,
+  isClosed,
   linkFor,
   linksCollected,
   missingPlatforms,
@@ -44,6 +53,8 @@ import {
   takenOn,
   ymdLocal,
 } from '@entities/publication/lib/extra-publication';
+import { formatMoney } from '@entities/billing/lib/money';
+import { periodTitle } from '@entities/billing/lib/period';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { CreatorAvailabilityComponent } from '@widgets/creator-availability/creator-availability.component';
@@ -53,8 +64,6 @@ import { CreatorLadderComponent } from '@widgets/creator-ladder/creator-ladder.c
 import { BillingApi } from '@entities/billing/api/billing.api';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
 import { missingAccountLinks, nextStepKind } from '@entities/billing/lib/creator-highlights';
-import { shortViews } from '@entities/billing/lib/ladder';
-import { formatMoney } from '@entities/billing/lib/money';
 import { MeRepository } from '@entities/me/repository/me.repository';
 import type { MeProfile } from '@entities/me/model/me.types';
 import type { Material } from '@entities/publication/model/publication.types';
@@ -63,6 +72,14 @@ import { plural } from '@shared/lib/format';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
 import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
+import { NodataComponent } from '@shared/ui/nodata/nodata.component';
+
+/**
+ * Разделы страницы. Ключи латиницей: они уходят в адрес (`?tab=pubs`), а
+ * кириллица в query-string превращается в процентную кашу, которую
+ * человек не перечитает.
+ */
+export type CreatorTab = 'overview' | 'pubs' | 'talk';
 
 // Страница проекта глазами креатора: карточка проекта, его выкладки,
 // чеклист, материалы, заработок и цифры по его же роликам. Шапка берётся
@@ -89,10 +106,11 @@ import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
     CreatorLadderComponent,
     ProjectCommentsComponent,
     ErValueComponent,
+    NodataComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-project.page.html',
-  styleUrl: './creator-project.page.scss',
+  styleUrls: ['./creator-project.page.scss', './creator-project.page.touch.scss'],
 })
 export class CreatorProjectPage {
   private readonly api = inject(PublicationApi);
@@ -111,6 +129,10 @@ export class CreatorProjectPage {
 
   private readonly route = inject(ActivatedRoute);
 
+  private readonly router = inject(Router);
+
+  private readonly destroyRef = inject(DestroyRef);
+
   private readonly msg = inject(NzMessageService);
 
   // Свой id — чтобы в переписке свои сообщения были подписаны «Вы».
@@ -120,11 +142,38 @@ export class CreatorProjectPage {
 
   public readonly platformShort = PLATFORM_SHORT;
 
-  /** Суммы приходят в копейках: на экран — рублями. */
+  /**
+   * Суммы приходят в копейках: на экран — рублями.
+   *
+   * Форматирование вернулось вместе с плашкой итога за прошлый период.
+   * Его убрали, когда со страницы ушёл блок «Условия проекта», — тогда
+   * звать его было больше некому.
+   */
   public readonly money = formatMoney;
 
-  /** «80 тыс.», «1,2 млн» — просмотры короткой строкой. */
-  public readonly views = shortViews;
+  /**
+   * Три раздела на три разных вопроса.
+   *
+   * «Общая» первой: человек приходит сюда с вопросом «сколько мне за это
+   * будет», и открываться страница обязана ответом на него, а не списком
+   * дел. «Мои выкладки» — то, с чем работают руками, за один щелчок.
+   * «Переписка» третьей: её открывают по поводу, а не при каждом заходе.
+   */
+  public readonly tabs: readonly { key: CreatorTab; title: string }[] = [
+    { key: 'overview', title: 'Общая' },
+    { key: 'pubs', title: 'Мои выкладки' },
+    { key: 'talk', title: 'Переписка' },
+  ];
+
+  /**
+   * Открытая вкладка живёт в АДРЕСЕ, а не в памяти компонента.
+   *
+   * Ссылку на свои выкладки креатор кидает менеджеру («вот, две не
+   * сданы»), а ссылку на переписку — себе на другое устройство. Ссылка,
+   * открывающаяся общей вкладкой, показывает не то, чем делились. Так же
+   * сделано в кабинете заказчика (pages/me/projects-list).
+   */
+  public readonly tab = signal<CreatorTab>('overview');
 
   public readonly loading = signal(true);
 
@@ -149,12 +198,66 @@ export class CreatorProjectPage {
   public readonly report = signal<PublicationReport | null>(null);
 
   /**
-   * Тариф и заработок. В макете ставки стоят строкой в шапке проекта, а
-   * деньги — карточкой справа, поэтому страница берёт их сама, а не
-   * прячет в отдельный виджет: разорванные по компонентам, они и
-   * загружались бы дважды.
+   * Заработок за периоды — одним ответом на страницу.
+   *
+   * Берёт его страница, а не каждый виджет сам: тем же ответом живут и
+   * шкала ступеней, и достижения, и история, и разорванные по
+   * компонентам запросы ушли бы за ним трижды.
+   *
+   * Поле `terms` (оклад, ставка за тысячу, ставка сверх порога) в этом
+   * ответе по-прежнему приходит, но у креатора больше не показывается:
+   * карточку «Условия проекта» убрали по решению владельца продукта.
+   * Своей арифметики по ставкам здесь не было и нет — числа приходили с
+   * сервера готовыми.
    */
   public readonly earnings = signal<CreatorEarnings | null>(null);
+
+  /**
+   * Итог за прошлый период — плашкой, пока деньги не выплачены.
+   *
+   * Подытог ставит воркер через две недели после конца периода: до этого
+   * числа ещё едут, после — заморожены и пересчёту не подлежат. Момент
+   * подытога и есть ответ на «сколько я заработал» — и он должен быть
+   * виден сразу, а не строкой в истории под всеми блоками.
+   *
+   * Держится не по календарю: период сменится, а деньги останутся
+   * неполученными. Уходит, когда начисление переходит в «выплачено» —
+   * тогда оно переезжает в «период за периодом», где лежит всё
+   * закрытое.
+   *
+   * Берём ПОСЛЕДНИЙ подытоженный: если их накопилось несколько
+   * невыплаченных, человеку важнее свежий, а остальные видны в истории.
+   */
+  public readonly lastClosed = computed(() => {
+    const e = this.earnings();
+    if (!e) return null;
+    const locked = (e.periods ?? []).filter((p) => p.status === 'locked');
+    for (let i = locked.length - 1; i >= 0; i -= 1) {
+      const p = locked[i];
+      const row = (e.accruals ?? []).find(
+        (a) => a.period_start.slice(0, 10) === p.starts_on.slice(0, 10),
+      );
+      if (row && row.status !== 'paid') return { period: p, row };
+    }
+    return null;
+  });
+
+  /** «Период 1 · 15 сентября — 14 октября» для плашки итога. */
+  public readonly closedTitle = computed(() => periodTitle(this.lastClosed()?.period ?? null));
+
+  /** Срез приблизительный: поденной статистики за период уже нет. */
+  public readonly closedApprox = computed(() => !!this.lastClosed()?.period?.snapshot_approx);
+
+  /**
+   * Что с деньгами сейчас. Три состояния, и они про разное: посчитали,
+   * утвердили, отправили. Молчать о них нельзя — «подытожено» человек
+   * читает как «деньги придут сегодня».
+   */
+  public readonly closedState = computed(() => {
+    const st = this.lastClosed()?.row.status;
+    if (st === 'approved') return 'Утверждено — деньги в очереди на выплату';
+    return 'Подытожено — ждёт утверждения менеджером';
+  });
 
   /** Текущий период — его границы и состояние. */
   public readonly period = computed(() => this.earnings()?.period ?? null);
@@ -202,6 +305,13 @@ export class CreatorProjectPage {
   public readonly busy = signal(false);
 
   public constructor() {
+    // Подписка, а не разовое чтение: «назад» в браузере обязан вернуть ту
+    // вкладку, с которой ушли, — иначе кнопка «назад» после переписки
+    // выкидывает на общую и выглядит как потеря места.
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((q) => {
+      const key = q.get('tab');
+      this.tab.set(this.tabs.some((t) => t.key === key) ? (key as CreatorTab) : 'overview');
+    });
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.projectId.set(id);
@@ -209,6 +319,18 @@ export class CreatorProjectPage {
     } else {
       this.loading.set(false);
     }
+  }
+
+  public setTab(t: CreatorTab): void {
+    if (t === this.tab()) return;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      // В адресе живёт только НЕ умолчание: ссылка на общую — это просто
+      // /me/creator/projects/{id}, без хвоста.
+      queryParams: { tab: t === 'overview' ? null : t },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   // Выкладки в порядке дедлайна: номер «Выкладка 03» — это позиция в
@@ -223,7 +345,38 @@ export class CreatorProjectPage {
       .sort((a, b) => a.due_date.localeCompare(b.due_date)),
   );
 
+  /**
+   * Порядок НА ЭКРАНЕ: сначала то, что надо сдать, потом сданное.
+   *
+   * `ordered()` этого делать не может и не должна: по ней считается
+   * номер выкладки («Выкладка 03» — это позиция в расписании), и стоит
+   * её пересортировать, как номера поедут. Поэтому список для показа —
+   * отдельный, а нумерация по-прежнему идёт от расписания.
+   *
+   * Зачем: двенадцать сделанных карточек и одна несделанная отличались
+   * только цветом рамки, и несделанная лежала последней — за четырьмя
+   * тысячами пикселей прокрутки. То, что надо сделать сегодня, обязано
+   * стоять первым.
+   *
+   * Внутри каждой из двух групп порядок расписания сохраняется: ближний
+   * срок раньше дальнего.
+   */
+  public readonly displayed = computed(() => {
+    const rows = this.ordered();
+    return [...rows.filter((p) => !this.isDone(p)), ...rows.filter((p) => this.isDone(p))];
+  });
+
   public readonly closed = computed(() => closedCount(this.items()));
+
+  /**
+   * Сколько выкладок ещё не сдано — счётчик на вкладке.
+   *
+   * Список ушёл под вкладку, и без этого числа человек не знает, надо ли
+   * туда заходить вообще: раньше несданная карточка попадалась на глаза
+   * сама. Считаем по тому же isDone, что и порядок в списке, — иначе
+   * счётчик и список назвали бы разные выкладки несданными.
+   */
+  public readonly openCount = computed(() => this.ordered().filter((p) => !this.isDone(p)).length);
 
   public readonly total = computed(
     () => this.items().filter((p) => p.status !== 'cancelled').length,
@@ -293,18 +446,12 @@ export class CreatorProjectPage {
    *
    * null — делать прямо сейчас нечего, и придумывать занятие не надо.
    */
-  public readonly nextStep = computed(() => {
-    const f = this.earnings()?.next_step_forecast ?? null;
-    return nextStepKind({
+  public readonly nextStep = computed(() =>
+    nextStepKind({
       hasPending: this.pendingNow(),
-      toStepViews: f?.views_to_go ?? 0,
-      stepPayout: f?.forecast_payout ?? null,
       missingAccounts: this.missingAccounts().length,
-    });
-  });
-
-  /** Остаток до ступени и что она добавит — для строки «что дальше». */
-  public readonly forecast = computed(() => this.earnings()?.next_step_forecast ?? null);
+    }),
+  );
 
   /**
    * Доли полосы прогресса. Считаются по выкладкам, а не по ссылкам:
@@ -373,8 +520,17 @@ export class CreatorProjectPage {
   }
 
   /** Переписка внизу страницы: кнопка «Написать» ведёт туда же. */
-  public scrollToTalk(): void {
-    document.getElementById('talk')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  /**
+   * «Написать» в шапке проекта.
+   *
+   * Раньше прокручивала к якорю #talk в подвале простыни. Теперь
+   * переписка — вкладка, и прокручивать некуда: она открывается прямо
+   * под шапкой, из которой на кнопку и нажали. Прокрутка к якорю здесь
+   * не просто лишняя — она искала бы элемент, которого на общей вкладке
+   * в DOM нет, и кнопка молча не делала бы ничего.
+   */
+  public openTalk(): void {
+    this.setTab('talk');
   }
 
   public index(pub: Publication): string {
@@ -404,6 +560,33 @@ export class CreatorProjectPage {
 
   public canSubmit(pub: Publication): boolean {
     return canSubmitLinks(pub);
+  }
+
+  public isDone(pub: Publication): boolean {
+    return isClosed(pub);
+  }
+
+  /**
+   * Сданные выкладки свёрнуты в одну строку — НА ТЕЛЕФОНЕ.
+   *
+   * Одиннадцать одинаковых карточек «5 из 5 собрано» на 390 px — это
+   * метры прокрутки мимо единственного, ради чего экран и открыли:
+   * выкладки, которую сдают сегодня. Сами карточки никуда не делись, их
+   * разворачивает строка-итог под списком.
+   *
+   * Какое-то время сворачивали и на десктопе: список лежал посреди
+   * простыни, и сданное стояло между человеком и деньгами. Теперь список
+   * — своя вкладка, денег под ним нет, а свёрнутый до одной строки он
+   * оставляет вкладку пустой: человек нажал «Мои выкладки» и увидел, что
+   * выкладок будто бы нет. Признак размера держит css (см. .foldrow и
+   * .slotcard.mdone), сигнал здесь — общий для обоих: два разных
+   * состояния на одну кнопку разошлись бы при первом же повороте
+   * телефона.
+   */
+  public readonly doneFolded = signal(true);
+
+  public toggleDoneFold(): void {
+    this.doneFolded.set(!this.doneFolded());
   }
 
   public readonly expanded = signal<Set<string>>(new Set());
@@ -675,10 +858,11 @@ export class CreatorProjectPage {
   // План ставит менеджер. Эта кнопка про другое: план периода выполнен, а
   // до ступени не хватило, и добрать нечем — новых дат впереди нет.
   //
-  // Поэтому первым в окне стоит не поле даты, а правило про оклад:
-  // недосдача считается только по плановым выкладкам, добавить и не
-  // сдать — не штрафуется. Без этой фразы кнопку не нажмут, и правильно
-  // сделают: в чужих системах такое обычно наказывается.
+  // Поэтому первым в окне стоит не поле даты, а правило про деньги:
+  // трогает это только бонусы, оклад считается по плановым выкладкам, и
+  // добавить и не сдать — не штрафуется. Без этой фразы кнопку не
+  // нажмут, и правильно сделают: в чужих системах такое обычно
+  // наказывается.
 
   public readonly addOpen = signal(false);
 
@@ -735,6 +919,14 @@ export class CreatorProjectPage {
         this.busy.set(false);
         this.addOpen.set(false);
         this.items.set([...this.items(), created]);
+        // И сразу показываем КУДА добавили.
+        //
+        // Кнопка добора стоит в карточке заработка, на общей вкладке —
+        // там числа, ради которых ролик и добирают. Список выкладок
+        // соседний, и без этого перехода человек нажимал «Добавить
+        // ролик», получал всплывашку и смотрел на неизменившийся экран:
+        // строка появлялась там, куда он не смотрит.
+        this.setTab('pubs');
         this.msg.success('Выкладка добавлена. Сдадите ссылки, когда ролик выйдет.');
       },
       error: (e) => {

@@ -5,10 +5,7 @@
       {{ libraryOpen() ? 'Свернуть библиотеку' : 'Библиотека' }}
     </button>
   </div>
-  <p class="note">
-    Креатор отмечает пункты перед тем, как сдать ссылки: без обязательных бэк не примет ссылки.
-    Пункты с меткой площадки показываются только для неё.
-  </p>
+  <p class="note">Это то, что креатор увидит в окне сдачи. Без обязательных ссылки не примутся.</p>
 
   @if (snapshot(); as snap) {
     <div class="tplbar">
@@ -33,21 +30,41 @@
     </div>
   }
 
+  <!-- Группы ровно те же, что в окне сдачи у креатора: сначала общие
+       «перед сдачей», потом площадочные — каждая площадка своим
+       заголовком. Плоский список с приписками «TikTok» сбоку выглядел
+       одинаково для «этот пункт спросят у всех» и «этот только у одной»,
+       а менеджер приходит сюда именно с этим вопросом. -->
   @if (ordered().length) {
-    <p class="note strong">Подключено пунктов: {{ ordered().length }}</p>
-    <ul class="ck">
-      @for (i of ordered(); track i.id) {
-        <li>
-          <span class="txt">{{ i.text }}</span>
-          @if (i.is_required) {
-            <span class="req">обяз.</span>
-          }
-          @if (i.platform) {
-            <span class="plat">{{ platformLabel[i.platform] }}</span>
-          }
-        </li>
-      }
-    </ul>
+    <p class="note strong">
+      Подключено пунктов: {{ ordered().length }} · обязательных {{ requiredCount() }}
+    </p>
+    @if (common().length) {
+      <p class="grp">Перед сдачей</p>
+      <ul class="ck-list">
+        @for (i of common(); track i.id) {
+          <li>
+            <span class="txt">{{ i.text }}</span>
+            @if (i.is_required) {
+              <span class="req">обяз.</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+    @for (g of byPlatform(); track g.platform) {
+      <p class="grp">{{ platformLabel[g.platform] }}</p>
+      <ul class="ck-list">
+        @for (i of g.items; track i.id) {
+          <li>
+            <span class="txt">{{ i.text }}</span>
+            @if (i.is_required) {
+              <span class="req">обяз.</span>
+            }
+          </li>
+        }
+      </ul>
+    }
   } @else {
     <p class="empty">
       Чеклист не подключён — креатор сдаёт ссылки без проверок. Возьмите шаблон из библиотеки.
@@ -81,8 +98,4 @@
       </ul>
     </div>
   }
-
-  <p class="note">
-    Правки здесь остаются внутри проекта. Чтобы поменять для всех — правьте шаблон в библиотеке.
-  </p>
 </section>

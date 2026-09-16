@@ -6,7 +6,9 @@ import {
   request as pwRequest,
   type APIRequestContext,
 } from '@playwright/test';
-import { AUTH_KEY, world } from '../fixtures/world';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { openClientTab, openManagerTab } from '../fixtures/ui';
 
 /**
  * Глубина графика переключается там, где стоит график.
@@ -28,26 +30,43 @@ import { AUTH_KEY, world } from '../fixtures/world';
  */
 const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('chart', { shape: 'history' });
+});
+
+test.afterAll(() => dropSandbox(box));
+
 const signIn = (
   context: import('@playwright/test').BrowserContext,
   role: 'manager' | 'client' | 'admin',
 ) =>
   context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, world().sessions[role]] as const,
+    [AUTH_KEY, box.sessions[role]] as const,
   );
 
 async function clientApi(): Promise<APIRequestContext> {
   return pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${world().sessions.client.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.client.access_token}` },
   });
 }
 
 /** Сколько дней собрано по проекту. Ряд приходит с сервера, не выдумывается. */
 async function collectedDays(): Promise<number> {
   const api = await clientApi();
-  const res = await api.get(`/api/v1/me/projects/${world().historyProjectId}/report`);
+  const res = await api.get(`/api/v1/me/projects/${box.projectId}/report`);
   const days = ((await res.json()).by_day ?? []) as unknown[];
   await api.dispose();
   return days.length;
@@ -95,15 +114,16 @@ test('менеджер переключает глубину графика', as
   expect(all, 'и меньше месяца: иначе «7» и «30» дают один и тот же хвост').toBeLessThan(30);
 
   await signIn(context, 'manager');
-  await page.goto(`/manager/projects/${world().historyProjectId}`);
-  await page.getByRole('button', { name: /^Статистика/ }).click();
+  await page.goto(`/manager/projects/${box.projectId}`);
+  await openManagerTab(page, 'Статистика');
   await checksRangeSwitch(page, all);
 });
 
 test('заказчик переключает глубину графика на своей карточке', async ({ context, page }) => {
   const all = await collectedDays();
   await signIn(context, 'client');
-  await page.goto(`/me/projects/${world().historyProjectId}`);
+  await page.goto(`/me/projects/${box.projectId}`);
+  await openClientTab(page, 'Статистика');
   await checksRangeSwitch(page, all);
 });
 
@@ -112,7 +132,7 @@ test('админ в чужом проекте видит тот же перек�
   // нет» здесь было бы не правом доступа, а забытыми кнопками.
   const all = await collectedDays();
   await signIn(context, 'admin');
-  await page.goto(`/manager/projects/${world().historyProjectId}`);
-  await page.getByRole('button', { name: /^Статистика/ }).click();
+  await page.goto(`/manager/projects/${box.projectId}`);
+  await openManagerTab(page, 'Статистика');
   await checksRangeSwitch(page, all);
 });

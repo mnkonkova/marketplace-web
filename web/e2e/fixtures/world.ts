@@ -79,7 +79,7 @@ export function psql(sql: string): void {
  * 429. Падение при этом выглядит как «элемент не найден»: страница просто
  * не нарисовалась. Чистим перед прогоном — ключи живут только локально.
  */
-function resetRateLimits(): void {
+export function resetRateLimits(): void {
   try {
     execFileSync(
       'docker',
@@ -97,6 +97,65 @@ function resetRateLimits(): void {
     // Redis может быть не поднят — тогда лимитер и не считает. Это не
     // повод не запускать тесты.
   }
+}
+
+/**
+ * Метка в названии проекта песочницы.
+ *
+ * По ней подчищает посев следующего прогона: прогон могли прервать с
+ * клавиатуры, и тогда ни afterAll, ни finally не отработают вовсе, а
+ * брошенный проект живёт в списках вечно и меняет ожидания соседям.
+ */
+export const SANDBOX_MARK = '(e2e-sandbox)';
+
+/** Префикс адресов, которые заводит песочница. По нему же их и сносим. */
+export const SANDBOX_EMAIL_PREFIX = 'e2e-sb-';
+
+/**
+ * Снести всё, что осталось от прерванных прогонов.
+ *
+ * `afterAll` не отрабатывает, когда прогон убили с клавиатуры, — а
+ * брошенный проект песочницы живёт в списках вечно и меняет ожидания
+ * соседям. Ищем по метке в названии и по префиксу адреса.
+ */
+export function dropStaleSandboxes(): void {
+  psql(`
+DELETE FROM video_stat_daily WHERE link_id IN (
+  SELECT l.id FROM publication_links l
+  JOIN project_publications p ON p.id = l.publication_id
+  JOIN projects pr ON pr.id = p.project_id
+  WHERE pr.title LIKE '%${SANDBOX_MARK}%');
+DELETE FROM outbox WHERE aggregate = 'project' AND aggregate_id IN (
+  SELECT id::text FROM projects WHERE title LIKE '%${SANDBOX_MARK}%');
+DELETE FROM creator_orders WHERE project_id IN (
+  SELECT id FROM projects WHERE title LIKE '%${SANDBOX_MARK}%');
+DELETE FROM projects WHERE title LIKE '%${SANDBOX_MARK}%';
+
+DELETE FROM creator_orders WHERE client_user_id IN
+  (SELECT id FROM users WHERE email LIKE '${SANDBOX_EMAIL_PREFIX}%@example.com');
+DELETE FROM projects WHERE client_user_id IN
+  (SELECT id FROM users WHERE email LIKE '${SANDBOX_EMAIL_PREFIX}%@example.com');
+DO $$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN
+        SELECT c.conrelid::regclass::text AS tbl, a.attname AS col
+        FROM pg_constraint c
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+        WHERE c.contype = 'f'
+          AND c.confrelid = 'users'::regclass
+          AND array_length(c.conkey, 1) = 1
+          AND NOT a.attnotnull
+          AND c.confdeltype IN ('a', 'r')
+    LOOP
+        EXECUTE format(
+            'UPDATE %s SET %I = NULL WHERE %I IN '
+            '(SELECT id FROM users WHERE email LIKE ''${SANDBOX_EMAIL_PREFIX}%%@example.com'')',
+            r.tbl, r.col, r.col);
+    END LOOP;
+END $$;
+DELETE FROM users WHERE email LIKE '${SANDBOX_EMAIL_PREFIX}%@example.com';
+`);
 }
 
 /**
@@ -128,7 +187,7 @@ function caseBy(map: Record<string, number>): string {
   return `CASE l.platform ${arms} ELSE 0 END`;
 }
 
-function seedStats(publicationId: string): void {
+export function seedPublicationStats(publicationId: string): void {
   psql(`
 DELETE FROM video_stat_daily WHERE link_id IN
   (SELECT id FROM publication_links WHERE publication_id = '${publicationId}');
@@ -175,7 +234,7 @@ const HISTORY_VIEWS = 400_000;
  * закрыты все площадки, а от статуса зависят и вычет за недосданное, и
  * состав периода.
  */
-function historyLinks(tag: string): string[] {
+export function historyLinks(tag: string): string[] {
   return [
     `https://www.tiktok.com/@nastya/video/741209${tag}`,
     `https://www.instagram.com/reel/C9xK2mLpQ${tag}/`,
@@ -195,7 +254,7 @@ function historyLinks(tag: string): string[] {
  * Периоды сносим по одному с хвоста: каждый следующий ссылается на
  * предыдущий, и удаление пачкой упирается в этот же внешний ключ.
  */
-function backdateHistory(projectId: string): void {
+export function backdateHistory(projectId: string): void {
   psql(`
 UPDATE publication_links l SET published_at = p.due_date
 FROM project_publications p
@@ -229,7 +288,7 @@ export const HISTORY_DAYS = 20;
  * площадку, что лежат в срезе подытоженного периода: разъедься они, и
  * «сколько сейчас» на шкале креатора разошлось бы со счётом ступеней.
  */
-function seedHistoryStats(projectId: string): void {
+export function seedHistoryStats(projectId: string): void {
   psql(`
 DELETE FROM video_stat_daily WHERE link_id IN
   (SELECT l.id FROM publication_links l
@@ -337,6 +396,8 @@ async function reuseSessions(
 
 export default async function globalSetup(): Promise<void> {
   resetRateLimits();
+  // Следы прерванных прогонов: их afterAll не отработал.
+  dropStaleSandboxes();
   const api0 = await request.newContext({ baseURL: API });
   const reused = await reuseSessions(api0);
   await api0.dispose();
@@ -425,7 +486,7 @@ export default async function globalSetup(): Promise<void> {
     if (((await periods.json()).items ?? []).length < 2) return null;
 
     // Цифры кладём заново: они дешёвые, а прошлый прогон мог их сдвинуть.
-    seedStats(saved.publicationId);
+    seedPublicationStats(saved.publicationId);
     seedHistoryStats(saved.historyProjectId);
     // И подытог возвращаем на место: спека на переоткрытие оставляет
     // период открытым, а следующему прогону он нужен подытоженным.
@@ -515,7 +576,7 @@ DELETE FROM projects WHERE client_user_id IN
       'https://likee.video/@nastya/video/7412093000',
     ],
   });
-  seedStats(pubId);
+  seedPublicationStats(pubId);
 
   /**
    * Завести ещё один проект заказчика с тем же креатором и тарифом.
@@ -615,9 +676,83 @@ DELETE FROM projects WHERE client_user_id IN
   await api.dispose();
 }
 
-/** Мир, подготовленный globalSetup. */
+/**
+ * Сколько секунд жизни должно оставаться у токена, чтобы им пользоваться.
+ *
+ * Доступ живёт полчаса, а полный прогон длиннее — двадцать семь минут
+ * одних тестов плюс посев. На середине прогона сервер начинал отвечать
+ * «Сессия истекла», и падало всё подряд: пятьдесят девять специй разом,
+ * каждая со своей непохожей ошибкой. Из отчёта это выглядело как
+ * развалившееся приложение, а было одним просроченным токеном.
+ */
+const TOKEN_GRACE_SEC = 300;
+
+/** Когда истекает JWT. Ноль — разобрать не удалось, считаем протухшим. */
+function expiresAt(jwt: string): number {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(jwt.split('.')[1] ?? '', 'base64url').toString('utf8'),
+    ) as { exp?: number };
+    return Number(payload.exp) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Обменять refresh на свежую пару.
+ *
+ * Синхронно, через curl: `world()` зовут из обычного кода специй, и
+ * сделать его асинхронным значило бы переписать все до одной. Обмен
+ * ничего не отзывает — токены без состояния, и прежний refresh
+ * продолжает работать свои семь дней.
+ */
+function refreshPair(refreshToken: string): Session | null {
+  try {
+    const out = execFileSync(
+      'curl',
+      [
+        '-sS',
+        '-X',
+        'POST',
+        '-H',
+        'Content-Type: application/json',
+        '--data-binary',
+        '@-',
+        `${API}/api/v1/auth/refresh`,
+      ],
+      { input: JSON.stringify({ refresh_token: refreshToken }), encoding: 'utf8' },
+    );
+    const body = JSON.parse(out) as Partial<Session>;
+    if (!body.access_token || !body.refresh_token) return null;
+    return body as Session;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Мир, подготовленный globalSetup, с заведомо живыми токенами.
+ *
+ * Токены обновляются по дороге, а не один раз на старте: прогон длиннее
+ * их срока жизни, и специя, взявшая мир последней, получала бы мёртвую
+ * сессию. Обновлённое пишем обратно — следующая специя обменивать уже не
+ * будет.
+ */
 export function world(): World {
-  return JSON.parse(readFileSync(statePath, 'utf8')) as World;
+  const saved = JSON.parse(readFileSync(statePath, 'utf8')) as World;
+  const now = Math.floor(Date.now() / 1000);
+  let changed = false;
+  for (const role of Object.keys(saved.sessions) as (keyof World['sessions'])[]) {
+    const session = saved.sessions[role];
+    if (expiresAt(session.access_token) - now > TOKEN_GRACE_SEC) continue;
+    const next = refreshPair(session.refresh_token);
+    if (!next) continue;
+    saved.sessions[role] = next;
+    changed = true;
+  }
+  if (changed) writeFileSync(statePath, JSON.stringify(saved, null, 2));
+  return saved;
 }
 
 /**

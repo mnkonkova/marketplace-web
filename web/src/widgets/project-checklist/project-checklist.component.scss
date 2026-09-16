@@ -40,7 +40,10 @@
   font-size: 13.5px;
 }
 
-.ck {
+// Своё имя класса, а не общее .ck: в оболочке CRM так называется строка
+// чеклиста у креатора — с чекбоксом и display:flex, — и наш <ul class="ck">
+// разворачивался в ряд, укладывая все пункты в одну строку.
+.ck-list {
   margin: 0 0 12px;
   padding: 0;
   list-style: none;
@@ -71,12 +74,14 @@
   font-size: 11px;
 }
 
-.plat {
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: rgba(155, 123, 212, 0.16);
-  color: #b79ce6;
-  font-size: 11px;
+// Заголовок группы пунктов: «Перед сдачей» и имена площадок. Метки
+// площадки на самих пунктах больше нет — площадку называет группа.
+.grp {
+  margin: 12px 0 2px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
 }
 
 .lib {

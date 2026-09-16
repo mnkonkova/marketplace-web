@@ -42,8 +42,6 @@ import {
   clicksEnabled,
   formatMoney,
   fromRubles,
-  isPreviewPeriod,
-  recalcAffects,
   isFromOrder,
   salaryScopeTiers,
   teamOrder,
@@ -62,6 +60,7 @@ import {
 } from '@entities/billing/lib/period';
 import { creatorLabel } from '@entities/publication/lib/publication-status';
 import { parseApiError } from '@shared/api/api-error';
+import { withScheme } from '@shared/lib/url';
 import { plural } from '@shared/lib/format';
 
 export type BillingRole = 'manager' | 'client';
@@ -92,7 +91,7 @@ export interface PeriodChoice {
   imports: [CommonModule, FormsModule, NzButtonModule, NzInputModule, NzTagModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-billing.component.html',
-  styleUrl: './project-billing.component.scss',
+  styleUrls: ['./project-billing.component.scss', './project-billing.component.touch.scss'],
 })
 export class ProjectBillingComponent {
   private readonly api = inject(BillingApi);
@@ -285,13 +284,6 @@ export class ProjectBillingComponent {
   public readonly team = computed(() => teamOrder(this.accruals()));
 
   public readonly fromOrder = computed(() => isFromOrder(this.accruals()));
-
-  // Пересчёт трогает только черновики: утверждённое и выплаченное он не
-  // меняет. Если черновиков нет, кнопка ничего не сделает.
-  public readonly draftsCount = computed(() => recalcAffects(this.accruals()));
-
-  /** Период показан расчётом: строк в базе ещё нет. */
-  public readonly previewPeriod = computed(() => isPreviewPeriod(this.accruals()));
 
   /**
    * Оклад один или их несколько.
@@ -574,9 +566,11 @@ export class ProjectBillingComponent {
   public saveUtm(): void {
     const creatorId = this.editingUtm();
     if (!creatorId) return;
-    const url = this.utmUrl.trim();
-    if (!/^https?:\/\//i.test(url)) {
-      this.msg.error('Ссылка должна начинаться с http:// или https://');
+    // Схему дописываем сами: метку копируют из аналитики заказчика, и
+    // «https://» там в начале бывает не всегда.
+    const url = withScheme(this.utmUrl);
+    if (!url) {
+      this.msg.error('Это не похоже на ссылку — нужен адрес вида site.ru/?utm_source=...');
       return;
     }
     this.busy.set(`utm:${creatorId}`);
@@ -591,6 +585,60 @@ export class ProjectBillingComponent {
       error: (e) => {
         this.busy.set(null);
         this.msg.error(parseApiError(e, 'Не удалось сохранить метку.').message);
+      },
+    });
+  }
+
+  // ---- подписчики (менеджер) ----
+  //
+  // Сборщика подписчиков в продукте нет: ни один воркер по ним не ходит.
+  // Ставка объявлена в прайсе, а число за период вписывает менеджер — тот
+  // же порядок, что у переходов по UTM. Считает деньги по этому числу
+  // сервер: в браузере тариф не считается никогда.
+
+  /** KPI по подписчикам объявлен в условиях проекта. */
+  public readonly subsOn = computed(() => (this.terms()?.subscriber_rate ?? 0) > 0);
+
+  public readonly editingSubs = signal<string | null>(null);
+
+  public subsValue = 0;
+
+  public openSubs(creatorId: string): void {
+    this.subsValue = this.accruals().find((a) => a.creator_user_id === creatorId)?.subscribers ?? 0;
+    this.editingSubs.set(creatorId);
+  }
+
+  public cancelSubs(): void {
+    this.editingSubs.set(null);
+  }
+
+  public saveSubs(): void {
+    const creatorId = this.editingSubs();
+    if (creatorId === null) return;
+    const n = Math.round(Number(this.subsValue));
+    if (!Number.isFinite(n) || n < 0) {
+      this.msg.error('Подписчиков не бывает меньше нуля.');
+      return;
+    }
+    const seq = this.selectedSeq();
+    if (seq === null) {
+      this.msg.error('Периода ещё нет — вписывать подписчиков не к чему.');
+      return;
+    }
+    this.busy.set(`subs:${creatorId}`);
+    this.api.managerSaveSubscribers(this.projectId(), creatorId, n, seq).subscribe({
+      next: () => {
+        this.busy.set(null);
+        this.editingSubs.set(null);
+        // Перезагрузка целиком, а не правка строки в памяти: от числа
+        // подписчиков зависит вся сумма периода, и пересчитать её здесь
+        // значило бы завести в браузере вторую версию тарифа.
+        this.reload();
+        this.msg.success('Подписчики записаны');
+      },
+      error: (e) => {
+        this.busy.set(null);
+        this.msg.error(parseApiError(e, 'Не удалось записать подписчиков.').message);
       },
     });
   }

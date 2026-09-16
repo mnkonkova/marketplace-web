@@ -1,0 +1,189 @@
+// Лесенка тарифа. Два цвета смысла работают здесь буквально: латунь на
+// стартовой ставке («столько стоит начало»), лёд на пониженной («цена
+// упала»). Читать лёд как «плохо» нельзя — упавшая цена тысячи это и
+// есть то, что мы продаём.
+
+:host {
+  display: block;
+}
+
+.ladder {
+  margin-top: 20px;
+}
+
+h3 {
+  margin: 0 0 12px;
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.split {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  margin-bottom: 14px;
+  border-radius: 99px;
+  overflow: hidden;
+
+  i {
+    display: block;
+    flex-basis: 0;
+    min-width: 2px;
+  }
+
+  i.a {
+    background: var(--brass);
+  }
+
+  i.b {
+    background: var(--ice);
+  }
+}
+
+.lrow {
+  display: grid;
+  gap: 4px 14px;
+  align-items: baseline;
+  grid-template-columns: 1fr auto auto;
+  padding: 11px 0;
+  border-top: 1px solid var(--border);
+
+  &:first-of-type {
+    border-top: 0;
+  }
+
+  .what {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .what b {
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .what i {
+    color: var(--text-dim);
+    font-size: 12px;
+    font-style: normal;
+  }
+
+  .rate {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    color: var(--text-muted);
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .rate.brass {
+    color: var(--brass);
+  }
+
+  .rate.ice {
+    color: var(--ice);
+  }
+
+  .rate i {
+    color: var(--text-faint);
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  .amt {
+    min-width: 92px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+  }
+}
+
+.sumrow {
+  display: grid;
+  gap: 2px 14px;
+  align-items: baseline;
+  grid-template-columns: 1fr auto;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-strong);
+
+  .k {
+    color: var(--text-faint);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .total {
+    font-family: var(--font-head);
+    font-size: 26px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    grid-row: 2;
+  }
+
+  .calc {
+    max-width: 36ch;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    grid-column: 2;
+    grid-row: 2;
+    text-align: right;
+  }
+
+  .calc b.ice {
+    color: var(--ice);
+    font-weight: 600;
+  }
+
+  .calc .say {
+    display: block;
+    margin-top: 4px;
+    font-variant-numeric: normal;
+  }
+}
+
+// На узком экране ступень в три колонки не встаёт: подпись сжимается до
+// одного слова в строке. Ставка и сумма уходят на вторую строку, под
+// названием ступени.
+@media (max-width: 720px) {
+  .lrow {
+    grid-template-columns: 1fr auto;
+
+    .what {
+      grid-column: 1 / -1;
+    }
+
+    .rate {
+      align-items: flex-start;
+      flex-direction: row;
+      gap: 6px;
+    }
+
+    .amt {
+      min-width: 0;
+    }
+  }
+
+  .sumrow .calc {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: 4px;
+    max-width: none;
+    text-align: left;
+  }
+}

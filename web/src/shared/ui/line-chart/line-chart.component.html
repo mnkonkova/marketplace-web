@@ -15,6 +15,21 @@
     }
     <ng-content />
   </div>
+
+  <!-- Легенда — только у многорядного графика: у одной линии подписывать
+       нечего, а «Просмотры» под единственной линией читается как заголовок
+       второго блока. Цвет кружка тот же, что у линии, и берётся из того же
+       места: второй палитры рядом с графиком нет. -->
+  @if (multi()) {
+    <ul class="lclegend">
+      @for (r of rows(); track r.key) {
+        <li [class.lead]="r.lead">
+          <i [style.background]="r.color"></i>
+          {{ r.label }}
+        </li>
+      }
+    </ul>
+  }
 }
 
 <svg
@@ -38,10 +53,16 @@
        рвётся. Ноль мы измерили, пропущенный день — нет, и любая линия
        через него — выдумка. -->
   @for (s of segments(); track s.key) {
-    @if (!compact()) {
+    @if (!compact() && s.area) {
       <path class="area" [attr.d]="s.area" />
     }
-    <polyline class="line" [attr.points]="s.line" [style.stroke]="color() || null" />
+    <polyline
+      class="line"
+      [class.lead]="s.lead"
+      [attr.points]="s.line"
+      [attr.stroke-width]="s.width"
+      [style.stroke]="s.color || null"
+    />
   }
 
   @for (d of visibleDots(); track d.date) {
@@ -50,7 +71,7 @@
       [attr.cx]="d.x"
       [attr.cy]="d.y"
       [attr.r]="dotRadius()"
-      [style.fill]="color() || null"
+      [style.fill]="dotColor() || null"
     />
   }
 
@@ -70,7 +91,8 @@
     }
 
     <!-- Значение по наведению. Колонка на всю высоту, а не сам узел: в
-         точку радиусом два пикселя курсором не попасть. -->
+         точку радиусом два пикселя курсором не попасть. У многорядного
+         графика в колонке стоят сразу все ряды этого дня. -->
     @for (h of hits(); track h.date) {
       <rect
         class="hit"
@@ -79,7 +101,7 @@
         [attr.width]="h.hw"
         [attr.height]="axisY() - PT()"
       >
-        <title>{{ h.date | date: 'd MMM' }}: {{ sign() }}{{ h.value | number }}</title>
+        <title>{{ h.date | date: 'd MMM' }}&#10;{{ h.text }}</title>
       </rect>
     }
   }

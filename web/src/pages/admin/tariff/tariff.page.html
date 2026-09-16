@@ -84,6 +84,50 @@
     </div>
   </div>
 
+  @if (steps(v).length) {
+  <h2 class="sec">Ступени</h2>
+  <p class="sub">
+    Набрали за период столько просмотров — период стоит столько. Берётся последняя взятая ступень, а
+    не сумма всех пройденных.
+  </p>
+  <div class="twrap">
+    <table>
+      <thead>
+        <tr>
+          <th>От просмотров за период</th>
+          <th>Платит заказчик</th>
+          <th>Оклад креатору</th>
+          <th>Остаётся площадке</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (st of steps(v); track st.from_views) {
+        <tr>
+          <td class="num">{{ st.from_views | number }}</td>
+          <td>{{ money(st.client_fee) }}</td>
+          <td>{{ money(stepCreatorFee(st)) }}</td>
+          <td>{{ money(st.client_fee - stepCreatorFee(st)) }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+
+  <h2 class="sec">KPI по подписчикам</h2>
+  @if (subsOn(v)) {
+  <p class="sub">
+    {{ money(v.subscriber_rate) }} за подписчика с заказчика, креатору {{
+    money(v.creator_subscriber_rate ?? v.subscriber_rate) }}. Сборщика подписчиков у нас нет: число
+    за период вписывает менеджер руками — так же, как переходы по UTM.
+  </p>
+  } @else {
+  <p class="sub">
+    Не считаем: ставка не объявлена. Объявите её в новой версии — и в проекте появится поле, куда
+    менеджер вписывает подписчиков за период.
+  </p>
+  }
+
   <h2 class="sec">Текст условий · {{ versionLabel(v) }}</h2>
   <p class="body">{{ v.body }}</p>
   } @else {
@@ -222,6 +266,77 @@
     <label>
       <span class="lbl">За переход свыше порога, ₽</span>
       <input class="inp" type="number" min="0" [(ngModel)]="draft.clickRateOver" />
+    </label>
+  </div>
+  }
+
+  <h3 class="sec">Ступени</h3>
+  <p class="sub">
+    Порог объёма и цена периода на нём: «набрали 300 000 — период стоит столько-то». Берётся
+    последняя взятая ступень, а не сумма пройденных. Ступеней может быть сколько угодно; нижнюю с
+    порогом 0 заводите сами — это и есть голый оклад без KPI. Ступеней нет вовсе — версия считается
+    прежней моделью, окладом и ставкой за тысячу.
+  </p>
+  @if (draft.steps.length) {
+  <div class="steps">
+    <div class="steps-head">
+      <span>От просмотров</span>
+      <span>Платит заказчик, ₽</span>
+      <span>Оклад креатору, ₽</span>
+      <span></span>
+    </div>
+    @for (st of draft.steps; track $index) {
+    <div class="step-row">
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        step="1000"
+        [(ngModel)]="st.fromViews"
+        [name]="'from' + $index"
+      />
+      <input class="inp" type="number" min="0" [(ngModel)]="st.clientFee" [name]="'fee' + $index" />
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        placeholder="как у заказчика"
+        [(ngModel)]="st.creatorFee"
+        [name]="'cfee' + $index"
+      />
+      <button class="btn quiet sm" type="button" (click)="removeStep($index)">Убрать</button>
+    </div>
+    }
+  </div>
+  }
+  <button class="btn quiet" type="button" (click)="addStep()">Добавить ступень</button>
+
+  <h3 class="sec">KPI по подписчикам</h3>
+  <p class="sub">
+    Подписчиков никто не собирает: сборщика по ним в продукте нет. Объявляем только ставку — число
+    за период вписывает менеджер руками, ровно так же, как переходы по UTM. Выключено — KPI не
+    входит в счёт вовсе; это не то же самое, что ставка ноль.
+  </p>
+  <label class="check">
+    <input type="checkbox" [(ngModel)]="draft.countSubs" name="countSubs" />
+    <span>Считать подписчиков</span>
+  </label>
+  @if (draft.countSubs) {
+  <div class="grid">
+    <label>
+      <span class="lbl">За подписчика, ₽</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.subRate" name="subRate" />
+    </label>
+    <label>
+      <span class="lbl">Креатору за подписчика, ₽</span>
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        placeholder="как у заказчика"
+        [(ngModel)]="draft.creatorSubRate"
+        name="creatorSubRate"
+      />
     </label>
   </div>
   }

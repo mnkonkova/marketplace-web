@@ -1,5 +1,6 @@
 import { test, expect, request as pwRequest, type APIRequestContext } from '@playwright/test';
-import { AUTH_KEY, world } from '../fixtures/world';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Воронка заказа «под ключ» глазами заказчика.
@@ -20,12 +21,29 @@ import { AUTH_KEY, world } from '../fixtures/world';
  * живой заказ меняет и лимит соседям, и картину у креатора.
  */
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('funnel', { shape: 'empty', ownClient: true });
+});
+
+test.afterAll(() => dropSandbox(box));
+
 const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 
 async function clientApi(): Promise<APIRequestContext> {
   return pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${world().sessions.client.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.client.access_token}` },
   });
 }
 
@@ -61,10 +79,9 @@ async function catalogByName(): Promise<Map<string, string>> {
 }
 
 test.beforeEach(async ({ context, page }) => {
-  const w = world();
   await context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, w.sessions.client] as const,
+    [AUTH_KEY, box.sessions.client] as const,
   );
   await page.goto('/me/projects');
 });
@@ -77,7 +94,7 @@ const estimateCall = (page: import('@playwright/test').Page) =>
 
 /** Дойти от кабинета до шага подбора с загруженным каталогом. */
 async function openPicking(page: import('@playwright/test').Page): Promise<void> {
-  await page.getByRole('button', { name: 'Под ключ' }).click();
+  await page.getByRole('button', { name: 'Посчитать смету' }).click();
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
   await page.locator('.kind.k1').click();
   await expect(page.getByRole('heading', { name: 'Кто будет снимать' })).toBeVisible();
@@ -85,7 +102,7 @@ async function openPicking(page: import('@playwright/test').Page): Promise<void>
 }
 
 test('выбор вида ведёт на подбор, а вторая ветка — не в никуда', async ({ page }) => {
-  await page.getByRole('button', { name: 'Под ключ' }).click();
+  await page.getByRole('button', { name: 'Посчитать смету' }).click();
   await expect(page).toHaveURL(/\/me\/orders\/new/);
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
 

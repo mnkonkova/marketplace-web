@@ -111,6 +111,26 @@
           </button>
         </div>
 
+        <!-- Подписи колонок — ОДИН раз, шапкой реестра.
+             Раньше «черновик» и «выложить» стояли над датой в каждой
+             строке: тринадцать строк по два ярлыка, и каждая строка
+             из-за них была в две строки высотой. Реестр из тринадцати
+             выкладок занимал экран с лишним там, где хватает половины. -->
+        @if (g.rows.length) {
+          <div class="slot-head" [class.no-draft]="!hasDrafts()" aria-hidden="true">
+            <span>#</span>
+            <span>Название</span>
+            @if (hasDrafts()) {
+              <span>Черновик</span>
+            }
+            <span>Выложить</span>
+            <span>Площадки</span>
+            <span>Состояние</span>
+            <span class="r">Просмотры</span>
+            <span></span>
+          </div>
+        }
+
         @for (pub of g.rows; track pub.id) {
           @let tone = slotTone(pub);
           <div
@@ -134,11 +154,15 @@
               <!-- Название ролика. Ячейку рисуем всегда, даже пустой:
                    строки стоят в одной сетке, и пропуск у части из них
                    сдвинул бы все колонки соседей. -->
+              <!-- Названия может не быть: его вписывает креатор, когда
+                   сдаёт ролик. Прочерк на этом месте читался как «поле
+                   сломано»; словами честнее — название не потеряли, его
+                   ещё не давали. -->
               <span class="vtitle" [title]="pub.title || ''">
                 @if (pub.title) {
                   {{ pub.title }}
                 } @else {
-                  <span class="dash">—</span>
+                  <span class="noname">без названия</span>
                 }
               </span>
 
@@ -165,7 +189,9 @@
                          читался бы как «забыли проставить». -->
                     <span class="v off">не нужен</span>
                   } @else {
-                    <span class="v off">—</span>
+                    <!-- Срок черновика не проставлен. Не «нет срока», а
+                         «его ещё не назначили» — след вместо прочерка. -->
+                    <app-nodata [inline]="true" [ghostWidth]="44" [ghostHeight]="13" />
                   }
                 </span>
               }
@@ -189,43 +215,51 @@
                 </span>
               </span>
 
-              <span class="plats">
-                @for (pl of platforms; track pl) {
-                  @let ps = platState(pub, pl);
-                  <span
-                    class="plat"
-                    [class.on]="ps === 'on'"
-                    [class.late]="ps === 'late'"
-                    [class.off]="ps === 'off'"
-                    [title]="platformLabel[pl] + (ps === 'on' ? '' : ' · ссылки нет')"
-                  >
-                    {{ platformShort[pl] }}
-                  </span>
-                }
+              <!-- Та же лесенка, что у креатора и заказчика, только
+                   единица другая и конечная: насечка = площадка со
+                   ссылкой, всего их пять. Пять чипов с буквами занимали
+                   вдвое больше места и читались как кнопки; какой
+                   площадки не хватает, говорит подсказка и раскрытая
+                   строка ниже. -->
+              <span class="plats" [title]="platsTitle(pub)">
+                <app-steps
+                  [filled]="pub.links.length"
+                  [total]="platforms.length"
+                  [withNext]="false"
+                  size="sm"
+                />
                 <span class="platcount" [class.full]="pub.links.length === platforms.length">
                   {{ pub.links.length }}/{{ platforms.length }}
                 </span>
               </span>
 
+              <!-- Состояние — метка с точкой, а не заливная плашка.
+                   Тринадцать зелёных плашек подряд заливали реестр
+                   цветом, в котором одна коралловая терялась: заливка
+                   меряет площадь, а состояний тут поровну по одному на
+                   строку. Точка меряет ровно себя. -->
               @let badge = pubBadge(pub);
               @let tt = tagTone(pub);
               <span
-                class="tag"
-                [class.green]="tt === 'green'"
-                [class.amber]="tt === 'amber'"
-                [class.red]="tt === 'red'"
+                class="mark"
+                [class.ok]="tt === 'green'"
+                [class.warn]="tt === 'amber'"
+                [class.bad]="tt === 'red'"
               >
                 {{ badge.label }}
               </span>
 
               <span class="views">
                 @if (pub.views) {
-                  {{ pub.views | number }}
+                  <b class="grew">{{ pub.views | number }}</b>
                   @if (pubGrowth(pub)) {
                     <small>+{{ pubGrowth(pub) | number }}</small>
                   }
                 } @else {
-                  <span class="dash">—</span>
+                  <!-- Не ноль: ноль означал бы «ролик вышел, и его никто
+                       не посмотрел». Здесь просмотров ещё не собрали —
+                       числа нет, и прочерк на его месте читался как ноль. -->
+                  <app-nodata [inline]="true" [ghostWidth]="64" [ghostHeight]="14" />
                 }
               </span>
 
@@ -251,12 +285,20 @@
                       @if (st) {
                         {{ st.views | number }}<small>+{{ st.growth_24h | number }}</small>
                       } @else {
-                        <span class="dash">—</span>
+                        <!-- Ссылка есть, а просмотров по ней ещё не
+                             собрали. Ноль здесь означал бы «ролик
+                             выложен, и его никто не посмотрел», а
+                             прочерк читался как этот же ноль. -->
+                        <app-nodata [inline]="true" [ghostWidth]="58" [ghostHeight]="13" />
                       }
                     </span>
                   } @else {
                     <span class="pu empty">ссылки нет</span>
-                    <span class="pv"><span class="dash">—</span></span>
+                    <!-- Ссылки нет — считать нечего: числа не существует,
+                         а не «оно равно нулю». -->
+                    <span class="pv"
+                      ><app-nodata [inline]="true" [ghostWidth]="58" [ghostHeight]="13"
+                    /></span>
                     @if (pubOpen(pub)) {
                       <button
                         class="btn quiet sm"
@@ -358,8 +400,12 @@
         </div>
 
         @if (orderFreeSlots() > 0) {
+          <!-- Значок обязателен: цвет предупреждения теперь коралловый —
+               тот же, что у кнопок, — и одним цветом эту строку от
+               ссылки-действия больше не отличить. -->
           <p class="ranks-note">
-            Свободных мест: {{ orderFreeSlots() }} из {{ o.needed }}.
+            <span class="ic" aria-hidden="true">!</span> Свободных мест: {{ orderFreeSlots() }} из
+            {{ o.needed }}.
             @if (o.reserve_left === 0) {
               Резерв кончился — звать некого, состав добирается из каталога.
             }
@@ -414,9 +460,24 @@
 
     @for (c of creators(); track c.user_id) {
       <div class="creatorrow">
-        <span class="av lg" [class]="'av lg ' + c.avatar">{{ c.initial }}</span>
+        <!-- Имя и аватар ведут на страницу специалиста: у менеджера
+             постоянно возникает вопрос «а кто это вообще» — портфолио,
+             площадки, прошлые проекты, — и до сих пор он уходил искать
+             человека в каталоге руками. В новой вкладке намеренно: CRM
+             остаётся открытой, работу из неё не выбивает. -->
+        <a
+          class="av lg"
+          [class]="'av lg ' + c.avatar"
+          [routerLink]="c.profile"
+          target="_blank"
+          rel="noopener"
+          [attr.aria-label]="'Профиль: ' + c.display_name"
+          >{{ c.initial }}</a
+        >
         <span class="nm">
-          <b>{{ c.display_name }}</b>
+          <a class="who" [routerLink]="c.profile" target="_blank" rel="noopener">
+            <b>{{ c.display_name }}</b>
+          </a>
           <span>в проекте с {{ c.added_at | date: 'd MMM' }}</span>
           <!-- Аккаунты — текстом, а не чипами площадок: точно такие же чипы
                в плане выкладок означают сданные ссылки на ролики, и рядом

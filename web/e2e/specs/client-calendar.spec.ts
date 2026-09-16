@@ -1,5 +1,7 @@
 import { test, expect, request as pwRequest } from '@playwright/test';
-import { AUTH_KEY, world } from '../fixtures/world';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { openClientTab } from '../fixtures/ui';
 
 /**
  * Календарь заказчика: когда что выходит.
@@ -16,6 +18,23 @@ import { AUTH_KEY, world } from '../fixtures/world';
  */
 const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('calendar');
+});
+
+test.afterAll(() => dropSandbox(box));
+
 interface CalendarDay {
   date: string;
   published: number;
@@ -26,7 +45,7 @@ interface CalendarDay {
 async function calendar(projectId: string): Promise<CalendarDay[]> {
   const api = await pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${world().sessions.client.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.client.access_token}` },
   });
   const month = new Date().toISOString().slice(0, 7);
   const res = await api.get(`/api/v1/me/projects/${projectId}/calendar?month=${month}`);
@@ -38,15 +57,16 @@ async function calendar(projectId: string): Promise<CalendarDay[]> {
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, world().sessions.client] as const,
+    [AUTH_KEY, box.sessions.client] as const,
   );
 });
 
 test('в календаре заказчика отмечены дни выкладок', async ({ page }) => {
-  const days = await calendar(world().projectId);
+  const days = await calendar(box.projectId);
   expect(days.length, 'мир обязан поставить выкладку в текущем месяце').toBeGreaterThan(0);
 
-  await page.goto(`/me/projects/${world().projectId}`);
+  await page.goto(`/me/projects/${box.projectId}`);
+  await openClientTab(page, 'Календарь');
   const cal = page.locator('app-project-calendar');
   await expect(cal).toBeVisible({ timeout: 15_000 });
 
@@ -63,11 +83,12 @@ test('в календаре заказчика отмечены дни выкл�
 });
 
 test('день в календаре раскрывается: что вышло и кто снимал', async ({ page }) => {
-  const days = await calendar(world().projectId);
+  const days = await calendar(box.projectId);
   const withVideo = days.find((d) => d.published > 0);
   expect(withVideo, 'посеянный ролик уже вышел').toBeTruthy();
 
-  await page.goto(`/me/projects/${world().projectId}`);
+  await page.goto(`/me/projects/${box.projectId}`);
+  await openClientTab(page, 'Календарь');
   const cal = page.locator('app-project-calendar');
   await expect(cal).toBeVisible({ timeout: 15_000 });
 
@@ -82,5 +103,5 @@ test('день в календаре раскрывается: что вышло
   const picked = cal.locator('.picked');
   await expect(picked).toBeVisible();
   await expect(picked).toContainText(`вышло ${withVideo!.published}`);
-  await expect(cal.locator('.picked-items')).toContainText('Анастасия Креатор');
+  await expect(cal.locator('.picked-items')).toContainText(box.creator.name);
 });

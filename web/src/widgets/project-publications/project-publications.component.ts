@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -47,6 +48,7 @@ import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import { ProjectKind } from '@entities/project/model/project.types';
 import { downloadBlob } from '@shared/lib/download-blob';
 import { plural } from '@shared/lib/format';
+import { specialistHandle } from '@shared/lib/specialist-link';
 import { profileHandle } from '@shared/lib/social-links';
 import {
   AddCreatorDialogComponent,
@@ -61,6 +63,8 @@ import { ProjectAutopingComponent } from '@widgets/project-autoping/project-auto
 import { ProjectChecklistComponent } from '@widgets/project-checklist/project-checklist.component';
 import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.component';
 import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
+import { NodataComponent } from '@shared/ui/nodata/nodata.component';
+import { StepsComponent } from '@shared/ui/steps/steps.component';
 
 // Цвет аватара — от человека, а не случайный: одно и то же имя должно
 // выглядеть одинаково на всех экранах и между перезагрузками.
@@ -80,6 +84,7 @@ function avatarClass(id: string): string {
   imports: [
     CommonModule,
     FormsModule,
+    RouterLink,
     NzButtonModule,
     NzInputModule,
     NzTagModule,
@@ -87,10 +92,15 @@ function avatarClass(id: string): string {
     ProjectChecklistComponent,
     ProjectStatsComponent,
     ErValueComponent,
+    StepsComponent,
+    NodataComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-publications.component.html',
-  styleUrl: './project-publications.component.scss',
+  styleUrls: [
+    './project-publications.component.scss',
+    './project-publications.component.touch.scss',
+  ],
 })
 export class ProjectPublicationsComponent {
   private readonly pubApi = inject(PublicationApi);
@@ -318,6 +328,10 @@ export class ProjectPublicationsComponent {
         burning: mine.filter((x) => x.overdue || x.status === 'partial').length,
         views: views.get(p.user_id) ?? 0,
         links: this.accountLinks(p),
+        // Адрес публичной страницы специалиста. Хендл берём общим
+        // хелпером: у кого выбран username — красивый адрес, у
+        // остальных UUID, и оба открывает один и тот же маршрут.
+        profile: ['/specialist', specialistHandle({ user_id: p.user_id })],
       };
     });
   });
@@ -543,6 +557,21 @@ export class ProjectPublicationsComponent {
   public platState(pub: Publication, platform: Platform): 'on' | 'late' | 'off' {
     if (linkFor(pub, platform)) return 'on';
     return pub.overdue || pub.status === 'partial' ? 'late' : 'off';
+  }
+
+  /**
+   * Каких площадок не хватает — подсказкой к лесенке площадок.
+   *
+   * Насечка говорит «пять из пяти» и молчит о том, какая из пяти пустая.
+   * Раньше это говорили пять чипов с буквами, но они занимали вдвое
+   * больше места и читались как кнопки. Имя недостающей площадки
+   * остаётся в двух местах: здесь по наведению и в раскрытой строке,
+   * где у каждой площадки своя строка со ссылкой.
+   */
+  public platsTitle(pub: Publication): string {
+    const missing = this.platforms.filter((pl) => !linkFor(pub, pl));
+    if (!missing.length) return 'Все площадки со ссылками';
+    return `Нет ссылки: ${missing.map((pl) => PLATFORM_LABEL[pl]).join(', ')}`;
   }
 
   // Просмотры по каждой ссылке живут только в отчёте: в таблице ссылок их

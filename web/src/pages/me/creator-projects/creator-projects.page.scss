@@ -104,13 +104,18 @@
   white-space: nowrap;
 
   &.late {
-    background: rgb(224 96 78 / 16%);
-    color: var(--danger, #e0604e);
+    background: var(--bad-bg);
+    color: var(--bad);
   }
 
+  // Токена --warning в системе нет и не было: правило молча падало на
+  // запасной янтарь #faad14. Теперь этот янтарь значит «выросло», и
+  // «есть несданное» в нём читалось бы как похвала. Берём настоящий
+  // --warn (коралловый). Цветом эта плашка ничего и не сообщает —
+  // сообщает подпись в ней; цвет только расставляет вес.
   &.open {
-    background: rgb(250 173 20 / 14%);
-    color: var(--warning, #faad14);
+    background: var(--warn-bg);
+    color: var(--warn);
   }
 
   // Работа не начиналась: ни зелёного, ни тревоги — просто состояние.
@@ -119,9 +124,11 @@
     color: var(--text-muted);
   }
 
+  // --success тоже не существует: запасной #52c41a — третий зелёный на
+  // сайте рядом с --ok и --accent.
   &.done {
-    background: rgb(82 196 26 / 14%);
-    color: var(--success, #52c41a);
+    background: var(--ok-bg);
+    color: var(--ok);
   }
 }
 

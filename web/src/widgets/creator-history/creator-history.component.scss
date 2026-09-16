@@ -29,17 +29,19 @@
 
     i {
       display: block;
-      color: var(--muted-2, #616772);
+      color: var(--muted-2, #74827e);
       font-size: 11px;
       font-style: normal;
     }
 
     b {
       display: block;
-      font-family: var(--mono);
-      font-size: 21px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
+      color: var(--brass);
+      font-family: var(--font-head);
+      font-size: 22px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+      letter-spacing: -0.03em;
       margin: 2px 0;
     }
   }
@@ -51,7 +53,7 @@
 
     li {
       padding: 13px 0;
-      border-bottom: 1px solid var(--line, #23272d);
+      border-bottom: 1px solid var(--line, #1c2422);
 
       &:last-child {
         border-bottom: none;
@@ -76,20 +78,25 @@
     }
 
     .sum {
-      font-family: var(--mono);
-      font-size: 18px;
-      font-weight: 600;
+      font-family: var(--font-head);
+      font-size: 19px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      letter-spacing: -0.02em;
       white-space: nowrap;
     }
   }
 
+  // Состав денег за период — та же главная строка, что и в карточке
+  // текущего: из чего сложилось, спрашивают чаще, чем итог. Нижним
+  // ярусом подписи она была нечитаемой.
   .parts {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
-    margin-top: 4px;
-    color: var(--muted-2, #616772);
-    font-size: 11.5px;
+    margin-top: 5px;
+    color: var(--muted, #7e8d88);
+    font-size: 12.5px;
 
     .cut {
       color: var(--red, #e0604e);
@@ -104,15 +111,17 @@
     margin-top: 9px;
 
     .v {
-      font-family: var(--mono);
-      font-size: 12.5px;
+      font-family: var(--font-head);
+      font-size: 13px;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
     }
 
     .vid {
       flex: 1 1 auto;
       text-align: right;
-      color: var(--muted-2, #616772);
+      color: var(--muted-2, #74827e);
       font-size: 11.5px;
     }
   }
@@ -126,13 +135,15 @@
     height: 5px;
     flex: 0 0 auto;
     border-radius: 999px;
-    background: var(--line, #23272d);
+    background: var(--line, #1c2422);
 
+    // Латунь: полоска меряет просмотры — то, что выросло. Коралловый
+    // конец градиента читался как «нажми», а нажимать тут нечего.
     i {
       display: block;
       height: 100%;
       border-radius: 999px;
-      background: linear-gradient(90deg, var(--blue, #4a90d9), var(--coral));
+      background: var(--brass);
     }
   }
 
@@ -140,9 +151,11 @@
     display: inline-flex;
     align-items: baseline;
     gap: 5px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--muted-2, #616772);
+    font-family: var(--font-head);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--muted-2, #74827e);
 
     i {
       font-style: normal;
@@ -150,12 +163,15 @@
       opacity: 0.8;
     }
 
+    // Направление, а не приговор: латунь — выросло, лёд — упало.
+    // Красный отсюда убран — он значит «сломалось», а упавшие просмотры
+    // периода не поломка. Насколько это плохо, говорит само число.
     &.up {
-      color: var(--green, #52c41a);
+      color: var(--brass);
     }
 
     &.down {
-      color: var(--red, #e0604e);
+      color: var(--ice);
     }
   }
 }

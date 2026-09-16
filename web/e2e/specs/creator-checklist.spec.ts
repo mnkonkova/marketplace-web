@@ -1,5 +1,6 @@
 import { test, expect, type Page, request as pwRequest } from '@playwright/test';
-import { AUTH_KEY, psql, world } from '../fixtures/world';
+import { AUTH_KEY, psql } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Чеклист при сдаче ролика.
@@ -25,12 +26,29 @@ import { AUTH_KEY, psql, world } from '../fixtures/world';
  */
 const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('chklist', { shape: 'empty' });
+});
+
+test.afterAll(() => dropSandbox(box));
+
 const TEMPLATE = `E2E чеклист сдачи ${Date.now()}`;
 
 async function api(role: 'manager' | 'admin' | 'creator') {
   return pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${world().sessions[role].access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions[role].access_token}` },
   });
 }
 
@@ -105,7 +123,7 @@ DELETE FROM project_checklist_snapshot WHERE project_id = '${projectId}';
 const signInCreator = (context: import('@playwright/test').BrowserContext) =>
   context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, world().sessions.creator] as const,
+    [AUTH_KEY, box.sessions.creator] as const,
   );
 
 /** Открыть окно сдачи у единственной открытой выкладки. */
@@ -118,7 +136,7 @@ async function openSubmit(page: Page, projectId: string): Promise<void> {
 }
 
 test('подключённый чеклист виден там, где сдают', async ({ context, page }) => {
-  const projectId = world().emptyProjectId;
+  const projectId = box.projectId;
   const batchId = await seedOpenPublication(projectId);
   const templateId = await attachChecklist(projectId);
   try {
@@ -146,7 +164,7 @@ test('подключённый чеклист виден там, где сдаю
 });
 
 test('без подключённого шаблона креатору сказано, что чеклиста нет', async ({ context, page }) => {
-  const projectId = world().emptyProjectId;
+  const projectId = box.projectId;
   const batchId = await seedOpenPublication(projectId);
   try {
     await signInCreator(context);

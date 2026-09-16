@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import {
@@ -21,6 +21,7 @@ import { periodDay } from '@entities/billing/lib/period';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
 import { PLATFORM_LABEL } from '@entities/publication/lib/publication-status';
 import type { Publication, PublicationReport } from '@entities/publication/model/publication.types';
+import { NodataComponent } from '@shared/ui/nodata/nodata.component';
 import { plural } from '@shared/lib/format';
 
 /**
@@ -47,10 +48,10 @@ import { plural } from '@shared/lib/format';
 @Component({
   selector: 'app-creator-highlights',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, NodataComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-highlights.component.html',
-  styleUrl: './creator-highlights.component.scss',
+  styleUrls: ['./creator-highlights.component.scss', './creator-highlights.component.touch.scss'],
 })
 export class CreatorHighlightsComponent {
   /** Заработок, периоды и обезличенный ориентир — одним ответом. */
@@ -204,4 +205,18 @@ export class CreatorHighlightsComponent {
    * ошибку мы уже чинили в зелёном значке «всё сдано».
    */
   public readonly hasAnything = computed(() => this.allVideos().some((v) => v.views > 0));
+
+  /**
+   * Разбор — площадки и ролики периода — на телефоне свёрнут.
+   *
+   * Рекорд отвечает на вопрос «что у меня получается» одной строкой;
+   * всё, что ниже, — это уже разбирательство, и на 390px оно стоит
+   * между человеком и его выкладками. Прячет только медиазапрос в
+   * тач-слое: на десктопе карточка читается целиком одним взглядом.
+   */
+  public readonly folded = signal(true);
+
+  public toggleFold(): void {
+    this.folded.set(!this.folded());
+  }
 }

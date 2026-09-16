@@ -1,5 +1,10 @@
 :host {
   display: block;
+  // Сетка месяца не растягивается во всю ширину экрана: на 1440px
+  // ячейка дня раздувалась до ладони, и календарь читался как таблица
+  // из семи столбцов, а не как месяц. 520px — ширина, на которой
+  // квадратный день остаётся квадратным.
+  max-width: 520px;
 }
 
 .cal-head {
@@ -100,6 +105,74 @@
     position: static;
     display: inline-block;
     margin: 0 2px 0 6px;
+  }
+}
+
+// Полоса месяцев с выкладками. Прокручивается, а не переносится: у
+// длинного проекта их дюжина, и вторая строка чипов под календарём
+// начинает спорить с самой сеткой за внимание.
+.months {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mbtn {
+    flex: 0 0 auto;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--text);
+      border-color: var(--border-strong, #2c313a);
+    }
+
+    &.on {
+      border-color: var(--accent, #2fbd8f);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    // Месяц, в котором выкладок нет: он попал в полосу только потому,
+    // что на нём сейчас стоят. Приглушён, чтобы не обещать содержимое.
+    &.void {
+      color: var(--text-dim);
+      border-style: dashed;
+    }
+  }
+}
+
+// Пустой месяц. Строка заметнее обычной легенды намеренно: это не
+// подпись под сеткой, а ответ на вопрос «почему тут ничего нет».
+.legend.empty {
+  line-height: 1.6;
+
+  .jump {
+    margin-left: 8px;
+    padding: 4px 10px;
+    border: 1px solid var(--border-strong, #2c313a);
+    border-radius: 8px;
+    background: var(--bg-elevated, #111316);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--accent, #2fbd8f);
+      color: var(--accent, #2fbd8f);
+    }
   }
 }
 

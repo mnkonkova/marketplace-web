@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { AUTH_KEY, world } from '../fixtures/world';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { openManagerTab } from '../fixtures/ui';
 
 /**
  * Переписка разложена по веткам, а редактор один на все.
@@ -11,14 +13,30 @@ import { AUTH_KEY, world } from '../fixtures/world';
  * только со стороны клиента.
  */
 test.beforeEach(async ({ context, page }) => {
-  const w = world();
   await context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, w.sessions.manager] as const,
+    [AUTH_KEY, box.sessions.manager] as const,
   );
-  await page.goto(`/manager/projects/${w.projectId}`);
-  await page.getByRole('button', { name: /^Комментарии/ }).click();
+  await page.goto(`/manager/projects/${box.projectId}`);
+  await openManagerTab(page, 'Комментарии');
 });
+
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('threads');
+});
+
+test.afterAll(() => dropSandbox(box));
 
 const editor = (page: import('@playwright/test').Page) =>
   page.getByRole('textbox', { name: 'Комментарий' });

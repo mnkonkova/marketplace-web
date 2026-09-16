@@ -1,5 +1,6 @@
 import { test, expect, type Page, request as pwRequest } from '@playwright/test';
-import { AUTH_KEY, lockFirstPeriod, world } from '../fixtures/world';
+import { AUTH_KEY, lockFirstPeriod } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Переоткрытие подытоженного периода.
@@ -24,10 +25,27 @@ import { AUTH_KEY, lockFirstPeriod, world } from '../fixtures/world';
  */
 const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('unlock', { shape: 'history' });
+});
+
+test.afterAll(() => dropSandbox(box));
+
 const signIn = (context: import('@playwright/test').BrowserContext, role: 'manager' | 'admin') =>
   context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, world().sessions[role]] as const,
+    [AUTH_KEY, box.sessions[role]] as const,
   );
 
 interface AuditEntry {
@@ -40,7 +58,7 @@ interface AuditEntry {
 async function unlockEntries(projectId: string): Promise<AuditEntry[]> {
   const api = await pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${world().sessions.admin.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.admin.access_token}` },
   });
   const res = await api.get(
     `/api/v1/admin/audit?action=project.period_unlock&object_id=${projectId}&limit=100`,
@@ -54,7 +72,7 @@ async function unlockEntries(projectId: string): Promise<AuditEntry[]> {
 async function firstPeriodStatus(projectId: string): Promise<string> {
   const api = await pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${world().sessions.manager.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.manager.access_token}` },
   });
   const res = await api.get(`/api/v1/manager/projects/${projectId}/billing/periods`);
   const items = ((await res.json()).items ?? []) as { seq: number; status: string }[];
@@ -65,7 +83,9 @@ async function firstPeriodStatus(projectId: string): Promise<string> {
 /** Открыть вкладку «Начисления» на подытоженном периоде. */
 async function openLockedPeriod(page: Page, projectId: string): Promise<void> {
   await page.goto(`/manager/projects/${projectId}?period=1`);
-  await page.getByRole('button', { name: 'Начисления' }).click();
+  // Именно вкладка: над ней в предупреждении о предоплате стоит
+  // «Открыть начисления», и поиск по кнопке находил обе.
+  await page.getByRole('tab', { name: 'Начисления' }).click();
   await expect(page.locator('.period-line')).toContainText('Период 1', { timeout: 15_000 });
 }
 
@@ -73,7 +93,7 @@ test('переоткрыть подытоженный период может т
   context,
   page,
 }) => {
-  const projectId = world().historyProjectId;
+  const projectId = box.projectId;
   expect(
     await firstPeriodStatus(projectId),
     'период обязан быть подытожен до нажатия: на открытом кнопка ничего не меняет и в журнал не пишет',
@@ -123,10 +143,10 @@ test('менеджеру переоткрытие не предлагают', as
   // Действие менеджерское по месту, но не по праву: счёт уже выставлен,
   // и отменять решение автоматики походя нельзя. Кнопка, которая ответит
   // отказом, хуже отсутствующей.
-  expect(await firstPeriodStatus(world().historyProjectId)).toBe('locked');
+  expect(await firstPeriodStatus(box.projectId)).toBe('locked');
 
   await signIn(context, 'manager');
-  await openLockedPeriod(page, world().historyProjectId);
+  await openLockedPeriod(page, box.projectId);
 
   await expect(page.locator('.period-line')).toContainText('Данные приблизительные');
   await expect(page.getByRole('button', { name: 'Переоткрыть период' })).toHaveCount(0);

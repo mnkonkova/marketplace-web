@@ -35,6 +35,28 @@
   }
 </div>
 
+<!-- Полоса месяцев проекта. Сетка показывает один месяц, и без полосы
+     даже непустой месяц не отвечает на «а это всё?»: одна точка в
+     сентябре при десяти выкладках в августе читается как поломка.
+     Месяц без выкладок в полосе приглушён — он в ней только потому, что
+     на нём сейчас стоят. -->
+@if (strip().length) {
+  <div class="months" role="group" aria-label="Месяцы с выкладками">
+    @for (m of strip(); track m) {
+      <button
+        type="button"
+        class="mbtn"
+        [class.on]="m === month()"
+        [class.void]="!hasItems(m)"
+        [attr.aria-current]="m === month() ? 'true' : null"
+        (click)="goMonth(m)"
+      >
+        {{ short(m) }}
+      </button>
+    }
+  </div>
+}
+
 @if (selectedCell(); as c) {
   <p class="picked">
     {{ c.date | date: 'd MMMM' }}:
@@ -62,6 +84,32 @@
         </li>
       }
     </ul>
+  }
+} @else if (monthEmpty()) {
+  <!-- Пустой месяц объясняем словами. Сама по себе пустая сетка
+       одинаково читается и как «в этом месяце ничего не стоит», и как
+       «данные не доехали», и как «сломалось» — а чаще всего это было
+       четвёртое: выкладки лежали в соседнем месяце, потому что период
+       проекта катится от первой публикации, а календарь открывался на
+       текущем.
+
+       Дорога отсюда — кнопкой, а не стрелкой: листать наугад по пустым
+       месяцам никто не станет. -->
+  @if (projectEmpty()) {
+    <p class="legend empty">
+      Выкладок в проекте пока нет — ни вышедших, ни запланированных. Они появятся в календаре, как
+      только менеджер проставит даты.
+    </p>
+  } @else {
+    <p class="legend empty">
+      В {{ inWords(month()) }} выкладок нет.
+      @if (neighbours().before; as m) {
+        <button type="button" class="jump" (click)="goMonth(m)">Показать {{ inWords(m) }}</button>
+      }
+      @if (neighbours().after; as m) {
+        <button type="button" class="jump" (click)="goMonth(m)">Показать {{ inWords(m) }}</button>
+      }
+    </p>
   }
 } @else {
   <p class="legend">

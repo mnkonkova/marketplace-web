@@ -18,10 +18,13 @@ const here = __dirname;
 export default defineConfig({
   testDir: join(here, 'specs'),
   globalSetup: join(here, 'fixtures', 'world.ts'),
+  globalTeardown: join(here, 'fixtures', 'teardown.ts'),
   timeout: 30_000,
   expect: { timeout: 7_000 },
-  // Параллель выключена: все специи работают с одним посеянным проектом,
-  // и гонка за его состояние даст мигающие падения, а не находки.
+  // Параллель выключена, хотя у каждой специи теперь свой проект.
+  // Причина осталась одна, и она не про проекты: специи ходят по общему
+  // стенду — общий каталог, общий список админки, общий рейт-лимитер, —
+  // и гонка за них даёт мигающие падения, а не находки.
   workers: 1,
   fullyParallel: false,
   retries: 0,

@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { AUTH_KEY, world } from '../fixtures/world';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { openManagerTab } from '../fixtures/ui';
 
 /**
  * Автопинг — ровно тот случай, ради которого браузерные тесты и нужны.
@@ -10,12 +12,28 @@ import { AUTH_KEY, world } from '../fixtures/world';
  * потому что проверяет функцию, а не то, что кнопка к ней привязана.
  */
 test.beforeEach(async ({ context }) => {
-  const w = world();
   await context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, w.sessions.manager] as const,
+    [AUTH_KEY, box.sessions.manager] as const,
   );
 });
+
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('autoping');
+});
+
+test.afterAll(() => dropSandbox(box));
 
 const SWITCH = 'Креатору в бот — утром в день выкладки';
 
@@ -38,7 +56,7 @@ const toggleIn = (page: import('@playwright/test').Page) =>
  * сохранилась».
  */
 const openCrew = async (page: import('@playwright/test').Page) => {
-  await page.getByRole('button', { name: /^Креаторы/ }).click();
+  await openManagerTab(page, 'Креаторы');
 };
 
 const isOn = async (page: import('@playwright/test').Page): Promise<boolean> => {
@@ -47,8 +65,7 @@ const isOn = async (page: import('@playwright/test').Page): Promise<boolean> => 
 };
 
 test('выключенный тумблер переживает перезагрузку', async ({ page }) => {
-  const w = world();
-  await page.goto(`/manager/projects/${w.projectId}`);
+  await page.goto(`/manager/projects/${box.projectId}`);
   await openCrew(page);
 
   const toggle = toggleIn(page);
@@ -60,7 +77,7 @@ test('выключенный тумблер переживает перезаг�
   const [response] = await Promise.all([
     page.waitForResponse(
       (r) =>
-        r.url().includes(`/projects/${w.projectId}/autoping`) && r.request().method() === 'PUT',
+        r.url().includes(`/projects/${box.projectId}/autoping`) && r.request().method() === 'PUT',
     ),
     toggle.click(),
   ]);
@@ -82,8 +99,7 @@ test('выключенный тумблер переживает перезаг�
 });
 
 test('отказ сервера откатывает тумблер, а не оставляет его переключённым', async ({ page }) => {
-  const w = world();
-  await page.goto(`/manager/projects/${w.projectId}`);
+  await page.goto(`/manager/projects/${box.projectId}`);
   await openCrew(page);
 
   const toggle = toggleIn(page);

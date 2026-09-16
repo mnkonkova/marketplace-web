@@ -36,6 +36,7 @@ import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { ClientTurnkeyProjectComponent } from '@widgets/client-turnkey-project/client-turnkey-project.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
 import { ProjectMaterialsComponent } from '@widgets/project-materials/project-materials.component';
+import { SupportFooterComponent } from '@widgets/support-footer/support-footer.component';
 import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { withFromPage } from '@shared/nav/from-page';
 
@@ -58,10 +59,11 @@ import { withFromPage } from '@shared/nav/from-page';
     BackLinkComponent,
     ProjectCommentsComponent,
     ProjectMaterialsComponent,
+    SupportFooterComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-detail.page.html',
-  styleUrl: './project-detail.page.scss',
+  styleUrls: ['./project-detail.page.scss', './project-detail.page.touch.scss'],
 })
 export class ProjectDetailPage implements OnDestroy {
   private readonly api = inject(ProjectApi);

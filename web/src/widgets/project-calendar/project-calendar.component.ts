@@ -3,6 +3,12 @@ import { CommonModule } from '@angular/common';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { CalendarDay, CalendarItem } from '@entities/publication/model/publication.types';
+import {
+  monthInWords,
+  monthShort,
+  monthStrip,
+  neighbourMonths,
+} from '@entities/publication/lib/calendar-months';
 import { creatorLabel } from '@entities/publication/lib/publication-status';
 
 interface Cell {
@@ -24,13 +30,25 @@ interface Cell {
   imports: [CommonModule, NzIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-calendar.component.html',
-  styleUrl: './project-calendar.component.scss',
+  styleUrls: ['./project-calendar.component.scss', './project-calendar.component.touch.scss'],
 })
 export class ProjectCalendarComponent {
   // ГГГГ-ММ.
   public readonly month = input.required<string>();
 
   public readonly days = input<CalendarDay[]>([]);
+
+  /**
+   * Месяцы, в которых у проекта вообще есть выкладки.
+   *
+   * Без них пустая сетка — это ответ «в этом месяце ничего не стоит»,
+   * неотличимый от «данные не доехали» и от «вы смотрите не туда». А
+   * смотрели именно не туда: календарь открывался на текущем месяце, а
+   * период проекта катится от первой публикации и на календарный месяц
+   * не ложится — десять выкладок из одиннадцати оставались в соседнем
+   * месяце, и ничто на это не намекало.
+   */
+  public readonly months = input<string[]>([]);
 
   public readonly monthChange = output<string>();
 
@@ -89,6 +107,55 @@ export class ProjectCalendarComponent {
   public readonly selectedCell = computed(
     () => this.cells().find((c) => !c.blank && c.date === this.selected()) ?? null,
   );
+
+  /** В показанном месяце ничего не стоит и не выходило. */
+  public readonly monthEmpty = computed(() =>
+    this.cells().every((c) => c.blank || (!c.planned && !c.published)),
+  );
+
+  /** Ближайшие месяцы с выкладками — дорога из пустого месяца. */
+  public readonly neighbours = computed(() => neighbourMonths(this.months(), this.month()));
+
+  /** Выкладок нет во всём проекте: тогда и про соседние месяцы молчим. */
+  public readonly projectEmpty = computed(
+    () => this.monthEmpty() && !this.neighbours().before && !this.neighbours().after,
+  );
+
+  /**
+   * Месяцы проекта под сеткой.
+   *
+   * Сетка показывает один месяц, и даже непустая она не отвечает на
+   * вопрос «а это всё?». У проекта с одиннадцатью выкладками одна стояла
+   * в сентябре, десять — в августе: сентябрь с единственной точкой
+   * читался как «выкладок нет». Полоса показывает, где они есть, и
+   * уводит туда в один клик.
+   *
+   * Из одного месяца полосы не бывает: там она сообщала бы только то,
+   * что уже написано заголовком сетки.
+   */
+  public readonly strip = computed(() => {
+    const all = monthStrip(this.months(), this.month());
+    return all.length > 1 ? all : [];
+  });
+
+  /** Есть ли в этом месяце выкладки — для отметки в полосе. */
+  public hasItems(month: string): boolean {
+    return this.months().includes(month);
+  }
+
+  public short(month: string): string {
+    return monthShort(month, this.month());
+  }
+
+  /** «в августе» — подпись месяца внутри фразы. */
+  public inWords(month: string): string {
+    return monthInWords(month, this.month());
+  }
+
+  public goMonth(month: string): void {
+    this.selected.set(null);
+    this.monthChange.emit(month);
+  }
 
   public pick(cell: Cell): void {
     if (cell.blank || (!cell.planned && !cell.published)) return;

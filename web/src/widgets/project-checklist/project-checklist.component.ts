@@ -17,7 +17,9 @@ import {
   ChecklistItem,
   ChecklistSnapshot,
   ChecklistTemplate,
+  ALL_PLATFORMS,
 } from '@entities/publication/model/publication.types';
+import { commonItems, itemsForPlatform } from '@entities/publication/lib/checklist';
 import { PLATFORM_LABEL } from '@entities/publication/lib/publication-status';
 import { parseApiError } from '@shared/api/api-error';
 
@@ -68,6 +70,24 @@ export class ProjectChecklistComponent {
   public readonly ordered = computed(() =>
     [...this.items()].sort((a, b) => a.sort_order - b.sort_order),
   );
+
+  // Пункты теми же группами, в каких их видит креатор в окне сдачи:
+  // сначала общие, потом площадочные. Раньше менеджеру доставался
+  // плоский список с приписками «TikTok», и на вопрос, ради которого
+  // сюда и заходят — «что креатор увидит, когда нажмёт сдать», — он не
+  // отвечал. Разбор берём из общей библиотеки чеклиста: своя копия
+  // правила «пункт без площадки — общий» разошлась бы с сервером.
+  public readonly common = computed(() => commonItems(this.ordered()));
+
+  /** Только те площадки, у которых пункты есть: пустой заголовок — мусор. */
+  public readonly byPlatform = computed(() =>
+    ALL_PLATFORMS.map((platform) => ({
+      platform,
+      items: itemsForPlatform(this.ordered(), platform),
+    })).filter((g) => g.items.length > 0),
+  );
+
+  public readonly requiredCount = computed(() => this.items().filter((i) => i.is_required).length);
 
   // Вышла ли в библиотеке версия свежее подключённой. Считаем по
   // latest_version снимка, а при его отсутствии — по библиотеке: там

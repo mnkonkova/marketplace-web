@@ -1,23 +1,22 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+import { NodataComponent } from '@shared/ui/nodata/nodata.component';
+import { StepsComponent } from '@shared/ui/steps/steps.component';
+import { plural } from '@shared/lib/format';
 import { formatMoney } from '@entities/billing/lib/money';
 import {
   LADDER_STEP,
   LadderVideo,
   TYPICAL_SOURCE_NOTE,
-  countLine,
-  hitLine,
   ladderState,
   shortViews,
-  stepPlan,
+  stepMotivation,
 } from '@entities/billing/lib/ladder';
 import { videosInPeriod } from '@entities/billing/lib/creator-highlights';
 import { isOpenPeriod, periodTitle, snapshotNote } from '@entities/billing/lib/period';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
-import { isSelfAdded } from '@entities/publication/lib/extra-publication';
 import type { Publication } from '@entities/publication/model/publication.types';
-import { plural } from '@shared/lib/format';
 
 /**
  * Что креатор зарабатывает в этом периоде и что добавит следующая
@@ -49,10 +48,10 @@ import { plural } from '@shared/lib/format';
 @Component({
   selector: 'app-creator-ladder',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, StepsComponent, NodataComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-ladder.component.html',
-  styleUrl: './creator-ladder.component.scss',
+  styleUrls: ['./creator-ladder.component.scss', './creator-ladder.component.touch.scss'],
 })
 export class CreatorLadderComponent {
   /** Заработок и периоды — одним ответом, страница его уже загрузила. */
@@ -76,6 +75,7 @@ export class CreatorLadderComponent {
 
   public readonly money = formatMoney;
 
+  // Нужен строке сумм под полосой: «осталось 100 тыс. просмотров».
   public plural(n: number, one: string, few: string, many: string): string {
     return plural(n, one, few, many);
   }
@@ -159,15 +159,11 @@ export class CreatorLadderComponent {
    */
   public readonly toNext = computed(() => this.forecast()?.views_to_go ?? this.ladder().toNext);
 
-  /** Доля пройденного внутри ступени — ширина полосы. */
-  public readonly progressPercent = computed(() => {
-    const f = this.forecast();
-    const share =
-      f && f.step_views > 0
-        ? (f.step_views - f.views_to_go) / f.step_views
-        : this.ladder().progress;
-    return Math.round(Math.min(1, Math.max(0, share)) * 1000) / 10;
-  });
+  // Доли пройденного ВНУТРИ ступени (progressPercent) здесь больше нет
+  // вместе с полосой, которую она рисовала. Полоса мерила не то: на
+  // сороковой ступени она показывала четыре пикселя заливки — «ты
+  // ничего не заработал». Лесенка меряет пройденное целиком, и её
+  // единственное число — ladder().passed.
 
   /**
    * Заработок за период — из его же начисления, как посчитал сервер.
@@ -218,82 +214,19 @@ export class CreatorLadderComponent {
   });
 
   /**
-   * Сколько роликов периода ещё впереди.
+   * Что осталось до ступени — одной строкой.
    *
-   * «Впереди» — те, что ещё НЕ ВЫШЛИ, то есть без published_at. Раньше
-   * считались выкладки без единой ссылки, и выкладка, сданная на одну
-   * площадку из пяти, выпадала из счёта: экран объявлял «план периода
-   * выполнен» ровно тогда, когда ролик был наполовину сдан и ещё не
-   * вышел. Признак «вышел» тут тот же, что и во всех остальных расчётах
-   * этого виджета, — иначе один и тот же ролик считался бы по-разному в
-   * соседних строках.
+   * Раньше здесь стояло три абзаца: чем закрыть ступень, сколько это
+   * обычных роликов и что при выполненном плане остаток не сгорает.
+   * Каждый по отдельности верен, а вместе они читались как объяснение,
+   * почему у человека не вышло.
    *
-   * Только внутри границ периода: выкладка, назначенная на следующий
-   * период, в этот счёт не входит.
-   *
-   * И только ПЛАНОВЫЕ: ролик, который креатор добавил себе сам, планом
-   * не становится. Иначе собственная добавка гасила бы «план периода
-   * выполнен» — человек добрал бы сверх плана и тут же прочитал, что
-   * план не выполнен.
+   * Считается в роликах: ролики он снимает, просмотры с него не
+   * спрашивают.
    */
-  public readonly plannedLeft = computed(
-    () => this.aheadInPeriod().filter((x) => !isSelfAdded(x)).length,
+  public readonly motivation = computed(() =>
+    stepMotivation(this.toNext(), this.typical()?.typical_video_views ?? null),
   );
-
-  /** Свои добавленные ролики впереди — они не план, но снимать по ним. */
-  public readonly ownAhead = computed(
-    () => this.aheadInPeriod().filter((x) => isSelfAdded(x)).length,
-  );
-
-  /** Все даты впереди: и плановые, и свои. */
-  private readonly datesAhead = computed(() => this.aheadInPeriod().length);
-
-  /** Выкладки периода, которые ещё не вышли. */
-  private readonly aheadInPeriod = computed<Publication[]>(() => {
-    const p = this.period();
-    if (!p) return [];
-    const from = p.starts_on.slice(0, 10);
-    const to = p.ends_on.slice(0, 10);
-    return this.publications().filter(
-      (x) =>
-        x.status !== 'cancelled' &&
-        !x.published_at &&
-        x.due_date.slice(0, 10) >= from &&
-        x.due_date.slice(0, 10) <= to,
-    );
-  });
-
-  /**
-   * Чем закрыть ступень: хитами первым, количеством вторым.
-   *
-   * Дат впереди считаем ВСЕ, вместе со своими добавленными: совет
-   * «обычными это N роликов» про то, есть ли на них где сняться, а
-   * снимать по своей дате можно ровно так же, как по плановой.
-   */
-  public readonly plan = computed(() =>
-    stepPlan(this.toNext(), this.typical()?.typical_video_views ?? null, this.datesAhead()),
-  );
-
-  /** «Один ролик на 100 тыс. закрывает ступень. Или два по 50 тыс.» */
-  public readonly hitText = computed(() => {
-    const p = this.plan();
-    return p ? hitLine(p) : '';
-  });
-
-  /** «Обычными — это 34…». Пусто, когда количеством не выйти. */
-  public readonly countText = computed(() => {
-    const p = this.plan();
-    return p ? countLine(p) : '';
-  });
-
-  /**
-   * План периода выполнен: дат впереди не осталось.
-   *
-   * Отдельное состояние, а не «ноль роликов»: человеку нельзя советовать
-   * снять ещё, когда снимать негде, — и нужно сказать, что недобранное
-   * не сгорает.
-   */
-  public readonly planDone = computed(() => !!this.period() && this.plannedLeft() === 0);
 
   // Список роликов периода, их вклад в ступень и обезличенное место по
   // медиане переехали в блок достижений (widgets/creator-highlights).

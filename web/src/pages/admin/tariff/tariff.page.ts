@@ -12,7 +12,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
-import { TermsVersion } from '@entities/billing/model/billing.types';
+import { TariffStep, TermsVersion } from '@entities/billing/model/billing.types';
 import { formatMoney, fromRubles, toRubles } from '@entities/billing/lib/money';
 import { parseApiError } from '@shared/api/api-error';
 import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
@@ -51,7 +51,26 @@ interface Draft {
   clickRate: number | null;
   clickThreshold: number | null;
   clickRateOver: number | null;
+  // Ступени: произвольное число порогов объёма и цена периода на каждом.
+  // Список, а не набор полей, ровно потому, что число ступеней заранее
+  // неизвестно — живой клиент просит «оклад плюс KPI на 300 000», и
+  // следом появляются четвёртая и пятая точка.
+  steps: DraftStep[];
+  // KPI по подписчикам. Сборщика подписчиков нет — объявляем только
+  // ставку, число потом вписывает менеджер руками.
+  countSubs: boolean;
+  subRate: number | null;
+  creatorSubRate: number | null;
   body: string;
+}
+
+/** Ступень в форме: рубли и просмотры, как их вводит человек. */
+interface DraftStep {
+  fromViews: number;
+  clientFee: number;
+  // Пусто — «как у заказчика»: то же правило, что у остальных
+  // креаторских полей.
+  creatorFee: number | null;
 }
 
 @Component({
@@ -123,6 +142,41 @@ export class AdminTariffPage implements OnInit {
     return v.salary_per_month - this.creatorShare(v, 'salary');
   }
 
+  /**
+   * Ступени действующей версии — для карточки прайса.
+   *
+   * Уже отсортированы сервером по порогу, и пересортировывать их здесь
+   * незачем: порядок — часть смысла лесенки, и второе его место
+   * разъехалось бы с первым.
+   */
+  public steps(v: TermsVersion): TariffStep[] {
+    return v.steps ?? [];
+  }
+
+  /** Цена ступени креатору: пусто в тарифе значит «как у заказчика». */
+  public stepCreatorFee(s: TariffStep): number {
+    return s.creator_fee ?? s.client_fee;
+  }
+
+  public subsOn(v: TermsVersion): boolean {
+    return v.subscriber_rate != null;
+  }
+
+  /**
+   * Добавить ступень.
+   *
+   * Новая встаёт в конец с пустыми числами: подставлять «удобные»
+   * значения нельзя — выпущенная версия прайса необратима, и число,
+   * которого админ не вводил, окажется в счёте заказчика.
+   */
+  public addStep(): void {
+    this.draft.steps = [...this.draft.steps, { fromViews: 0, clientFee: 0, creatorFee: null }];
+  }
+
+  public removeStep(i: number): void {
+    this.draft.steps = this.draft.steps.filter((_, idx) => idx !== i);
+  }
+
   public openForm(): void {
     const v = this.current();
     this.draft = v ? draftFrom(v) : emptyDraft();
@@ -156,6 +210,19 @@ export class AdminTariffPage implements OnInit {
         click_bonus_threshold: d.countClicks ? (d.clickThreshold ?? 0) : 0,
         click_bonus_rate_over:
           d.countClicks && d.clickRateOver !== null ? fromRubles(d.clickRateOver) : null,
+        // Лесенка уезжает целиком и уже отсортированной: порядок — часть
+        // правила «берём последнюю взятую ступень», и отдавать его на
+        // усмотрение порядка строк в форме нельзя.
+        steps: [...d.steps]
+          .sort((a, b) => a.fromViews - b.fromViews)
+          .map((st) => ({
+            from_views: Math.max(0, Math.round(st.fromViews)),
+            client_fee: fromRubles(st.clientFee),
+            creator_fee: st.creatorFee === null ? null : fromRubles(st.creatorFee),
+          })),
+        subscriber_rate: d.countSubs && d.subRate !== null ? fromRubles(d.subRate) : null,
+        creator_subscriber_rate:
+          d.countSubs && d.creatorSubRate !== null ? fromRubles(d.creatorSubRate) : null,
         body: d.body.trim(),
       })
       .subscribe({
@@ -188,6 +255,10 @@ function emptyDraft(): Draft {
     clickRate: null,
     clickThreshold: null,
     clickRateOver: null,
+    steps: [],
+    countSubs: false,
+    subRate: null,
+    creatorSubRate: null,
     body: '',
   };
 }
@@ -210,6 +281,16 @@ function draftFrom(v: TermsVersion): Draft {
     clickRate: opt(v.click_bonus_rate),
     clickThreshold: v.click_bonus_threshold ?? null,
     clickRateOver: opt(v.click_bonus_rate_over),
+    steps: (v.steps ?? []).map((st) => ({
+      fromViews: st.from_views,
+      clientFee: toRubles(st.client_fee),
+      creatorFee: opt(st.creator_fee ?? undefined),
+    })),
+    // Пустая ставка за подписчика — это «KPI не считаем» целиком, а не
+    // нулевая ставка: галочка и есть это различие.
+    countSubs: v.subscriber_rate != null,
+    subRate: opt(v.subscriber_rate),
+    creatorSubRate: opt(v.creator_subscriber_rate),
     body: v.body,
   };
 }

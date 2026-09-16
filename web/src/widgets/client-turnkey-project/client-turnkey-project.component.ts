@@ -10,27 +10,32 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { downloadBlob } from '@shared/lib/download-blob';
-import { scrollToAnchorElement } from '@shared/lib/scroll-to-anchor';
+import { specialistHandle } from '@shared/lib/specialist-link';
 import { parseApiError } from '@shared/api/api-error';
 import { plural } from '@shared/lib/format';
 import { BillingApi } from '@entities/billing/api/billing.api';
 import { formatMoney } from '@entities/billing/lib/money';
+import { LADDER_STEP } from '@entities/billing/lib/ladder';
 import {
   isOpenPeriod,
   periodRange,
+  periodSettled,
   periodTitle,
   previousSeq,
   snapshotNote,
 } from '@entities/billing/lib/period';
-import type { ProjectBilling } from '@entities/billing/model/billing.types';
+import type { Accrual, ProjectBilling } from '@entities/billing/model/billing.types';
 import { PublicationApi } from '@entities/publication/api/publication.api';
+import { currentMonth, monthToOpen } from '@entities/publication/lib/calendar-months';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import {
+  PLATFORM_COLOR,
   PLATFORM_LABEL,
   PLATFORM_SHORT,
   creatorLabel,
@@ -44,12 +49,34 @@ import type {
   PublicationReport,
   VideoRow,
 } from '@entities/publication/model/publication.types';
+import { clientTitle } from '@entities/project/lib/project-title';
 import type { ProjectClientView } from '@entities/project/model/project.types';
-import { ProjectBillingComponent } from '@widgets/project-billing/project-billing.component';
 import { ProjectCalendarComponent } from '@widgets/project-calendar/project-calendar.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
 import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.component';
-import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
+import { StepsComponent } from '@shared/ui/steps/steps.component';
+import { TariffLadderComponent } from '@widgets/tariff-ladder/tariff-ladder.component';
+
+/**
+ * Раздел проекта заказчика. Их ТРИ, а не шесть.
+ *
+ * Шесть вкладок — «Ролики · Календарь · Статистика · Команда · Деньги ·
+ * Переписка» — были шестью ящиками, а разговоров в них ровно два с
+ * половиной. «Что сняли», «когда это выходило» и «кто снимал» — один
+ * разговор про выкладки, и разложенный по трём вкладкам он заставлял
+ * ходить туда-сюда, чтобы связать ролик с датой и человеком. Так же
+ * «сколько набрали» и «сколько это стоит» — один разговор про деньги:
+ * цифры без счёта ничего не стоят, счёт без цифр не объясним.
+ *
+ * Переписка осталась как была — это не отчёт, а разговор, и мешать её с
+ * чем-то нельзя.
+ *
+ * У менеджера вкладок по-прежнему шесть, и это намеренно: он в проекте
+ * работает — правит план, сверяет ссылки, считает деньги, — а заказчику
+ * проект показывают. Разные задачи у одного и того же экрана — разное
+ * членение.
+ */
+type ClientTab = 'posts' | 'money' | 'talk';
 
 /**
  * Проект «креаторы под ключ» глазами заказчика.
@@ -69,16 +96,20 @@ import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
     CommonModule,
     FormsModule,
     NzIconModule,
+    RouterLink,
     BackLinkComponent,
-    ProjectBillingComponent,
     ProjectCalendarComponent,
     ProjectCommentsComponent,
     ProjectStatsComponent,
-    ErValueComponent,
+    StepsComponent,
+    TariffLadderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './client-turnkey-project.component.html',
-  styleUrl: './client-turnkey-project.component.scss',
+  styleUrls: [
+    './client-turnkey-project.component.scss',
+    './client-turnkey-project.component.touch.scss',
+  ],
 })
 export class ClientTurnkeyProjectComponent {
   private readonly pubApi = inject(PublicationApi);
@@ -92,8 +123,87 @@ export class ClientTurnkeyProjectComponent {
 
   public readonly meId = input<string>('');
 
+  /**
+   * Открытый раздел.
+   *
+   * Живёт в памяти виджета, а не в адресе, — ровно как во вкладках
+   * проекта у менеджера. Ссылку на страницу проекта присылают друг другу
+   * целиком («посмотри проект»), а не на её раздел, и раздел в адресе
+   * означал бы, что ссылка, открытая соседом, показывает то, на чём
+   * остановился отправитель.
+   *
+   * Первыми — выкладки: за ними на эту страницу и приходят. Деньги и
+   * переписка стоят дальше, но главное про деньги — счёт за прошлый
+   * период — вынесено над вкладками, и до него не надо никуда идти.
+   */
+  public readonly tab = signal<ClientTab>('posts');
+
+  public setTab(t: ClientTab): void {
+    this.tab.set(t);
+  }
+
+  /**
+   * Уведомления в боте — раскрывающаяся полоса ПОД вкладками, а не
+   * седьмая вкладка.
+   *
+   * Это настройка, а не раздел отчёта: галочки «что мне слать». В ряду с
+   * «Выкладками» и «Деньгами» она обещала бы содержание того же рода, а
+   * экран этот показывают начальству — личные галочки в одном клике от
+   * отчёта однажды покажут вместе с ним. Отдельной страницы настроек
+   * проекта у заказчика нет и заводить её ради трёх чекбоксов незачем,
+   * поэтому они живут внизу страницы, свёрнутые: кому надо — найдёт,
+   * остальным не мешает.
+   */
+  public readonly prefsOpen = signal(false);
+
+  public togglePrefs(): void {
+    this.prefsOpen.set(!this.prefsOpen());
+  }
+
   /** Раскрытые ролики: разбор по площадкам открывается по требованию. */
   public readonly openVideos = signal<ReadonlySet<string>>(new Set<string>());
+
+  // Счётчика состава здесь больше нет: он был числом на вкладке
+  // «Команда», а вкладки такой не осталось — состав стоит блоком внутри
+  // «Выкладок», и сколько там человек, видно по самим строкам.
+
+  /**
+   * Адрес страницы исполнителя.
+   *
+   * Через общий хелпер: у кого выбран username — красивый адрес, у
+   * остальных uuid. Своя склейка здесь разошлась бы с остальными местами,
+   * где на специалиста ссылаются, и половина ссылок вела бы по-старому.
+   */
+  public specialistLink(a: Accrual): string[] {
+    return [
+      '/specialist',
+      specialistHandle({ username: a.creator_username, user_id: a.creator_user_id }),
+    ];
+  }
+
+  /**
+   * Есть ли куда вести ссылку на этого человека.
+   *
+   * Адрес страницы специалиста складывается всегда — из username или из
+   * uuid, — а самой страницы по нему может не быть: публичная карточка
+   * живёт только у опубликованного и прошедшего модерацию профиля, на всё
+   * прочее ручка отдаёт 404. Ссылка стояла на всех одинаково, и на
+   * непроверенном профиле состав периода вёл в «не найдено»: заказчик
+   * платит за человека, жмёт на его имя и получает ответ, что такого
+   * человека нет.
+   *
+   * Правило простое: либо ссылка ведёт туда, где что-то есть, либо её
+   * нет вовсе. Разницу называем словами рядом с именем — иначе «почему по
+   * одному кликается, а по другому нет» пришлось бы объяснять голосом.
+   */
+  public creatorLinkable(a: Accrual): boolean {
+    return a.creator_profile_public === true;
+  }
+
+  /** Подпись ссылки для наведения: кружок сам по себе ничего не обещает. */
+  public creatorTitle(a: Accrual): string {
+    return `Открыть профиль: ${creatorLabel(a.creator_name)}`;
+  }
 
   public toggleVideo(id: string): void {
     const next = new Set(this.openVideos());
@@ -168,11 +278,22 @@ export class ClientTurnkeyProjectComponent {
 
   public readonly platformShort = PLATFORM_SHORT;
 
+  public readonly platformColor = PLATFORM_COLOR;
+
   public readonly videos = signal<ClientVideo[]>([]);
 
   public readonly calendarDays = signal<CalendarDay[]>([]);
 
   public readonly calendarMonth = signal(currentMonth());
+
+  /**
+   * Месяцы, в которых у проекта вообще есть выкладки.
+   *
+   * Нужны сетке, чтобы отличить пустой месяц от потерянных данных, и
+   * самой странице — чтобы открыть календарь там, где смотреть есть на
+   * что.
+   */
+  public readonly calendarMonths = signal<string[]>([]);
 
   public readonly report = signal<PublicationReport | null>(null);
 
@@ -188,6 +309,16 @@ export class ClientTurnkeyProjectComponent {
   });
 
   public readonly csvBusy = signal(false);
+
+  /**
+   * У проекта ещё нет ни одного периода: не вышло ни одного ролика.
+   *
+   * Отдельно от «билинг не доехал». Ноль периодов — это состояние, и на
+   * вкладке «Деньги» оно называется словами; сбой — другое дело и другой
+   * текст. Одним пустым экраном их не различить, а действия у них
+   * разные: в первом случае ждать выкладок, во втором звать менеджера.
+   */
+  public readonly noPeriods = signal(false);
 
   /**
    * Деньги проекта. В макете они разложены по трём местам сразу — плитка
@@ -211,6 +342,95 @@ export class ClientTurnkeyProjectComponent {
   /** Какой период показан: «Период 3 · 15 сентября — 14 октября». */
   public readonly periodTitle = computed(() => periodTitle(this.billing()?.period));
 
+  /**
+   * Заголовок без служебного суффикса.
+   *
+   * «(e2e)», «(тест)», «(копия)» — пометки конвейера, а не название
+   * проекта. В экране, который показывают начальству и вставляют в
+   * коммерческое предложение, они читаются как недоделка. Режем только
+   * скобки в самом конце и только со служебным словом внутри: «Корм для
+   * кошек (вертикальные ролики)» — часть названия, и трогать её нельзя.
+   */
+  public readonly title = computed(() => clientTitle(this.project().title));
+
+  /**
+   * Период в шапке — НАСТОЯЩИЙ и датами: «Период 1 · 15 сентября —
+   * 14 октября 2026».
+   *
+   * Раньше здесь стояло «Период 1: 15.09 — 14.10»: без года и без
+   * состояния. По такой подписи не понять ни какого года период, ни
+   * закрыт он или ещё растёт, — а от этого зависит, окончательная сумма
+   * рядом или предварительная. Ещё раньше на этом месте вовсе стояла
+   * дата ЗАВЕДЕНИЯ проекта, и шапка объявляла период, которого нет.
+   *
+   * Пусто, пока периода нет: выдуманная дата хуже отсутствующей — по ней
+   * начинают считать сроки.
+   */
+  public readonly periodLine = computed(() => periodTitle(this.billing()?.period));
+
+  /** Состояние периода словом: открытый и подытоженный — разные счета. */
+  public readonly periodState = computed(() => (this.preliminary() ? 'идёт' : 'подытожен'));
+
+  /**
+   * Цена тысячи крупно: число одним кеглем, единица — мелкой пометкой.
+   * Режем готовую строку formatMoney по неразрывному пробелу, чтобы
+   * правило «дробную часть только когда она есть» осталось в одном месте.
+   */
+  private readonly costParts = computed(() =>
+    this.money(this.billing()?.totals?.cost_per_1000).split('\u00a0'),
+  );
+
+  public readonly costHead = computed(() => this.costParts()[0] ?? '');
+
+  public readonly costUnit = computed(() => this.costParts()[1] ?? '');
+
+  /**
+   * Тарифная лесенка счёта. Приходит с сервера посчитанной и только
+   * тогда, когда сходится с итогом и просмотрами рядом: в браузере тариф
+   * не считаем никогда.
+   */
+  public readonly tariff = computed(() => this.billing()?.tariff ?? null);
+
+  /** Шаг шкалы насечек — общий для заказчика, креатора и менеджера. */
+  public readonly ladderStep = LADDER_STEP;
+
+  /**
+   * Оговорки к счёту за прошлый период — под катом.
+   *
+   * Их две, обе длинные, и обе про «как так вышло», а не про «сколько и
+   * куда платить». Развёрнутыми они давали плашке четыре абзаца, в
+   * которых сумма — то единственное, ради чего плашка есть, — читалась
+   * наравне с объяснением, почему просмотры подтянуты. Свёрнуто по
+   * умолчанию; сам признак приблизительности виден снаружи, у суммы.
+   */
+  public readonly dueNoteOpen = signal(false);
+
+  public toggleDueNote(): void {
+    this.dueNoteOpen.set(!this.dueNoteOpen());
+  }
+
+  /**
+   * ER строкой. Звёздочки нет: оговорка про репосты раскрыта словами в
+   * той же строке, а сноска отправляла искать расшифровку, которой рядом
+   * не было.
+   */
+  public readonly erText = computed(() => {
+    const p = this.report()?.er_percent;
+    return p == null ? '' : `${p.toFixed(1).replace('.', ',')}%`;
+  });
+
+  /**
+   * Есть ли что показывать числами.
+   *
+   * Отчёт приходит и у проекта, где не вышло ни одного ролика: сервер
+   * честно отдаёт нули. Но ноль просмотров и «ничего не выходило» —
+   * разные утверждения: первое значит «посмотрели ноль раз», второе —
+   * «смотреть было нечего». Ряд нулей в первом экране читается как
+   * провал работы, а не как её отсутствие, поэтому чисел там, где мерить
+   * было нечего, нет вовсе — вместо них одна строка словами.
+   */
+  public readonly hasNumbers = computed(() => (this.report()?.videos ?? 0) > 0);
+
   /** Период ещё идёт — счёт не окончательный. */
   public readonly preliminary = computed(() => isOpenPeriod(this.billing()?.period));
 
@@ -227,12 +447,32 @@ export class ClientTurnkeyProjectComponent {
   public readonly prevBilling = signal<ProjectBilling | null>(null);
 
   /**
-   * Плашку показываем, только когда прошлый период ПОДЫТОЖЕН. Пока он
-   * открыт, сумма ещё меняется — выставлять её к оплате рано.
+   * Счёт за прошлый период, пока по нему не рассчитались.
+   *
+   * Два условия, и оба обязательны.
+   *
+   * Период должен быть ПОДЫТОЖЕН: пока он открыт, сумма ещё меняется, и
+   * выставлять её к оплате рано.
+   *
+   * И по нему не должно быть отметки об оплате. Раньше её здесь не
+   * спрашивали вовсе, и плашка жила ровно один период: начинался
+   * следующий — прошлый становился позапрошлым, и «к оплате» исчезало
+   * само, оплатили его или нет. То есть напоминание о долге снимал
+   * календарь, а не деньги. Теперь снимает менеджер, когда отметит
+   * «Деньги пришли», — и ровно об этом плашка и говорит.
+   *
+   * Правило «что считать расчётом» живёт в periodSettled рядом с
+   * периодами: оно про платежи, а не про этот экран, и второй его копии
+   * быть не должно.
    */
   public readonly prevDue = computed(() => {
     const b = this.prevBilling();
-    return b?.period?.status === 'locked' ? b : null;
+    if (b?.period?.status !== 'locked') return null;
+    // Платежи проектные, а не периодные, и приходят в обоих ответах
+    // одинаковые: берём из свежего, чтобы не зависеть от порядка
+    // загрузки двух запросов.
+    const payments = this.billing()?.payments ?? b.payments;
+    return periodSettled(b.period, payments) ? null : b;
   });
 
   public readonly prevTitle = computed(() => periodTitle(this.prevDue()?.period));
@@ -248,16 +488,6 @@ export class ClientTurnkeyProjectComponent {
   public readonly prevApprox = computed(() => !!this.prevDue()?.period?.snapshot_approx);
 
   /**
-   * Кнопка ведёт в начисления, а не в оплату: платёжного провайдера нет,
-   * получение денег подтверждает менеджер руками. Второй блок про деньги
-   * тут заводить не за чем — ниже на этой же странице стоит тот самый, с
-   * составом периода и раскладкой счёта.
-   */
-  public toBilling(): void {
-    scrollToAnchorElement('bill');
-  }
-
-  /**
    * Команда собрана автоматически по приоритету, а не выбрана вручную.
    * Приоритет есть только у проектов, выросших из заказа, — подпись
    * «собрана по вашему приоритету» без него была бы неправдой.
@@ -265,11 +495,6 @@ export class ClientTurnkeyProjectComponent {
   public readonly fromOrder = computed(() =>
     (this.billing()?.accruals ?? []).some((a) => (a.priority ?? 0) > 0),
   );
-
-  /** Переписка внизу страницы: «Написать менеджеру» ведёт туда же. */
-  public scrollToTalk(): void {
-    document.getElementById('talk')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
 
   // Выгрузка тянется запросом с токеном и сохраняется из памяти: прежняя
   // ссылка в <a href> Bearer не несёт и открывала вкладку с 401.
@@ -299,6 +524,26 @@ export class ClientTurnkeyProjectComponent {
   }
 
   /**
+   * Чей знак стоит на месте обложки.
+   *
+   * Та площадка, что ТЯНЕТ, а не первая в списке: список приходит в
+   * порядке базы, и на кадре оказывался Instagram у ролика, две трети
+   * просмотров которого пришли из TikTok. Кадр — единственная картинка
+   * карточки, и врать ей нельзя.
+   *
+   * Пусто, если площадок нет вовсе: тогда и места обложки нет. Пустой
+   * прямоугольник читался бы как несработавшая загрузка.
+   */
+  public coverPlatform(v: ClientVideo): Platform | null {
+    return this.openLinks(v)[0]?.platform ?? this.platformsOf(v)[0] ?? null;
+  }
+
+  /** Цвет площадки, разбавленный до подложки кадра. */
+  public tint(platform: Platform): string {
+    return `${PLATFORM_COLOR[platform] ?? '#888'}1f`;
+  }
+
+  /**
    * Площадки ролика со ссылками на сам ролик.
    *
    * Ради этого заказчик сюда и приходит: не «мы отчитались о просмотрах»,
@@ -315,6 +560,29 @@ export class ClientTurnkeyProjectComponent {
       platform,
       url: rows.find((r) => r.platform === platform)?.url ?? '',
     }));
+  }
+
+  /**
+   * То же, но с числом: сколько просмотров у ролика на этой площадке.
+   *
+   * Число внутри кнопки, а не под раскрытием «По площадкам». Раскрытие
+   * было ещё одним кликом до главного доказательства и показывало ровно
+   * то же самое: площадку, ссылку и просмотры. Теперь всё это и есть
+   * кнопка, а лишнего состояния «раскрыто/свёрнуто» у карточки больше
+   * нет.
+   *
+   * Порядок — по убыванию просмотров: первой та, что тянет. Площадки без
+   * чисел (статистика выключена менеджером) держат свой порядок и
+   * остаются кнопками без числа — ссылка от этого не перестаёт работать.
+   */
+  public openLinks(v: ClientVideo): { platform: Platform; url: string; views: number }[] {
+    const rows = this.platformRows(v);
+    return this.platformsOf(v)
+      .map((platform) => {
+        const row = rows.find((r) => r.platform === platform);
+        return { platform, url: row?.url ?? '', views: row?.views ?? 0 };
+      })
+      .sort((a, b) => b.views - a.views);
   }
 
   public togglePref(field: 'on_new_video' | 'on_weekly_digest' | 'on_date_shift'): void {
@@ -348,23 +616,50 @@ export class ClientTurnkeyProjectComponent {
     });
   }
 
-  private loadCalendar(id: string, month: string): void {
+  /**
+   * @param autoPick разрешено ли перепрыгнуть на месяц, где выкладки есть.
+   *
+   * Разрешено ровно при первой загрузке проекта. Дальше месяц выбирает
+   * человек стрелками, и подменять его выбор нельзя: пустой месяц,
+   * открытый намеренно, — это ответ «здесь ничего не стоит», а не повод
+   * увезти его в другой.
+   */
+  private loadCalendar(id: string, month: string, autoPick = false): void {
     this.pubApi.clientCalendar(id, month).subscribe({
-      next: (r) => this.calendarDays.set(r.days),
-      error: () => this.calendarDays.set([]),
+      next: (r) => {
+        this.calendarDays.set(r.days);
+        this.calendarMonths.set(r.months ?? []);
+        if (!autoPick) return;
+        const better = monthToOpen(r.months ?? [], month);
+        if (better === month) return;
+        // Выкладки этого проекта лежат в другом месяце — открываем его.
+        // Второй запрос здесь неизбежен: какой месяц показывать, видно
+        // только из ответа, а спрашивать «где что есть» отдельной
+        // ручкой значило бы два запроса ВСЕГДА, а не в этом случае.
+        this.calendarMonth.set(better);
+        this.loadCalendar(id, better);
+      },
+      error: () => {
+        this.calendarDays.set([]);
+        this.calendarMonths.set([]);
+      },
     });
   }
 
   private load(id: string): void {
     this.billingApi.clientBilling(id).subscribe({
       next: (b) => {
+        this.noPeriods.set(false);
         this.billing.set(b);
         this.loadPrevious(id, b);
       },
-      // Тарифа у проекта может не быть, а у проекта без вышедших роликов
-      // нет и периодов (404 no_periods) — деньги тогда просто не
-      // показываем, это не сбой.
-      error: () => {
+      // 404 no_periods — у проекта не вышло ни одного ролика, и отсчёт
+      // периодов начинается с первого. Это состояние, а не сбой, и
+      // молчать о нём нельзя: пустая вкладка «Деньги» читается как «не
+      // загрузилось», а не как «платить пока не за что». Тарифа у
+      // проекта может не быть вовсе — это другая причина и другой текст.
+      error: (e) => {
+        this.noPeriods.set(parseApiError(e, '').code === 'no_periods');
         this.billing.set(null);
         this.prevBilling.set(null);
       },
@@ -393,12 +688,7 @@ export class ClientTurnkeyProjectComponent {
     this.loadCalendar(
       id,
       untracked(() => this.calendarMonth()),
+      true,
     );
   }
-}
-
-// Текущий месяц в формате ГГГГ-ММ — его же ждёт ручка календаря.
-function currentMonth(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }

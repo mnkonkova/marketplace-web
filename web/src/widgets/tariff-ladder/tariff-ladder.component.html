@@ -1,0 +1,72 @@
+@let t = tariff();
+
+<div class="ladder">
+  @if (heading()) {
+    <h3>{{ heading() }}</h3>
+  }
+
+  <!-- Полоса показывает соотношение ступеней В ПРОСМОТРАХ: латунь —
+       объём по стартовой ставке, лёд — то, что ролики набрали сами.
+       Ширины задаёт flex-grow от настоящих чисел, а не проценты из
+       головы: полоса, не совпадающая со строками под ней, — третье
+       число на экране, которого нет нигде. -->
+  <div class="split" aria-hidden="true">
+    <i class="a" [style.flex-grow]="t.views_base"></i>
+    <i class="b" [style.flex-grow]="t.views_over"></i>
+  </div>
+
+  <!-- Порог НА РОЛИК, и подпись говорит это прямым текстом: «первый
+       миллион проекта» описывал бы чужое правило. -->
+  <div class="lrow">
+    <span class="what">
+      <b>Первые {{ t.threshold_views | number }} просмотров каждого ролика</b>
+      <i>{{ t.views_base | number }} просмотров по ставке старта</i>
+    </span>
+    <span class="rate brass">
+      {{ money(t.rate_per_1000) }}
+      <i>за тысячу</i>
+    </span>
+    <span class="amt">{{ money(t.base_amount) }}</span>
+  </div>
+
+  <div class="lrow">
+    <span class="what">
+      <b>Всё, что ролик набрал сверх</b>
+      <i>{{ t.views_over | number }} просмотров — разошёлся сам</i>
+    </span>
+    <span class="rate ice">
+      {{ money(t.rate_per_1000_over) }}
+      <i>за тысячу</i>
+    </span>
+    <span class="amt">{{ money(t.over_amount) }}</span>
+  </div>
+
+  <!-- Третья строка обязательна, даже когда про неё не спрашивают: без
+       работы команды сумма ступеней не сходится с итогом, и лесенка
+       превращается в счёт, в котором не хватает слагаемого. -->
+  <div class="lrow">
+    <span class="what">
+      <b>Работа команды</b>
+      <i><ng-content select="[fixed-note]" /></i>
+    </span>
+    <span class="rate">фикс</span>
+    <span class="amt">{{ money(t.fixed) }}</span>
+  </div>
+
+  <div class="sumrow">
+    <span class="k">Всего за {{ t.views | number }} просмотров</span>
+    <b class="total">{{ money(t.total) }}</b>
+    <span class="calc">
+      @if (costPer1000(); as cpm) {
+        <!-- Деление показано целиком: именно его проверяют на
+             калькуляторе первым же заходом. Частное берётся ГОТОВЫМ из
+             счёта — делить деньги в браузере нельзя. -->
+        {{ money(t.total) }} ÷ {{ thousands() }} тысяч просмотров =
+        <b class="ice">{{ money(cpm) }} за тысячу</b>
+      }
+      @if (note()) {
+        <span class="say">{{ note() }}</span>
+      }
+    </span>
+  </div>
+</div>

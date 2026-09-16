@@ -6,12 +6,32 @@ import {
   SeriesPoint,
   labelledPoints,
   niceMax,
-  placeSeries,
+  placeAll,
   splitGaps,
 } from '@shared/lib/chart-series';
 
 /**
- * Поденный ряд линией.
+ * Один ряд на графике: чем он подписан, каким цветом и главный ли он.
+ *
+ * Цвет приходит снаружи, а не выбирается здесь, потому что он несёт
+ * смысл: у площадок это их фирменный цвет, и такой же кружок стоит рядом
+ * в составе просмотров. Своя палитра внутри графика развела бы одну и ту
+ * же площадку в два цвета на одном экране.
+ */
+export interface ChartSeries {
+  key: string;
+  label: string;
+  color: string;
+  points: readonly SeriesPoint[];
+  /**
+   * Главная линия: толще остальных и рисуется поверх. Ровно одна на
+   * график — это тот итог, который стоит числом над ним.
+   */
+  lead?: boolean;
+}
+
+/**
+ * Поденный ряд линией. Один ряд или несколько на одной оси.
  *
  * Один компонент на все графики «просмотры по дням»: в сводке заказчика
  * и в статистике проекта рисуется одно и то же и про одно и то же. Два
@@ -32,6 +52,9 @@ import {
  *    тишины обязаны выглядеть как две недели, а не как один шаг.
  *  • Подписи обеих осей и значение по наведению обязательны. Без них
  *    линия остаётся картинкой: «выросло» не отличить от «выросло вдвое».
+ *  • Несколько рядов делят ОДНУ ось времени (placeAll): у площадок
+ *    разные дни первого замера, и разложенные каждый от своего начала
+ *    линии встали бы со сдвигом друг относительно друга.
  *
  * Рисуем в пикселях, а не в 0..100 с растянутым viewBox: растянутый
  * viewBox плющит текст подписей вместе с линией.
@@ -57,6 +80,14 @@ import {
 })
 export class LineChartComponent {
   public readonly points = input<readonly SeriesPoint[]>([]);
+
+  /**
+   * Несколько рядов сразу: разбор по площадкам плюс общая линия.
+   *
+   * Непустой `series` отменяет `points`: это два способа сказать одно и
+   * то же, и складывать их вместе значило бы рисовать один ряд дважды.
+   */
+  public readonly series = input<readonly ChartSeries[]>([]);
 
   /** Чем подписан график для скринридера. */
   public readonly label = input('');
@@ -86,16 +117,47 @@ export class LineChartComponent {
   public readonly compact = input(false);
 
   /**
-   * Цвет линии. Пусто — акцент темы.
+   * Цвет единственной линии. Пусто — акцент темы.
    *
    * Задаётся только в карточке площадки, где цвет несёт смысл: он и есть
-   * опознавательный знак площадки. На обычном графике цвет один.
+   * опознавательный знак площадки. У многорядного графика цвет каждой
+   * линии приходит в самом ряду.
    */
   public readonly color = input('');
 
+  /**
+   * Легенда под шапкой: какая линия что означает.
+   *
+   * Рисует её сам график, а не место вызова: цвета линий живут здесь, и
+   * вторая их копия рядом разошлась бы с первой на первой же правке. У
+   * одного ряда легенды нет — подписывать нечего.
+   */
+  public readonly rows = computed<readonly ChartSeries[]>(() => {
+    const many = this.series();
+    if (many.length) return many;
+    return [
+      {
+        key: 'single',
+        label: this.yLabel(),
+        color: this.color(),
+        points: this.points(),
+        lead: true,
+      },
+    ];
+  });
+
+  public readonly multi = computed(() => this.rows().length > 1);
+
+  /**
+   * Цвет узлов. У единственной линии он обязан совпадать с ней самой:
+   * зелёные точки на красной линии читаются как второй ряд поверх
+   * первого.
+   */
+  public readonly dotColor = computed(() => this.rows()[0]?.color || '');
+
   // Геометрия: слева место под подписи значений, снизу под даты. В сжатом
   // виде подписей нет — поля схлопываются до толщины самой линии, иначе
-  // на тридцати пикселях половину высоты занимало бы пустое поле.
+  // на тридцати пикселях высоты половину высоты занимало бы пустое поле.
   //
   // Ширина системы координат в сжатом виде другая. Пропорции viewBox мы
   // НЕ ломаем — растянутый плющит линию неравномерно, — а высоту задаёт
@@ -117,17 +179,27 @@ export class LineChartComponent {
 
   public readonly axisY = computed(() => this.height() - this.PB());
 
-  /** Ряд по возрастанию дат, с позицией каждой точки в днях от начала. */
-  public readonly placed = computed(() => placeSeries(this.points()));
+  /**
+   * Все ряды, разложенные по ОБЩЕЙ оси времени.
+   *
+   * Общей — ключевое: ноль оси один на график, иначе площадка, начавшая
+   * собираться на три дня раньше, рисовалась бы над чужими днями.
+   */
+  private readonly placedRows = computed(() => placeAll(this.rows().map((r) => r.points)));
 
-  /** Верх шкалы. Круглое число над максимумом ряда. */
-  public readonly scaleMax = computed(() => niceMax(this.placed().map((p) => p.value)));
+  /** Ряд для случая одной линии — им пользуются размеры точек и подсказки. */
+  public readonly placed = computed(() => this.placedRows()[0] ?? []);
+
+  /** Все точки всех рядов: из них считается шкала и ось времени. */
+  private readonly everyPoint = computed(() => this.placedRows().flat());
+
+  /** Верх шкалы. Круглое число над максимумом ВСЕХ рядов. */
+  public readonly scaleMax = computed(() => niceMax(this.everyPoint().map((p) => p.value)));
 
   /** Длина ряда в днях — знаменатель оси времени. */
-  private readonly lastDay = computed(() => {
-    const p = this.placed();
-    return p.length ? p[p.length - 1].day : 0;
-  });
+  private readonly lastDay = computed(() =>
+    this.everyPoint().reduce((m, p) => (p.day > m ? p.day : m), 0),
+  );
 
   private x(day: number): number {
     const span = this.lastDay();
@@ -151,36 +223,81 @@ export class LineChartComponent {
     }));
   });
 
-  /** Даты под осью — не чаще, чем влезает. */
-  public readonly xTicks = computed(() =>
-    labelledPoints(this.placed()).map((p) => ({ date: p.date, x: this.x(p.day) })),
-  );
+  /**
+   * Даты под осью — не чаще, чем влезает.
+   *
+   * Считаются по САМОМУ ДЛИННОМУ ряду, а не по первому: у площадки,
+   * которая начала собираться позже, ось получилась бы короче общей, и
+   * подписи разошлись бы с линиями.
+   */
+  public readonly xTicks = computed(() => {
+    const longest = this.placedRows().reduce<PlacedPoint[]>(
+      (best, run) => (run.length > best.length ? run : best),
+      [],
+    );
+    return labelledPoints(longest).map((p) => ({ date: p.date, x: this.x(p.day) }));
+  });
 
   /**
-   * Куски линии: подряд идущие дни — один кусок, дыра — разрыв.
+   * Куски линий: подряд идущие дни — один кусок, дыра — разрыв.
    *
    * Заливка считается по тому же куску и до оси: она показывает объём под
    * линией, а не под всем полем, — и в дыре её тоже быть не должно.
+   * Рисуется она только у единственной линии: пять полупрозрачных
+   * заливок друг поверх друга дают мутное пятно, из которого не читается
+   * ни одна.
    */
-  private readonly runs = computed(() => splitGaps(this.placed()));
-
   public readonly segments = computed(() => {
     const base = this.axisY();
-    return this.runs()
-      .filter((run) => run.length > 1)
-      .map((run) => {
+    const rows = this.rows();
+    const withArea = rows.length === 1;
+    const out: {
+      key: string;
+      line: string;
+      area: string;
+      color: string;
+      width: number;
+      lead: boolean;
+    }[] = [];
+    this.placedRows().forEach((placed, i) => {
+      const row = rows[i];
+      for (const run of splitGaps(placed)) {
+        if (run.length < 2) continue;
         const line = run
           .map((p) => `${this.x(p.day).toFixed(1)},${this.y(p.value).toFixed(1)}`)
           .join(' ');
         const from = this.x(run[0].day).toFixed(1);
         const to = this.x(run[run.length - 1].day).toFixed(1);
-        return {
-          key: run[0].date,
+        out.push({
+          key: `${row.key}:${run[0].date}`,
           line,
-          area: `M${from},${base} L${line.split(' ').join(' L')} L${to},${base} Z`,
-        };
-      });
+          area: withArea ? `M${from},${base} L${line.split(' ').join(' L')} L${to},${base} Z` : '',
+          color: row.color,
+          width: this.strokeWidth(row),
+          lead: !!row.lead,
+        });
+      }
+    });
+    // Главная линия последней: в svg порядок рисования и есть порядок
+    // наложения, и общая линия обязана лежать поверх разбора, а не
+    // прятаться под ним в местах, где они сходятся.
+    return out.sort((a, b) => Number(a.lead) - Number(b.lead));
   });
+
+  /**
+   * Толщина линии.
+   *
+   * Тонкая линия на светлой сетке читается как царапина: график смотрят
+   * на просвет, с расстояния вытянутой руки, и главное в нём — форма, а
+   * не точность попадания в пиксель. Разбор по площадкам тоньше общей
+   * линии намеренно: так видно, что это слагаемые, а не пять равных
+   * утверждений.
+   */
+  private strokeWidth(row: ChartSeries): number {
+    if (this.compact()) return 2;
+    if (!this.multi()) return 3;
+    return row.lead ? 3.4 : 2;
+  }
 
   /**
    * Узлы линии со значением для подсказки.
@@ -204,11 +321,16 @@ export class LineChartComponent {
    * без точки такой день пропал бы с графика совсем. Остальные узлы на
    * тридцати пикселях высоты сливаются в цепочку кружков и съедают саму
    * линию, ради которой график и стоит.
+   *
+   * У многорядного графика узлов нет вовсе: шесть цепочек кружков поверх
+   * шести линий — это уже не график, а сыпь. Значения там читают по
+   * наведению, где стоят сразу все ряды за день.
    */
   public readonly visibleDots = computed(() => {
+    if (this.multi()) return [];
     if (!this.compact()) return this.dots();
     const solo = new Set(
-      this.runs()
+      splitGaps(this.placed())
         .filter((r) => r.length === 1)
         .map((r) => r[0].date),
     );
@@ -224,22 +346,50 @@ export class LineChartComponent {
   /**
    * Прозрачные колонки под наведение: попасть курсором в точку радиусом
    * два пикселя нельзя, а значение по наведению обещано.
+   *
+   * У многорядного графика в колонке стоят ВСЕ ряды этого дня: вопрос к
+   * такому графику всегда «сколько в этот день дала каждая», а шесть
+   * отдельных наводок на шесть линий в два пикселя толщиной — это не
+   * ответ.
    */
   public readonly hits = computed(() => {
-    const dots = this.dots();
-    if (dots.length < 2) return dots.map((d) => ({ ...d, hx: this.PL(), hw: this.plotW() }));
-    const w = this.plotW() / (dots.length - 1);
-    return dots.map((d) => ({
-      ...d,
-      hx: Math.max(this.PL(), d.x - w / 2),
-      hw: w,
-    }));
+    const rows = this.rows();
+    const placed = this.placedRows();
+    // Дни, которые вообще есть хоть у одного ряда.
+    const days = new Map<number, string>();
+    placed.forEach((run) => run.forEach((p) => days.set(p.day, p.date)));
+    const ordered = [...days.entries()].sort((a, b) => a[0] - b[0]);
+    if (!ordered.length) return [];
+
+    const w = ordered.length > 1 ? this.plotW() / (ordered.length - 1) : this.plotW();
+    return ordered.map(([day, date]) => {
+      const cx = this.x(day);
+      const parts = placed
+        .map((run, i) => {
+          const hit = run.find((p) => p.day === day);
+          if (!hit) return '';
+          const name = rows[i].label;
+          const num = `${this.sign()}${hit.value.toLocaleString('ru-RU')}`;
+          return name ? `${name}: ${num}` : num;
+        })
+        .filter(Boolean);
+      return {
+        date,
+        // Ряды в подсказке — сверху вниз, как в легенде. Перевод строки
+        // <title> показывает как есть, и это единственная подсказка, на
+        // которую можно рассчитывать без своего слоя поверх svg.
+        text: parts.join('\n'),
+        hx: ordered.length > 1 ? Math.max(this.PL(), cx - w / 2) : this.PL(),
+        hw: w,
+      };
+    });
   });
 
   /** Границы ряда — подпись «за какой это период». */
   public readonly span = computed(() => {
-    const p = this.placed();
-    if (!p.length) return null;
-    return { from: p[0].date, to: p[p.length - 1].date };
+    const all = this.everyPoint();
+    if (!all.length) return null;
+    const sorted = [...all].sort((a, b) => a.day - b.day);
+    return { from: sorted[0].date, to: sorted[sorted.length - 1].date };
   });
 }

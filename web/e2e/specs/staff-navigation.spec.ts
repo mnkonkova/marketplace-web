@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { AUTH_KEY, world } from '../fixtures/world';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Навигация персонала: одна оболочка на две роли, и проект открывается
@@ -19,12 +20,29 @@ import { AUTH_KEY, world } from '../fixtures/world';
 const signIn = (context: import('@playwright/test').BrowserContext, role: 'admin' | 'manager') =>
   context.addInitScript(
     ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, world().sessions[role]] as const,
+    [AUTH_KEY, box.sessions[role]] as const,
   );
 
 /** Всё, что человек может прочитать как «выйти», сколько бы их ни было. */
 const logouts = (page: import('@playwright/test').Page) =>
   page.getByRole('button', { name: /Выйти/ });
+
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('staffnav', { isTest: false });
+});
+
+test.afterAll(() => dropSandbox(box));
 
 test('у менеджера свои разделы, админских среди них нет', async ({ context, page }) => {
   await signIn(context, 'manager');
@@ -109,7 +127,7 @@ test('админ открывает проект в той же вкладке �
   await page.goto('/admin/projects');
 
   const before = context.pages().length;
-  await page.getByText('PetFlat · UGC (e2e)').first().click();
+  await page.getByText(box.title).first().click();
 
   await expect(page).toHaveURL(/\/manager\/projects\//, { timeout: 15_000 });
   expect(context.pages().length, 'новой вкладки быть не должно').toBe(before);
@@ -129,13 +147,13 @@ test('в карточке проекта у админа крошки вмест
   page,
 }) => {
   await signIn(context, 'admin');
-  await page.goto(`/manager/projects/${world().projectId}`);
+  await page.goto(`/manager/projects/${box.projectId}`);
 
   // Дорогу назад держат крошки в полосе сверху: «Ко всем проектам»
   // занимала отдельную строку, чтобы сказать то же самое.
   const crumbs = page.locator('.crumbs');
   await expect(crumbs.getByRole('link', { name: 'Проекты' })).toBeVisible({ timeout: 15_000 });
-  await expect(crumbs).toContainText('PetFlat · UGC (e2e)');
+  await expect(crumbs).toContainText(box.title);
   await expect(page.locator('.back-link')).toHaveCount(0);
 
   // Менеджерская колонка в чужом проекте говорила неправду: «Других
@@ -157,7 +175,7 @@ test('вкладки проекта остаются на виду при про
   // и на обычном окне страница просто не прокручивается настолько, чтобы
   // вкладки успели уехать, — тест был бы зелёным и без липкости.
   await page.setViewportSize({ width: 1280, height: 400 });
-  await page.goto(`/manager/projects/${world().projectId}`);
+  await page.goto(`/manager/projects/${box.projectId}`);
 
   const tabs = page.locator('.content .crm-page .tabs').first();
   await expect(tabs).toBeVisible({ timeout: 15_000 });
@@ -165,17 +183,17 @@ test('вкладки проекта остаются на виду при про
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.waitForTimeout(300);
 
-  const box = await tabs.boundingBox();
-  expect(box, 'вкладки должны остаться в разметке').not.toBeNull();
+  const rect = await tabs.boundingBox();
+  expect(rect, 'вкладки должны остаться в разметке').not.toBeNull();
   // Прижаты под полосой крошек (58px), а не уехали за верх экрана: без
   // липкости они оказались бы на отрицательном y.
-  expect(box!.y, `вкладки уехали на y=${box?.y}`).toBeGreaterThanOrEqual(40);
-  expect(box!.y, `вкладки уехали на y=${box?.y}`).toBeLessThan(130);
+  expect(rect!.y, `вкладки уехали на y=${rect?.y}`).toBeGreaterThanOrEqual(40);
+  expect(rect!.y, `вкладки уехали на y=${rect?.y}`).toBeLessThan(130);
 });
 
 test('удаление проекта спрятано в меню и требует ввести название', async ({ context, page }) => {
   await signIn(context, 'admin');
-  await page.goto(`/manager/projects/${world().projectId}`);
+  await page.goto(`/manager/projects/${box.projectId}`);
   await expect(page.locator('.crumbs')).toBeVisible({ timeout: 15_000 });
 
   // Кнопки удаления вплотную к «Применить» на экране больше нет.
@@ -191,7 +209,7 @@ test('удаление проекта спрятано в меню и требу
   // а проект уходит из всех списков сразу.
   await dialog.getByRole('button', { name: 'Удалить' }).click();
   await expect(dialog).toBeVisible();
-  await expect(page).toHaveURL(new RegExp(`/manager/projects/${world().projectId}`));
+  await expect(page).toHaveURL(new RegExp(`/manager/projects/${box.projectId}`));
 
   // Мусора за собой не оставляем: проект нужен остальным специям.
   await dialog.getByRole('button', { name: 'Отмена' }).click();
@@ -200,7 +218,7 @@ test('удаление проекта спрятано в меню и требу
 
 test('менеджер видит ту же карточку в своих разделах', async ({ context, page }) => {
   await signIn(context, 'manager');
-  await page.goto(`/manager/projects/${world().projectId}`);
+  await page.goto(`/manager/projects/${box.projectId}`);
 
   const nav = page.locator('.crm-shell .side');
   await expect(nav.getByRole('link', { name: 'Входящие' })).toBeVisible({ timeout: 15_000 });

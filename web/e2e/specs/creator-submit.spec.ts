@@ -1,5 +1,6 @@
 import { test, expect, request as pwRequest } from '@playwright/test';
-import { AUTH_KEY, world } from '../fixtures/world';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * «Сдать ролик» у креатора.
@@ -15,15 +16,14 @@ const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 
 /** Открытая выкладка на послезавтра — сдавать её и будем. */
 async function seedOpenPublication(): Promise<string> {
-  const w = world();
   const api = await pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${w.sessions.manager.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.manager.access_token}` },
   });
-  const crew = await api.get(`/api/v1/manager/projects/${w.projectId}/creators`);
+  const crew = await api.get(`/api/v1/manager/projects/${box.projectId}/creators`);
   const creatorId = (await crew.json()).items[0].user_id as string;
   const due = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
-  const res = await api.post(`/api/v1/manager/projects/${w.projectId}/publications/batch`, {
+  const res = await api.post(`/api/v1/manager/projects/${box.projectId}/publications/batch`, {
     data: { creator_user_ids: [creatorId], dates: [due] },
   });
   const body = await res.json();
@@ -31,13 +31,29 @@ async function seedOpenPublication(): Promise<string> {
   return body.batch_id as string;
 }
 
+/**
+ * Проект — свой, заведённый этой спекой и снесённый после.
+ *
+ * Общий посеянный проект специи делили на всех, и любая правка состояния
+ * доезжала до соседей: лишняя выкладка меняла «сдано 1 из 1» на «1 из
+ * 16», отметка занятости ломала сбор заказа через два файла. Песочница
+ * собирается настоящим API теми же запросами, что шлёт интерфейс, и
+ * сносится в afterAll — он отрабатывает и после падения теста.
+ */
+let box: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('submit');
+});
+
+test.afterAll(() => dropSandbox(box));
+
 async function dropBatch(batchId: string): Promise<void> {
-  const w = world();
   const api = await pwRequest.newContext({
     baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${w.sessions.manager.access_token}` },
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.manager.access_token}` },
   });
-  await api.post(`/api/v1/manager/projects/${w.projectId}/publications/cancel_batch`, {
+  await api.post(`/api/v1/manager/projects/${box.projectId}/publications/cancel_batch`, {
     data: { batch_id: batchId },
   });
   await api.dispose();
@@ -48,9 +64,9 @@ test('окно сдачи открывается поверх страницы',
   try {
     await context.addInitScript(
       ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-      [AUTH_KEY, world().sessions.creator] as const,
+      [AUTH_KEY, box.sessions.creator] as const,
     );
-    await page.goto(`/me/creator/projects/${world().projectId}`);
+    await page.goto(`/me/creator/projects/${box.projectId}`);
 
     const submit = page.getByRole('button', { name: 'Сдать ролик' }).first();
     await expect(submit, 'у открытой выкладки есть чем сдать').toBeVisible({ timeout: 15_000 });

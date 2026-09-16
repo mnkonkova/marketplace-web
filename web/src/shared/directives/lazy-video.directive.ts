@@ -37,7 +37,10 @@ export class LazyVideoDirective {
     );
     observer.observe(video);
 
-    inject(DestroyRef).onDestroy(() => observer.disconnect());
+    inject(DestroyRef).onDestroy(() => {
+      observer.disconnect();
+      release(video);
+    });
   }
 
   private start(video: HTMLVideoElement): void {
@@ -56,5 +59,33 @@ export class LazyVideoDirective {
   private stop(video: HTMLVideoElement): void {
     if (!this.loaded) return;
     video.pause();
+  }
+}
+
+/**
+ * Отпустить ролик, когда карточка уходит со страницы.
+ *
+ * Отключить наблюдателя мало. Пока у элемента стоит src, браузер держит и
+ * сам <video>, и его внутреннее дерево плеера — около сорока узлов на
+ * ролик, — даже когда из кода на элемент не ссылается уже никто. Сборщик
+ * мусора тут не поможет: держит не JavaScript, а движок.
+ *
+ * Видно это только в счётчике узлов документа: сто двадцать переходов
+ * между выдачей и посадочной страницей давали рост с двух тысяч узлов до
+ * ста четырёх тысяч, линейно и без плато. На выдаче до полусотни
+ * карточек, и человек, который листает каталог, к десятому экрану
+ * получает вкладку, которая тормозит.
+ *
+ * Порядок важен: сначала пауза (иначе декодер продолжит работу), потом
+ * снятие src, потом load() — он и заставляет движок отпустить буферы.
+ * Тот же порядок стоит в progressive-video.directive.
+ */
+function release(video: HTMLVideoElement): void {
+  try {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  } catch {
+    // Элемент могли уже вынуть из документа — отпускать нечего.
   }
 }

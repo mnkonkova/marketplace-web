@@ -3,6 +3,7 @@ import {
   closedCount,
   daysLeft,
   dueLabel,
+  isClosed,
   isOpen,
   linksCollected,
   missingPlatforms,
@@ -154,6 +155,16 @@ describe('счётчики шапки', () => {
       pub({ id: 'c', status: 'partial' }),
     ];
     expect(closedCount(items)).toBe(2);
+  });
+
+  // По этому же предикату тач-слой сворачивает уже сданное: разойдись он
+  // со счётчиком в шапке — строка «11 выкладок сдано» начала бы прятать
+  // не то число карточек, которое называет.
+  it('isClosed — тот же признак, что и у счётчика', () => {
+    expect(isClosed(pub({ status: 'done' }))).toBeTrue();
+    expect(isClosed(pub({ status: 'closed_manually' }))).toBeTrue();
+    expect(isClosed(pub({ status: 'partial' }))).toBeFalse();
+    expect(isClosed(pub({ status: 'cancelled' }))).toBeFalse();
   });
 });
 

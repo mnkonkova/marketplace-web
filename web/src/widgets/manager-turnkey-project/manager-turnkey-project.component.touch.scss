@@ -1,0 +1,65 @@
+// Тач-слой карточки проекта у менеджера.
+//
+// CRM с телефона — не основной сценарий: менеджер работает за столом.
+// Но посмотреть, что горит, и ответить креатору он должен уметь на
+// ходу, поэтому шапка, строка рисков и вкладки должны быть нажимаемыми.
+
+@use 'touch' as touch;
+
+@include touch.phone {
+  .phead {
+    flex-direction: column;
+    gap: 12px;
+
+    .ttl {
+      min-width: 0;
+    }
+
+    h1 {
+      font-size: 19px;
+    }
+
+    .meta {
+      gap: 6px 12px;
+      font-size: 12.5px;
+    }
+  }
+
+  // Состав команды на десктопе прижат к правому краю шапки; под
+  // заголовком он должен читаться с той же стороны, что и всё
+  // остальное.
+  .crew {
+    align-items: flex-start;
+  }
+
+  .riskbar {
+    gap: 11px;
+    padding: 12px 13px;
+
+    .tx {
+      min-width: 0;
+      font-size: 13px;
+    }
+  }
+
+  // Вкладки карточки липкие (см. shared/scss/_crm-shell.scss) и
+  // прокручиваются вбок; на телефоне им не хватало только высоты.
+  .crm-page .tab {
+    min-height: touch.$tap;
+    padding: 0 13px;
+  }
+
+  // .btn объявлена в глобальном shared/scss/_crm.scss под .crm-page —
+  // тем же префиксом её и перебиваем, иначе вес совпадает.
+  .crm-page .btn {
+    min-height: touch.$tap;
+
+    &.sm {
+      min-height: touch.$tap - 6px;
+    }
+  }
+
+  .todaybox .row {
+    font-size: 12.5px;
+  }
+}

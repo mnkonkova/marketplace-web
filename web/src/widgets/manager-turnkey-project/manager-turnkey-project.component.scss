@@ -48,7 +48,7 @@
   gap: 6px;
 
   .crew-lbl {
-    color: var(--muted, #8c94a0);
+    color: var(--muted, #7e8d88);
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -110,17 +110,69 @@
 
   // Предупреждение, а не авария: правило про предоплату нарушено, но
   // ничего не горит и ничего не заблокировано.
+  //
+  // Цвет предупреждения теперь коралловый — янтарь занят латунью и
+  // значит «выросло». Одним цветом предупреждение от аварии больше не
+  // отличить, и отличать его цветом не нужно: слева стоит значок «!»
+  // против «₽», а слова говорят прямо, что именно случилось.
   &.warn {
-    border-color: var(--amber-dim, #5f4519);
-    background: rgb(226 163 60 / 8%);
+    border-color: var(--amber-dim, #5d2a22);
+    background: var(--warn-bg);
+    border-left: 3px solid var(--amber);
 
+    // Значок — сплошной коралловый кружок с тёмным «!» внутри.
+    // Полупрозрачная подложка давала на глифе 4.4:1 — под порогом, а
+    // именно он и есть нецветовой признак предупреждения: если его не
+    // видно, различать предупреждение нечем.
     .ic {
-      background: rgb(226 163 60 / 16%);
-      color: var(--amber, #e2a33c);
+      background: var(--amber, #f0553c);
+      color: var(--ink);
     }
 
     .tx b {
-      color: var(--amber, #e2a33c);
+      color: var(--amber, #f0553c);
+    }
+  }
+
+  // Тревога с деньгами: сумма — факт — кнопка, одной строкой.
+  //
+  // Раньше здесь были три строки прозы одним кеглем, и суммы в них не
+  // было вовсе: тревога сообщала, что что-то не так, и не сообщала, на
+  // сколько. Порядок колонок = порядок чтения: сколько получено, что
+  // именно не так, что с этим сделать.
+  &.money {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    gap: 16px;
+
+    .sum {
+      flex: none;
+      min-width: 118px;
+    }
+
+    // Факт — одной строкой и крупнее; объяснение под ним и мельче: факт
+    // читают каждый день, объяснение один раз.
+    .tx b {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 14.5px;
+      font-weight: 700;
+    }
+
+    .tx .cap {
+      display: block;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 860px) {
+      grid-template-columns: auto 1fr;
+
+      .tx {
+        grid-column: 1 / -1;
+      }
     }
   }
 }
@@ -134,14 +186,14 @@
 .aside {
   .empty {
     margin: 0;
-    color: var(--muted-2, #616772);
+    color: var(--muted-2, #74827e);
     font-size: 12.5px;
   }
 }
 
 .todaybox .calm {
   margin: 0;
-  color: var(--muted, #8c94a0);
+  color: var(--muted, #7e8d88);
   font-size: 13px;
 }
 
@@ -156,19 +208,27 @@
   }
 
   span {
-    color: var(--muted, #8c94a0);
+    color: var(--muted, #7e8d88);
   }
 
   .late {
     color: var(--red, #e0604e);
   }
 
+  // Коралловый — предупреждение (см. --warn). От красной просрочки
+  // строка отличается не цветом, а подписью слева: «Выложено частично»
+  // и «Просрочено» — разные слова, а не разные оттенки.
   .warn {
-    color: var(--amber, #e2a33c);
+    color: var(--amber, #f0553c);
   }
 }
 
 .contacts {
+  .noname {
+    color: var(--muted-2, #74827e);
+    font-weight: 400;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 5px;

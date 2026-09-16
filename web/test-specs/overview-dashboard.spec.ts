@@ -241,19 +241,19 @@ describe('дашборд заказчика', () => {
 });
 
 /**
- * Карточка площадки рисуется в реальном браузере и меряется линейкой.
+ * Разбор по площадкам рисуется в реальном браузере и меряется линейкой.
  *
- * Мини-график вылезал из-под рамки карточки и висел снаружи вторым,
- * сломанным рядом: высота сжатого графика задавалась процентом, а
- * процент от карточки, у которой высота своя, по содержимому, — это
- * auto, то есть ноль. Коробка схлопывалась, а ломаная продолжала
- * рисоваться.
+ * Пять одинаковых карточек стояли в ряд при разнице в сорок раз: TikTok
+ * с двумя миллионами и Likee с пятьюдесятью тысячами занимали одинаковые
+ * прямоугольники — то есть карточки скрывали ровно то, ради чего разбор
+ * и смотрят. Теперь это ранжированный список с полосой, длина которой
+ * пропорциональна просмотрам.
  *
- * Глазами это ловится только на снимке в нужную ширину, поэтому
- * проверяем геометрией: всё, что есть в карточке, обязано лежать внутри
- * её рамки.
+ * Правило «площадок всегда пять, включая пустые» осталось прежним и
+ * переехало сюда вместе с разметкой: пропавшая строка читается как сбой,
+ * а не как ноль.
  */
-describe('дашборд заказчика: карточка площадки не течёт', () => {
+describe('дашборд заказчика: разбор по площадкам', () => {
   function overview(): ClientOverview {
     const series = [
       { date: '2026-09-10', views_gained: 1200 },
@@ -280,30 +280,50 @@ describe('дашборд заказчика: карточка площадки �
         er_percent: 3.3,
         series,
       })),
-    };
+    } as unknown as ClientOverview;
   }
 
-  function render(): HTMLElement {
+  function render(data: ClientOverview = overview()): HTMLElement {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({});
     const fixture = TestBed.createComponent(ClientDashboardComponent);
-    fixture.componentRef.setInput('data', overview());
+    fixture.componentRef.setInput('data', data);
     fixture.componentRef.setInput('range', 'month');
     fixture.componentRef.setInput('clientName', 'Олег Исаев');
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('график и подвал лежат внутри рамки карточки', () => {
-    const cards = Array.from(render().querySelectorAll<HTMLElement>('.net'));
-    expect(cards.length).toBe(5);
+  it('площадок в списке всегда пять, даже нулевых', () => {
+    const data = overview();
+    // Likee в ответе нет вовсе — строка обязана остаться.
+    data.platforms = data.platforms!.filter((p) => p.platform !== 'likee');
+    expect(render(data).querySelectorAll('.rank li').length).toBe(5);
+  });
 
-    for (const card of cards) {
-      const box = card.getBoundingClientRect();
-      for (const child of Array.from(card.querySelectorAll<HTMLElement>('*'))) {
+  /**
+   * Полоса — это и есть разбор: при разнице в сорок раз она обязана
+   * отличаться в сорок раз. Одинаковые полосы вернули бы ту же ложь, что
+   * пять одинаковых карточек.
+   */
+  it('длина полосы пропорциональна просмотрам, а не одинакова', () => {
+    const bars = Array.from(render().querySelectorAll<HTMLElement>('.rank .track b'));
+    expect(bars.length).toBe(5);
+    const widths = bars.map((b) => b.getBoundingClientRect().width);
+    // Первая площадка втрое больше пятой по числам — и полоса тоже.
+    expect(widths[0]).toBeGreaterThan(widths[4] * 2);
+    for (let i = 1; i < widths.length; i++) {
+      expect(widths[i]).toBeLessThanOrEqual(widths[i - 1] + 0.5);
+    }
+  });
+
+  it('ничто из строки не вылезает за её рамку', () => {
+    for (const row of Array.from(render().querySelectorAll<HTMLElement>('.rank li'))) {
+      const box = row.getBoundingClientRect();
+      for (const child of Array.from(row.querySelectorAll<HTMLElement>('*'))) {
         const c = child.getBoundingClientRect();
-        // Полпикселя допуска: субпиксельная раскладка на дробных
-        // размерах карточки, а не протёкший наружу элемент.
+        // Полпикселя допуска: субпиксельная раскладка, а не протёкший
+        // наружу элемент.
         expect(c.bottom).toBeLessThanOrEqual(box.bottom + 0.5);
         expect(c.right).toBeLessThanOrEqual(box.right + 0.5);
       }
@@ -311,14 +331,26 @@ describe('дашборд заказчика: карточка площадки �
   });
 
   /**
-   * Прироста нет ни у одной площадки — это обычное состояние нового
-   * проекта. Оговорка про это стоит одна, при заголовке блока: пять
-   * одинаковых подписей в пяти карточках подряд читаются как сломанная
-   * вёрстка, а не как честность.
+   * Прочерка на этом экране нет нигде.
+   *
+   * Было четыре плитки с «—» под числами и строка «Сравнивать не с чем»
+   * прямо под главным числом: у нового проекта прошлого такого же окна
+   * ещё нет, и сравнивать не с чем НИГДЕ. Прочерк при этом читается как
+   * ноль — мы утверждали то, чего не знаем, в пяти местах сразу.
+   *
+   * Это преемник прежней проверки «оговорка сказана один раз на блок»:
+   * теперь её не должно быть вовсе, потому что нет и самих пустых
+   * слотов.
    */
-  it('«сравнивать не с чем» сказано один раз на блок, а не в каждой карточке', () => {
+  it('ни прочерка вместо числа, ни извинения «сравнивать не с чем»', () => {
     const el = render();
-    expect(el.querySelectorAll('.eyebrow .note').length).toBe(1);
-    expect(el.querySelectorAll('.net .nfoot').length).toBe(0);
+    expect(el.textContent ?? '').not.toContain('Сравнивать не с чем');
+    // Тире как ЗНАЧЕНИЕ, а не как знак препинания: ищем элементы, весь
+    // текст которых — один прочерк. Тире внутри «17 авг. — 15 сент.» это
+    // пунктуация, и запрещать её незачем.
+    const dashes = Array.from(el.querySelectorAll('*')).filter(
+      (n) => (n.textContent ?? '').trim() === '\u2014',
+    );
+    expect(dashes.length).toBe(0);
   });
 });
