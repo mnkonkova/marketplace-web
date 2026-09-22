@@ -186,6 +186,111 @@ export class ProjectBillingComponent {
 
   public readonly totals = computed<PeriodTotals | null>(() => this.billing()?.totals ?? null);
 
+  /**
+   * Конвейер периода: пересчитали → подытожили → утвердили → выплатили.
+   *
+   * Шаги были размазаны по экрану: «Пересчитать» в шапке, «Утвердить» и
+   * «Выплатить» — в строках таблицы, а состояние периода приходилось
+   * собирать взглядом. Между тем порядок здесь жёсткий (выплатить
+   * неутверждённое бэк не даст), и именно порядок менеджер держит в
+   * голове. Полоса показывает, где период стоит сейчас и какой шаг
+   * следующий.
+   *
+   * «Подытожить» руками не делается: период запирается сам через две
+   * недели после конца. Поэтому шаг есть, а кнопки у него нет — и это
+   * честнее, чем рисовать кнопку, которая ничего не сделает.
+   */
+  public readonly pipeline = computed(() => {
+    const rows = this.accruals();
+    const locked = this.shown()?.status === 'locked';
+    // Предварительная строка не утверждена и не может быть: её нет в
+    // базе, статуса у неё тоже нет — сервер отдаёт пустую строку. Без
+    // этой оговорки непересчитанный период показывал «утверждено».
+    const saved = rows.filter((a) => !a.is_preview);
+    const approved =
+      saved.length === rows.length && saved.length > 0 && saved.every((a) => a.status !== 'draft');
+    const paid =
+      saved.length === rows.length && saved.length > 0 && saved.every((a) => a.status === 'paid');
+    // «Пересчитано» — это существование сохранённых строк: у
+    // непересчитанного периода строки приходят предварительными.
+    const counted = rows.length > 0 && rows.some((a) => !a.is_preview);
+    return [
+      {
+        key: 'recalc',
+        title: 'Пересчитать',
+        note: 'просмотры с площадок',
+        done: counted,
+        current: !counted,
+      },
+      {
+        key: 'lock',
+        title: 'Подытожить',
+        note: locked ? 'срез снят' : 'через две недели после конца периода, сам',
+        done: locked,
+        current: counted && !locked,
+      },
+      {
+        key: 'approve',
+        title: 'Утвердить',
+        note: 'суммы фиксируются',
+        done: approved,
+        current: locked && !approved,
+      },
+      {
+        key: 'pay',
+        title: 'Выплатить',
+        note: 'отправка на карты',
+        done: paid,
+        current: approved && !paid,
+      },
+    ];
+  });
+
+  /**
+   * Утвердить всё, что ещё в черновике: по одной строке их десяток.
+   *
+   * Предварительные строки пропускаем: их нет в базе, утверждать нечего
+   * — сперва «Пересчитать».
+   */
+  public approveAll(): void {
+    for (const a of this.accruals()) if (a.status === 'draft' && !a.is_preview) this.approve(a);
+  }
+
+  /** Выплатить всё утверждённое разом. */
+  public payAll(): void {
+    for (const a of this.accruals()) if (a.status === 'approved') this.markPaid(a);
+  }
+
+  public readonly canApproveAll = computed(
+    () => this.isManager() && this.accruals().some((a) => a.status === 'draft' && !a.is_preview),
+  );
+
+  public readonly canPayAll = computed(
+    () => this.isManager() && this.accruals().some((a) => this.payable(a)),
+  );
+
+  /**
+   * Журнал периода: что и когда с деньгами делали.
+   *
+   * Собирается из самих строк и периода — отдельной ленты событий у
+   * денег нет, а вопрос «кто это утвердил и когда» возникает каждый
+   * раз, когда сумма кому-то не нравится.
+   */
+  public readonly journal = computed(() => {
+    const out: { at: string; text: string }[] = [];
+    const p = this.shown();
+    // locked_at есть только в менеджерском виде периода: клиентскому
+    // механика цепочки не отдаётся вовсе.
+    const lockedAt = p && 'locked_at' in p ? ((p as ProjectPeriod).locked_at ?? '') : '';
+    if (lockedAt) out.push({ at: lockedAt, text: 'Период подытожен — срез снят' });
+    for (const a of this.accruals()) {
+      const who = a.creator_name || 'креатор';
+      if (a.approved_at) out.push({ at: a.approved_at, text: `Утверждено: ${who}` });
+      if (a.paid_at) out.push({ at: a.paid_at, text: `Выплачено: ${who}` });
+    }
+    return out.sort((x, y) => (x.at < y.at ? 1 : -1)).slice(0, 8);
+  });
+
   /** Показанный период целиком: состояние, границы, срез. */
   public readonly shown = computed(() => this.billing()?.period ?? null);
 

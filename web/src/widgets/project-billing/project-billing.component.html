@@ -31,6 +31,44 @@
       </div>
     </div>
 
+    <!-- Конвейер периода. Порядок шагов жёсткий — выплатить
+         неутверждённое бэк не даст, — и именно его менеджер держит в
+         голове. Раньше шаги были размазаны: «Пересчитать» в шапке,
+         «Утвердить» и «Выплатить» в строках таблицы, а состояние
+         периода приходилось собирать взглядом.
+
+         У «Подытожить» кнопки нет намеренно: период запирается сам
+         через две недели после конца. Рисовать кнопку, которая ничего
+         не делает, хуже, чем не рисовать её вовсе. -->
+    @if (isManager() && !noPeriods()) {
+      <ol class="pipeline">
+        @for (s of pipeline(); track s.key) {
+          <li class="pstep" [class.done]="s.done" [class.cur]="s.current">
+            <span class="pdot">{{ s.done ? '✓' : '' }}</span>
+            <span class="ptx">
+              <b>{{ s.title }}</b>
+              <span>{{ s.note }}</span>
+            </span>
+            @if (s.key === 'recalc' && s.current) {
+              <button nz-button nzSize="small" [nzLoading]="busy() === 'recalc'" (click)="recalc()">
+                Пересчитать
+              </button>
+            }
+            @if (s.key === 'approve' && s.current && canApproveAll()) {
+              <button nz-button nzSize="small" nzType="primary" (click)="approveAll()">
+                Утвердить всех
+              </button>
+            }
+            @if (s.key === 'pay' && s.current && canPayAll()) {
+              <button nz-button nzSize="small" nzType="primary" (click)="payAll()">
+                Выплатить всем
+              </button>
+            }
+          </li>
+        }
+      </ol>
+    }
+
     <!-- Период называется периодом и подписан датами: «сентябрь» про
          него неправда — он начинается днём первой публикации и катится
          от неё. -->
@@ -142,6 +180,46 @@
 
     @if (!isManager()) {
       <ng-container [ngTemplateOutlet]="totalsTpl" />
+    }
+
+    <!-- Сделка целиком — только менеджеру. Он единственный видит обе
+         стороны: счёт заказчику и обязательство перед креаторами. Без
+         этой тройки маржа считалась в уме по двум экранам.
+
+         Показываем ровно то, что посчитал сервер: payouts и margin
+         приходят только в менеджерском ответе, и если их нет — нет и
+         блока, а не ноль вместо них. -->
+    @if (isManager() && totals(); as t) {
+      @if (t.payouts !== undefined && t.margin !== undefined) {
+        <div class="deal">
+          <p class="deal-h">Сделка целиком <span>видно только вам</span></p>
+          <div class="deal-row">
+            <span>Заказчику к оплате</span><b>{{ money(t.total) }}</b>
+          </div>
+          <div class="deal-row">
+            <span>Креаторам</span><b class="minus">−{{ money(t.payouts) }}</b>
+          </div>
+          <div class="deal-row total">
+            <span>Маржа</span><b>{{ money(t.margin) }}</b>
+          </div>
+        </div>
+      }
+    }
+
+    <!-- Журнал периода: кто и когда двигал деньги. Отдельной ленты
+         событий у денег нет, поэтому собираем его из самих строк —
+         вопрос «кто это утвердил» возникает каждый раз, когда сумма
+         кому-то не нравится. -->
+    @if (isManager() && journal().length) {
+      <div class="journal">
+        <p class="journal-h">Журнал периода</p>
+        @for (j of journal(); track j.at + j.text) {
+          <div class="jrow">
+            <span class="at">{{ j.at | date: 'd MMM, HH:mm' }}</span>
+            <span>{{ j.text }}</span>
+          </div>
+        }
+      </div>
     }
 
     <!-- Условия.
