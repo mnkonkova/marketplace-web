@@ -10,6 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 
 import { Router, RouterLink } from '@angular/router';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
 import { formatMoney } from '@entities/billing/lib/money';
@@ -20,6 +21,25 @@ import { ProjectApi } from '@entities/project/api/project.api';
 import type { ProjectFullView, ProjectManagerView } from '@entities/project/model/project.types';
 import { closedCount, daysLeft } from '@entities/publication/lib/publication-status';
 import { plural } from '@shared/lib/format';
+
+/** Действие тревоги: пинг всем или переход на нужную вкладку. */
+interface ManagerAlertAction {
+  title: string;
+  kind: 'primary' | 'quiet';
+  act: 'remind' | 'plan' | 'pay';
+}
+
+/** Карточка тревоги: что горит, на сколько и что с этим делать. */
+interface ManagerAlert {
+  key: string;
+  tone: 'crit' | 'warn';
+  label: string;
+  /** Число или сумма — то, ради чего карточку и читают. */
+  value: string;
+  valueNote: string;
+  text: string;
+  actions: ManagerAlertAction[];
+}
 import { ZeroComponent } from '@shared/ui/zero/zero.component';
 import { ProjectBillingComponent } from '@widgets/project-billing/project-billing.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
@@ -78,6 +98,8 @@ export class ManagerTurnkeyProjectComponent {
   private readonly billingApi = inject(BillingApi);
 
   private readonly router = inject(Router);
+
+  private readonly msg = inject(NzMessageService);
 
   public readonly project = input.required<ProjectFullView>();
 
@@ -226,6 +248,126 @@ export class ManagerTurnkeyProjectComponent {
     const t = this.today();
     return t.overdue + t.partial + t.soon === 0;
   });
+
+  /**
+   * «Где сейчас горит» — тревоги карточками, с суммой и действием.
+   *
+   * Раньше это были две узкие полосы прозой: просрочки без суммы и
+   * предоплата без неё же. Менеджер начинает день с вопроса «где горит и
+   * на сколько», и отвечать на него обязан первый экран — числом, а не
+   * абзацем. Выдуманных чисел здесь нет: сумма показывается только там,
+   * где её считает сервер (начислено, получено), в остальном стоит
+   * количество.
+   */
+  public readonly alerts = computed<ManagerAlert[]>(() => {
+    const out: ManagerAlert[] = [];
+    const t = this.today();
+
+    if (this.burning().length) {
+      out.push({
+        key: 'overdue',
+        tone: 'crit',
+        label: `Просрочено ${this.burning().length} ${plural(this.burning().length, 'ролик', 'ролика', 'роликов')}`,
+        value: String(this.burning().length),
+        valueNote: plural(this.burning().length, 'выкладка', 'выкладки', 'выкладок'),
+        text: `Срок прошёл, а ссылок нет или собраны не все: ${this.burningNames()}.`,
+        actions: [
+          { title: 'Напомнить всем', kind: 'primary', act: 'remind' },
+          { title: 'Открыть план', kind: 'quiet', act: 'plan' },
+        ],
+      });
+    }
+
+    if (this.prepaymentRisk()) {
+      const missing = Math.max(0, this.accruedTotal() - this.receivedFromClient());
+      out.push({
+        key: 'prepay',
+        tone: 'crit',
+        label: this.prepaymentAwaited() ? 'Предоплата не подтверждена' : 'Предоплата не заведена',
+        value: this.money(missing),
+        valueNote: 'не хватает к начисленному',
+        text:
+          `Получено ${this.money(this.receivedFromClient())}, начислено ${this.money(this.accruedTotal())} за период. ` +
+          'Деньги приходят мимо системы — получение отмечает менеджер.',
+        actions:
+          this.tab() === 'pay'
+            ? []
+            : [{ title: 'Открыть начисления', kind: 'primary', act: 'pay' }],
+      });
+    }
+
+    if (t.partial) {
+      out.push({
+        key: 'partial',
+        tone: 'warn',
+        label: 'Собраны не все ссылки',
+        value: String(t.partial),
+        valueNote: plural(t.partial, 'выкладка', 'выкладки', 'выкладок'),
+        text: 'Площадка отмечена, а ссылки нет — просмотры этих роликов в счёт не попадут.',
+        actions: [{ title: 'Открыть план', kind: 'quiet', act: 'plan' }],
+      });
+    }
+
+    if (t.soon) {
+      out.push({
+        key: 'soon',
+        tone: 'warn',
+        label: 'Дедлайн на носу',
+        value: String(t.soon),
+        valueNote: 'сдать в ближайшие 2 дня',
+        text: 'Бот напомнит сам, но по этим выкладкам стоит написать лично.',
+        actions: [{ title: 'Открыть план', kind: 'quiet', act: 'plan' }],
+      });
+    }
+
+    return out;
+  });
+
+  public readonly reminding = signal(false);
+
+  /**
+   * Пинг по всем горящим выкладкам разом.
+   *
+   * Поимённо их и так видно в плане, но начинают день не с плана:
+   * начинают с того, что горит. Ошибку по одной выкладке глотаем —
+   * остальные всё равно уходят, а человек увидит итог числом.
+   */
+  public remindBurning(): void {
+    const list = this.burning();
+    if (!list.length || this.reminding()) return;
+    this.reminding.set(true);
+    let done = 0;
+    let failed = 0;
+    const finish = (): void => {
+      if (done + failed < list.length) return;
+      this.reminding.set(false);
+      if (done)
+        this.msg.success(
+          `Напомнили: ${done} ${plural(done, 'креатору', 'креаторам', 'креаторам')}`,
+        );
+      if (failed) this.msg.error(`Не ушло напоминаний: ${failed}`);
+    };
+    for (const p of list) {
+      this.api.managerRemind(p.id).subscribe({
+        next: () => {
+          done += 1;
+          finish();
+        },
+        error: () => {
+          failed += 1;
+          finish();
+        },
+      });
+    }
+  }
+
+  public onAlertAction(act: ManagerAlertAction['act']): void {
+    if (act === 'remind') {
+      this.remindBurning();
+      return;
+    }
+    this.setTab(act === 'pay' ? 'pay' : 'plan');
+  }
 
   public plural(n: number, one: string, few: string, many: string): string {
     return plural(n, one, few, many);

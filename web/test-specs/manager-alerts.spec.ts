@@ -1,0 +1,152 @@
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { Router } from '@angular/router';
+import { NzMessageService } from 'ng-zorro-antd/message';
+import { EMPTY, of } from 'rxjs';
+
+import { BillingApi } from '@entities/billing/api/billing.api';
+import type { Payment } from '@entities/billing/model/billing.types';
+import { ProjectApi } from '@entities/project/api/project.api';
+import type { ProjectFullView } from '@entities/project/model/project.types';
+import { PublicationApi } from '@entities/publication/api/publication.api';
+import type { Publication } from '@entities/publication/model/publication.types';
+import { ManagerTurnkeyProjectComponent } from '@widgets/manager-turnkey-project/manager-turnkey-project.component';
+
+/**
+ * «Где сейчас горит» — первое, что читают на экране менеджера.
+ *
+ * Правило, которое легко потерять: в карточке стоит ЧИСЛО, и это число
+ * настоящее. Сумма показывается только там, где её считает сервер
+ * (начислено минус полученное); в остальных карточках — количество
+ * выкладок. Оценок вида «под угрозой ≈ столько-то» здесь быть не должно:
+ * такую величину нам никто не считает, а придуманная цифра в тревоге
+ * хуже её отсутствия — по ней принимают решения.
+ */
+describe('ManagerTurnkeyProjectComponent: тревоги', () => {
+  function pub(over: Partial<Publication> = {}): Publication {
+    return {
+      id: over.id ?? 'p1',
+      project_id: 'pr1',
+      creator_user_id: 'u1',
+      due_date: '2026-09-11',
+      status: 'planned',
+      created_at: '2026-09-01T00:00:00Z',
+      updated_at: '2026-09-01T00:00:00Z',
+      links: [],
+      overdue: false,
+      views: 0,
+      likes: 0,
+      comments: 0,
+      ...over,
+    };
+  }
+
+  function setup(opts: { pubs?: Publication[]; payments?: Payment[]; accrued?: number } = {}) {
+    TestBed.resetTestingModule();
+    const api = jasmine.createSpyObj<PublicationApi>('pubApi', [
+      'managerList',
+      'managerCreators',
+      'managerRemind',
+    ]);
+    api.managerList.and.returnValue(of({ items: opts.pubs ?? [] }) as never);
+    api.managerCreators.and.returnValue(of({ items: [] }) as never);
+    api.managerRemind.and.returnValue(of({ sent: true }) as never);
+
+    // Платежи и итоги приходят одной ручкой — так же, как в проде.
+    const billing = jasmine.createSpyObj<BillingApi>('billingApi', ['managerBilling']);
+    billing.managerBilling.and.returnValue(
+      of({ totals: { total: opts.accrued ?? 0 }, payments: opts.payments ?? [] } as never) as never,
+    );
+
+    const projects = jasmine.createSpyObj<ProjectApi>('projectApi', ['managerAssigned']);
+    projects.managerAssigned.and.returnValue(EMPTY);
+
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PublicationApi, useValue: api },
+        { provide: BillingApi, useValue: billing },
+        { provide: ProjectApi, useValue: projects },
+        { provide: Router, useValue: jasmine.createSpyObj<Router>('router', ['navigate']) },
+        { provide: NzMessageService, useValue: jasmine.createSpyObj('msg', ['success', 'error']) },
+      ],
+    });
+    TestBed.overrideComponent(ManagerTurnkeyProjectComponent, { set: { template: '' } });
+    const fixture = TestBed.createComponent(ManagerTurnkeyProjectComponent);
+    fixture.componentRef.setInput('project', {
+      id: 'pr1',
+      kind: 'creators_turnkey',
+      title: 'PetFlat · UGC',
+    } as ProjectFullView);
+    fixture.detectChanges();
+    return { cmp: fixture.componentInstance, api };
+  }
+
+  it('спокойный день — тревог нет вовсе', () => {
+    expect(setup().cmp.alerts().length).toBe(0);
+  });
+
+  it('просроченные выкладки дают карточку с их количеством', () => {
+    const { cmp } = setup({ pubs: [pub({ id: 'a', overdue: true }), pub({ id: 'b' })] });
+    const a = cmp.alerts().find((x) => x.key === 'overdue')!;
+    expect(a).toBeTruthy();
+    expect(a.value).toBe('1');
+    expect(a.tone).toBe('crit');
+  });
+
+  /**
+   * Сумма в карточке предоплаты — разница между начисленным и
+   * полученным, обе величины считает сервер. Ничего «примерного».
+   */
+  it('предоплата: сумма — это нехватка к начисленному', () => {
+    const { cmp } = setup({ pubs: [pub()], accrued: 12_000_000, payments: [] });
+    const a = cmp.alerts().find((x) => x.key === 'prepay')!;
+    expect(a).toBeTruthy();
+    expect(a.value).toBe(cmp.money(12_000_000));
+  });
+
+  it('подтверждённая предоплата тревогу снимает', () => {
+    const { cmp } = setup({
+      pubs: [pub()],
+      accrued: 12_000_000,
+      payments: [
+        {
+          id: 'pay1',
+          project_id: 'pr1',
+          kind: 'prepayment',
+          amount: 12_000_000,
+          status: 'confirmed',
+          created_at: '2026-09-01T00:00:00Z',
+        },
+      ],
+    });
+    expect(cmp.alerts().some((x) => x.key === 'prepay')).toBeFalse();
+  });
+
+  it('частично собранные ссылки — отдельная карточка', () => {
+    const { cmp } = setup({ pubs: [pub({ status: 'partial' })] });
+    expect(cmp.alerts().some((x) => x.key === 'partial')).toBeTrue();
+  });
+
+  it('«Напомнить всем» пингует каждую горящую выкладку по одному разу', () => {
+    const { cmp, api } = setup({
+      pubs: [pub({ id: 'a', overdue: true }), pub({ id: 'b', overdue: true }), pub({ id: 'c' })],
+    });
+    cmp.remindBurning();
+    expect(
+      api.managerRemind.calls
+        .allArgs()
+        .map((x) => x[0])
+        .sort(),
+    ).toEqual(['a', 'b']);
+  });
+
+  it('повторное нажатие во время отправки ничего не дублирует', () => {
+    const { cmp, api } = setup({ pubs: [pub({ id: 'a', overdue: true })] });
+    cmp.reminding.set(true);
+    cmp.remindBurning();
+    expect(api.managerRemind).not.toHaveBeenCalled();
+  });
+});
