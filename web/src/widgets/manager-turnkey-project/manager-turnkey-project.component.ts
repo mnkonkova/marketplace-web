@@ -259,17 +259,65 @@ export class ManagerTurnkeyProjectComponent {
    * где её считает сервер (начислено, получено), в остальном стоит
    * количество.
    */
+  /**
+   * Просмотры проекта — то же число, что видит заказчик.
+   *
+   * В макете оно стоит лентой над всем экраном, и это не украшение: у
+   * менеджера и заказчика числа обязаны совпадать, а совпадают они
+   * только если взяты из одного места. Здесь — из итогов периода,
+   * которые считает сервер.
+   */
+  public readonly projectViews = computed(() => this.totals()?.views ?? 0);
+
+  /** Когда счётчики последний раз обновлялись — самый свежий сбор. */
+  public readonly collectedAt = computed(() => {
+    const stamps = this.publications()
+      .map((p) => p.stats_collected_at)
+      .filter((x): x is string => !!x)
+      .sort();
+    return stamps.length ? stamps[stamps.length - 1] : '';
+  });
+
+  /**
+   * Счётчики площадки молчат.
+   *
+   * Сданная ссылка, по которой два дня не было сбора, — это не ноль
+   * просмотров, это отсутствие измерения, и разница видна только
+   * отсюда. Порог в два дня взят по расписанию обхода: свежий ролик
+   * собирается ежедневно.
+   */
+  public readonly staleLinks = computed(() => {
+    const edge = Date.now() - 2 * 24 * 60 * 60 * 1000;
+    let count = 0;
+    let oldest = '';
+    for (const p of this.livePublications()) {
+      for (const l of p.links ?? []) {
+        const at = l.last_collected_at;
+        if (at && Date.parse(at) >= edge) continue;
+        count += 1;
+        if (at && (!oldest || at < oldest)) oldest = at;
+      }
+    }
+    return { count, oldest };
+  });
+
   public readonly alerts = computed<ManagerAlert[]>(() => {
     const out: ManagerAlert[] = [];
     const t = this.today();
 
     if (this.burning().length) {
+      // Вычеты за недосданное считает сервер: у карточки просрочек это
+      // и есть «на сколько», и она обязана показывать именно её, а не
+      // придуманную оценку потерянных просмотров.
+      const cut = this.totals()?.deductions ?? 0;
       out.push({
         key: 'overdue',
         tone: 'crit',
         label: `Просрочено ${this.burning().length} ${plural(this.burning().length, 'ролик', 'ролика', 'роликов')}`,
-        value: String(this.burning().length),
-        valueNote: plural(this.burning().length, 'выкладка', 'выкладки', 'выкладок'),
+        value: cut ? `−${this.money(cut)}` : String(this.burning().length),
+        valueNote: cut
+          ? 'вычеты за недосданное'
+          : plural(this.burning().length, 'выкладка', 'выкладки', 'выкладок'),
         text: `Срок прошёл, а ссылок нет или собраны не все: ${this.burningNames()}.`,
         actions: [
           { title: 'Напомнить всем', kind: 'primary', act: 'remind' },
@@ -305,6 +353,21 @@ export class ManagerTurnkeyProjectComponent {
         valueNote: plural(t.partial, 'выкладка', 'выкладки', 'выкладок'),
         text: 'Площадка отмечена, а ссылки нет — просмотры этих роликов в счёт не попадут.',
         actions: [{ title: 'Открыть план', kind: 'quiet', act: 'plan' }],
+      });
+    }
+
+    if (this.staleLinks().count) {
+      const s = this.staleLinks();
+      out.push({
+        key: 'stale',
+        tone: 'warn',
+        label: 'Счётчики молчат',
+        value: String(s.count),
+        valueNote: plural(s.count, 'ссылка', 'ссылки', 'ссылок'),
+        text:
+          'По ним два дня не было сбора. Это не ноль просмотров, а отсутствие измерения — ' +
+          'в счёт такие ролики идут по последнему известному числу.',
+        actions: [],
       });
     }
 

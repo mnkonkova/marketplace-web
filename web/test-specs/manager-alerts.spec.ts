@@ -42,7 +42,15 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
     };
   }
 
-  function setup(opts: { pubs?: Publication[]; payments?: Payment[]; accrued?: number } = {}) {
+  function setup(
+    opts: {
+      pubs?: Publication[];
+      payments?: Payment[];
+      accrued?: number;
+      views?: number;
+      deductions?: number;
+    } = {},
+  ) {
     TestBed.resetTestingModule();
     const api = jasmine.createSpyObj<PublicationApi>('pubApi', [
       'managerList',
@@ -56,7 +64,14 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
     // Платежи и итоги приходят одной ручкой — так же, как в проде.
     const billing = jasmine.createSpyObj<BillingApi>('billingApi', ['managerBilling']);
     billing.managerBilling.and.returnValue(
-      of({ totals: { total: opts.accrued ?? 0 }, payments: opts.payments ?? [] } as never) as never,
+      of({
+        totals: {
+          total: opts.accrued ?? 0,
+          views: opts.views ?? 0,
+          deductions: opts.deductions ?? 0,
+        },
+        payments: opts.payments ?? [],
+      } as never) as never,
     );
 
     const projects = jasmine.createSpyObj<ProjectApi>('projectApi', ['managerAssigned']);
@@ -148,5 +163,84 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
     cmp.reminding.set(true);
     cmp.remindBurning();
     expect(api.managerRemind).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Число просмотров у менеджера и заказчика обязано совпадать, а
+   * совпадает оно, только если взято из одного места — из итогов
+   * периода, которые считает сервер.
+   */
+  it('просмотры ленты берутся из итогов периода', () => {
+    const { cmp } = setup({ pubs: [pub()], views: 1_520_900 });
+    expect(cmp.projectViews()).toBe(1_520_900);
+  });
+
+  it('ноль просмотров — это ноль, а не пустота', () => {
+    const { cmp } = setup({ pubs: [pub()], views: 0 });
+    expect(cmp.projectViews()).toBe(0);
+    expect(cmp.totals()).toBeTruthy();
+  });
+
+  /**
+   * Сданная ссылка без свежего сбора — это НЕ ноль просмотров, а
+   * отсутствие измерения. Разницу видно только из этой карточки.
+   */
+  it('ссылки без сбора двое суток дают карточку «Счётчики молчат»', () => {
+    const old = new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString();
+    const { cmp } = setup({
+      pubs: [
+        pub({
+          status: 'done',
+          links: [
+            {
+              id: 'l1',
+              publication_id: 'p1',
+              platform: 'tiktok',
+              url: 'https://tiktok.com/x',
+              url_canonical: 'https://tiktok.com/x',
+              submitted_at: old,
+              last_collected_at: old,
+            },
+          ],
+        }),
+      ],
+    });
+    expect(cmp.staleLinks().count).toBe(1);
+    expect(cmp.alerts().some((a) => a.key === 'stale')).toBeTrue();
+  });
+
+  it('свежий сбор тревоги не поднимает', () => {
+    const fresh = new Date().toISOString();
+    const { cmp } = setup({
+      pubs: [
+        pub({
+          status: 'done',
+          links: [
+            {
+              id: 'l1',
+              publication_id: 'p1',
+              platform: 'tiktok',
+              url: 'https://tiktok.com/x',
+              url_canonical: 'https://tiktok.com/x',
+              submitted_at: fresh,
+              last_collected_at: fresh,
+            },
+          ],
+        }),
+      ],
+    });
+    expect(cmp.staleLinks().count).toBe(0);
+  });
+
+  /**
+   * В карточке просрочек стоит сумма вычетов — её считает сервер.
+   * Оценки «под угрозой ≈ столько-то просмотров» здесь нет и быть не
+   * должно: такой величины никто не считает.
+   */
+  it('просрочки показывают вычеты, когда они есть', () => {
+    const { cmp } = setup({ pubs: [pub({ overdue: true })], deductions: 1_500_000 });
+    const a = cmp.alerts().find((x) => x.key === 'overdue')!;
+    expect(a.value).toBe('−' + cmp.money(1_500_000));
+    expect(a.valueNote).toContain('вычеты');
   });
 });

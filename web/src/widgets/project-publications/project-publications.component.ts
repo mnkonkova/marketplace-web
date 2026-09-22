@@ -450,6 +450,78 @@ export class ProjectPublicationsComponent {
     }));
   });
 
+  /**
+   * Чем показан план на телефоне: лентой по дням или той же сеткой.
+   *
+   * На узком экране сетка листается вбок, и вместе со столбцами уезжает
+   * колонка с именем — остаются цветные клетки без хозяина. Поэтому по
+   * умолчанию лента: день, а под ним кто и что с ним. Сетка никуда не
+   * девается — она нужна, когда двигают даты, — но это второй режим.
+   */
+  public readonly planView = signal<'feed' | 'grid'>('feed');
+
+  public setPlanView(v: 'feed' | 'grid'): void {
+    this.planView.set(v);
+  }
+
+  /**
+   * Лента плана: группы «Просрочено», «Сегодня» и дальше по дням.
+   *
+   * Просроченное идёт отдельной группой наверху и вне календарного
+   * порядка: оно уже не про «когда», а про «сколько это висит».
+   */
+  public readonly planFeed = computed(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const groups: { key: string; title: string; overdue: boolean; rows: Publication[] }[] = [];
+    const late = this.ordered().filter((p) => p.overdue);
+    if (late.length) groups.push({ key: 'late', title: 'Просрочено', overdue: true, rows: late });
+
+    const byDay = new Map<string, Publication[]>();
+    for (const p of this.ordered()) {
+      if (p.overdue) continue;
+      const day = p.due_date.slice(0, 10);
+      byDay.set(day, [...(byDay.get(day) ?? []), p]);
+    }
+    for (const day of [...byDay.keys()].sort()) {
+      groups.push({
+        key: day,
+        title: day === today ? `Сегодня · ${this.dayLabel(day)}` : this.dayTitle(day),
+        overdue: false,
+        rows: byDay.get(day) ?? [],
+      });
+    }
+    return groups;
+  });
+
+  /** «Чт, 18.09» — заголовок дня в ленте. */
+  public dayTitle(iso: string): string {
+    const wd = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][new Date(iso + 'T00:00:00Z').getUTCDay()];
+    return `${wd}, ${this.dayLabel(iso)}`;
+  }
+
+  /**
+   * Подпись строки в ленте: чего от этой выкладки ждут.
+   *
+   * У просроченной — сколько ссылок собрано и с какой даты висит; у
+   * сданной — что вышла; у плановой — дата.
+   */
+  public feedNote(pub: Publication): string {
+    const links = pub.links?.length ?? 0;
+    if (pub.overdue) {
+      return links
+        ? `${this.dayLabel(pub.due_date.slice(0, 10))} · собрано ${links} из ${ALL_PLATFORMS.length}`
+        : `${this.dayLabel(pub.due_date.slice(0, 10))} · ссылок нет`;
+    }
+    if (pub.status === 'done') return 'вышел на всех площадках';
+    if (pub.status === 'partial') return `собрано ${links} из ${ALL_PLATFORMS.length}`;
+    return `сдать ${this.dayLabel(pub.due_date.slice(0, 10))}`;
+  }
+
+  /** Кто снимает эту выкладку — для строки ленты. */
+  public creatorOf(pub: Publication) {
+    return this.creators().find((c) => c.user_id === pub.creator_user_id);
+  }
+
   /** «14.09» — подпись дня в шапке сетки. */
   public dayLabel(iso: string): string {
     const [, m, d] = iso.split('-');

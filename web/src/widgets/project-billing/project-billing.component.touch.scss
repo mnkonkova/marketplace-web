@@ -15,3 +15,81 @@
     font-size: 16px;
   }
 }
+
+@include touch.phone {
+  // Конвейер периода на телефоне — сверху вниз, как в макете: шаги идут
+  // один за другим, между точками линия, кнопка у текущего шага во всю
+  // ширину. В строку четыре шага на 390px не помещаются, а уезжающий
+  // вбок конвейер перестаёт читаться последовательностью.
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .pstep {
+    position: relative;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 10px 0 10px 2px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+
+    // Линия связи. Псевдоэлементом, а не рамкой: рамка легла бы и под
+    // последний шаг, обещая продолжение, которого нет.
+    &:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 34px;
+      bottom: 0;
+      left: 13px;
+      width: 2px;
+      background: var(--line-2);
+    }
+
+    &.done:not(:last-child)::after {
+      background: var(--green);
+    }
+
+    &.done {
+      background: none;
+    }
+
+    &.cur {
+      border: 0;
+
+      .ptx b {
+        color: var(--text);
+      }
+    }
+
+    .btn,
+    button[nz-button] {
+      flex-basis: 100%;
+      min-height: touch.$tap;
+      margin-top: 8px;
+      margin-left: 34px;
+    }
+  }
+
+  // Сделка целиком и журнал: числа справа на телефоне ужимаются в
+  // колонку — строка «Заказчику к оплате 1 010 583 ₽» иначе переносится
+  // посередине суммы.
+  .deal-row {
+    flex-wrap: wrap;
+
+    b {
+      flex-basis: 100%;
+      text-align: left;
+    }
+  }
+
+  .jrow {
+    flex-wrap: wrap;
+
+    .at {
+      flex-basis: 100%;
+    }
+  }
+}

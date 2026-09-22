@@ -31,12 +31,69 @@
       </div>
     </div>
 
+    <!-- Телефонная лента плана и переключатель к сетке. На десктопе оба
+         скрыты: там сетка стоит всегда и переключать нечего. -->
+    @if (gridDays().length) {
+      <div class="plan-switch">
+        <button
+          type="button"
+          [class.on]="planView() === 'feed'"
+          (click)="setPlanView('feed')"
+          [attr.aria-pressed]="planView() === 'feed'"
+        >
+          Лента
+        </button>
+        <button
+          type="button"
+          [class.on]="planView() === 'grid'"
+          (click)="setPlanView('grid')"
+          [attr.aria-pressed]="planView() === 'grid'"
+        >
+          Сетка
+        </button>
+      </div>
+
+      <div class="plan-feed" [class.hidden]="planView() !== 'feed'">
+        @for (g of planFeed(); track g.key) {
+          <p class="feed-h" [class.late]="g.overdue">{{ g.title }}</p>
+          @for (p of g.rows; track p.id) {
+            <div class="feed-row">
+              @if (creatorOf(p); as c) {
+                <span class="av sm" [class]="'av sm ' + c.avatar">{{ c.initial }}</span>
+                <span class="nm">
+                  <b>{{ c.display_name }}</b>
+                  <span>{{ feedNote(p) }}</span>
+                </span>
+              } @else {
+                <span class="nm"
+                  ><b>Выкладка {{ pubNo(p.id) }}</b
+                  ><span>{{ feedNote(p) }}</span></span
+                >
+              }
+              @if (p.overdue || p.status === 'partial') {
+                <button
+                  type="button"
+                  class="btn quiet sm"
+                  [disabled]="pubBusy() === p.id"
+                  (click)="remind(p)"
+                >
+                  Пинг
+                </button>
+              } @else if (p.status === 'done') {
+                <span class="tag green">вышел</span>
+              }
+            </div>
+          }
+        }
+      </div>
+    }
+
     <!-- Сетка плана: строки — креаторы, столбцы — дни.
          Список ниже отвечает на «что сдавать следующим», сетка — на «как
          разложен месяц»: дыру в расписании и три выкладки подряд у
          одного человека видно только так. -->
     @if (gridDays().length) {
-      <div class="plan-grid-wrap">
+      <div class="plan-grid-wrap" [class.hidden]="planView() !== 'grid'">
         <table class="plan-grid">
           <thead>
             <tr>
@@ -580,8 +637,8 @@
                   }
                 }
               </td>
-              <td class="r nums">{{ c.closed }} / {{ c.videos }}</td>
-              <td class="r nums">
+              <td class="r nums" data-label="Роликов">{{ c.closed }} / {{ c.videos }}</td>
+              <td class="r nums" data-label="Просмотры">
                 @if (c.views) {
                   {{ c.views | number }}
                 } @else {

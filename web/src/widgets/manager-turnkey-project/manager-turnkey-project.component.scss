@@ -255,3 +255,88 @@
     }
   }
 }
+
+// Лента просмотров. Число проекта — то же, что у заказчика, и стоит
+// первым: с него начинается разговор про деньги в обе стороны.
+.viewsbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.vb-lbl {
+  margin: 0;
+  color: var(--muted-2);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.vb-num {
+  font-family: var(--font-head);
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.vb-meta {
+  flex: 1;
+  min-width: 200px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+// Легенда состояний. Ноль, «не меряли» и «сбой» — три разные вещи, и
+// ради этой разницы легенда и стоит: прочерк их не различает, а счёт
+// выставляется по ним.
+.vb-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted-2);
+  font-size: 11.5px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .st {
+    display: inline-grid;
+    place-items: center;
+    height: 20px;
+    padding: 0 6px;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+    font-size: 10.5px;
+  }
+
+  .st-0 {
+    font-weight: 700;
+  }
+
+  .st-nd {
+    border-style: dashed;
+  }
+
+  .st-err {
+    border-color: transparent;
+    background: rgba(224, 96, 78, 0.16);
+    color: var(--red);
+  }
+}
