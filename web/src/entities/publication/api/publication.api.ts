@@ -31,6 +31,8 @@ import {
   PublicationReport,
   ReminderPrefs,
   ReminderPrefsPatch,
+  ReviewDecision,
+  ReviewMark,
 } from '../model/publication.types';
 
 interface ListResp<T> {
@@ -347,6 +349,28 @@ export class PublicationApi {
       `${this.api}/manager/publications/${pubId}/links/${platform}`,
       { url },
     );
+  }
+
+  /**
+   * Проверка ролика: вердикты по пунктам и решение.
+   *
+   * Вердикты уходят ЦЕЛИКОМ: снятая отметка — это отсутствие строки, а
+   * не отдельная команда «удалить». Пустое decision сохраняет ход
+   * проверки; принять сервер не даст, пока обязательные пункты сданных
+   * площадок не отмечены «да» (422 review_blocked) — кнопку на фронте
+   * можно погасить, а можно и забыть.
+   */
+  public managerReview(
+    pubId: string,
+    marks: ReviewMark[],
+    comment: string,
+    decision: ReviewDecision,
+  ): Observable<Publication> {
+    return this.http.post<Publication>(`${this.api}/manager/publications/${pubId}/review`, {
+      marks,
+      comment,
+      decision,
+    });
   }
 
   // ---- доступы к аккаунтам бренда ----

@@ -26,13 +26,15 @@ import { plural } from '@shared/lib/format';
 interface ManagerAlertAction {
   title: string;
   kind: 'primary' | 'quiet';
-  act: 'remind' | 'plan' | 'pay';
+  act: 'remind' | 'plan' | 'pay' | 'review';
 }
 
 /** Карточка тревоги: что горит, на сколько и что с этим делать. */
 interface ManagerAlert {
   key: string;
-  tone: 'crit' | 'warn';
+  // 'info' — не тревога, а состояние, требующее действия: ролик лежит
+  // возвращённым, и пока по нему не переснимут, он никуда не двинется.
+  tone: 'crit' | 'warn' | 'info';
   label: string;
   /** Число или сумма — то, ради чего карточку и читают. */
   value: string;
@@ -46,6 +48,7 @@ import { ProjectCommentsComponent } from '@widgets/project-comments/project-comm
 import { ProjectAccountsComponent } from '@widgets/project-accounts/project-accounts.component';
 import { ProjectMaterialsComponent } from '@widgets/project-materials/project-materials.component';
 import { ProjectPublicationsComponent } from '@widgets/project-publications/project-publications.component';
+import { ProjectReviewComponent } from '@widgets/project-review/project-review.component';
 
 /**
  * Проект «креаторы под ключ» глазами менеджера.
@@ -81,6 +84,7 @@ type PubSection = 'plan' | 'crew' | 'stats' | 'mat';
     ProjectAccountsComponent,
     ProjectMaterialsComponent,
     ProjectPublicationsComponent,
+    ProjectReviewComponent,
     ZeroComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -185,6 +189,16 @@ export class ManagerTurnkeyProjectComponent {
    */
   public readonly burning = computed(() =>
     this.publications().filter((p) => p.overdue && p.status !== 'cancelled'),
+  );
+
+  /**
+   * Ролики, возвращённые креатору с замечанием.
+   *
+   * Это не просрочка и не «неполная выкладка»: ссылки сданы, срок ещё
+   * не прошёл, но работа стоит и ждёт человека на той стороне.
+   */
+  public readonly returned = computed(() =>
+    this.publications().filter((p) => p.review?.status === 'returned'),
   );
 
   public readonly openCount = computed(
@@ -371,6 +385,26 @@ export class ManagerTurnkeyProjectComponent {
       });
     }
 
+    // Возвращённые ролики. Числом здесь имя, а не количество: пока
+    // возврат один — а он обычно один, — менеджеру важно, КОМУ он
+    // написал и ждёт ли тот до срока выкладки.
+    if (this.returned().length) {
+      const list = this.returned();
+      const first = list[0];
+      out.push({
+        key: 'returned',
+        tone: 'info',
+        label: 'На проверке с нарушением',
+        value: list.length === 1 ? first.creator_name || 'Креатор' : String(list.length),
+        valueNote: list.length === 1 ? 'ждём пересдачу' : 'роликов возвращено',
+        text:
+          list.length === 1 && first.review?.comment
+            ? `${first.review.comment} Выкладка по плану — ${this.dayLabel(first.due_date)}.`
+            : 'Ролики вернули с замечанием: пока их не пересдадут, выкладка не закроется.',
+        actions: [{ title: 'Открыть проверку', kind: 'quiet', act: 'review' }],
+      });
+    }
+
     if (t.soon) {
       out.push({
         key: 'soon',
@@ -429,7 +463,16 @@ export class ManagerTurnkeyProjectComponent {
       this.remindBurning();
       return;
     }
+    // Проверка живёт на вкладке плана — там же, где следят за сроками.
     this.setTab(act === 'pay' ? 'pay' : 'plan');
+  }
+
+  /** Дата коротко: «17.09». Текст тревоги собирается в коде, а не в шаблоне. */
+  private dayLabel(iso: string): string {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime())
+      ? iso
+      : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
   }
 
   public plural(n: number, one: string, few: string, many: string): string {

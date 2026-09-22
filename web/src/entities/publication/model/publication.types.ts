@@ -107,7 +107,41 @@ export interface Publication {
   // Подставлять сюда дату сдачи ссылок нельзя — сдают и через неделю
   // после выхода, и возраст ролика («зрелый» = 14 дней) поехал бы.
   published_at?: string;
+  // Проверка ролика менеджером. Ключа НЕТ, пока ролик не смотрели, и
+  // это не то же самое, что «принят» или «замечаний нет»: статус
+  // выкладки говорит про ссылки, а проверка — про содержание.
+  review?: PublicationReview;
 }
+
+// ---- проверка ролика ----
+//
+// Вторая сторона чек-листа. Креатор отмечает «я сделал», менеджер —
+// «я проверил»; вся польза в том, что они расходятся.
+
+export type ReviewStatus = 'in_review' | 'returned' | 'accepted';
+
+export interface ReviewMark {
+  item_id: string;
+  // «Да» или «нет». Отсутствие строки — третье состояние, «ещё не
+  // смотрел», и оно не равно «нет».
+  passed: boolean;
+}
+
+export interface PublicationReview {
+  status: ReviewStatus;
+  // Замечание последнего решения; при возврате оно обязательно.
+  comment?: string;
+  // Какая это по счёту сдача. Больше единицы — ролик уже возвращали.
+  round: number;
+  decided_by?: string;
+  decided_by_name?: string;
+  decided_at?: string;
+  marks: ReviewMark[];
+}
+
+// Решение менеджера. Пусто — сохранить ход проверки, не вынося решения:
+// ролик смотрят частями, и отметки не должны теряться между заходами.
+export type ReviewDecision = '' | 'return' | 'accept';
 
 // Пункт чеклиста в снимке проекта. platform=null — общий пункт.
 export interface ChecklistItem {

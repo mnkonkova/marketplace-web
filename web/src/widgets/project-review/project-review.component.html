@@ -1,0 +1,141 @@
+<!-- Панель перенесена из макета (блок «Проверка ролика»): слева плитка
+     ролика, справа обязательные пункты с «да/нет», замечание и два
+     решения. Плеера у нас нет и быть не может — ролик лежит на чужой
+     площадке, — поэтому плитка открывает его там, где он есть. -->
+<section class="rev-block crm-page">
+  <div class="rev-head">
+    <div class="rev-head-tx">
+      <h2>Проверка ролика</h2>
+      @if (current(); as pub) {
+        <p class="sub">
+          {{ pub.creator_name || 'Креатор' }}
+          @if (pub.title) {
+            · «{{ pub.title }}»
+          }
+          @if (submittedOn(pub)) {
+            · сдан {{ submittedOn(pub) }}
+          }
+          @if (pub.review && pub.review.round > 1) {
+            · сдача {{ pub.review.round }}-я
+          }
+          @if (rest()) {
+            <br />Ещё {{ rest() }} в очереди на проверку.
+          }
+        </p>
+      } @else {
+        <p class="sub">
+          Проверяют сданные ролики — по одному, начиная с того, что ждёт дольше всех.
+        </p>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <p class="empty">Загружаем…</p>
+  } @else {
+    @if (current(); as pub) {
+      @if (pub.review; as rev) {
+        @if (rev.status === 'returned') {
+          <p class="rev-state">
+            Возвращён с замечанием
+            @if (rev.decided_by_name) {
+              · {{ rev.decided_by_name }}
+            }
+            . Ждём пересдачу.
+          </p>
+        }
+      }
+
+      <div class="review">
+        <a
+          class="player"
+          [class.has-cover]="cover()"
+          [style.background-image]="cover() ? 'url(' + cover() + ')' : null"
+          [href]="watchUrl()"
+          target="_blank"
+          rel="noopener"
+          aria-label="Открыть ролик на площадке"
+        >
+          <span class="tc">
+            @for (p of platforms(); track p) {
+              <i>{{ platformLabel[p] }}</i>
+            }
+          </span>
+        </a>
+
+        <div>
+          <div class="rev-list">
+            @for (it of items(); track it.id) {
+              <div class="revcheck">
+                <span class="grow">{{ it.text }}</span>
+                <span class="pf">
+                  <button
+                    type="button"
+                    class="y"
+                    [attr.aria-pressed]="verdict(it) === true"
+                    (click)="setVerdict(it, true)"
+                  >
+                    да
+                  </button>
+                  <button
+                    type="button"
+                    class="n"
+                    [attr.aria-pressed]="verdict(it) === false"
+                    (click)="setVerdict(it, false)"
+                  >
+                    нет
+                  </button>
+                </span>
+              </div>
+            } @empty {
+              <p class="empty">
+                В чек-листе проекта нет обязательных пунктов — проверять по списку нечего. Добавьте
+                их во вкладке «Материалы».
+              </p>
+            }
+          </div>
+
+          <textarea
+            class="note"
+            rows="3"
+            aria-label="Замечание креатору"
+            placeholder="Что переделать: «00:00–00:03 — логотипа нет, перемонтируй начало»"
+            [ngModel]="comment()"
+            (ngModelChange)="comment.set($event)"
+          ></textarea>
+
+          <div class="rev-acts">
+            <!-- «Вернуть» — тёмная кнопка макета: в CRM это ghost. Голый
+                 .btn здесь фона не имеет вовсе и выходит белым пятном. -->
+            <button class="btn ghost" type="button" [disabled]="busy()" (click)="decide('return')">
+              Вернуть с замечанием
+            </button>
+            <button
+              class="btn"
+              type="button"
+              [class.primary]="canAccept()"
+              [class.quiet]="!canAccept()"
+              [disabled]="!canAccept() || busy()"
+              (click)="decide('accept')"
+            >
+              Принять
+            </button>
+            @if (!canAccept() && items().length) {
+              <span class="hint">Принять можно, когда по каждому пункту стоит «да».</span>
+            }
+          </div>
+        </div>
+      </div>
+    } @else {
+      <!-- Пусто по двум разным причинам, и путать их нельзя: сдавать
+           нечего или всё проверено. -->
+      <p class="empty">
+        @if (pubs().length) {
+          Все сданные ролики проверены.
+        } @else {
+          Сданных роликов пока нет — проверять нечего.
+        }
+      </p>
+    }
+  }
+</section>

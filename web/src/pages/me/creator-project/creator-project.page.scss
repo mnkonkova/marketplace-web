@@ -701,3 +701,32 @@
     font-size: 12.5px;
   }
 }
+
+// Возврат ролика: замечание менеджера словами. Красная рамка, а не
+// тихая подпись, — это не пометка о состоянии, а работа, которую ждут.
+.returned {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--bad-line, rgb(255 100 112 / 35%));
+  border-radius: 10px;
+  background: rgb(255 100 112 / 8%);
+  font-size: 13px;
+  line-height: 1.5;
+
+  b {
+    color: var(--bad, #ff6470);
+  }
+
+  .cm {
+    display: block;
+    margin-top: 4px;
+    color: var(--text);
+  }
+
+  .hint {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+  }
+}

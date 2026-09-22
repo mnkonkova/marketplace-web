@@ -165,6 +165,7 @@
               class="alert"
               [class.crit]="a.tone === 'crit'"
               [class.warn]="a.tone === 'warn'"
+              [class.info]="a.tone === 'info'"
             >
               <p class="alert-lbl">{{ a.label }}</p>
               <p class="alert-val">
@@ -276,6 +277,12 @@
           [kind]="project().kind"
           [section]="pubSection()"
         />
+      }
+
+      <!-- Проверка ролика стоит сразу за планом, как в макете: сданное
+           смотрят там же, где следят за сроками. -->
+      @if (tab() === 'plan') {
+        <app-project-review [projectId]="project().id" />
       }
 
       @if (tab() === 'pay') {

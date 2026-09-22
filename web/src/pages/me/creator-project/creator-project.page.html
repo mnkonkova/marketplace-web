@@ -308,6 +308,20 @@
               </button>
             </div>
 
+            <!-- Ролик вернули. Это единственное место, где креатор узнаёт
+                 замечание словами: раньше оно жило в переписке, то есть
+                 терялось. Карточка остаётся открытой — по ней работают,
+                 а не просматривают. -->
+            @if (pub.review; as rev) { @if (rev.status === 'returned') {
+            <p class="returned">
+              <b>Вернули переделать</b>
+              @if (rev.decided_by_name) { · {{ rev.decided_by_name }} } @if (rev.comment) {
+              <span class="cm">{{ rev.comment }}</span>
+              }
+              <span class="hint">Переснимите и сдайте ссылку заново — проверка начнётся сначала.</span>
+            </p>
+            } }
+
             @if (isExpanded(pub) || canSubmit(pub)) {
             <div class="body">
               <div class="plist2">
