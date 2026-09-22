@@ -128,6 +128,73 @@ export class ProjectChecklistComponent {
     this.libraryOpen.set(!this.libraryOpen());
   }
 
+  /** Черновик своего пункта: текст и обязательность. */
+  public readonly draftText = signal('');
+
+  public readonly draftRequired = signal(true);
+
+  public readonly canAdd = computed(() => this.draftText().trim().length > 0 && !this.busy());
+
+  /**
+   * Добавить пункт ПОД ЭТОТ ПРОЕКТ.
+   *
+   * В библиотеку он не уходит: «шрифт титров — Onest Bold» касается
+   * одного бренда, и общий шаблон от него испортился бы для всех
+   * остальных. Правило снимка это не нарушает — оно про то, что правка
+   * библиотеки не доезжает до идущих проектов, а не про запрет уточнять
+   * свой собственный список.
+   */
+  public addItem(): void {
+    const text = this.draftText().trim();
+    if (!text || this.busy()) return;
+    this.busy.set(true);
+    this.api
+      .managerAddChecklistItem(this.projectId(), { text, is_required: this.draftRequired() })
+      .subscribe({
+        next: (item) => {
+          this.busy.set(false);
+          this.draftText.set('');
+          // Дописываем в список, а не перезагружаем всё: ответ сервера —
+          // тот же пункт, и второй запрос за ним ничего не уточнит.
+          this.items.set([...this.items(), item]);
+          this.msg.success('Пункт добавлен — креаторы увидят его при следующей сдаче.');
+        },
+        error: (e) => {
+          this.busy.set(false);
+          this.msg.error(parseApiError(e, 'Не удалось добавить пункт.').message);
+        },
+      });
+  }
+
+  /**
+   * Убрать пункт.
+   *
+   * Сервер откажет, если по пункту уже отчитывались: вместе с ним исчез
+   * бы след того, что креатор это проверял, и спорить потом было бы
+   * нечем ни ему, ни менеджеру. Текст отказа берём у сервера — он знает
+   * причину, а свой пересказ разойдётся с ней на первой же правке.
+   */
+  public removeItem(item: ChecklistItem): void {
+    this.modal.confirm({
+      nzTitle: 'Убрать пункт из чек-листа?',
+      nzContent: `«${item.text}». Уже сданные выкладки не тронутся — чеклист проверяется в момент сдачи.`,
+      nzOkDanger: true,
+      nzOnOk: () => {
+        this.busy.set(true);
+        this.api.managerDeleteChecklistItem(this.projectId(), item.id).subscribe({
+          next: () => {
+            this.busy.set(false);
+            this.items.set(this.items().filter((i) => i.id !== item.id));
+          },
+          error: (e) => {
+            this.busy.set(false);
+            this.msg.error(parseApiError(e, 'Не удалось убрать пункт.').message);
+          },
+        });
+      },
+    });
+  }
+
   public connect(t: ChecklistTemplate): void {
     this.modal.confirm({
       nzTitle: `Подключить «${t.name}» v${t.version}?`,
