@@ -370,6 +370,24 @@ export class PublicationApi {
     );
   }
 
+  /**
+   * Дополнить чек-лист проекта своим пунктом.
+   *
+   * Пункт живёт ТОЛЬКО в этом проекте и в библиотеку не попадает:
+   * «шрифт титров — Onest Bold» касается одного бренда. Правило снимка
+   * от этого не страдает — оно про то, что правка библиотеки не
+   * доезжает до идущих проектов, а не про запрет уточнять.
+   */
+  public managerAddChecklistItem(
+    projectId: string,
+    input: { text: string; platform?: string; is_required: boolean },
+  ): Observable<ChecklistItem> {
+    return this.http.post<ChecklistItem>(
+      `${this.api}/manager/projects/${projectId}/checklist/items`,
+      input,
+    );
+  }
+
   public managerUpdateAccount(
     projectId: string,
     accountId: string,
@@ -406,6 +424,18 @@ export class PublicationApi {
   ): Observable<{ password: string }> {
     return this.http.get<{ password: string }>(
       `${this.api}/me/projects/${projectId}/accounts/${accountId}/secret`,
+    );
+  }
+
+  /**
+   * Убрать пункт из чек-листа проекта.
+   *
+   * Сервер откажет (409 item_used), если по пункту уже отчитывались:
+   * вместе с ним исчез бы след того, что креатор это проверял.
+   */
+  public managerDeleteChecklistItem(projectId: string, itemId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.api}/manager/projects/${projectId}/checklist/items/${itemId}`,
     );
   }
 
