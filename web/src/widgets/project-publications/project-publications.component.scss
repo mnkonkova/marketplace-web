@@ -690,3 +690,47 @@
   width: 100%;
   margin-top: 6px;
 }
+
+// Правка сданной ссылки. Строка-форма под строкой таблицы, а не модалка:
+// менеджер правит подряд несколько ссылок, и каждый раз закрывать окно —
+// лишнее движение.
+.linkfix {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.linkfix-row td {
+  padding-top: 0;
+}
+
+.linkfix-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 0 14px;
+
+  input {
+    flex: 1;
+    min-width: 260px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--line, #2c313a);
+    border-radius: 8px;
+    background: var(--card, #14161a);
+    color: var(--text, #e9edf2);
+    font: inherit;
+    font-size: 13.5px;
+  }
+
+  .hint {
+    flex-basis: 100%;
+    color: var(--muted-2, #7a828d);
+    font-size: 12px;
+    max-width: 72ch;
+  }
+
+  .btn.danger {
+    color: #f08270;
+  }
+}

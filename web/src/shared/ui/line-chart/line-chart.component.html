@@ -65,13 +65,13 @@
     />
   }
 
-  @for (d of visibleDots(); track d.date) {
+  @for (d of visibleDots(); track d.color + d.date) {
     <circle
       class="dot"
       [attr.cx]="d.x"
       [attr.cy]="d.y"
       [attr.r]="dotRadius()"
-      [style.fill]="dotColor() || null"
+      [style.fill]="d.color || dotColor() || null"
     />
   }
 

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { CalendarDay, CalendarItem } from '@entities/publication/model/publication.types';
@@ -10,6 +11,20 @@ import {
   neighbourMonths,
 } from '@entities/publication/lib/calendar-months';
 import { creatorLabel } from '@entities/publication/lib/publication-status';
+
+/**
+ * Кто снимает — портрет и адрес страницы, по user_id.
+ *
+ * В самой записи календаря этого нет: сервер отдаёт в дне только имя и
+ * статус. Портреты и ссылки уже есть у страницы проекта (состав периода),
+ * поэтому карта приходит сверху, а не догружается календарём.
+ */
+export interface CalendarPerson {
+  name?: string;
+  avatar_url?: string;
+  /** routerLink на страницу специалиста; пусто — страница не опубликована. */
+  link?: string[];
+}
 
 interface Cell {
   // Пустая ячейка-заполнитель до первого числа месяца.
@@ -27,7 +42,7 @@ interface Cell {
 @Component({
   selector: 'app-project-calendar',
   standalone: true,
-  imports: [CommonModule, NzIconModule],
+  imports: [CommonModule, NzIconModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-calendar.component.html',
   styleUrls: ['./project-calendar.component.scss', './project-calendar.component.touch.scss'],
@@ -37,6 +52,14 @@ export class ProjectCalendarComponent {
   public readonly month = input.required<string>();
 
   public readonly days = input<CalendarDay[]>([]);
+
+  /**
+   * Портреты по creator_user_id.
+   *
+   * Сетка без лиц отвечала только на «сколько», хотя вопрос к календарю —
+   * «кто и когда снимает». Имя в клетку 40×40 не влезает, лицо влезает.
+   */
+  public readonly people = input<Record<string, CalendarPerson>>({});
 
   /**
    * Месяцы, в которых у проекта вообще есть выкладки.
@@ -166,6 +189,45 @@ export class ProjectCalendarComponent {
   // раньше показывать было нечего, кроме количества.
   public who(item: CalendarItem): string {
     return creatorLabel(item.creator_name);
+  }
+
+  /**
+   * Лица дня без повторов: один человек с тремя роликами — одно лицо.
+   * Больше трёх в клетку не помещается, остаток показываем числом.
+   */
+  public faces(cell: Cell): CalendarItem[] {
+    const seen = new Set<string>();
+    const out: CalendarItem[] = [];
+    for (const i of cell.items) {
+      if (seen.has(i.creator_user_id)) continue;
+      seen.add(i.creator_user_id);
+      out.push(i);
+    }
+    return out;
+  }
+
+  public facesShown(cell: Cell): CalendarItem[] {
+    return this.faces(cell).slice(0, 3);
+  }
+
+  public facesRest(cell: Cell): number {
+    return Math.max(0, this.faces(cell).length - 3);
+  }
+
+  public person(item: CalendarItem): CalendarPerson {
+    return this.people()[item.creator_user_id] ?? {};
+  }
+
+  public avatarUrl(item: CalendarItem): string | undefined {
+    return this.person(item).avatar_url;
+  }
+
+  public personLink(item: CalendarItem): string[] | null {
+    return this.person(item).link ?? null;
+  }
+
+  public initial(item: CalendarItem): string {
+    return (item.creator_name || '—').trim().charAt(0).toUpperCase();
   }
 
   public shift(delta: number): void {

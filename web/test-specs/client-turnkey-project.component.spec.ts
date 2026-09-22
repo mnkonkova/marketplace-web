@@ -44,6 +44,9 @@ describe('ClientTurnkeyProjectComponent: загрузка данных', () => {
       'clientReport',
       'clientPrefs',
       'clientCalendar',
+      // Доступы к аккаунтам бренда: блок живёт внизу страницы проекта и
+      // спрашивает свою ручку при открытии.
+      'clientAccounts',
     ]);
     pubApi.clientVideos.and.returnValue(of({ items: [] }));
     // Содержимое ответов тесту безразлично: он считает вызовы, а не
@@ -51,6 +54,9 @@ describe('ClientTurnkeyProjectComponent: загрузка данных', () => {
     pubApi.clientReport.and.returnValue(of({} as never) as never);
     pubApi.clientPrefs.and.returnValue(of({} as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days: [] } as never) as never);
+    pubApi.clientAccounts.and.returnValue(
+      of({ items: [], secrets_enabled: false } as never) as never,
+    );
     billingApi = jasmine.createSpyObj<BillingApi>('billingApi', ['clientBilling']);
     billingApi.clientBilling.and.returnValue(of({} as never) as never);
 
@@ -127,6 +133,7 @@ describe('ClientTurnkeyProjectComponent: ссылки на ролики', () => 
     TestBed.resetTestingModule();
     const pubApi = jasmine.createSpyObj<PublicationApi>('pubApi', [
       'clientVideos',
+      'clientAccounts',
       'clientReport',
       'clientPrefs',
       'clientCalendar',
@@ -135,6 +142,9 @@ describe('ClientTurnkeyProjectComponent: ссылки на ролики', () => 
     pubApi.clientReport.and.returnValue(of({ videos_table: rows } as never) as never);
     pubApi.clientPrefs.and.returnValue(of({} as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days: [] } as never) as never);
+    pubApi.clientAccounts.and.returnValue(
+      of({ items: [], secrets_enabled: false } as never) as never,
+    );
     const billingApi = jasmine.createSpyObj<BillingApi>('billingApi', ['clientBilling']);
     billingApi.clientBilling.and.returnValue(of({} as never) as never);
 
@@ -199,6 +209,7 @@ describe('ClientTurnkeyProjectComponent: месяц календаря', () => {
     TestBed.resetTestingModule();
     const pubApi = jasmine.createSpyObj<PublicationApi>('pubApi', [
       'clientVideos',
+      'clientAccounts',
       'clientReport',
       'clientPrefs',
       'clientCalendar',
@@ -207,6 +218,9 @@ describe('ClientTurnkeyProjectComponent: месяц календаря', () => {
     pubApi.clientReport.and.returnValue(of({} as never) as never);
     pubApi.clientPrefs.and.returnValue(of({} as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days, months } as never) as never);
+    pubApi.clientAccounts.and.returnValue(
+      of({ items: [], secrets_enabled: false } as never) as never,
+    );
     const billingApi = jasmine.createSpyObj<BillingApi>('billingApi', ['clientBilling']);
     billingApi.clientBilling.and.returnValue(of({} as never) as never);
 
@@ -330,6 +344,7 @@ describe('ClientTurnkeyProjectComponent: счёт за прошлый перио
     TestBed.resetTestingModule();
     const pubApi = jasmine.createSpyObj<PublicationApi>('pubApi', [
       'clientVideos',
+      'clientAccounts',
       'clientReport',
       'clientPrefs',
       'clientCalendar',
@@ -338,6 +353,9 @@ describe('ClientTurnkeyProjectComponent: счёт за прошлый перио
     pubApi.clientReport.and.returnValue(of({} as never) as never);
     pubApi.clientPrefs.and.returnValue(of({} as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days: [], months: [] } as never) as never);
+    pubApi.clientAccounts.and.returnValue(
+      of({ items: [], secrets_enabled: false } as never) as never,
+    );
 
     const billingApi = jasmine.createSpyObj<BillingApi>('billingApi', ['clientBilling']);
     billingApi.clientBilling.and.callFake((_id: string, seq?: number) => {
@@ -456,6 +474,7 @@ describe('ClientTurnkeyProjectComponent: команда периода', () => {
     TestBed.resetTestingModule();
     const pubApi = jasmine.createSpyObj<PublicationApi>('pubApi', [
       'clientVideos',
+      'clientAccounts',
       'clientReport',
       'clientPrefs',
       'clientCalendar',
@@ -464,6 +483,9 @@ describe('ClientTurnkeyProjectComponent: команда периода', () => {
     pubApi.clientReport.and.returnValue(of({ videos_table: [] } as never) as never);
     pubApi.clientPrefs.and.returnValue(of(null as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days: [], months: [] } as never) as never);
+    pubApi.clientAccounts.and.returnValue(
+      of({ items: [], secrets_enabled: false } as never) as never,
+    );
 
     const billingApi = jasmine.createSpyObj<BillingApi>('billingApi', ['clientBilling']);
     billingApi.clientBilling.and.returnValue(of({ accruals } as ProjectBilling) as never);
@@ -615,6 +637,7 @@ describe('ClientTurnkeyProjectComponent: обложки роликов', () => {
     TestBed.resetTestingModule();
     const pubApi = jasmine.createSpyObj<PublicationApi>('pubApi', [
       'clientVideos',
+      'clientAccounts',
       'clientReport',
       'clientPrefs',
       'clientCalendar',
@@ -623,6 +646,9 @@ describe('ClientTurnkeyProjectComponent: обложки роликов', () => {
     pubApi.clientReport.and.returnValue(of({ videos_table: [] } as never) as never);
     pubApi.clientPrefs.and.returnValue(of(null as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days: [], months: [] } as never) as never);
+    pubApi.clientAccounts.and.returnValue(
+      of({ items: [], secrets_enabled: false } as never) as never,
+    );
     const billingApi = jasmine.createSpyObj<BillingApi>('billingApi', ['clientBilling']);
     billingApi.clientBilling.and.returnValue(of({} as never) as never);
 
@@ -702,6 +728,7 @@ describe('ClientTurnkeyProjectComponent: экран для показа', () => 
     TestBed.resetTestingModule();
     const pubApi = jasmine.createSpyObj<PublicationApi>('pubApi', [
       'clientVideos',
+      'clientAccounts',
       'clientReport',
       'clientPrefs',
       'clientCalendar',
@@ -756,6 +783,9 @@ describe('ClientTurnkeyProjectComponent: экран для показа', () => 
       of({ on_new_video: true, on_weekly_digest: true, on_date_shift: true } as never) as never,
     );
     pubApi.clientCalendar.and.returnValue(of({ days: [], months: [] } as never) as never);
+    pubApi.clientAccounts.and.returnValue(
+      of({ items: [], secrets_enabled: false } as never) as never,
+    );
 
     const billingApi = jasmine.createSpyObj<BillingApi>('billingApi', ['clientBilling']);
     // Состав периода здесь нужен целиком: «Выкладки» проверяются на

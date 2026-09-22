@@ -149,7 +149,10 @@
   @if (prevDue(); as prev) {
     <div class="duebar">
       <div class="dd">
-        <span class="k">К оплате</span>
+        <!-- «За прошлый период» прямо в подписи: рядом на вкладке
+             «Деньги» стоит счёт за текущий период, и две одинаковые
+             подписи «К оплате» читались как один и тот же счёт. -->
+        <span class="k">К оплате за прошлый период</span>
         <b>{{ money(prev.totals?.total) }}</b>
         <span class="r">
           {{ prevTitle() }}
@@ -284,6 +287,7 @@
           [days]="calendarDays()"
           [month]="calendarMonth()"
           [months]="calendarMonths()"
+          [people]="calendarPeople()"
           (monthChange)="onMonthChange($event)"
         />
       </div>
@@ -415,10 +419,18 @@
               [style.background]="coverPlatform(v) ? tint(coverPlatform(v)!) : null"
               aria-hidden="true"
             >
-              @if (coverPlatform(v); as top) {
-                <span class="pl" [style.color]="platformColor[top]">
-                  {{ platformLabel[top] }}
-                </span>
+              <!-- Настоящий кадр показываем там, где его можно вывести из
+                   ссылки (YouTube), — это сам ролик, а не заглушка. Не
+                   загрузился или площадка другая — остаётся знак
+                   площадки, как и было. -->
+              @if (coverUrl(v); as shot) {
+                <img class="shot" [src]="shot" alt="" loading="lazy" (error)="onCoverError(v)" />
+              } @else {
+                @if (coverPlatform(v); as top) {
+                  <span class="pl" [style.color]="platformColor[top]">
+                    {{ platformLabel[top] }}
+                  </span>
+                }
               }
             </div>
             <div class="bd">
@@ -443,7 +455,32 @@
                   {{ plural(platformCount, 'площадки', 'площадок', 'площадок') }}
                 </span>
               </div>
-              <div class="who">{{ creatorName(v.creator_name) }}</div>
+              <!-- Кто снял. Портрет и ссылка — те же, что в составе
+                   периода: заказчик платит за конкретных людей и по ним
+                   же спрашивает. -->
+              <div class="who">
+                @if (videoPerson(v); as who) {
+                  @if (who.link) {
+                    <a class="who-link" [routerLink]="who.link">
+                      @if (who.avatar_url) {
+                        <img class="who-av" [src]="who.avatar_url" alt="" />
+                      } @else {
+                        <span class="who-av letter">{{ creatorInitial(v.creator_name) }}</span>
+                      }
+                      {{ creatorName(v.creator_name) }}
+                    </a>
+                  } @else {
+                    @if (who.avatar_url) {
+                      <img class="who-av" [src]="who.avatar_url" alt="" />
+                    } @else {
+                      <span class="who-av letter">{{ creatorInitial(v.creator_name) }}</span>
+                    }
+                    {{ creatorName(v.creator_name) }}
+                  }
+                } @else {
+                  {{ creatorName(v.creator_name) }}
+                }
+              </div>
               @if (!v.stats_hidden) {
                 <div class="nums">
                   <span class="n"
@@ -627,6 +664,12 @@
       <app-project-comments [projectId]="project().id" role="client" [meId]="meId()" />
     </div>
   }
+
+  <!-- Доступы к аккаунтам бренда. Не вкладка и не раздел отчёта: это
+       справочное «где лежат наши аккаунты», и спрашивают о нём редко, но
+       остро — когда надо проверить ролик или забрать доступы обратно.
+       Поэтому внизу страницы, рядом с уведомлениями. -->
+  <app-project-accounts [projectId]="project().id" role="client" />
 
   <!-- Уведомления — НЕ вкладка.
        Это настройка: галочки «что мне слать в бот». Разделом отчёта она

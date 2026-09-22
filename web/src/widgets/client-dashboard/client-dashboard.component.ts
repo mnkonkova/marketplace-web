@@ -256,9 +256,13 @@ export class ClientDashboardComponent {
   }
 
   public readonly chartSeries = computed<ChartSeries[]>(() => {
-    // В разбор идут только площадки, по которым ряд вообще есть: линия
-    // из нуля точек — это не пустая линия, это пустая подпись в легенде.
-    const rows = this.shares().filter((s) => s.series.length >= 2);
+    // В разбор идут площадки, по которым есть хотя бы один замер.
+    //
+    // Раньше порог был «два дня», и в первые сутки проекта график
+    // пропадал целиком — вместе с секцией, без единого слова почему.
+    // Один замер линией не нарисуешь, но точкой нарисуешь: за неё
+    // отвечает line-chart, который ставит узел одиночному дню.
+    const rows = this.shares().filter((s) => s.series.length >= 1);
     if (!rows.length) return [];
 
     const gains = rows.map((s) => s.series.map((p) => ({ date: p.date, value: p.views_gained })));

@@ -598,6 +598,7 @@
                 <th>Просмотры</th>
                 <th>За сутки</th>
                 <th>ER</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -627,7 +628,49 @@
                       [withoutShares]="!!row.er_without_shares"
                     />
                   </td>
+                  <!-- Править ссылку может только менеджер. Сдаёт её
+                       креатор, и ошибается в ней он же: чужой ролик,
+                       адрес профиля вместо видео. До сих пор чинилось
+                       перепиской — «пришли правильную, я перезалью». -->
+                  <td class="linkfix">
+                    <button type="button" class="btn quiet sm" (click)="openLinkEdit(row)">
+                      Исправить
+                    </button>
+                  </td>
                 </tr>
+                @if (linkEditFor()?.link_id === row.link_id) {
+                  <tr class="linkfix-row">
+                    <td colspan="8">
+                      <form class="linkfix-form" (ngSubmit)="saveLinkEdit()">
+                        <input
+                          [(ngModel)]="linkEditUrl"
+                          name="linkfix"
+                          type="url"
+                          inputmode="url"
+                          [placeholder]="'Ссылка на ' + platformLabel[row.platform]"
+                        />
+                        <button type="submit" class="btn primary sm" [disabled]="linkBusy()">
+                          Сохранить
+                        </button>
+                        <button type="button" class="btn quiet sm" (click)="cancelLinkEdit()">
+                          Отмена
+                        </button>
+                        <button
+                          type="button"
+                          class="btn quiet sm danger"
+                          [disabled]="linkBusy()"
+                          (click)="removeLink()"
+                        >
+                          Снять ссылку
+                        </button>
+                        <span class="hint">
+                          Другой ролик — его прежние замеры удалятся: две записи в одной линии
+                          графика это не история. Снять ссылку — выкладка снова станет неполной.
+                        </span>
+                      </form>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>

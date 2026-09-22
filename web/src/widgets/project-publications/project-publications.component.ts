@@ -640,6 +640,65 @@ export class ProjectPublicationsComponent {
     for (const p of this.burning()) this.remind(p);
   }
 
+  // ---- правка сданной ссылки ----
+  //
+  // Ссылку сдаёт креатор, и ошибается в ней он же. Раньше это чинилось
+  // перепиской: менеджер видел, что цифры не собираются, и просил
+  // прислать правильную. Теперь правит на месте — сервер при подмене
+  // ролика удаляет его прежние замеры сам.
+
+  public readonly linkEditFor = signal<VideoRow | null>(null);
+
+  public linkEditUrl = '';
+
+  public readonly linkBusy = signal(false);
+
+  public openLinkEdit(row: VideoRow): void {
+    this.linkEditFor.set(row);
+    this.linkEditUrl = row.url;
+  }
+
+  public cancelLinkEdit(): void {
+    this.linkEditFor.set(null);
+    this.linkEditUrl = '';
+  }
+
+  public saveLinkEdit(): void {
+    const row = this.linkEditFor();
+    if (!row) return;
+    const url = this.linkEditUrl.trim();
+    if (!url) {
+      this.msg.error('Пустое поле ничего не меняет. Снять ссылку — отдельная кнопка.');
+      return;
+    }
+    this.applyLinkEdit(row, url, 'Ссылка исправлена');
+  }
+
+  public removeLink(): void {
+    const row = this.linkEditFor();
+    if (!row) return;
+    this.applyLinkEdit(row, '', 'Ссылка снята — выкладка снова неполная');
+  }
+
+  private applyLinkEdit(row: VideoRow, url: string, okText: string): void {
+    this.linkBusy.set(true);
+    this.pubApi.managerEditLink(row.publication_id, row.platform, url).subscribe({
+      next: () => {
+        this.linkBusy.set(false);
+        this.cancelLinkEdit();
+        this.msg.success(okText);
+        // Перечитываем план целиком: у выкладки сменился статус, а в
+        // таблице ссылок — адрес и, возможно, цифры (loadPublications
+        // тянет и отчёт).
+        this.reloadPublications();
+      },
+      error: (e) => {
+        this.linkBusy.set(false);
+        this.msg.error(parseApiError(e, 'Не удалось исправить ссылку.').message);
+      },
+    });
+  }
+
   public readonly closeFor = signal<Publication | null>(null);
 
   public closeReason = '';

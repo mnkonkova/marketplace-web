@@ -321,6 +321,48 @@ export interface CreatorProjectCard extends CreatorProject {
 // creators — бренд-гайд и обучение: открывается креатору в момент
 // добавления в проект. client — то, что видно заказчику. Клиенту
 // креаторские материалы не отдаёт и сам бэк.
+/**
+ * Доступ к аккаунту бренда: где и под каким логином выходят ролики.
+ *
+ * Заполняет менеджер, видит заказчик — это его аккаунты. Пароля в этом
+ * типе нет намеренно: он не ездит в списке проекта, его запрашивают
+ * отдельной ручкой, и по этому запросу видно, кто его брал.
+ */
+export interface ProjectAccount {
+  id: string;
+  project_id: string;
+  /** Пятёрка площадок плюс other: доступ бывает и к почте, и к кабинету. */
+  platform: Platform | 'other';
+  title: string;
+  url: string;
+  login: string;
+  /** Пароль заведён. Само значение — отдельным запросом. */
+  has_password: boolean;
+  note: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface ProjectAccountInput {
+  platform: Platform | 'other';
+  title?: string;
+  url?: string;
+  login?: string;
+  /** Не передан — пароль не трогаем; пустая строка — стираем. */
+  password?: string;
+  note?: string;
+}
+
+export interface ProjectAccountsResponse {
+  items: ProjectAccount[];
+  /**
+   * Можно ли заводить пароли. Выключено, когда у сервиса нет ключа
+   * шифрования: логины и ссылки при этом работают, и сказать об этом
+   * надо словами, а не спрятать поле.
+   */
+  secrets_enabled: boolean;
+}
+
 export type MaterialAudience = 'creators' | 'client';
 
 export type MaterialKind = 'doc' | 'video' | 'link';

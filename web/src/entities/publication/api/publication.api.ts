@@ -22,6 +22,10 @@ import {
   MaterialInput,
   NotificationPrefs,
   NotificationPrefsPatch,
+  Platform,
+  ProjectAccount,
+  ProjectAccountInput,
+  ProjectAccountsResponse,
   ProjectPerson,
   Publication,
   PublicationReport,
@@ -325,6 +329,83 @@ export class PublicationApi {
     return this.http.post<{ copied: number }>(
       `${this.api}/manager/projects/${projectId}/checklist`,
       { template_id: templateId },
+    );
+  }
+
+  /**
+   * Исправить сданную ссылку.
+   *
+   * Ссылку сдаёт креатор, и ошибается в ней он же: чужой ролик, адрес
+   * профиля вместо видео, мобильный домен с обрезанным id. Пустой url
+   * снимает ссылку с площадки — выкладка снова становится неполной.
+   *
+   * Если ролик другой, сервер удаляет его прежние замеры: две разные
+   * записи в одной линии графика — это не история, это выдумка.
+   */
+  public managerEditLink(pubId: string, platform: Platform, url: string): Observable<Publication> {
+    return this.http.put<Publication>(
+      `${this.api}/manager/publications/${pubId}/links/${platform}`,
+      { url },
+    );
+  }
+
+  // ---- доступы к аккаунтам бренда ----
+  //
+  // Заполняет менеджер, читает заказчик. Пароль отдаётся отдельной
+  // ручкой: в списке проекта ему делать нечего.
+
+  public managerAccounts(projectId: string): Observable<ProjectAccountsResponse> {
+    return this.http.get<ProjectAccountsResponse>(
+      `${this.api}/manager/projects/${projectId}/accounts`,
+    );
+  }
+
+  public managerAddAccount(
+    projectId: string,
+    input: ProjectAccountInput,
+  ): Observable<ProjectAccount> {
+    return this.http.post<ProjectAccount>(
+      `${this.api}/manager/projects/${projectId}/accounts`,
+      input,
+    );
+  }
+
+  public managerUpdateAccount(
+    projectId: string,
+    accountId: string,
+    input: ProjectAccountInput,
+  ): Observable<ProjectAccount> {
+    return this.http.put<ProjectAccount>(
+      `${this.api}/manager/projects/${projectId}/accounts/${accountId}`,
+      input,
+    );
+  }
+
+  public managerRemoveAccount(projectId: string, accountId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.api}/manager/projects/${projectId}/accounts/${accountId}`,
+    );
+  }
+
+  public managerAccountSecret(
+    projectId: string,
+    accountId: string,
+  ): Observable<{ password: string }> {
+    return this.http.get<{ password: string }>(
+      `${this.api}/manager/projects/${projectId}/accounts/${accountId}/secret`,
+    );
+  }
+
+  public clientAccounts(projectId: string): Observable<ProjectAccountsResponse> {
+    return this.http.get<ProjectAccountsResponse>(`${this.api}/me/projects/${projectId}/accounts`);
+  }
+
+  public clientAccountSecret(
+    projectId: string,
+    accountId: string,
+  ): Observable<{ password: string }> {
+    return this.http.get<{ password: string }>(
+      `${this.api}/me/projects/${projectId}/accounts/${accountId}/secret`,
     );
   }
 

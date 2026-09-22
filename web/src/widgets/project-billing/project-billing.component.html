@@ -1,7 +1,7 @@
 @if (isManager() || hasAnything()) {
   <section class="bill">
     <div class="bill-head">
-      <h2>{{ isManager() ? 'Начисления и оплата' : 'Условия и стоимость' }}</h2>
+      <h2>{{ isManager() ? 'Начисления и оплата' : 'К оплате' }}</h2>
       <div class="head-actions">
         @if (choices().length) {
           <label class="period-pick">

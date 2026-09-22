@@ -295,14 +295,19 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--border-strong, #2c313a);
+  height: 38px;
+  padding: 0 14px;
+  // Ярче, чем было: рамка цветом действия и лёгкая заливка. Полностью
+  // залитой кнопки здесь по-прежнему нет — она спорила бы с «Создать
+  // проект», — но и «ещё одной серой рамкой» выход больше не выглядит:
+  // на тёмной шапке он теперь читается первым после CTA.
+  border: 1px solid rgba(248, 113, 113, 0.45);
   border-radius: 10px;
-  background: none;
-  color: var(--text);
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
   font: inherit;
   font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   transition:
@@ -316,13 +321,11 @@
     flex: 0 0 auto;
   }
 
-  &:hover {
-    // Красный только по наведению: действие разрушительное, и
-    // подтверждения у него нет, — но постоянная красная кнопка в шапке
-    // кричала бы громче всего остального на экране.
-    border-color: rgba(248, 113, 113, 0.55);
-    background: rgba(248, 113, 113, 0.1);
-    color: #f87171;
+  &:hover,
+  &:focus-visible {
+    border-color: rgba(248, 113, 113, 0.9);
+    background: rgba(248, 113, 113, 0.22);
+    color: #fecaca;
   }
 }
 

@@ -326,15 +326,40 @@ export class LineChartComponent {
    * шести линий — это уже не график, а сыпь. Значения там читают по
    * наведению, где стоят сразу все ряды за день.
    */
-  public readonly visibleDots = computed(() => {
-    if (this.multi()) return [];
-    if (!this.compact()) return this.dots();
+  public readonly visibleDots = computed<
+    { date: string; value: number; x: number; y: number; color: string }[]
+  >(() => {
+    // У многорядного графика цепочки узлов не рисуем — шесть линий с
+    // кружками читаются как сыпь. Но ОДИНОЧНЫЙ замер показываем всегда,
+    // и у КАЖДОГО ряда своим цветом: линии из одной точки не выходит, и
+    // без узла такой день исчезает с графика — а если замер в проекте
+    // пока один, то исчезает и весь график.
+    if (this.multi()) {
+      const rows = this.rows();
+      const out: { date: string; value: number; x: number; y: number; color: string }[] = [];
+      this.placedRows().forEach((placed, i) => {
+        for (const run of splitGaps(placed)) {
+          if (run.length !== 1) continue;
+          const p = run[0];
+          out.push({
+            date: p.date,
+            value: p.value,
+            x: this.x(p.day),
+            y: this.y(p.value),
+            color: rows[i]?.color || '',
+          });
+        }
+      });
+      return out;
+    }
+    const mine = this.dots().map((d) => ({ ...d, color: this.dotColor() }));
+    if (!this.compact()) return mine;
     const solo = new Set(
       splitGaps(this.placed())
         .filter((r) => r.length === 1)
         .map((r) => r[0].date),
     );
-    return this.dots().filter((d) => solo.has(d.date));
+    return mine.filter((d) => solo.has(d.date));
   });
 
   /**

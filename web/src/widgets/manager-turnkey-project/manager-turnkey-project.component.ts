@@ -23,6 +23,7 @@ import { plural } from '@shared/lib/format';
 import { ZeroComponent } from '@shared/ui/zero/zero.component';
 import { ProjectBillingComponent } from '@widgets/project-billing/project-billing.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
+import { ProjectAccountsComponent } from '@widgets/project-accounts/project-accounts.component';
 import { ProjectMaterialsComponent } from '@widgets/project-materials/project-materials.component';
 import { ProjectPublicationsComponent } from '@widgets/project-publications/project-publications.component';
 
@@ -57,6 +58,7 @@ type PubSection = 'plan' | 'crew' | 'stats' | 'mat';
     RouterLink,
     ProjectBillingComponent,
     ProjectCommentsComponent,
+    ProjectAccountsComponent,
     ProjectMaterialsComponent,
     ProjectPublicationsComponent,
     ZeroComponent,

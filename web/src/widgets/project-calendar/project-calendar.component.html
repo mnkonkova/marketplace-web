@@ -24,6 +24,22 @@
         (click)="pick(c)"
       >
         <span class="num">{{ c.day }}</span>
+        <!-- Лица тех, кто снимает в этот день. Точки остаются: они про
+             состояние (вышло / запланировано), лица — про людей. -->
+        @if (c.items.length) {
+          <span class="faces">
+            @for (i of facesShown(c); track i.publication_id) {
+              @if (avatarUrl(i); as url) {
+                <img class="face" [src]="url" [alt]="who(i)" [attr.title]="who(i)" />
+              } @else {
+                <span class="face letter" [attr.title]="who(i)">{{ initial(i) }}</span>
+              }
+            }
+            @if (facesRest(c)) {
+              <span class="face rest">+{{ facesRest(c) }}</span>
+            }
+          </span>
+        }
         @if (c.published) {
           <span class="dot published" [attr.title]="c.published + ' вышло'"></span>
         }
@@ -79,7 +95,25 @@
             [class.published]="i.status === 'published'"
             [class.planned]="i.status === 'planned'"
           ></span>
-          <span class="nm">{{ who(i) }}</span>
+          @if (personLink(i); as link) {
+            <a class="nm nm-link" [routerLink]="link">
+              @if (avatarUrl(i); as url) {
+                <img class="face" [src]="url" [alt]="who(i)" />
+              } @else {
+                <span class="face letter">{{ initial(i) }}</span>
+              }
+              {{ who(i) }}
+            </a>
+          } @else {
+            <span class="nm">
+              @if (avatarUrl(i); as url) {
+                <img class="face" [src]="url" [alt]="who(i)" />
+              } @else {
+                <span class="face letter">{{ initial(i) }}</span>
+              }
+              {{ who(i) }}
+            </span>
+          }
           <span class="st">{{ i.status === 'published' ? 'вышло' : 'запланировано' }}</span>
         </li>
       }

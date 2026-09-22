@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
@@ -34,6 +34,7 @@ import type { Accrual, ProjectBilling } from '@entities/billing/model/billing.ty
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import { currentMonth, monthToOpen } from '@entities/publication/lib/calendar-months';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
+import { videoCoverUrl } from '@entities/publication/lib/video-cover';
 import {
   PLATFORM_COLOR,
   PLATFORM_LABEL,
@@ -51,7 +52,11 @@ import type {
 } from '@entities/publication/model/publication.types';
 import { clientTitle } from '@entities/project/lib/project-title';
 import type { ProjectClientView } from '@entities/project/model/project.types';
-import { ProjectCalendarComponent } from '@widgets/project-calendar/project-calendar.component';
+import {
+  CalendarPerson,
+  ProjectCalendarComponent,
+} from '@widgets/project-calendar/project-calendar.component';
+import { ProjectAccountsComponent } from '@widgets/project-accounts/project-accounts.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
 import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.component';
 import { StepsComponent } from '@shared/ui/steps/steps.component';
@@ -99,6 +104,7 @@ type ClientTab = 'posts' | 'money' | 'talk';
     RouterLink,
     BackLinkComponent,
     ProjectCalendarComponent,
+    ProjectAccountsComponent,
     ProjectCommentsComponent,
     ProjectStatsComponent,
     StepsComponent,
@@ -154,7 +160,18 @@ export class ClientTurnkeyProjectComponent {
    * поэтому они живут внизу страницы, свёрнутые: кому надо — найдёт,
    * остальным не мешает.
    */
-  public readonly prefsOpen = signal(false);
+  /**
+   * Блок уведомлений раскрыт.
+   *
+   * По умолчанию свёрнут, но из воронки заказа сюда приходят именно за
+   * ним — с ?prefs=1 после создания проекта: настройку предлагают сразу,
+   * пока человек ещё здесь, а не «когда-нибудь найдёте внизу страницы».
+   */
+  public readonly prefsOpen = signal(
+    // optional: виджет живёт и в тестах, и внутри страницы; без роутера
+    // это просто «свёрнуто», а не падение компонента.
+    inject(ActivatedRoute, { optional: true })?.snapshot.queryParamMap.get('prefs') === '1',
+  );
 
   public togglePrefs(): void {
     this.prefsOpen.set(!this.prefsOpen());
@@ -204,6 +221,26 @@ export class ClientTurnkeyProjectComponent {
   public creatorTitle(a: Accrual): string {
     return `Открыть профиль: ${creatorLabel(a.creator_name)}`;
   }
+
+  /**
+   * Портреты для календаря, по creator_user_id.
+   *
+   * В дне календаря сервер отдаёт только имя и статус, а лица уже лежат
+   * в составе периода — оттуда их и берём. Ссылку кладём по тому же
+   * правилу, что и в составе: мёртвых ссылок на непубличные профили не
+   * ставим.
+   */
+  public readonly calendarPeople = computed<Record<string, CalendarPerson>>(() => {
+    const out: Record<string, CalendarPerson> = {};
+    for (const a of this.billing()?.accruals ?? []) {
+      out[a.creator_user_id] = {
+        name: a.creator_name,
+        avatar_url: a.creator_avatar_url,
+        link: this.creatorLinkable(a) ? this.specialistLink(a) : undefined,
+      };
+    }
+    return out;
+  });
 
   public toggleVideo(id: string): void {
     const next = new Set(this.openVideos());
@@ -541,6 +578,35 @@ export class ClientTurnkeyProjectComponent {
   /** Цвет площадки, разбавленный до подложки кадра. */
   public tint(platform: Platform): string {
     return `${PLATFORM_COLOR[platform] ?? '#888'}1f`;
+  }
+
+  /**
+   * Обложки, которые не загрузились. Адрес превью YouTube выводится из
+   * ссылки, а не приходит с сервера, и у снятого ролика его может не
+   * быть: тогда возвращаемся к знаку площадки, а не показываем битый
+   * значок картинки.
+   */
+  private readonly coverFailed = signal<ReadonlySet<string>>(new Set());
+
+  /** Кадр ролика, если его вообще можно вывести из ссылок. */
+  public coverUrl(v: ClientVideo): string | null {
+    if (this.coverFailed().has(v.publication_id)) return null;
+    return videoCoverUrl(v.links);
+  }
+
+  /** Портрет и ссылка автора ролика — из состава периода. */
+  public videoPerson(v: ClientVideo): CalendarPerson | null {
+    return this.calendarPeople()[v.creator_user_id] ?? null;
+  }
+
+  public creatorInitial(name?: string): string {
+    return (name || '—').trim().charAt(0).toUpperCase();
+  }
+
+  public onCoverError(v: ClientVideo): void {
+    const next = new Set(this.coverFailed());
+    next.add(v.publication_id);
+    this.coverFailed.set(next);
   }
 
   /**

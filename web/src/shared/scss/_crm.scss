@@ -40,7 +40,8 @@
   --blue-dim: var(--info-line);
   --violet: #9b7bd4;
   --mono: var(--crm-mono);
-  --maxw: 1320px;
+  // Сетка CRM: 1320 упиралась в колонку канбана и таблицы начисления.
+  --maxw: 1560px;
 
   color: var(--text);
   font-size: 15px;
@@ -58,7 +59,7 @@
 
     &.solo {
       grid-template-columns: 1fr;
-      max-width: 1080px;
+      max-width: 1240px;
     }
   }
 

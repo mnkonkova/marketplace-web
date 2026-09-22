@@ -678,6 +678,13 @@
       @if (o.project_id) {
       <div class="done-actions">
         <button class="btn primary" type="button" (click)="openProject()">Перейти в проект</button>
+        <!-- Уведомления настраиваются сразу после создания, а не «когда
+             найдёте»: первый ролик выходит через несколько дней, и до
+             него человек в проект не заходит. Ведём в тот же блок в
+             проекте, а не заводим вторую копию галочек. -->
+        <button class="btn quiet" type="button" (click)="openProjectPrefs()">
+          Настроить уведомления в боте
+        </button>
       </div>
       }
     </section>

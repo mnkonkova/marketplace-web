@@ -534,6 +534,12 @@ export class OrderFunnelPage implements OnInit {
     if (id) this.router.navigate(['/me/projects', id]);
   }
 
+  /** Тот же проект, но с раскрытым блоком «Уведомления в боте». */
+  public openProjectPrefs(): void {
+    const id = this.order()?.project_id;
+    if (id) this.router.navigate(['/me/projects', id], { queryParams: { prefs: 1 } });
+  }
+
   // ---- подписи ----
 
   public statusLabel(s: OrderCandidate['status']): string {

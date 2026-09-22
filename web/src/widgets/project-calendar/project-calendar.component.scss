@@ -44,9 +44,14 @@
 
 .cell {
   position: relative;
+  // Колонкой, а не по центру: в дне теперь три яруса — число, лица тех,
+  // кто снимает, и точки состояния. Центрированное число оставляло
+  // календарь ответом на «сколько», а спрашивают у него «кто и когда».
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 2px;
   aspect-ratio: 1;
   padding: 0;
   border: 1px solid transparent;
@@ -74,12 +79,65 @@
   background: none;
 }
 
+// Лица в клетке. Больше трёх не помещается — остаток числом.
+.faces {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  max-width: 100%;
+}
+
+.face {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 auto;
+
+  &.letter,
+  &.rest {
+    display: grid;
+    place-items: center;
+    background: var(--surface-hover, #21242b);
+    color: var(--text);
+    font-size: 9px;
+    font-weight: 600;
+  }
+
+  &.rest {
+    color: var(--text-muted);
+  }
+}
+
+.picked-items .face {
+  width: 20px;
+  height: 20px;
+  margin-right: 2px;
+
+  &.letter {
+    font-size: 10px;
+  }
+}
+
+.nm-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 // Точка — единственное, чем день с выкладкой отличается от пустого.
 // Пять пикселей цветом --text-dim на тёмной клетке почти не видно, и
 // календарь читается как пустой: «дат не отображается».
 .dot {
   position: absolute;
-  bottom: 4px;
+  bottom: 3px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -197,6 +255,9 @@
   }
 
   .nm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     flex: 1;
     color: var(--text);
   }
