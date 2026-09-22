@@ -31,6 +31,68 @@
       </div>
     </div>
 
+    <!-- Сетка плана: строки — креаторы, столбцы — дни.
+         Список ниже отвечает на «что сдавать следующим», сетка — на «как
+         разложен месяц»: дыру в расписании и три выкладки подряд у
+         одного человека видно только так. -->
+    @if (gridDays().length) {
+      <div class="plan-grid-wrap">
+        <table class="plan-grid">
+          <thead>
+            <tr>
+              <th class="who"></th>
+              @for (d of gridDays(); track d) {
+                <th
+                  class="day"
+                  [class.weekend]="isWeekend(d)"
+                  [class.today]="isToday(d)"
+                  [attr.title]="dayLabel(d)"
+                >
+                  {{ d.slice(8, 10) }}
+                </th>
+              }
+              <th class="act"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of gridRows(); track row.user_id) {
+              <tr>
+                <td class="who">
+                  <span class="av sm" [class]="'av sm ' + row.avatar">{{ row.initial }}</span>
+                  <b>{{ row.display_name }}</b>
+                </td>
+                @for (c of row.cells; track c.day) {
+                  <td class="day" [class.weekend]="isWeekend(c.day)">
+                    <span
+                      class="cell"
+                      [class.done]="c.state === 'done'"
+                      [class.late]="c.state === 'late'"
+                      [class.partial]="c.state === 'partial'"
+                      [class.planned]="c.state === 'planned'"
+                      [class.today]="isToday(c.day)"
+                      [attr.title]="c.title || null"
+                      >{{ c.mark }}</span
+                    >
+                  </td>
+                }
+                <td class="act">
+                  @if (row.burning) {
+                    <button type="button" class="btn quiet sm" (click)="remindCreator(row.user_id)">
+                      Напомнить
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p class="plan-legend">
+          <span class="cell done">✓</span> вышел <span class="cell partial">½</span> вышел не везде
+          <span class="cell late">!</span> просрочен <span class="cell planned"></span> в плане
+        </p>
+      </div>
+    }
+
     <!-- Этап черновика — переключатель проекта, а не свойство отдельной
          выкладки: у всех выкладок он один. -->
     @if (settings(); as st) {
@@ -458,72 +520,95 @@
 
     <h3 class="pub-sub">Состав проекта</h3>
 
-    @for (c of creators(); track c.user_id) {
-      <div class="creatorrow">
-        <!-- Имя и аватар ведут на страницу специалиста: у менеджера
-             постоянно возникает вопрос «а кто это вообще» — портфолио,
-             площадки, прошлые проекты, — и до сих пор он уходил искать
-             человека в каталоге руками. В новой вкладке намеренно: CRM
-             остаётся открытой, работу из неё не выбивает. -->
-        <a
-          class="av lg"
-          [class]="'av lg ' + c.avatar"
-          [routerLink]="c.profile"
-          target="_blank"
-          rel="noopener"
-          [attr.aria-label]="'Профиль: ' + c.display_name"
-          >{{ c.initial }}</a
-        >
-        <span class="nm">
-          <a class="who" [routerLink]="c.profile" target="_blank" rel="noopener">
-            <b>{{ c.display_name }}</b>
-          </a>
-          <span>в проекте с {{ c.added_at | date: 'd MMM' }}</span>
-          <!-- Аккаунты — текстом, а не чипами площадок: точно такие же чипы
-               в плане выкладок означают сданные ссылки на ролики, и рядом
-               на экране они противоречили друг другу. -->
-          <span class="accounts">
-            <span class="acc-lbl">Аккаунты</span>
-            @for (a of c.links; track a.platform) {
-              @if (a.url) {
-                <a class="acc" [href]="a.url" target="_blank" rel="noopener">
-                  {{ a.label }} <b>{{ a.handle }}</b>
-                </a>
-              } @else {
-                <span class="acc empty">{{ a.label }} — не заполнено</span>
-              }
-            }
-          </span>
-        </span>
-        <span class="st">
-          <span class="tag"
-            >{{ c.closed }}/{{ c.videos }}
-            {{ plural(c.videos, 'ролик', 'ролика', 'роликов') }}</span
-          >
-          <span class="tag" [class.green]="c.linksTotal > 0 && c.linksDone === c.linksTotal">
-            {{ c.linksDone }}/{{ c.linksTotal }}
-            {{ plural(c.linksTotal, 'ссылка', 'ссылки', 'ссылок') }}
-          </span>
-          @if (c.burning) {
-            <span class="tag red">{{ c.burning }} горит</span>
-          } @else {
-            <span class="tag green">в графике</span>
+    <!-- Состав таблицей, как в макете: человек, его аккаунты по пяти
+         площадкам, сколько роликов и просмотров принёс, что со сроками.
+         Карточками это занимало экран на троих, а менеджер сравнивает
+         людей между собой — значит, строками и в одних колонках.
+
+         Чипы здесь — АККАУНТЫ, а не сданные ссылки: у них своя
+         обводка и подпись «аккаунт», чтобы не путались с чипами
+         площадок в плане выкладок, которые значат ровно обратное. -->
+    <div class="crew-wrap">
+      <table class="crew-table">
+        <thead>
+          <tr>
+            <th>Креатор</th>
+            <th>Аккаунты</th>
+            <th class="r">Роликов</th>
+            <th class="r">Просмотры</th>
+            <th>Статус</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of creators(); track c.user_id) {
+            <tr>
+              <td class="who">
+                <a
+                  class="av sm"
+                  [class]="'av sm ' + c.avatar"
+                  [routerLink]="c.profile"
+                  target="_blank"
+                  rel="noopener"
+                  [attr.aria-label]="'Профиль: ' + c.display_name"
+                  >{{ c.initial }}</a
+                >
+                <span class="nm">
+                  <a [routerLink]="c.profile" target="_blank" rel="noopener">
+                    <b>{{ c.display_name }}</b>
+                  </a>
+                  <span class="since">в проекте с {{ c.added_at | date: 'd MMM' }}</span>
+                </span>
+              </td>
+              <td class="accs">
+                @for (a of c.links; track a.platform) {
+                  @if (a.url) {
+                    <a
+                      class="accchip"
+                      [href]="a.url"
+                      target="_blank"
+                      rel="noopener"
+                      [attr.title]="'Аккаунт ' + a.label + ': ' + a.handle"
+                      >{{ a.short }}</a
+                    >
+                  } @else {
+                    <span
+                      class="accchip empty"
+                      [attr.title]="'Аккаунт ' + a.label + ' не заполнен в профиле'"
+                      >{{ a.short }}</span
+                    >
+                  }
+                }
+              </td>
+              <td class="r nums">{{ c.closed }} / {{ c.videos }}</td>
+              <td class="r nums">
+                @if (c.views) {
+                  {{ c.views | number }}
+                } @else {
+                  <span class="dim">—</span>
+                }
+              </td>
+              <td>
+                @if (c.burning) {
+                  <span class="tag red">{{ c.burning }} горит</span>
+                } @else {
+                  <span class="tag green">в графике</span>
+                }
+              </td>
+              <td class="acts">
+                <button class="btn quiet sm" type="button" (click)="remindCreator(c.user_id)">
+                  Напомнить
+                </button>
+                <button class="btn quiet sm" type="button" (click)="removeCreator(c.user_id)">
+                  Убрать
+                </button>
+              </td>
+            </tr>
           }
-          @if (c.views) {
-            <span class="tag blue"
-              >{{ c.views | number }}
-              {{ plural(c.views, 'просмотр', 'просмотра', 'просмотров') }}</span
-            >
-          }
-        </span>
-        <button class="btn quiet sm" type="button" (click)="remindCreator(c.user_id)">
-          Напомнить
-        </button>
-        <button class="btn quiet sm" type="button" (click)="removeCreator(c.user_id)">
-          Убрать
-        </button>
-      </div>
-    } @empty {
+        </tbody>
+      </table>
+    </div>
+    @if (!creators().length) {
       <p class="empty">
         В составе никого. Добавьте креатора — ему сразу откроются материалы и чеклист.
       </p>

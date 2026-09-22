@@ -348,13 +348,16 @@ export class ProjectPublicationsComponent {
    */
   private accountLinks(
     p: ProjectPerson,
-  ): { platform: Platform; label: string; url?: string; handle: string }[] {
+  ): { platform: Platform; label: string; short: string; url?: string; handle: string }[] {
     const links = p.account_links ?? {};
     return ALL_PLATFORMS.map((platform) => {
       const url = links[platform];
       return {
         platform,
         label: PLATFORM_LABEL[platform],
+        // Короткая подпись для чипа: пять полных названий в строку не
+        // помещаются и переносятся в две, а колонка от этого прыгает.
+        short: PLATFORM_SHORT[platform],
         url,
         handle: url ? profileHandle(url) : '',
       };
@@ -382,6 +385,88 @@ export class ProjectPublicationsComponent {
    * друг от друга было нечем. Номер выкладки тот же, что в плане, так что
    * строку отчёта можно найти в плане глазами.
    */
+  /**
+   * План сеткой: строки — креаторы, столбцы — дни периода.
+   *
+   * Список строками отвечает на «что сдать следующим», но не отвечает на
+   * «как распределены выкладки по месяцу» — а именно это менеджер
+   * держит в голове, когда двигает даты. В сетке дыра в расписании
+   * видна сразу, и видно, у кого их три подряд.
+   *
+   * Диапазон берём по самим выкладкам, а не по календарному месяцу:
+   * период проекта катится от первой публикации и на месяц не ложится.
+   * Шире 45 дней не рисуем — столбцы становятся уже отметки.
+   */
+  public readonly gridDays = computed<string[]>(() => {
+    const dates = this.ordered()
+      .map((p) => p.due_date.slice(0, 10))
+      .sort();
+    if (!dates.length) return [];
+    const from = new Date(dates[0] + 'T00:00:00Z');
+    const to = new Date(dates[dates.length - 1] + 'T00:00:00Z');
+    const out: string[] = [];
+    for (let d = new Date(from); d <= to && out.length < 45; d.setUTCDate(d.getUTCDate() + 1)) {
+      out.push(d.toISOString().slice(0, 10));
+    }
+    return out;
+  });
+
+  public readonly gridRows = computed(() => {
+    const days = this.gridDays();
+    const byCreator = new Map<string, Map<string, Publication>>();
+    for (const p of this.ordered()) {
+      const day = p.due_date.slice(0, 10);
+      const mine = byCreator.get(p.creator_user_id) ?? new Map<string, Publication>();
+      // В один день у креатора выкладка одна: уникальность держит база.
+      mine.set(day, p);
+      byCreator.set(p.creator_user_id, mine);
+    }
+    return this.creators().map((c) => ({
+      user_id: c.user_id,
+      display_name: c.display_name,
+      initial: c.initial,
+      avatar: c.avatar,
+      burning: c.burning,
+      cells: days.map((day) => {
+        const p = byCreator.get(c.user_id)?.get(day);
+        if (!p) return { day, state: '' as const, title: '', mark: '' };
+        const state = p.overdue
+          ? ('late' as const)
+          : p.status === 'done'
+            ? ('done' as const)
+            : p.status === 'partial'
+              ? ('partial' as const)
+              : ('planned' as const);
+        const mark =
+          state === 'done' ? '✓' : state === 'late' ? '!' : state === 'partial' ? '½' : '';
+        const label = {
+          done: 'вышел на всех площадках',
+          late: 'просрочен',
+          partial: 'вышел не везде',
+          planned: 'в плане',
+        }[state];
+        return { day, state, title: `${c.display_name}, ${this.dayLabel(day)} — ${label}`, mark };
+      }),
+    }));
+  });
+
+  /** «14.09» — подпись дня в шапке сетки. */
+  public dayLabel(iso: string): string {
+    const [, m, d] = iso.split('-');
+    return `${d}.${m}`;
+  }
+
+  /** Выходной — столбцы субботы и воскресенья приглушаем. */
+  public isWeekend(iso: string): boolean {
+    const wd = new Date(iso + 'T00:00:00Z').getUTCDay();
+    return wd === 0 || wd === 6;
+  }
+
+  /** Сегодняшний столбец обводим: без него в сетке не видно «сейчас». */
+  public isToday(iso: string): boolean {
+    return iso === new Date().toISOString().slice(0, 10);
+  }
+
   public pubNo(publicationID: string): string {
     const i = this.ordered().findIndex((p) => p.id === publicationID);
     return i < 0 ? '—' : String(i + 1).padStart(2, '0');

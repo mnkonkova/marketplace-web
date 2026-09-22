@@ -734,3 +734,239 @@
     color: #f08270;
   }
 }
+
+// Сетка плана: креаторы × дни.
+//
+// Клетка маленькая намеренно — весь месяц обязан помещаться без
+// горизонтальной прокрутки на обычном экране; цвет и знак отвечают на
+// «что там», подпись на наведении — на «у кого и когда».
+.plan-grid-wrap {
+  margin: 14px 0 4px;
+  overflow-x: auto;
+}
+
+.plan-grid {
+  border-collapse: separate;
+  border-spacing: 3px;
+  font-size: 12px;
+
+  th,
+  td {
+    padding: 0;
+    text-align: center;
+  }
+
+  th.day {
+    color: var(--muted-2);
+    font-size: 10px;
+    font-weight: 600;
+
+    &.weekend {
+      color: var(--red-dim);
+    }
+
+    &.today {
+      color: var(--text);
+    }
+  }
+
+  td.who,
+  th.who {
+    text-align: left;
+    padding-right: 10px;
+    white-space: nowrap;
+  }
+
+  td.who {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 26px;
+
+    b {
+      font-weight: 600;
+    }
+  }
+
+  td.day.weekend .cell {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  td.act {
+    padding-left: 10px;
+  }
+}
+
+// Пустая клетка — это «в этот день ничего не стоит», и выглядеть она
+// должна тише всего: иначе сетка читается как сплошная сыпь.
+.plan-grid .cell,
+.plan-legend .cell {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: transparent;
+  font-size: 11px;
+  font-weight: 700;
+
+  &.planned {
+    background: rgba(110, 168, 254, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(110, 168, 254, 0.5);
+  }
+
+  &.done {
+    background: var(--green);
+    color: #0f1412;
+  }
+
+  &.partial {
+    background: rgba(224, 168, 60, 0.85);
+    color: #191203;
+  }
+
+  &.late {
+    background: var(--red);
+    color: #fff;
+  }
+
+  &.today {
+    outline: 2px solid var(--text-dim);
+    outline-offset: 1px;
+  }
+}
+
+.plan-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+
+  .cell {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// Состав таблицей. Колонки одни на всех: менеджер сравнивает людей
+// между собой, а карточки заставляли сравнивать по памяти.
+.crew-wrap {
+  margin-top: 10px;
+  overflow-x: auto;
+}
+
+.crew-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    padding: 0 10px 8px;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted-2);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 10px;
+    border-bottom: 1px solid var(--line-2);
+    vertical-align: middle;
+  }
+
+  tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .r {
+    text-align: right;
+  }
+
+  .nums {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .dim {
+    color: var(--muted-2);
+  }
+
+  td.who {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 210px;
+
+    .nm {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.25;
+
+      a {
+        color: var(--text);
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .since {
+      color: var(--muted-2);
+      font-size: 11.5px;
+    }
+  }
+
+  td.accs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    min-width: 180px;
+  }
+
+  td.acts {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    white-space: nowrap;
+  }
+}
+
+// Чип аккаунта. Обводка, а не заливка: заливкой в плане выкладок
+// помечены СДАННЫЕ ссылки, и одинаковый вид означал бы обратное тому,
+// что здесь написано.
+.accchip {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    border-color: var(--text-dim);
+    color: var(--text);
+  }
+
+  // Не заполнено — это не ошибка, а пустое поле профиля: гасим, но
+  // оставляем на месте, чтобы был виден весь набор площадок.
+  &.empty {
+    border-style: dashed;
+    color: var(--muted-2);
+    opacity: 0.6;
+  }
+}
