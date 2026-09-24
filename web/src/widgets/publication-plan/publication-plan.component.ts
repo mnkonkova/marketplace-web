@@ -441,6 +441,39 @@ export class PublicationPlanComponent {
     });
   }
 
+  /**
+   * Разовое «напомни сейчас» по ВЫБРАННОЙ выкладке.
+   *
+   * Не то же, что колокольчик: тот говорит, писать ли этому человеку
+   * КАЖДЫЙ раз накануне срока. Здесь менеджер дёргает по одной, глядя
+   * на конкретный день, — и до этой кнопки на десктопе дотянуться было
+   * нечем: разовый пинг жил только в ленте телефона и в тревогах, где
+   * он шлёт всем просроченным сразу.
+   */
+  public remindPicked(): void {
+    const sel = this.picked();
+    const pub = sel?.cell.pub;
+    if (!sel || !pub) return;
+    this.busy.set(true);
+    this.api.managerRemind(pub.id).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.msg.success(`Напомнили: ${sel.creator.display_name}.`);
+      },
+      error: (e) => {
+        this.busy.set(false);
+        const err = parseApiError(e, 'Напоминание не ушло.');
+        // 409 already_reminded — не отказ, а факт: сегодня по этой
+        // выкладке бот уже написал.
+        if (err.code === 'already_reminded') {
+          this.msg.info(`Сегодня ${sel.creator.display_name} уже напоминали — следующее завтра.`);
+          return;
+        }
+        this.msg.error(err.message);
+      },
+    });
+  }
+
   public openReview(): void {
     const pub = this.picked()?.cell.pub;
     if (pub) this.review.emit(pub.id);

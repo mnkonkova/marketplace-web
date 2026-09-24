@@ -94,7 +94,7 @@ const estimateCall = (page: import('@playwright/test').Page) =>
 
 /** Дойти от кабинета до шага подбора с загруженным каталогом. */
 async function openPicking(page: import('@playwright/test').Page): Promise<void> {
-  await page.getByRole('button', { name: 'Посчитать смету' }).click();
+  await page.getByRole('button', { name: /Новый проект/ }).first().click();
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
   await page.locator('.kind.k1').click();
   await expect(page.getByRole('heading', { name: 'Кто будет снимать' })).toBeVisible();
@@ -102,7 +102,7 @@ async function openPicking(page: import('@playwright/test').Page): Promise<void>
 }
 
 test('выбор вида ведёт на подбор, а вторая ветка — не в никуда', async ({ page }) => {
-  await page.getByRole('button', { name: 'Посчитать смету' }).click();
+  await page.getByRole('button', { name: /Новый проект/ }).first().click();
   await expect(page).toHaveURL(/\/me\/orders\/new/);
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
 

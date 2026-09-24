@@ -246,6 +246,12 @@
       <button type="button" class="btn sm dark" [disabled]="busy()" (click)="move()">
         Перенести
       </button>
+      <!-- Разовый пинг по этой выкладке. Колокольчик в строке — про
+           «каждый раз накануне», а здесь менеджер дёргает по одной,
+           глядя на конкретный день. -->
+      <button type="button" class="btn sm" [disabled]="busy()" (click)="remindPicked()">
+        Напомнить
+      </button>
       <button type="button" class="btn sm" [disabled]="busy()" (click)="cancel()">
         Снять с плана
       </button>

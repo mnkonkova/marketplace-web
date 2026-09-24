@@ -583,6 +583,67 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
     }
   }
 
+  // Выбор периода в шапке начислений: счёт выставляют за прошлый, и
+  // прыгать между ними приходится часто.
+  .period-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+
+    select {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 4px 8px;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 12px;
+      max-width: 260px;
+    }
+  }
+
+  // Строка состояния периода: подпись датами и две пометки, которые
+  // означают РАЗНОЕ. «Предварительно» — подожди, числа изменятся.
+  // «Приблизительно» — период подытожен, но мерить было нечем.
+  .period-line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+
+    .state {
+      font-size: 11px;
+      border-radius: 999px;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+    }
+
+    .state.prelim {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+
+    .state.approx {
+      background: var(--warn-soft);
+      color: var(--warn);
+      border-color: var(--warn);
+    }
+
+    .asof {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--faint);
+    }
+  }
+
+  .period-note {
+    font-size: 12px;
+    margin: 0 0 10px;
+  }
+
   // Знак «посчитано на сервере». Стоит у каждого числа, которое нельзя
   // сложить в браузере: смета, счёт, итог периода.
   .server {

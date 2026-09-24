@@ -1,5 +1,6 @@
 import { test, expect, type Page, request as pwRequest } from '@playwright/test';
 import { AUTH_KEY, lockFirstPeriod } from '../fixtures/world';
+import { openManagerTab } from '../fixtures/ui';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
@@ -83,9 +84,8 @@ async function firstPeriodStatus(projectId: string): Promise<string> {
 /** Открыть вкладку «Начисления» на подытоженном периоде. */
 async function openLockedPeriod(page: Page, projectId: string): Promise<void> {
   await page.goto(`/manager/projects/${projectId}?period=1`);
-  // Именно вкладка: над ней в предупреждении о предоплате стоит
-  // «Открыть начисления», и поиск по кнопке находил обе.
-  await page.getByRole('tab', { name: 'Начисления' }).click();
+  // Разделов на десктопе больше нет: карточка проекта — одна страница.
+  await openManagerTab(page, 'Начисления');
   await expect(page.locator('.period-line')).toContainText('Период 1', { timeout: 15_000 });
 }
 

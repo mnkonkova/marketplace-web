@@ -9,19 +9,27 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { BillingApi } from '@entities/billing/api/billing.api';
 import { formatMoney } from '@entities/billing/lib/money';
 import {
   canApprove,
   canMarkPaid,
   isPreviewPeriod,
-  recalcAffects,
   shortfall,
 } from '@entities/billing/lib/money';
-import { periodSettled, periodTitle } from '@entities/billing/lib/period';
+import {
+  isOpenPeriod,
+  parsePeriodParam,
+  periodDay as dayLabelOf,
+  periodOptions,
+  periodSettled,
+  periodTitle,
+  snapshotNote,
+} from '@entities/billing/lib/period';
 import type {
   Accrual,
   BillingTerms,
@@ -83,7 +91,7 @@ import { SotkaTopComponent, SotkaNavItem } from '@widgets/sotka-top/sotka-top.co
 import { SotkaTabbarComponent, SotkaTab } from '@widgets/sotka-tabbar/sotka-tabbar.component';
 import { groupDigits } from '@entities/billing/lib/money';
 import { periodRange } from '@entities/billing/lib/period';
-import type { BillingPeriod } from '@entities/billing/model/billing.types';
+import type { BillingPeriod, ProjectPeriod } from '@entities/billing/model/billing.types';
 import {
   ALL_PLATFORMS,
   type AccountLinks,
@@ -147,6 +155,8 @@ export class ManagerTurnkeyProjectComponent {
   private readonly billingApi = inject(BillingApi);
 
   private readonly router = inject(Router);
+
+  private readonly route = inject(ActivatedRoute);
 
   private readonly msg = inject(NzMessageService);
 
@@ -244,6 +254,10 @@ export class ManagerTurnkeyProjectComponent {
   public readonly siblings = signal<ProjectManagerView[]>([]);
 
   public constructor() {
+    // Номер периода из адреса — ссылкой на подытоженный период делятся в
+    // переписке, и открыться она обязана тем же периодом. Читаем ДО
+    // загрузки: иначе первый запрос уйдёт за текущим и перекроет ответ.
+    this.selectedSeq.set(parsePeriodParam(this.route.snapshot.queryParamMap.get('period')));
     effect(() => {
       const id = this.project().id;
       if (id) this.load(id);
@@ -731,6 +745,95 @@ export class ManagerTurnkeyProjectComponent {
   /** Период проекта: его границы считает сервер, здесь только подпись. */
   public readonly period = signal<BillingPeriod | null>(null);
 
+  /**
+   * Периоды проекта списком — ради выбора, какой смотреть.
+   *
+   * Выпадашка не украшение: счёт выставляют за ПРОШЛЫЙ период, и без
+   * неё менеджер отвечает на «сколько мы выставили в сентябре» из
+   * головы. Список — это именно периоды, а не двенадцать календарных
+   * месяцев, про которые никто не знает, есть ли там что-нибудь.
+   */
+  public readonly periods = signal<ProjectPeriod[]>([]);
+
+  /** Какой период показан: null — текущий. Едет в адрес, чтобы ссылкой делились. */
+  public readonly selectedSeq = signal<number | null>(null);
+
+  public readonly periodChoices = computed(() => periodOptions(this.periods()));
+
+  public periodLabel2(p: ProjectPeriod): string {
+    return periodTitle(p) + (p.status === 'locked' ? ' · подытожен' : '');
+  }
+
+  /**
+   * Две пометки, и схлопывать их в одну нельзя. «Предварительно» значит
+   * «подожди, числа ещё изменятся». «Приблизительно» — «период уже
+   * подытожен, но мерить было нечем». Бывают порознь и означают разное.
+   */
+  public readonly preliminary = computed(() => isOpenPeriod(this.period()));
+
+  public readonly approximate = computed(() => !!this.period()?.snapshot_approx);
+
+  public readonly snapshotNote = computed(() => snapshotNote(this.period()));
+
+  /** Докуда идёт показанный период — в пометке «суммы ещё изменятся». */
+  public readonly periodEndDay = computed(() => {
+    const p = this.period();
+    return p ? dayLabelOf(p.ends_on) : '';
+  });
+
+  private readonly isAdmin = inject(AuthSessionStore).isAdmin;
+
+  /**
+   * Переоткрыть подытоженный период может ОДИН АДМИН.
+   *
+   * Действие менеджерское по месту, но не по праву: счёт уже выставлен,
+   * заказчик его видел, и отменять решение автоматики походя нельзя.
+   * Кнопка, которая ответит отказом, хуже отсутствующей.
+   */
+  public readonly canUnlock = computed(
+    () => this.isAdmin() && this.period()?.status === 'locked',
+  );
+
+  public unlockPeriod(): void {
+    const p = this.period();
+    if (!p) return;
+    this.modal.confirm({
+      nzTitle: `Переоткрыть период ${p.seq}?`,
+      nzContent:
+        'Срез просмотров снимется заново, суммы пересчитаются по сегодняшним цифрам. Счёт, ' +
+        'который заказчик уже видел, изменится.',
+      nzOnOk: () => {
+        this.moneyBusy.set(true);
+        this.billingApi.adminUnlockPeriod(this.project().id, p.seq).subscribe({
+          next: () => {
+            this.moneyBusy.set(false);
+            this.msg.success('Период переоткрыт');
+            this.load(this.project().id);
+          },
+          error: (e) => {
+            this.moneyBusy.set(false);
+            this.msg.error(parseApiError(e, 'Не удалось переоткрыть период.').message);
+          },
+        });
+      },
+    });
+  }
+
+  public setPeriod(seq: number | string): void {
+    const n = Number(seq);
+    const id = this.project().id;
+    this.selectedSeq.set(Number.isFinite(n) && n > 0 ? n : null);
+    // Номер периода едет в адрес: ссылкой на подытоженный период
+    // делятся в переписке, и открыться она обязана тем же периодом.
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { period: this.selectedSeq() },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.loadMoney(id);
+  }
+
   public readonly periodLabel = computed(() => {
     const p = this.period();
     return p ? `Период ${p.seq}` : '';
@@ -902,13 +1005,12 @@ export class ManagerTurnkeyProjectComponent {
 
   public readonly paySteps = computed(() => {
     const stage = this.payStage();
-    const affected = recalcAffects(this.accruals());
     return [
       {
         key: 'recalc',
         title: 'Пересчитать',
         note: 'просмотры с площадок',
-        action: affected || !this.accruals().length ? 'Пересчитать' : '',
+        action: 'Пересчитать',
       },
       {
         key: 'lock',
@@ -924,7 +1026,18 @@ export class ManagerTurnkeyProjectComponent {
     ].map((s, i) => ({
       ...s,
       state: i < stage ? 'done' : i === stage ? 'cur' : '',
-      action: i === stage ? s.action : '',
+      // Кнопка — у следующего шага. Исключение одно: пересчёт доступен,
+      // пока период не подытожен. Просмотры приходят каждый день, и
+      // менеджер тянет их посреди периода, а не один раз в начале;
+      // кнопка, пропавшая после первого нажатия, читается как поломка.
+      action:
+        s.key === 'recalc'
+          ? stage <= 1
+            ? s.action
+            : ''
+          : i === stage
+            ? s.action
+            : '',
     }));
   });
 
@@ -1100,9 +1213,25 @@ export class ManagerTurnkeyProjectComponent {
       next: (r) => this.journal.set(r.items.slice(-12).reverse()),
       error: () => this.journal.set([]),
     });
+    // Список периодов — для выпадашки. Пустой список у проекта без
+    // выкладок это не ошибка: периода ещё нет, и выбирать не из чего.
+    this.billingApi.managerPeriods(id).subscribe({
+      next: (r) => this.periods.set(r.items ?? []),
+      error: () => this.periods.set([]),
+    });
+    this.loadMoney(id);
+  }
+
+  /**
+   * Деньги показанного периода.
+   *
+   * Отдельно от load: выпадашка периодов перечитывает только их, а не
+   * весь проект — состав, план и журнал от смены периода не меняются.
+   */
+  private loadMoney(id: string): void {
     // Платежи проекта, а не месяца: предоплата у проекта одна. Условий у
     // проекта может не быть вовсе — тогда и предупреждать не о чем.
-    this.billingApi.managerBilling(id).subscribe({
+    this.billingApi.managerBilling(id, this.selectedSeq() ?? undefined).subscribe({
       next: (r) => {
         this.payments.set(r.payments ?? []);
         this.terms.set(r.terms ?? null);

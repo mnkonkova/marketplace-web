@@ -6,6 +6,7 @@ import {
   type APIRequestContext,
 } from '@playwright/test';
 import { AUTH_KEY } from '../fixtures/world';
+import { openClientTab, openManagerTab } from '../fixtures/ui';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
@@ -126,9 +127,9 @@ const periodLine = (page: Page) => page.locator('.period-line');
 /** Открыть вкладку «Начисления» в карточке проекта у менеджера. */
 async function openBilling(page: Page, projectId: string): Promise<void> {
   await page.goto(`/manager/projects/${projectId}`);
-  // Именно вкладка: над ней в предупреждении о предоплате стоит
-  // «Открыть начисления», и поиск по кнопке находил обе.
-  await page.getByRole('tab', { name: 'Начисления' }).click();
+  // Разделов на десктопе больше нет: карточка проекта — одна страница,
+  // начисления на ней уже нарисованы (см. fixtures/ui.ts).
+  await openManagerTab(page, 'Начисления');
   await expect(periodLine(page)).toBeVisible({ timeout: 15_000 });
 }
 
@@ -159,6 +160,8 @@ test('период подписан датами, а не названием м�
     await expect(options.filter({ hasText: `Период ${p.seq}` })).toContainText(title(p));
   }
 });
+
+/** Дата коротко, как её пишет кабинет: «14 октября». */
 
 test('«предварительно» и «приблизительно» — разные пометки и стоят не вместе', async ({
   context,
@@ -208,7 +211,10 @@ test('заказчик видит ту же оговорку на счёте з�
 
   // Счёт за прошлый период — отдельная плашка: наверху стоит текущий, а
   // он ещё идёт, и платить по нему нечего.
-  const due = page.locator('.duebar');
+  // Счёт за прошлый период живёт во вкладке «Деньги»: карточка
+  // открывается сводкой, а платят по прошлому периоду.
+  await openClientTab(page, 'Деньги');
+  const due = page.locator('.plaque-big');
   await expect(due, 'подытоженный прошлый период — это счёт').toBeVisible({ timeout: 15_000 });
   await expect(due).toContainText(title(locked));
 
@@ -229,7 +235,8 @@ test('заказчик видит ту же оговорку на счёте з�
   // А само объяснение — в кате, целиком и теми же словами, что у
   // менеджера. Спрятать его совсем значило бы сказать «часть чисел
   // приблизительная» и не ответить, какая именно и почему.
-  await due.getByRole('button', { name: /Как платить и почему столько/ }).click();
+  // Кат — это <details>: его открывает summary, а не кнопка.
+  await due.locator('.due-why summary').click();
   await expect(due).toContainText('Данные приблизительные');
   await expect(due).toContainText('подтянуты по последнему известному состоянию');
 });

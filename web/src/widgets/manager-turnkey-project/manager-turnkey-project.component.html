@@ -366,7 +366,65 @@
             <div class="panel-h">
               <h2>Начисления{{ periodTitleText() ? ' · ' + periodTitleText() : '' }}</h2>
               <span class="sub">единственное место, где деньги двигаются руками</span>
+              <!-- Выбор периода. Счёт выставляют за ПРОШЛЫЙ период, и без
+                   этой выпадашки менеджер отвечает на «сколько мы
+                   выставили в сентябре» из головы. Список — именно
+                   периоды, а не календарные месяцы. -->
+              @if (canUnlock()) {
+                <button
+                  type="button"
+                  class="btn sm"
+                  [disabled]="moneyBusy()"
+                  (click)="unlockPeriod()"
+                >
+                  Переоткрыть период
+                </button>
+              }
+              @if (periodChoices().length > 1) {
+                <label class="period-pick">
+                  <span>Период</span>
+                  <select
+                    [value]="period()?.seq ?? ''"
+                    (change)="setPeriod($any($event.target).value)"
+                  >
+                    @for (c of periodChoices(); track c.seq) {
+                      <option [value]="c.seq">{{ periodLabel2(c) }}</option>
+                    }
+                  </select>
+                </label>
+              }
             </div>
+
+            <!-- Две пометки, и схлопывать их в одну нельзя.
+                 «Предварительно» значит «подожди, числа ещё изменятся».
+                 «Приблизительно» — «период подытожен, но мерить было
+                 нечем». Бывают порознь и означают разное действие. -->
+            @if (period()) {
+              <div class="period-line">
+                <b>{{ periodTitleText() }}</b>
+                @if (preliminary()) {
+                  <span class="state prelim">Предварительно</span>
+                }
+                @if (approximate()) {
+                  <span class="state approx">Данные приблизительные</span>
+                }
+                @if (snapshotNote()) {
+                  <span class="asof">{{ snapshotNote() }}</span>
+                }
+              </div>
+              @if (preliminary()) {
+                <p class="muted period-note">
+                  Период идёт до {{ periodEndDay() }}. Суммы ещё изменятся. Утвердить и выплатить —
+                  после подытога периода.
+                </p>
+              }
+              @if (approximate()) {
+                <p class="muted period-note">
+                  Поденной статистики за этот период уже нет: числа подтянуты по последнему
+                  известному снимку, а не измерены на отсечку.
+                </p>
+              }
+            }
 
             <!-- ОЧЕРЕДЬ ШАГОВ. Кнопка только у следующего: между
                  «посчитали» и «отправили деньги» проходит время, и

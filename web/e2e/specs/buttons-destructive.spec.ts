@@ -1,6 +1,6 @@
 import { test, expect, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { AUTH_KEY, lockFirstPeriod } from '../fixtures/world';
-import { openCreatorTab, openManagerTab } from '../fixtures/ui';
+import { openClientTab, openCreatorTab, openManagerTab } from '../fixtures/ui';
 import {
   call,
   callAs,
@@ -137,18 +137,17 @@ test.describe('кнопки, которые меняют мир', () => {
 
     // Пересчёт: до него строки начисления в базе нет вовсе — период
     // показан предварительным расчётом по фактам.
-    const row = page.locator('.tbl tbody tr').first();
-    // Ждём нарисованную строку, а не просто видимую таблицу: пометка
-    // «Предварительно» приходит вместе с числами периода, то есть после
-    // ответа сервера. Без этого ожидания «Пересчитать» нажимается по
-    // ещё пустому экрану и запрос не уходит вовсе.
     //
-    // По имени креатора её ждать нельзя: до пересчёта в строке стоит
-    // «Без имени» — предварительный расчёт имя не подставляет. Это
-    // дефект приложения, а не теста; описан в отчёте.
-    await expect(row, 'строка периода нарисована').toContainText('Предварительно', {
-      timeout: 15_000,
-    });
+    // Ждём пометку состояния периода, а не просто видимую таблицу: она
+    // приходит вместе с числами, то есть после ответа сервера. Без
+    // этого ожидания «Пересчитать» нажимается по ещё пустому экрану и
+    // запрос не уходит вовсе.
+    await expect(
+      page.locator('.period-line'),
+      'состояние периода нарисовано',
+    ).toContainText('Предварительно', { timeout: 15_000 });
+    const row = page.locator('table.cards tbody tr').first();
+    await expect(row, 'строка периода нарисована').toBeVisible({ timeout: 15_000 });
     // Строка в ответе есть и до пересчёта, но она предварительная:
     // посчитана на лету, в базе её нет, и статуса у неё нет тоже.
     const preview = await accruals(box);
@@ -176,13 +175,14 @@ test.describe('кнопки, которые меняют мир', () => {
     // экран говорит о ней сообщением «Пересчитано», а следом ячейка
     // действий в строке — то самое место, где кнопка и стояла бы.
     await expect(page.locator('.ant-message'), 'экран сказал, что пересчитал').toContainText(
-      'Пересчитано',
+      'Пересчитали',
       { timeout: 15_000 },
     );
-    const actions = row.locator('td.acts');
-    await expect(actions, 'ячейка действий у строки нарисована').toBeVisible({ timeout: 15_000 });
+    // Очередь шагов: кнопка есть только у следующего. Пока период идёт,
+    // следующий шаг — подытог, и он делается сам; «Утвердить всех» на
+    // экране нет вовсе, сколько ни пересчитывай.
     await expect(
-      actions.getByRole('button', { name: 'Утвердить' }),
+      page.getByRole('button', { name: 'Утвердить всех' }),
       'пока период идёт, утверждать нечего',
     ).toHaveCount(0);
 
@@ -193,18 +193,16 @@ test.describe('кнопки, которые меняют мир', () => {
     await page.reload();
     await openManagerTab(page, 'Начисления');
 
-    const approve = page.getByRole('button', { name: 'Утвердить' }).first();
-    await expect(approve, 'подытоженную строку можно утвердить').toBeVisible({ timeout: 15_000 });
-    // Утверждение спрашивает «точно?» и называет, у кого именно, — это и
-    // есть защита от нажатия не глядя.
+    const approve = page.getByRole('button', { name: 'Утвердить всех' }).first();
+    await expect(approve, 'подытоженный период можно утвердить').toBeVisible({ timeout: 15_000 });
     const approved = await press(page, approve, 'POST', /\/accruals\/.+\/approve/);
     expect(approved.ok(), await approved.text()).toBeTruthy();
     expect((await accruals(box))[0].status).toBe('approved');
 
     // И только теперь — выплата. Порядок здесь и есть правило: между
     // «посчитали» и «отправили деньги» проходит время.
-    const pay = page.getByRole('button', { name: 'Выплачено' }).first();
-    await expect(pay, 'утверждённую строку можно выплатить').toBeVisible({ timeout: 15_000 });
+    const pay = page.getByRole('button', { name: 'Отметить выплату' }).first();
+    await expect(pay, 'утверждённый период можно выплатить').toBeVisible({ timeout: 15_000 });
     const paid = await press(page, pay, 'POST', /\/accruals\/.+\/paid/);
     expect(paid.ok(), await paid.text()).toBeTruthy();
     expect((await accruals(box))[0].status).toBe('paid');
@@ -216,7 +214,9 @@ test.describe('кнопки, которые меняют мир', () => {
 
     await signIn(context, box, 'manager');
     await page.goto(`/manager/projects/${box.projectId}`);
-    await page.getByRole('button', { name: 'Проставить даты' }).first().click();
+    // Кнопка называется «Проставить пачкой»: массовая простановка — это
+    // действие плана, и стоит она в его шапке.
+    await page.getByRole('button', { name: 'Проставить пачкой' }).first().click();
 
     const dialog = page.locator('.ant-modal').filter({ hasText: 'Дни выкладки' });
     await expect(dialog).toBeVisible();
@@ -352,8 +352,20 @@ test.describe('кнопки, которые меняют мир', () => {
     await signIn(context, box, 'manager');
     await page.goto(`/manager/projects/${box.projectId}`);
 
-    const remind = page.getByRole('button', { name: 'Напомнить' }).first();
-    await expect(remind, 'у открытой выкладки есть чем напомнить').toBeVisible({ timeout: 15_000 });
+    // Разовый пинг живёт в правке клетки плана: клетку открывают,
+    // глядя на конкретный день, и оттуда же дёргают человека. Кнопку
+    // берём ИЗ ОТКРЫТОЙ правки: в строке плана есть ещё колокольчик, и
+    // он подписан теми же буквами, но делает другое — включает
+    // напоминание накануне срока каждый раз.
+    const openPlanCell = async (): Promise<Locator> => {
+      const cell = page.locator('.grid-plan .c.p').first();
+      await expect(cell, 'плановая выкладка нарисована в сетке').toBeVisible({ timeout: 15_000 });
+      await cell.click();
+      const btn = page.locator('.edit').getByRole('button', { name: 'Напомнить' }).first();
+      await expect(btn, 'у открытой выкладки есть чем напомнить').toBeVisible({ timeout: 15_000 });
+      return btn;
+    };
+    const remind = await openPlanCell();
 
     const sent = await press(page, remind, 'POST', /\/publications\/.+\/remind/);
     expect(sent.ok(), await sent.text()).toBeTruthy();
@@ -367,12 +379,7 @@ test.describe('кнопки, которые меняют мир', () => {
     // случайность: два одинаковых сообщения подряд креатору не нужны.
     // Отказ приходит осмысленный, а не «всё хорошо».
     await page.reload();
-    const again = await press(
-      page,
-      page.getByRole('button', { name: 'Напомнить' }).first(),
-      'POST',
-      /\/publications\/.+\/remind/,
-    );
+    const again = await press(page, await openPlanCell(), 'POST', /\/publications\/.+\/remind/);
     expect(again.status(), await again.text()).toBe(409);
     expect((await again.json()).error).toBe('already_reminded');
     expect(outboxEvents(box.projectId).length, 'второй записи в воркере не появилось').toBe(
@@ -391,6 +398,8 @@ test.describe('кнопки, которые меняют мир', () => {
     test.setTimeout(120_000);
     await signIn(context, box, 'client');
     await page.goto(`/me/projects/${box.projectId}`);
+    // Выгрузка живёт рядом с роликами: это таблица про них.
+    await openClientTab(page, 'Ролики');
 
     const download = page.getByRole('button', { name: 'Скачать отчёт' }).first();
     await expect(download).toBeVisible({ timeout: 15_000 });

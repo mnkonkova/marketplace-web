@@ -160,7 +160,7 @@ test('заказчику не приезжают ни выплаты креат�
   // реестр тестовые проекты заказчику не показывает — и правильно
   // делает. Проверяем, что экран доехал и запросы с него ушли; что
   // именно в них лежит, спрашиваем ниже у ответов, а не у разметки.
-  await expect(page.locator('.prow').first(), 'реестр проектов нарисован').toBeVisible({
+  await expect(page.locator('.prj').first(), 'реестр проектов нарисован').toBeVisible({
     timeout: 15_000,
   });
 
@@ -197,7 +197,9 @@ test('креатор в своём кабинете не видит ни кли�
   await page.goto(`/me/creator/projects/${history.projectId}`);
   // Ждём сам блок, а не заголовок в нём: заголовок — вопрос подачи, и
   // специя про утечки не должна падать от того, что его переписали.
-  await expect(page.locator('app-creator-ladder')).toBeVisible({ timeout: 15_000 });
+  // Деньги периода живут прямо в карточке проекта: отдельного виджета
+  // лесенки у креатора больше нет.
+  await expect(page.locator('.earn')).toBeVisible({ timeout: 15_000 });
 
   const captured = await settled();
   const earnings = captured.filter((c) => c.path.endsWith('/earnings'));
@@ -252,7 +254,7 @@ test('смета заказа не показывает заказчику кр�
   const settled = watchApi(page);
 
   await page.goto('/me/projects');
-  await page.getByRole('button', { name: 'Посчитать смету' }).click();
+  await page.getByRole('button', { name: /Новый проект/ }).first().click();
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
   await page.locator('.kind.k1').click();
   await expect(page.locator('.ccard').first()).toBeVisible({ timeout: 15_000 });
