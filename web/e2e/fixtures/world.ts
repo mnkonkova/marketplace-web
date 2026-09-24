@@ -212,6 +212,44 @@ FROM publication_links l WHERE l.publication_id = '${publicationId}';
 }
 
 /**
+ * Просмотры одной выкладки ровным числом — по пятой части на площадку.
+ *
+ * Нужно там, где число должно быть ИЗВЕСТНЫМ и РАЗНЫМ у разных роликов:
+ * раскладка денег между людьми считается по вкладу, и проверять её на
+ * одинаковых цифрах бессмысленно. Общий seedPublicationStats кладёт
+ * всем один и тот же набор.
+ *
+ * Снимка два — вчерашний и сегодняшний: по одному прирост за сутки
+ * посчитать не из чего, а на нём стоят и «зрелый» ролик, и шкала
+ * ступеней в кабинете креатора.
+ */
+export function seedPublicationViewsFlat(
+  publicationId: string,
+  viewsToday: number,
+  daysAgo = 1,
+): void {
+  const perPlatform = Math.floor(viewsToday / 5);
+  const yesterday = Math.floor(perPlatform / 2);
+  psql(`
+DELETE FROM video_stat_daily WHERE link_id IN
+  (SELECT id FROM publication_links WHERE publication_id = '${publicationId}');
+
+UPDATE publication_links SET published_at = now() - interval '${daysAgo} day'
+WHERE publication_id = '${publicationId}';
+
+INSERT INTO video_stat_daily (link_id, stat_date, views, likes, comments, collected_at)
+SELECT l.id, CURRENT_DATE - 1, ${yesterday}, ${Math.floor(perPlatform / 20)},
+       ${Math.floor(perPlatform / 200)}, now() - interval '1 day'
+FROM publication_links l WHERE l.publication_id = '${publicationId}';
+
+INSERT INTO video_stat_daily (link_id, stat_date, views, likes, comments, collected_at)
+SELECT l.id, CURRENT_DATE, ${perPlatform}, ${Math.floor(perPlatform / 10)},
+       ${Math.floor(perPlatform / 100)}, now()
+FROM publication_links l WHERE l.publication_id = '${publicationId}';
+`);
+}
+
+/**
  * Через сколько дней назад вышли ролики проекта с прошлым.
  *
  * Десять первых попадают в период 1 — он длится месяц от даты первого

@@ -11,6 +11,7 @@ import {
   resetRateLimits,
   seedHistoryStats,
   seedPublicationStats,
+  seedPublicationViewsFlat,
   world,
   type Session,
 } from './world';
@@ -109,7 +110,16 @@ export type SandboxShape =
   /** Одна выкладка, сданная вчера на пять площадок, с цифрами STATS. */
   | 'stats'
   /** Одиннадцать выкладок: период 1 подытожен, период 2 идёт. */
-  | 'history';
+  | 'history'
+  /**
+   * ДВОЕ в составе и разный вклад: у первого два скромных ролика, у
+   * второго один залетевший.
+   *
+   * При одном креаторе правила раскладки неразличимы — любая доля равна
+   * единице. Ошибка «разделили не по тому основанию» видна только когда
+   * людей двое, и поэтому эта форма существует отдельно.
+   */
+  | 'crew';
 
 export interface SandboxOptions {
   shape?: SandboxShape;
@@ -420,6 +430,7 @@ export async function createSandbox(tag: string, opts: SandboxOptions = {}): Pro
 
     if (shape === 'stats') await fillStats(box);
     if (shape === 'history') await fillHistory(box);
+    if (shape === 'crew') await fillCrew(box);
     return box;
   } catch (err) {
     // Собралась наполовину — сносим целиком: полупроект в списках
@@ -466,6 +477,48 @@ async function fillStats(box: Sandbox): Promise<void> {
     checked_item_ids: await requiredChecklist(box),
   });
   seedPublicationStats(pubId);
+}
+
+/**
+ * Двое в составе, разный вклад.
+ *
+ * Первый сдал два ролика по 200 000 просмотров, второй — один на
+ * 3 000 000. Числа выбраны так, чтобы правила раскладки РАСХОДИЛИСЬ:
+ * по роликам это две трети и треть, по просмотрам — 12% и 88%, а
+ * сверх порога набрал только второй. Считать хвост и фикс одним
+ * основанием после этого нельзя незаметно.
+ */
+async function fillCrew(box: Sandbox): Promise<void> {
+  const second = box.creators[1];
+  if (!second) throw new Error('форме crew нужны двое: createSandbox(..., { creators: 2 })');
+  await callAs(box.manager, 'post', `/api/v1/manager/projects/${box.projectId}/creators`, {
+    creator_user_id: second.userId,
+  });
+
+  const checked = await requiredChecklist(box);
+  const submit = async (who: SandboxUser, day: string, mark: string, views: number) => {
+    const batch = await callAs(
+      box.manager,
+      'post',
+      `/api/v1/manager/projects/${box.projectId}/publications/batch`,
+      { creator_user_ids: [who.userId], dates: [day] },
+    );
+    const pubId = batch.items[0].id as string;
+    box.publicationIds.push(pubId);
+    await callAs(who, 'post', `/api/v1/me/creator/publications/${pubId}/links`, {
+      urls: platformLinks(`${box.tag}${mark}`),
+      title: `${box.publicationTitle} ${mark}`,
+      // Чеклист у проекта один на всех: пункты общие, отмечает их
+      // каждый сдающий за себя.
+      checked_item_ids: checked,
+    });
+    seedPublicationViewsFlat(pubId, views);
+    return pubId;
+  };
+
+  await submit(box.creator, ymd(-3), 'a1', 200_000);
+  await submit(box.creator, ymd(-2), 'a2', 200_000);
+  box.publicationId = await submit(second, ymd(-1), 'b1', 3_000_000);
 }
 
 /** Одиннадцать выкладок: десять в первом периоде, одна во втором. */
