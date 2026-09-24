@@ -254,57 +254,82 @@
                         <tr class="crew-stats">
                           <td colspan="6">
                             @if (crewStats(c.person.user_id); as st) {
-                              <div class="cs-head">
-                                <span class="cs-num">
-                                  <b class="mono">{{ digits(st.median) }}</b>
-                                  <span class="muted small">
-                                    медиана по {{ st.basis }}
-                                    {{ plural(st.basis, 'ролику', 'роликам', 'роликам') }}
-                                  </span>
-                                </span>
-                                <span class="cs-num">
-                                  <b class="mono">{{ digits(st.best.views) }}</b>
-                                  <span class="muted small">
-                                    лучший · {{ st.best.title || 'без названия' }}
-                                  </span>
-                                </span>
-                                @if (st.worst.id !== st.best.id) {
+                              @if (st.basis === 1) {
+                                <!-- Один измеренный ролик: медиана,
+                                     лучший и слабейший — это он же. Одно
+                                     число, повторённое трижды, и столбик
+                                     в одиночку читаются как поломка, а не
+                                     как разбор. Пока роликов мало,
+                                     честнее сказать это словами. -->
+                                <div class="cs-head one">
                                   <span class="cs-num">
-                                    <b class="mono">{{ digits(st.worst.views) }}</b>
+                                    <b class="mono">{{ digits(st.best.views) }}</b>
                                     <span class="muted small">
-                                      слабее всех · {{ st.worst.title || 'без названия' }}
+                                      единственный измеренный ролик ·
+                                      {{ st.best.title || 'без названия' }}
                                     </span>
                                   </span>
-                                }
-                              </div>
-
-                              <!-- Столбики в порядке выхода: видно не
-                                   только разброс, но и куда он движется. -->
-                              <div class="cs-bars" role="list">
-                                @for (b of st.bars; track b.pub.id) {
                                   <a
-                                    role="listitem"
-                                    class="cs-bar"
-                                    [class.best]="b.best"
-                                    [class.worst]="b.worst"
-                                    [href]="pubUrl(b.pub)"
+                                    class="btn sm"
+                                    [href]="pubUrl(st.best)"
                                     target="_blank"
                                     rel="noopener"
-                                    [title]="
-                                      (b.pub.title || 'Без названия') +
-                                      ' · ' +
-                                      digits(b.pub.views) +
-                                      ' просмотров'
-                                    "
+                                    >Открыть</a
                                   >
-                                    <i [style.height.%]="b.height"></i>
-                                  </a>
-                                }
-                              </div>
-                              <p class="muted small cs-note">
-                                Считаем по измеренным роликам: свежий, ещё не собранный, — это не
-                                ноль просмотров, а отсутствие замера.
-                              </p>
+                                </div>
+                              } @else {
+                                <div class="cs-head">
+                                  <span class="cs-num">
+                                    <b class="mono">{{ digits(st.median) }}</b>
+                                    <span class="muted small">
+                                      медиана по {{ st.basis }}
+                                      {{ plural(st.basis, 'ролику', 'роликам', 'роликам') }}
+                                    </span>
+                                  </span>
+                                  <span class="cs-num">
+                                    <b class="mono">{{ digits(st.best.views) }}</b>
+                                    <span class="muted small">
+                                      лучший · {{ st.best.title || 'без названия' }}
+                                    </span>
+                                  </span>
+                                  @if (st.worst.id !== st.best.id) {
+                                    <span class="cs-num">
+                                      <b class="mono">{{ digits(st.worst.views) }}</b>
+                                      <span class="muted small">
+                                        слабее всех · {{ st.worst.title || 'без названия' }}
+                                      </span>
+                                    </span>
+                                  }
+                                </div>
+
+                                <!-- Столбики в порядке выхода: видно не
+                                   только разброс, но и куда он движется. -->
+                                <div class="cs-bars" role="list">
+                                  @for (b of st.bars; track b.pub.id) {
+                                    <a
+                                      role="listitem"
+                                      class="cs-bar"
+                                      [class.best]="b.best"
+                                      [class.worst]="b.worst"
+                                      [href]="pubUrl(b.pub)"
+                                      target="_blank"
+                                      rel="noopener"
+                                      [title]="
+                                        (b.pub.title || 'Без названия') +
+                                        ' · ' +
+                                        digits(b.pub.views) +
+                                        ' просмотров'
+                                      "
+                                    >
+                                      <i [style.height.%]="b.height"></i>
+                                    </a>
+                                  }
+                                </div>
+                                <p class="muted small cs-note">
+                                  Считаем по измеренным роликам: свежий, ещё не собранный, — это не
+                                  ноль просмотров, а отсутствие замера.
+                                </p>
+                              }
                             } @else {
                               <p class="muted">
                                 По этому человеку ещё нет ни одного измеренного ролика — считать

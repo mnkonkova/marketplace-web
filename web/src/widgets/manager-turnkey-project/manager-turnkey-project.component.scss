@@ -107,8 +107,22 @@
 .cs-head {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px 28px;
   margin-bottom: 12px;
+
+  // Кнопка у правого края, а не вплотную к числу: рядом с числом она
+  // читается как его часть.
+  > .btn {
+    margin-left: auto;
+  }
+}
+
+// Один измеренный ролик: подпись — целое предложение, и обрезать её
+// многоточием нечем. Ширину ограничивает только строка.
+.cs-head.one .small {
+  max-width: none;
+  white-space: normal;
 }
 
 .cs-num {
