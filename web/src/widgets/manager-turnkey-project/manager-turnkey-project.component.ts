@@ -15,12 +15,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { BillingApi } from '@entities/billing/api/billing.api';
 import { formatMoney } from '@entities/billing/lib/money';
-import {
-  canApprove,
-  canMarkPaid,
-  isPreviewPeriod,
-  shortfall,
-} from '@entities/billing/lib/money';
+import { canApprove, canMarkPaid, isPreviewPeriod, shortfall } from '@entities/billing/lib/money';
 import {
   isOpenPeriod,
   parsePeriodParam,
@@ -37,7 +32,11 @@ import type {
   Payment,
 } from '@entities/billing/model/billing.types';
 import { PublicationApi } from '@entities/publication/api/publication.api';
-import type { ProjectPerson, Publication } from '@entities/publication/model/publication.types';
+import type {
+  ProjectPerson,
+  Publication,
+  PublicationReport,
+} from '@entities/publication/model/publication.types';
 import { ProjectApi } from '@entities/project/api/project.api';
 import type {
   ProjectEvent,
@@ -84,6 +83,7 @@ import { ProjectChecklistComponent } from '@widgets/project-checklist/project-ch
 import { ProjectMaterialsComponent } from '@widgets/project-materials/project-materials.component';
 import { ProjectReviewComponent } from '@widgets/project-review/project-review.component';
 import { ProjectAutopingComponent } from '@widgets/project-autoping/project-autoping.component';
+import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.component';
 import { ProjectLinksComponent } from '@widgets/project-links/project-links.component';
 import { PublicationPlanComponent } from '@widgets/publication-plan/publication-plan.component';
 import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
@@ -137,6 +137,7 @@ import { isTouchDevice } from '@shared/lib/touch';
     ProjectMaterialsComponent,
     ProjectReviewComponent,
     ProjectAutopingComponent,
+    ProjectStatsComponent,
     ProjectLinksComponent,
     PublicationPlanComponent,
     SotkaAvaComponent,
@@ -790,9 +791,7 @@ export class ManagerTurnkeyProjectComponent {
    * заказчик его видел, и отменять решение автоматики походя нельзя.
    * Кнопка, которая ответит отказом, хуже отсутствующей.
    */
-  public readonly canUnlock = computed(
-    () => this.isAdmin() && this.period()?.status === 'locked',
-  );
+  public readonly canUnlock = computed(() => this.isAdmin() && this.period()?.status === 'locked');
 
   public unlockPeriod(): void {
     const p = this.period();
@@ -1030,14 +1029,7 @@ export class ManagerTurnkeyProjectComponent {
       // пока период не подытожен. Просмотры приходят каждый день, и
       // менеджер тянет их посреди периода, а не один раз в начале;
       // кнопка, пропавшая после первого нажатия, читается как поломка.
-      action:
-        s.key === 'recalc'
-          ? stage <= 1
-            ? s.action
-            : ''
-          : i === stage
-            ? s.action
-            : '',
+      action: s.key === 'recalc' ? (stage <= 1 ? s.action : '') : i === stage ? s.action : '',
     }));
   });
 
@@ -1115,6 +1107,16 @@ export class ManagerTurnkeyProjectComponent {
       },
     });
   }
+
+  /**
+   * Цифры проекта: просмотры, прирост, разбивка по площадкам.
+   *
+   * Менеджеру они нужны там же, где всё остальное про проект: он
+   * отвечает заказчику на «сколько набрали» и решает, кого звать в
+   * следующий месяц. Ссылка «статистика глазами заказчика» на этот
+   * вопрос не отвечает — она уводит с экрана.
+   */
+  public readonly report = signal<PublicationReport | null>(null);
 
   /** Журнал действий по проекту: кто что сделал и когда. */
   public readonly journal = signal<ProjectEvent[]>([]);
@@ -1212,6 +1214,10 @@ export class ManagerTurnkeyProjectComponent {
     this.projectApi.managerListEvents(id).subscribe({
       next: (r) => this.journal.set(r.items.slice(-12).reverse()),
       error: () => this.journal.set([]),
+    });
+    this.api.managerReport(id).subscribe({
+      next: (r) => this.report.set(r),
+      error: () => this.report.set(null),
     });
     // Список периодов — для выпадашки. Пустой список у проекта без
     // выкладок это не ошибка: периода ещё нет, и выбирать не из чего.

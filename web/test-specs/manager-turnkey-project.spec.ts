@@ -1,4 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
@@ -55,7 +58,11 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
 
   function setup(items: Publication[], payments: Payment[] = []) {
     TestBed.resetTestingModule();
-    const api = jasmine.createSpyObj<PublicationApi>('api', ['managerList', 'managerCreators']);
+    const api = jasmine.createSpyObj<PublicationApi>('api', [
+      'managerList',
+      'managerCreators',
+      'managerReport',
+    ]);
     api.managerList.and.returnValue(of({ items }) as never);
     api.managerCreators.and.returnValue(
       of({
@@ -63,13 +70,24 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
       }) as never,
     );
 
-    const projects = jasmine.createSpyObj<ProjectApi>('projects', ['managerAssigned', 'managerListEvents']);
+    // Цифры проекта и список периодов карточка тянет при загрузке:
+    // без заглушек эффект падает на первом же рендере.
+    api.managerReport.and.returnValue(of(null) as never);
+
+    const projects = jasmine.createSpyObj<ProjectApi>('projects', [
+      'managerAssigned',
+      'managerListEvents',
+    ]);
     projects.managerAssigned.and.returnValue(of({ items: [] }) as never);
     // Журнал под начислениями: дёргается при загрузке проекта.
     projects.managerListEvents.and.returnValue(of({ items: [] }) as never);
 
-    const billing = jasmine.createSpyObj<BillingApi>('billing', ['managerBilling']);
+    const billing = jasmine.createSpyObj<BillingApi>('billing', [
+      'managerBilling',
+      'managerPeriods',
+    ]);
     billing.managerBilling.and.returnValue(of({ payments }) as never);
+    billing.managerPeriods.and.returnValue(of({ items: [] }) as never);
 
     TestBed.configureTestingModule({
       providers: [
@@ -77,6 +95,19 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
         // общий помощник: на десктопе окном, на телефоне шторкой.
         // Компоненту нужны оба сервиса, даже если в тесте их не зовут.
         provideNoopAnimations(),
+        // Кнопка «Переоткрыть период» есть только у админа: карточка
+        // спрашивает роль у сессии, а та ходит по HTTP.
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // Карточка читает номер периода из адреса: ссылкой на
+        // подытоженный период делятся в переписке. Заглушка, а не
+        // настоящий роутер: спека про тревоги и деньги, а не про
+        // навигацию, и поднимать ради одного queryParamMap весь
+        // маршрутизатор значит тащить в тест то, что он не проверяет.
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
         { provide: PublicationApi, useValue: api },
         { provide: ProjectApi, useValue: projects },
         { provide: BillingApi, useValue: billing },

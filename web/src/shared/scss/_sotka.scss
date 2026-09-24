@@ -773,6 +773,16 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
       color: var(--faint);
     }
 
+    // Цифра площадки рядом с её кодом: «где зашло» — вопрос, ради
+    // которого креатор и смотрит на эту строку. Моноширинным и тише
+    // кода: код опознаёт площадку, число отвечает.
+    .v {
+      margin-left: 5px;
+      font-weight: 500;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
     &.err {
       background: var(--crit-soft);
       color: var(--crit);

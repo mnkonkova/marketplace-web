@@ -150,53 +150,42 @@ async function withForecast(
   });
 }
 
-/** Открыть кабинет креатора по проекту с прошлым и дождаться шкалы. */
+/**
+ * Открыть кабинет креатора по проекту с прошлым и дождаться шкалы.
+ *
+ * Деньги периода и лесенка живут прямо в карточке проекта — отдельного
+ * виджета у креатора больше нет.
+ */
 async function openLadder(page: Page): Promise<Locator> {
   await page.goto(`/me/creator/projects/${box.projectId}`);
-  const ladder = page.locator('app-creator-ladder');
-  await expect(ladder.getByRole('heading', { name: 'Заработок за период' })).toBeVisible({
+  const ladder = page.locator('.earn');
+  await expect(ladder, 'деньги периода нарисованы').toBeVisible({ timeout: 15_000 });
+  await expect(ladder.locator('.stairs .step').first(), 'лесенка нарисована').toBeVisible({
     timeout: 15_000,
   });
   return ladder;
 }
 
-/** Разобрать строку под мотивацией обратно в два числа. */
-function parseGain(text: string): { payout: string; toGo: number } {
-  const t = norm(text);
-  const payout = /≈\s*\+\s*([\d ,]+₽)/.exec(t);
-  const toGo = /осталось\s+(.+?)\s+просмотр/.exec(t);
-  if (!payout || !toGo) throw new Error(`не разобрать строку прибавки: «${t}»`);
-  return { payout: payout[1].trim(), toGo: views(toGo[1]) };
-}
-
 /**
- * Какой из трёх веток обязана быть строка «до ступени».
+ * Прибавка за следующий ролик — число из блока «≈ + N ₽».
  *
- * Пороги — правило продукта: до одного обычного ролика говорим «один
- * обычный», до трёх — «один залетевший», дальше называем число. Правило
- * переписано сюда, а не позвано из приложения (позвать значило бы
- * проверить его самим собой), но ПОДСТАВЛЯЮТСЯ в него числа сервера:
- * остаток из прогноза и типичный ролик из ориентира.
+ * Прибавка и остаток до ступени стоят теперь в разных местах экрана:
+ * сумма — в блоке добора справа, остаток — в подписи лесенки. Это одно
+ * и то же правило («числа считает сервер»), просто разложенное по двум
+ * строкам.
  */
-function expectedLead(toGo: number, typical: number | null): { text?: string; number?: number } {
-  if (typical !== null && typical > 0) {
-    if (toGo / typical <= 1) return { text: 'До следующей ступени — один обычный ролик.' };
-    if (toGo / typical <= 3) return { text: 'До следующей ступени — один залетевший ролик.' };
-  }
-  return { number: toGo };
+function parseGain(text: string): string {
+  const t = norm(text);
+  const payout = /≈\s*\+\s*([\d  ,]+₽)/.exec(t);
+  if (!payout) throw new Error(`не разобрать прибавку: «${t}»`);
+  return payout[1].trim();
 }
 
-/** Сверить строку «до ступени» с тем, что следует из чисел сервера. */
-async function expectLead(ladder: Locator, toGo: number, typical: number | null): Promise<void> {
-  const want = expectedLead(toGo, typical);
-  const line = norm(await ladder.locator('.lead').innerText());
-  if (want.text) {
-    expect(line, `остаток ${toGo} при типичном ролике ${typical}`).toBe(want.text);
-    return;
-  }
-  const shown = /Один ролик на\s+(.+?)\s+—/.exec(line);
-  expect(shown, `не разобрать строку «${line}»`).toBeTruthy();
-  expect(views(shown![1]), 'в строке названо число с сервера, а не своё').toBe(want.number);
+/** Сколько просмотров осталось до ступени — из подписи лесенки. */
+function parseToGo(text: string): number {
+  const m = /До следующей\s*—?\s*([\d ]+)\s*просмотр/.exec(norm(text));
+  if (!m) throw new Error(`не разобрать остаток до ступени: «${norm(text)}»`);
+  return views(m[1]);
 }
 
 test.beforeEach(async ({ context }) => {
@@ -214,21 +203,20 @@ test('прибавка и остаток до ступени показаны р
 
   const ladder = await openLadder(page);
 
-  // Оба числа стоят в одной строке и оба — из прогноза. Своя арифметика
-  // в браузере разошлась бы с серверной молча: на экране стояло бы
-  // правдоподобное число.
-  const gain = parseGain(await ladder.locator('.gain').innerText());
-  expect(gain.payout, 'прибавка — из forecast_payout').toBe(norm(money(step!.forecast_payout)));
-  expect(gain.toGo, 'остаток — из views_to_go').toBe(step!.views_to_go);
+  // Оба числа — из прогноза. Своя арифметика в браузере разошлась бы с
+  // серверной молча: на экране стояло бы правдоподобное число.
+  expect(
+    parseGain(await ladder.locator('.lever').innerText()),
+    'прибавка — из forecast_payout',
+  ).toBe(norm(money(step!.forecast_payout)));
+  expect(parseToGo(await ladder.locator('.earn-sub').innerText()), 'остаток — из views_to_go').toBe(
+    step!.views_to_go,
+  );
 
   // Оговорка, что это прогноз, а не начисленное: «≈» перед суммой.
   // Словом её больше не пишут — ни «примерно», ни «прогноз».
-  await expect(ladder.locator('.gain')).toContainText('≈');
-
-  // Правый конец полосы — то же число, сложенное с заработанным.
-  await expect(ladder.locator('.ends .to')).toContainText('на следующей ступени');
-
-  await expectLead(ladder, step!.views_to_go, body.benchmark?.typical_video_views ?? null);
+  await expect(ladder.locator('.lever')).toContainText('≈');
+  expect(body.benchmark, 'ориентир по роликам приходит с сервера').toBeTruthy();
 });
 
 test('подменённый прогноз меняет экран: числа приходят с сервера, а не считаются в браузере', async ({
@@ -247,55 +235,65 @@ test('подменённый прогноз меняет экран: числа 
 
   const ladder = await openLadder(page);
 
-  const gain = parseGain(await ladder.locator('.gain').innerText());
-  expect(gain.payout, 'на экране прибавка из ответа, а не своя').toBe(norm(money(123_456)));
-  expect(gain.toGo, 'на экране остаток из ответа, а не свой').toBe(37_000);
-
-  await expectLead(ladder, 37_000, 1000);
+  expect(
+    parseGain(await ladder.locator('.lever').innerText()),
+    'на экране прибавка из ответа, а не своя',
+  ).toBe(norm(money(123_456)));
+  expect(
+    parseToGo(await ladder.locator('.earn-sub').innerText()),
+    'на экране остаток из ответа, а не свой',
+  ).toBe(37_000);
 });
 
 /**
  * То же правило, но про РИСУНОК, а не про подписи.
  *
- * Полосы прогресса на шкале больше нет — она мерила долю внутри одной
- * ступени, и на сороковой ступени человек видел четыре пикселя заливки,
- * то есть «ты ничего не заработал». Вместо неё лесенка: насечка = 100
- * тысяч просмотров. Проверка при этом осталась та же: нарисованное
- * обязано идти за числами СЕРВЕРА, а не за арифметикой браузера.
+ * Полосы прогресса на шкале нет — она мерила долю внутри одной ступени,
+ * и на сороковой ступени человек видел четыре пикселя заливки, то есть
+ * «ты ничего не заработал». Вместо неё лесенка: насечка = 100 тысяч
+ * просмотров, и рисуется она окном вокруг взятой ступени. Проверка при
+ * этом та же: нарисованное обязано идти за числами СЕРВЕРА, а не за
+ * арифметикой браузера.
  *
- * Меряем приростом, а не абсолютом: сколько насечек у песочницы сейчас
- * — дело посева, а вот «добавили ровно три ступени переноса — стало
- * ровно на три насечки больше» держится при любом посеве и ловит
- * пересчёт на своей стороне.
+ * Меряем приростом, а не абсолютом: сколько ступеней у песочницы сейчас
+ * — дело посева, а «добавили ровно три ступени переноса — стало ровно
+ * на три больше» держится при любом посеве.
  */
 test('лесенка растёт ровно на столько ступеней, на сколько выросли просмотры с сервера', async ({
   page,
 }) => {
-  const rungs = (l: Locator) => l.locator('app-steps i.on');
+  const passed = async (l: Locator): Promise<number> => {
+    const m = /Взято\s+(\d+)\s+ступен/.exec(norm(await l.locator('.earn-sub').innerText()));
+    if (!m) throw new Error(`не разобрать число ступеней: «${norm(await l.innerText())}»`);
+    return Number(m[1]);
+  };
 
-  const before = await rungs(await openLadder(page)).count();
+  const before = await passed(await openLadder(page));
 
   await withForecast(page, (e) => ({
     period: { ...e.period, carry_in_creator: (e.period?.carry_in_creator ?? 0) + 3 * LADDER_STEP },
   }));
 
-  const after = await rungs(await openLadder(page)).count();
-  expect(after - before, 'насечки считает сервер, а не браузер').toBe(3);
+  const after = await passed(await openLadder(page));
+  expect(after - before, 'ступени считает сервер, а не браузер').toBe(3);
 });
 
-test('при близкой ступени строка говорит про один ролик, а не называет число', async ({ page }) => {
-  // Остаток меньше типичного ролика — и это ровно та ветка, ради которой
-  // строку переписали: «один обычный ролик» вместо «34 обычных».
+test('прибавка и кнопка добора стоят рядом: сумма объясняет, зачем нажимать', async ({ page }) => {
+  // Прибавка стояла тихой строкой под мотивирующей фразой, а кнопка —
+  // отдельно: экран звал нажать, не сказав зачем. Решает человек СУММОЙ,
+  // поэтому сумма и кнопка обязаны быть одним блоком.
   await withForecast(page, (e) => ({
     next_step_forecast: { step_views: LADDER_STEP, views_to_go: 20_000, forecast_payout: 50_000 },
     benchmark: { ...(e.benchmark ?? {}), typical_video_views: 40_000 },
   }));
 
   const ladder = await openLadder(page);
-  await expectLead(ladder, 20_000, 40_000);
-  // Прибавку при этом по-прежнему называют: она и есть ответ на вопрос
-  // «сколько это даст».
-  expect(parseGain(await ladder.locator('.gain').innerText()).payout).toBe(norm(money(50_000)));
+  const lever = ladder.locator('.lever');
+  expect(parseGain(await lever.innerText())).toBe(norm(money(50_000)));
+  await expect(
+    lever.getByRole('button', { name: /Взять ещё выкладку/ }),
+    'кнопка добора — в том же блоке, что и сумма',
+  ).toBeVisible();
 });
 
 test('прогноза нет — строки с числами нет вовсе', async ({ page }) => {
@@ -305,31 +303,22 @@ test('прогноза нет — строки с числами нет вовс
   await withForecast(page, () => null);
 
   const ladder = await openLadder(page);
-  await expect(ladder.locator('.gain'), 'без прогноза прибавку показывать нечем').toHaveCount(0);
-  // На конце шкалы — СЛЕД будущего числа, а не прочерк. Прочерк
-  // одинаково ставили и там, где ноль, и там, где не считали, и читался
-  // он как «ступень ничего не добавит».
-  await expect(
-    ladder.locator('.ends .to app-nodata'),
-    'на конце шкалы след числа, а не прочерк',
-  ).toBeVisible();
+  await expect(ladder.locator('.lever'), 'без прогноза прибавку показывать нечем').toHaveCount(0);
+  // Сама лесенка при этом на месте: сколько ступеней взято — это факт
+  // периода, а не прогноз, и прятать его вместе с прогнозом нельзя.
+  await expect(ladder.locator('.stairs .step').first()).toBeVisible();
 });
 
-test('у типичного ролика сказано, на чьих данных он посчитан', async ({ page }) => {
-  const source = (await earnings()).benchmark?.typical_video_source;
-  expect(source, 'ориентир по роликам обязан приходить с сервера').toBeTruthy();
-  const note = SOURCE_NOTE[source!];
-  expect(note, `неизвестный источник типичного ролика: ${source}`).toBeTruthy();
+test('сказано, на чьих данных посчитан следующий ролик', async ({ page }) => {
+  // «По вашей медиане» и «типовой ролик» — РАЗНЫЕ обещания, и второе не
+  // должно выдавать себя за первое: по этой строке человек считает свою
+  // зарплату. Своя медиана есть — называем её и число роликов, на
+  // которых она посчитана; нет — честно говорим про справочник.
+  const ladder = await openLadder(page);
+  const note = norm(await ladder.locator('.lever p').innerText());
 
-  await page.goto(`/me/creator/projects/${box.projectId}`);
-  const typical = page.locator('app-creator-ladder .typ');
-  await expect(typical).toBeVisible({ timeout: 15_000 });
-
-  // Подпись стоит рядом с числом, а не в подсказке: «по твоим роликам» и
-  // «средний ролик по площадке» — разные обещания, и второе не должно
-  // выдавать себя за первое.
-  await expect(typical, `ответ говорит «${source}»`).toContainText(note);
-  for (const [other, text] of Object.entries(SOURCE_NOTE)) {
-    if (other !== source) await expect(typical).not.toContainText(text);
-  }
+  const mine = /по вашей медиане за \d+ ролик/.test(note);
+  const book = /типовой ролик, ваших пока мало для своей медианы/.test(note);
+  expect(mine || book, `строка не говорит, чьи это данные: «${note}»`).toBe(true);
+  expect(mine && book, 'два разных источника разом — это неправда об одном из них').toBe(false);
 });

@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -59,6 +60,7 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
       'managerList',
       'managerCreators',
       'managerRemind',
+      'managerReport',
     ]);
     api.managerList.and.returnValue(of({ items: opts.pubs ?? [] }) as never);
     api.managerCreators.and.returnValue(of({ items: [] }) as never);
@@ -68,6 +70,7 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
     const billing = jasmine.createSpyObj<BillingApi>('billingApi', [
       'managerBilling',
       'managerConfirmPeriodEnd',
+      'managerPeriods',
     ]);
     billing.managerBilling.and.returnValue(
       of({
@@ -80,7 +83,12 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
         period: opts.period ?? undefined,
       } as never) as never,
     );
+    billing.managerPeriods.and.returnValue(of({ items: [] }) as never);
     billing.managerConfirmPeriodEnd.and.returnValue(of({ period: {} } as never) as never);
+
+    // Цифры проекта и список периодов карточка тянет при загрузке:
+    // без заглушек эффект падает на первом же рендере.
+    api.managerReport.and.returnValue(of(null) as never);
 
     const projects = jasmine.createSpyObj<ProjectApi>('projectApi', [
       'managerAssigned',
@@ -94,6 +102,15 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
+        // Карточка читает номер периода из адреса: ссылкой на
+        // подытоженный период делятся в переписке. Заглушка, а не
+        // настоящий роутер: спека про тревоги и деньги, а не про
+        // навигацию, и поднимать ради одного queryParamMap весь
+        // маршрутизатор значит тащить в тест то, что он не проверяет.
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
         provideHttpClientTesting(),
         { provide: PublicationApi, useValue: api },
         { provide: BillingApi, useValue: billing },

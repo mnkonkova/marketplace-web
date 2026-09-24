@@ -94,9 +94,11 @@ test.describe('менеджер', () => {
   test('в сравнении креаторов имя, а не uuid', async ({ page }) => {
     await page.goto(`/manager/projects/${box.projectId}`);
 
-    // Сравнение креаторов живёт в виджете выкладок, а не в блоке
-    // статистики: там же, где таблица роликов.
-    const table = page.locator('app-project-publications');
+    // Сравнение креаторов живёт в разделе «Команда» карточки: строка на
+    // человека — сколько сдал, сколько набрал. Идентификатору здесь
+    // взяться неоткуда, и это ровно то, что проверяется: менеджер
+    // сверяет людей, а не строки базы.
+    const table = page.locator('.sec-team');
     await expect(table.getByText(box.creator.name).first()).toBeVisible({ timeout: 15_000 });
     await expect(table, 'в таблицах имя, а не идентификатор').not.toContainText(
       box.projectId.slice(0, 8),
@@ -116,7 +118,9 @@ test.describe('заказчик', () => {
     // посмотрели», «Просмотры за период»), и привязываться к ней значит
     // переписывать спеку на каждую редактуру. Проверяем обещание:
     // главное число карточки — просмотры, и они те же, что у менеджера.
-    const hero = page.locator('.answer .half.views');
+    // Лента просмотров стоит над всем экраном — это и есть главное
+    // число карточки.
+    const hero = page.locator('.ribbon');
     await expect(hero, 'заказчик и менеджер смотрят на один отчёт').toBeVisible({
       timeout: 15_000,
     });
@@ -137,33 +141,33 @@ test.describe('креатор', () => {
 
     await openCreatorTab(page, 'Мои выкладки');
 
-    // Ищем внутри карточки посеянной выкладки, а не по всей странице: в
-    // проекте могут стоять и другие ролики, и у каждого свои пять строк
-    // площадок — без привязки к карточке локатор находит их все.
-    const card = page.locator('.slotcard').filter({ hasText: box.publicationTitle });
+    // Ищем внутри строки посеянной выкладки, а не по всей странице: в
+    // проекте могут стоять и другие ролики, и у каждого свои площадки —
+    // без привязки к строке локатор находит их все. Вышедшие выкладки
+    // живут списком, отдельной карточки у них больше нет.
+    const card = page.locator('.posts2 .row').filter({ hasText: box.publicationTitle });
     await expect(card).toHaveCount(1);
 
-    // Цифры по площадкам спрятаны под «Показать ссылки» — так в макете:
-    // в списке видно состояние выкладки, а разбор по площадкам
-    // открывается по требованию.
-    await card.getByRole('button', { name: 'Показать ссылки' }).click();
-
-    // Проверяем по строке площадки, а не по тексту всей страницы: рядом
-    // с числом стоит ссылка, и в склеенном тексте её цифры прилипают к
-    // просмотрам — поиск подстрокой начинает врать.
+    // Цифры площадок стоят рядом с их кодами, прямо в строке ролика:
+    // «где зашло» — вопрос, ради которого креатор сюда и смотрит, и
+    // прятать на него ответ под кнопку значит не отвечать.
+    //
+    // Проверяем по значку площадки, а не по тексту всей строки: рядом
+    // стоит общий итог ролика, и в склеенном тексте цифры слипаются —
+    // поиск подстрокой начинает врать.
     const rows: Record<string, string> = {
-      TikTok: String(STATS.today.tiktok),
-      Reels: String(STATS.today.instagram),
-      Shorts: String(STATS.today.youtube),
-      'VK Клипы': String(STATS.today.vk),
-      Likee: String(STATS.today.likee),
+      TT: String(STATS.today.tiktok),
+      IG: String(STATS.today.instagram),
+      YT: String(STATS.today.youtube),
+      VK: String(STATS.today.vk),
+      LK: String(STATS.today.likee),
     };
-    for (const [name, views] of Object.entries(rows)) {
-      const row = card.locator('.p2').filter({ hasText: name });
-      await expect(row.locator('.v'), name).toHaveText(grouped(Number(views)));
+    for (const [short, views] of Object.entries(rows)) {
+      const chip = card.locator('.plat').filter({ hasText: short });
+      await expect(chip.locator('.v'), short).toHaveText(grouped(Number(views)));
     }
 
-    // И общий итог по ролику — в той же раскрытой карточке.
-    await expect(card.locator('.totalrow')).toContainText(grouped(STATS.totalToday));
+    // И общий итог по ролику — в той же строке.
+    await expect(card.locator('.views-cell')).toContainText(grouped(STATS.totalToday));
   });
 });

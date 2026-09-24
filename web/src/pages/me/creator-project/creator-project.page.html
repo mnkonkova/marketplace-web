@@ -419,10 +419,23 @@
                         </span>
                         }
                       </div>
+                      <!-- Площадки ролика с ЕГО ЦИФРАМИ. Одни только
+                           значки отвечали на «сдал ли я», но не на «где
+                           зашло»: креатор решает по этой строке, куда
+                           выкладываться в следующий раз. Цифра стоит
+                           рядом со значком, а не в подсказке — на
+                           телефоне подсказки нет вовсе. -->
                       <div class="chips links-row">
                         @for (p of projectPlatforms(); track p) { @if (link(pub, p); as l) {
-                        <a class="plat" [href]="l.url" target="_blank" rel="noopener"
-                          >{{ platformShort[p] }}</a
+                        <a
+                          class="plat p2"
+                          [href]="l.url"
+                          target="_blank"
+                          rel="noopener"
+                          [title]="platformLabel[p]"
+                          >{{ platformShort[p] }}@if (viewsOf(pub, p); as v) {
+                          <b class="v">{{ digits(v) }}</b>
+                          }</a
                         >
                         } @else {
                         <span class="plat nd" title="Ссылка не прислана"

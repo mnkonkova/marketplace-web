@@ -80,15 +80,15 @@ test('заказчику про занижённый ER сказано слов�
   // наведению вместе с этим ушла — и правильно: на телефоне наводить
   // нечем, а «*» рядом с процентом читается как сноска, которой на
   // странице нет.
-  const react = page.locator('.answer .half.views .react');
-  await expect(react, 'отклик показан одной строкой').toBeVisible({ timeout: 15_000 });
-  const er = react.locator('.react-row .r').filter({ hasText: 'от просмотров' });
-  await expect(er, 'ER стоит в строке отклика').toHaveCount(1);
-  await expect(er.locator('.rv'), 'и это процент, а не прочерк').toContainText('%');
+  // Отклик стоит своей плиткой в сводке: число, разбор на лайки,
+  // комментарии и репосты — и оговорка тут же, если репостов нет.
+  const react = page.locator('.panel').filter({ hasText: 'Вовлечённость · ER' });
+  await expect(react, 'отклик показан плиткой').toBeVisible({ timeout: 15_000 });
+  await expect(react.locator('.kpi .v'), 'это процент, а не прочерк').toContainText('%');
 
   // Оговорка — СЛОВАМИ и в том же блоке, что число. Занижённый ER без
   // неё заказчик сравнивает с чужими цифрами и делает вывод о работе.
-  await expect(react.locator('.say'), 'занижение объяснено рядом с числом').toContainText(
+  await expect(react, 'занижение объяснено рядом с числом').toContainText(
     'Репосты площадки не отдают',
   );
 });
