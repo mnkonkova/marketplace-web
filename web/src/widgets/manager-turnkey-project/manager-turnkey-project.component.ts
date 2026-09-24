@@ -914,20 +914,26 @@ export class ManagerTurnkeyProjectComponent {
         ? byViews[mid].views
         : Math.round((byViews[mid - 1].views + byViews[mid].views) / 2);
     const max = byViews[byViews.length - 1].views;
+    const spread = max > byViews[0].views;
 
     return {
       median,
       basis: measured.length,
       best: byViews[byViews.length - 1],
       worst: byViews[0],
+      // Есть ли вообще разброс. Когда все ролики набрали поровну,
+      // «лучший» и «слабее всех» — одно и то же число, а подсветка
+      // столбиков назначает кого-то худшим по порядку в списке. Это не
+      // разбор, а выдумка: сказать «разброса нет» честнее.
+      spread: byViews[byViews.length - 1].views > byViews[0].views,
       // Столбики в порядке выхода: так видно не только разброс, но и
       // куда он движется. Высота от лучшего — сравнивать надо со своим
       // же потолком, а не с чужим.
       bars: measured.map((p) => ({
         pub: p,
         height: max > 0 ? Math.max(4, Math.round((p.views / max) * 100)) : 4,
-        best: p.id === byViews[byViews.length - 1].id,
-        worst: byViews.length > 1 && p.id === byViews[0].id,
+        best: spread && p.id === byViews[byViews.length - 1].id,
+        worst: spread && p.id === byViews[0].id,
       })),
     };
   }

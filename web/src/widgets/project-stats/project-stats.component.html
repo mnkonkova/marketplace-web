@@ -97,6 +97,33 @@
     </p>
   }
 
+  @if (showCreators() && r.by_creator.length) {
+    <h3>Кто сколько набрал</h3>
+    <!-- По людям, а не по площадкам: «какая площадка тянет» — про
+         каналы, а звать в следующий месяц менеджер решает по человеку.
+         Доля считается сервером и приходит готовой: делить на фронте
+         значило бы получить на двух экранах два разных процента. -->
+    <ul class="bycrew">
+      @for (row of r.by_creator; track row.creator_user_id) {
+        <li>
+          <app-sotka-ava [name]="row.creator_name || 'Без имени'" [size]="22" />
+          <span class="name">
+            {{ row.creator_name || 'Без имени' }}
+            <small class="muted">
+              {{ row.videos | number }}
+              {{ plural(row.videos, 'ролик', 'ролика', 'роликов') }} · в среднем
+              {{ row.avg_views | number }}
+            </small>
+          </span>
+          <span class="bar">
+            <i [style.width.%]="row.share_percent"></i>
+          </span>
+          <b>{{ row.views | number }}</b>
+        </li>
+      }
+    </ul>
+  }
+
   @if (showPlatforms() && r.by_platform.length) {
     <h3>Какая площадка тянет</h3>
     <ul class="byplat">
