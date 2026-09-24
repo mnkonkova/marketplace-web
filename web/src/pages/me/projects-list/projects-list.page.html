@@ -58,7 +58,7 @@
            «почём», потом «сколько». -->
       <div class="span-12 pf-hero">
         <div>
-          <div class="label">Цена просмотра · CPV</div>
+          <div class="label"><span class="no-phone">Цена просмотра · </span>CPV</div>
           <div class="v num">
             @if (cpvValue(); as v) {
               {{ v }}<small> ₽</small>
@@ -72,7 +72,7 @@
           <div class="pf-sub muted">за всё время</div>
         </div>
         <div>
-          <div class="label">Вовлечённость · ER</div>
+          <div class="label"><span class="no-phone">Вовлечённость · </span>ER</div>
           <div class="v num">
             @if (er()) {
               {{ er() }}<small>%</small>
@@ -98,28 +98,32 @@
             {{ runningCount() }}
             {{ plural(runningCount(), 'проект идёт', 'проекта идут', 'проектов идут') }}
             @if (videosTotal()) {
-              · {{ videosTotal() }}
-              {{ plural(videosTotal(), 'ролик', 'ролика', 'роликов') }}
+              <span class="no-phone">
+                · {{ videosTotal() }}
+                {{ plural(videosTotal(), 'ролик', 'ролика', 'роликов') }}
+              </span>
             }
           </div>
         </div>
         <div>
           <div class="label">Потрачено</div>
           <div class="v num">{{ digits(spent() / 100) }}<small> ₽</small></div>
-          <div class="pf-sub muted">по факту, без счетов к оплате</div>
+          <div class="pf-sub muted">по факту<span class="no-phone">, без счетов к оплате</span></div>
         </div>
       </div>
 
 
       <!-- Проекты одной строкой. Пауза — это не ноль: у проекта без
            периода стоит «периода нет», а не «0 просмотров». -->
+      <div class="span-12 sec-h only-phone">Проекты</div>
+
       <div class="span-8 panel">
         <div class="panel-h">
-          <h2>Проекты</h2>
+          <h2 class="no-phone">Проекты</h2>
           <!-- Заказ нового проекта — действие этого списка, а не сноска
                под ним: раньше он был серой ссылкой в самом низу
                страницы, куда доходят не все. -->
-          <button type="button" class="btn sm" routerLink="/me/orders/new">
+          <button type="button" class="btn sm no-phone" routerLink="/me/orders/new">
             + Новый проект
           </button>
         </div>
@@ -139,23 +143,33 @@
               <span></span>
             </div>
             @for (p of rows(); track p.id) {
-              <div class="prj">
+              <!-- Строка целиком — ссылка, как в макете: на телефоне по
+                   ней попадают пальцем, а не в кнопку в её углу. Поэтому
+                   «Открыть» здесь не кнопка, а подпись: настоящая кнопка
+                   внутри ссылки — это ссылка в ссылке. -->
+              <a class="prj" [routerLink]="['/me/projects', p.id]" [queryParams]="fromHere()">
                 <div>
                   <div class="nm">
                     {{ p.title }}
                     <span class="pill" [class]="'pill ' + p.tone">{{ p.state }}</span>
                   </div>
-                  <div class="ms">{{ p.meta }}</div>
+                  <div class="ms no-phone">{{ p.meta }}</div>
+                  <!-- На телефоне числа идут одной строкой под названием:
+                       столбик с подписями делал из строки карточку в пол-экрана. -->
+                  <div class="ms nums only-phone num">
+                    {{ p.viewsLabel || '—' }} · CPV {{ p.cpv }} · ER {{ p.er }}
+                  </div>
                   @if (p.progress !== null && p.progress > 0) {
                     <div class="prog"><i [style.width.%]="p.progress"></i></div>
                   }
                   @if (p.next) {
-                    <div class="ms next">
+                    <div class="ms next no-phone">
                       Следующая выкладка: <span class="ink">{{ p.next }}</span>
                     </div>
                   }
                 </div>
-                <div class="spark">
+
+                <div class="spark no-phone">
                   @if (p.series.length > 1) {
                     <app-line-chart
                       [points]="p.series"
@@ -168,29 +182,14 @@
                     <span class="st st-nd">периода нет</span>
                   }
                 </div>
-                <div class="mv" data-label="CPV">{{ p.cpv }}</div>
-                <div class="mv" data-label="ER">{{ p.er }}</div>
-                <div class="mv" data-label="Потрачено">{{ p.spent }}</div>
-                <!-- На телефоне эти три кнопки встают внизу карточки:
-                     разделы проекта — то, ради чего в него заходят, и
-                     заставлять открывать проект, чтобы потом искать в
-                     нём «Деньги», значит считать два нажатия за одно.
-                     На десктопе видна только «Открыть»: там разделы
-                     стоят вкладками в самом проекте, и вторая дорога к
-                     ним с соседнего экрана обещала бы другое место. -->
-                <div class="prj-act">
-                  <button type="button" class="btn sm only-phone" (click)="open(p, 'summary')">
-                    Сводка
-                  </button>
-                  <button type="button" class="btn sm only-phone" (click)="open(p, 'money')">
-                    Деньги
-                  </button>
-                  <button type="button" class="btn sm dark" (click)="open(p)">
-                    <span class="no-phone">Открыть</span>
-                    <span class="only-phone">Открыть проект</span>
-                  </button>
+                <div class="mv no-phone" data-label="CPV">{{ p.cpv }}</div>
+                <div class="mv no-phone" data-label="ER">{{ p.er }}</div>
+                <div class="mv no-phone" data-label="Потрачено">{{ p.spent }}</div>
+                <div class="prj-go">
+                  <span class="btn sm dark no-phone">Открыть</span>
+                  <span class="chev only-phone" aria-hidden="true">›</span>
                 </div>
-              </div>
+              </a>
             }
           </div>
         }
@@ -293,9 +292,11 @@
         }
       </div>
 
+      <div class="span-12 sec-h only-phone">Ближайшие выкладки</div>
+
       <div class="span-5 panel">
         <div class="panel-h">
-          <h2>Ближайшие выкладки</h2>
+          <h2 class="no-phone">Ближайшие выкладки</h2>
           @if (upcoming().length) {
             <span class="sub">
               {{ upcomingSpan() }} · {{ upcomingCount() }}
@@ -342,6 +343,13 @@
           </button>
         </div>
       }
+
+      <!-- На телефоне заказ нового проекта — кнопка во всю ширину под
+           списком, как в макете: в шапке панели она попадала бы в один
+           ряд с заголовком и сжималась до неудобного размера. -->
+      <button type="button" class="span-12 btn dark only-phone new-prj" routerLink="/me/orders/new">
+        + Новый проект
+      </button>
 
       <!-- Контакты заказчика. Менеджер пишет в телеграм, звонит по
            телефону и подписывает счета именем — без этих трёх полей он

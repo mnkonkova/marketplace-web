@@ -498,21 +498,10 @@ export class ProjectsListPage {
 
   // ---- переходы ----
 
-  /**
-   * Открыть проект, при желании — сразу на нужном разделе.
-   *
-   * Раздел уезжает в адрес одноразово: страница проекта его прочитает и
-   * сотрёт. Ссылку на проект присылают целиком («посмотри проект»), и
-   * раздел, застрявший в адресе, показывал бы соседу то, на чём
-   * остановился отправитель.
-   */
-  public open(row: ProjectRow, tab?: 'summary' | 'money'): void {
-    const extras = withFromPage(this.router);
-    void this.router.navigate(['/me/projects', row.id], {
-      ...extras,
-      queryParams: { ...(extras.queryParams ?? {}), ...(tab ? { tab } : {}) },
-    });
-  }
+  /** Адрес возврата для ссылок на проект: строка проекта — ссылка. */
+  public readonly fromHere = computed(() => ({ from_page: this.router.url }));
+
+
 
   public setRange(r: OverviewRange): void {
     if (r === this.range()) return;
