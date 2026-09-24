@@ -289,6 +289,23 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
     margin: 0;
   }
 
+  // Заголовки набираем телесным шрифтом — так в макете.
+  //
+  // Общее правило приложения красит h1–h6 заглавным шрифтом с
+  // отрицательным трекингом. В кабинете заглавным набраны ЧИСЛА и
+  // название экрана; заголовок панели — обычный текст в 15 пунктов, и
+  // «Проекты» заглавным спорит с числом в той же строке. Название
+  // экрана возвращает себе заглавный ниже, в .pf-head.
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--body);
+    letter-spacing: normal;
+  }
+
   h2 {
     font-size: 15px;
     font-weight: 600;
@@ -725,7 +742,6 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
       flex: none;
       width: 22px;
       font-family: var(--display);
-      font-weight: 500;
       color: var(--accent);
     }
 
@@ -1241,6 +1257,9 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.04em;
+      // «сб · сен» шире 46 px ровно на пол-пикселя и переносилось
+      // второй строкой — чипы дат в списке получались разной высоты.
+      white-space: nowrap;
     }
 
     &.next {

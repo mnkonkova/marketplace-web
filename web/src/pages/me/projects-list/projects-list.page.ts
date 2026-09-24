@@ -81,10 +81,13 @@ interface DueRow {
 }
 
 /** День ближайших выкладок по всем проектам. */
+
 interface UpcomingDay {
   date: string;
   day: string;
   weekday: string;
+  /** Месяц тремя буквами: без него «25 пт» в конце месяца читается неоднозначно. */
+  month: string;
   first: boolean;
   items: { name: string; project: string }[];
 }
@@ -446,6 +449,7 @@ export class ProjectsListPage {
           date: key,
           day: key.slice(8, 10),
           weekday: this.weekday(key),
+          month: this.monthOf(key),
           first: false,
           items: [],
         };

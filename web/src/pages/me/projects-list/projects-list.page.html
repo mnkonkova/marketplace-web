@@ -116,10 +116,6 @@
       <div class="span-8 panel">
         <div class="panel-h">
           <h2>Проекты</h2>
-          <span class="sub">
-            {{ rows().length }} {{ plural(rows().length, 'проект', 'проекта', 'проектов') }} ·
-            {{ runningCount() }} {{ plural(runningCount(), 'идёт', 'идут', 'идут') }}
-          </span>
           <!-- Заказ нового проекта — действие этого списка, а не сноска
                под ним: раньше он был серой ссылкой в самом низу
                страницы, куда доходят не все. -->
@@ -315,7 +311,7 @@
               <div class="row row-top">
                 <div class="date" [class.next]="d.first">
                   <b>{{ d.day }}</b>
-                  <span>{{ d.weekday }}</span>
+                  <span>{{ d.weekday }} · {{ d.month }}</span>
                 </div>
                 <div class="grow who-col">
                   @for (i of d.items; track i.name + i.project) {
