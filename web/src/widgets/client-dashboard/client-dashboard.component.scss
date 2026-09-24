@@ -44,10 +44,10 @@
 }
 
 .seg-label {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -113,10 +113,14 @@
   font-size: 12.5px;
 }
 
+// Карточка — панель кабинета, а не своя: этот блок живёт на экране
+// «Все проекты» между такими же панелями, и собственная геометрия
+// читалась как вставка из другого продукта. Те же 1px по --line,
+// тот же радиус, тот же отступ.
 .card {
-  padding: 20px 22px;
-  border: 1px solid var(--border-strong);
-  border-radius: 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
   background: var(--surface);
 }
 
@@ -151,8 +155,8 @@
   display: grid;
   gap: 0;
   grid-template-columns: 1fr 1fr;
-  border: 1px solid var(--border-strong);
-  border-radius: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
   background: var(--surface);
   overflow: hidden;
 }
@@ -165,8 +169,14 @@
 
 // Латунная кромка у объёма, ледяная у цены: два цвета смысла держат
 // половины различимыми и без линейки между ними.
+// Ровно одна акцентная величина на блок — как во всём кабинете.
+// Золото здесь значило «ставка» и осталось только в лесенке тарифа,
+// где оно и значит ставку; главный ответ золотым быть перестал, иначе
+// одно и то же число оказывалось на экране двух разных цветов.
 .half.views {
-  border-left: 3px solid var(--brass);
+  // Половины уже разделены рамкой и подложкой — третий разделитель
+  // ничего не добавлял.
+  border-left: 0;
 }
 
 .half.price {
@@ -177,15 +187,19 @@
 .big {
   margin: 0;
   font-family: var(--font-head);
-  font-size: clamp(40px, 5vw, 64px);
+  // Сорок четыре, а не шестьдесят четыре. Число остаётся самым громким
+  // на экране, но попадает в шаг кабинета: 11 подпись → 28 плитка →
+  // 44 ответ. Шестьдесят четыре выбивались из него вдвое и делали
+  // блок отдельной страницей внутри страницы.
+  font-size: clamp(34px, 3.4vw, 44px);
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 0.94;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
 .big.brass {
-  color: var(--brass);
+  color: var(--accent);
 }
 
 .big.ice {
@@ -275,7 +289,7 @@ app-steps {
   }
 
   .bv {
-    color: var(--brass);
+    color: var(--accent);
     font-family: var(--font-head);
     font-size: 19px;
     font-variant-numeric: tabular-nums;

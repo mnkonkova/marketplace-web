@@ -17,7 +17,6 @@ import type {
   OverviewTopVideo,
 } from '@entities/billing/model/billing.types';
 import {
-  PLATFORM_COLOR,
   PLATFORM_LABEL,
   PLATFORM_SHORT,
 } from '@entities/publication/lib/publication-status';
@@ -98,7 +97,22 @@ export class ClientDashboardComponent {
 
   public readonly platformShort = PLATFORM_SHORT;
 
-  public readonly platformColor = PLATFORM_COLOR;
+  /**
+   * Цвет площадки — словарём кабинета, а не фирменным цветом площадки.
+   *
+   * PLATFORM_COLOR — это красный TikTok, розовый Instagram и красный
+   * YouTube: три почти одинаковых красных рядом, и все громче
+   * единственного акцента кабинета. В макете у площадок своя палитра,
+   * различимая по тону, а не по бренду, — её и берём. Фирменные цвета
+   * остаются на витрине, где площадка и есть предмет разговора.
+   */
+  public readonly platformColor: Record<string, string> = {
+    tiktok: 'var(--s-tt)',
+    youtube: 'var(--s-yt)',
+    instagram: 'var(--s-ig)',
+    vk: 'var(--s-vk)',
+    likee: 'var(--s-dz)',
+  };
 
   public readonly money = formatMoney;
 
@@ -269,7 +283,7 @@ export class ClientDashboardComponent {
     const platforms: ChartSeries[] = rows.map((s, i) => ({
       key: s.platform,
       label: PLATFORM_LABEL[s.platform],
-      color: PLATFORM_COLOR[s.platform],
+      color: this.platformColor[s.platform] ?? 'var(--muted)',
       points: cumulativeSeries(gains[i]),
     }));
 
@@ -331,7 +345,10 @@ export class ClientDashboardComponent {
 
   /** Цвет площадки, разбавленный до фона плашки. */
   public tint(platform: string): string {
-    return `${PLATFORM_COLOR[platform as Platform] ?? '#888'}22`;
+    // Подложка обложки — тот же тон, но прозрачный: color-mix вместо
+    // склейки hex с альфой, потому что цвет теперь приходит токеном.
+    const c = this.platformColor[platform] ?? 'var(--muted)';
+    return `color-mix(in srgb, ${c} 14%, transparent)`;
   }
 
   // ---- свежесть ----
