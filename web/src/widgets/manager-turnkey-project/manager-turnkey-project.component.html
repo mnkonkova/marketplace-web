@@ -17,13 +17,15 @@
     <div class="ribbon">
       <div>
         <div class="label">Просмотры проекта</div>
-        <div class="views"><span class="big num">{{ digits(projectViews()) }}</span></div>
+        <div class="views">
+          <span class="big num">{{ digits(projectViews()) }}</span>
+        </div>
       </div>
       <div class="meta muted">
         <span class="num">
           {{ livePublications().length }}
-          {{ plural(livePublications().length, 'выкладка', 'выкладки', 'выкладок') }} ·
-          закрыто {{ closedCount() }}
+          {{ plural(livePublications().length, 'выкладка', 'выкладки', 'выкладок') }} · закрыто
+          {{ closedCount() }}
         </span>
         @if (collectedAt(); as ts) {
           <span class="server">сервер · {{ ts | date: 'd.MM, HH:mm' }}</span>
@@ -186,16 +188,16 @@
                               } @else {
                                 <span
                                   class="plat nd missing"
-                                  [title]="platformLabel[p] + ': ссылки нет — просмотры не считаются'"
+                                  [title]="
+                                    platformLabel[p] + ': ссылки нет — просмотры не считаются'
+                                  "
                                   >{{ platformShort[p] }}</span
                                 >
                               }
                             }
                           </div>
                         </td>
-                        <td class="r mono" data-label="Роликов">
-                          {{ c.done }} / {{ c.planned }}
-                        </td>
+                        <td class="r mono" data-label="Роликов">{{ c.done }} / {{ c.planned }}</td>
                         <td class="r mono" data-label="Просмотры">{{ digits(c.views) }}</td>
                         <td data-label="Статус">
                           @if (c.late) {
@@ -296,48 +298,41 @@
                 </table>
               </div>
               <p class="muted table-note">
-                Ссылки на аккаунты приходят из профиля креатора: пустую площадку он заполняет сам,
-                в своём кабинете.
+                Ссылки на аккаунты приходят из профиля креатора: пустую площадку он заполняет сам, в
+                своём кабинете.
               </p>
             }
           </div>
 
           <div class="span-12 panel">
-                          <div class="panel-h">
-                <h2>Состав</h2>
-                <span class="sub">кто снимает в этом проекте</span>
-              </div>
-              <div class="list">
-                @for (c of crew(); track c.user_id) {
-                  <div class="row">
-                    <app-sotka-ava [name]="c.display_name" [size]="28" />
-                    <div class="grow">
-                      <div class="t">{{ c.display_name }}</div>
-                      <div class="muted small">в проекте с {{ c.added_at | date: 'dd.MM' }}</div>
-                    </div>
+            <div class="panel-h">
+              <h2>Состав</h2>
+              <span class="sub">кто снимает в этом проекте</span>
+            </div>
+            <div class="list">
+              @for (c of crew(); track c.user_id) {
+                <div class="row">
+                  <app-sotka-ava [name]="c.display_name" [size]="28" />
+                  <div class="grow">
+                    <div class="t">{{ c.display_name }}</div>
+                    <div class="muted small">в проекте с {{ c.added_at | date: 'dd.MM' }}</div>
                   </div>
-                } @empty {
-                  <p class="muted">Пока никого.</p>
-                }
-              </div>
-              <p class="faint roster-note">
-                В пакет берутся только креаторы — блогеры и авторы UGC.
-              </p>
-              <button type="button" class="btn sm roster-btn" (click)="addCreator()">
-                Добавить креатора
-              </button>
-
+                </div>
+              } @empty {
+                <p class="muted">Пока никого.</p>
+              }
+            </div>
+            <p class="faint roster-note">В пакет берутся только креаторы — блогеры и авторы UGC.</p>
+            <button type="button" class="btn sm roster-btn" (click)="addCreator()">
+              Добавить креатора
+            </button>
           </div>
 
           <!-- Аккаунты — внутри состава, по людям: ролики выходят с
                аккаунтов креаторов, а не с общего аккаунта бренда, и
                список без владельца читается как чужая связка ключей. -->
           <div class="span-12 panel">
-            <app-project-accounts
-              [projectId]="project().id"
-              role="manager"
-              [creators]="crew()"
-            />
+            <app-project-accounts [projectId]="project().id" role="manager" [creators]="crew()" />
           </div>
         </div>
       </div>
@@ -358,7 +353,11 @@
                  период запирается сам. -->
             <div class="pipeline">
               @for (s of paySteps(); track s.key; let i = $index) {
-                <div class="pstep" [class.done]="s.state === 'done'" [class.cur]="s.state === 'cur'">
+                <div
+                  class="pstep"
+                  [class.done]="s.state === 'done'"
+                  [class.cur]="s.state === 'cur'"
+                >
                   <span class="k">
                     @if (s.state === 'done') {
                       ✓ сделано
@@ -385,16 +384,14 @@
             </div>
 
             @if (!payRows().length) {
-              <p class="muted">
-                Начислений ещё нет: пока не вышел первый ролик, считать нечего.
-              </p>
+              <p class="muted">Начислений ещё нет: пока не вышел первый ролик, считать нечего.</p>
             } @else {
               <div class="tbl-wrap">
                 <table class="cards">
                   <thead>
                     <tr>
                       <th>Креатор</th>
-                      <th class="r">Оклад</th>
+                      <th class="r">{{ salaryCol() }}</th>
                       <th class="r">Бонус</th>
                       <th class="r">Вычет</th>
                       <th class="r">Итого</th>
@@ -413,7 +410,9 @@
                             <span>{{ r.a.creator_name || 'Без имени' }}</span>
                           </span>
                         </td>
-                        <td class="r mono" data-label="Оклад">{{ money(r.salary) }}</td>
+                        <td class="r mono" [attr.data-label]="salaryCol()">
+                          {{ money(r.salary) }}
+                        </td>
                         <td class="r mono" data-label="Бонус">
                           {{ r.bonus ? money(r.bonus) : '—' }}
                         </td>
@@ -427,7 +426,9 @@
                             —
                           }
                         </td>
-                        <td class="r mono" data-label="Итого"><b>{{ money(r.total) }}</b></td>
+                        <td class="r mono" data-label="Итого">
+                          <b>{{ money(r.total) }}</b>
+                        </td>
                       </tr>
                     }
                   </tbody>
@@ -438,7 +439,9 @@
                           {{ payRows().length }}
                           {{ plural(payRows().length, 'креатор', 'креатора', 'креаторов') }}
                         </td>
-                        <td class="r mono" data-label="Оклад">{{ money(t.salaries) }}</td>
+                        <td class="r mono" [attr.data-label]="salaryCol()">
+                          {{ money(t.salaries) }}
+                        </td>
                         <td class="r mono" data-label="Бонус">
                           {{ money(t.views_bonus + t.click_bonus) }}
                         </td>
@@ -509,12 +512,18 @@
               </div>
               @if (totals(); as t) {
                 <div class="calc num">
-                  <div class="ln"><span>Заказчику к оплате</span><b>{{ money(t.total) }}</b></div>
+                  <div class="ln">
+                    <span>Заказчику к оплате</span><b>{{ money(t.total) }}</b>
+                  </div>
                   @if (t.payouts !== undefined) {
-                    <div class="ln"><span>Креаторам</span><b>− {{ money(t.payouts) }}</b></div>
+                    <div class="ln">
+                      <span>Креаторам</span><b>− {{ money(t.payouts) }}</b>
+                    </div>
                   }
                   @if (t.margin !== undefined) {
-                    <div class="ln total"><span>Маржа</span><b class="margin">{{ money(t.margin) }}</b></div>
+                    <div class="ln total">
+                      <span>Маржа</span><b class="margin">{{ money(t.margin) }}</b>
+                    </div>
                   }
                 </div>
                 <div class="calc num deal-second">
@@ -531,9 +540,7 @@
                 Статистика глазами заказчика →
               </button>
             </div>
-
           </div>
-
         </div>
       </div>
 

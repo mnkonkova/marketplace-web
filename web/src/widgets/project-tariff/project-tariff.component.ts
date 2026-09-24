@@ -1,11 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
 import { fromRubles, toRubles } from '@entities/billing/lib/money';
-import type { BillingTerms, BillingTermsInput, TariffStep } from '@entities/billing/model/billing.types';
+import type {
+  BillingTerms,
+  BillingTermsInput,
+  TariffStep,
+} from '@entities/billing/model/billing.types';
 import { parseApiError } from '@shared/api/api-error';
 
 /** Строка таблицы. Деньги здесь в РУБЛЯХ: в копейки переводим при отправке. */
@@ -137,26 +150,26 @@ export class ProjectTariffComponent {
   }
 
   private fill(t: BillingTerms | null): void {
-    const steps = t?.steps ?? [];
-    // Ступень с нулевым порогом — это фикс: вынимаем её наверх, в
-    // таблице оставляем настоящие пороги.
-    const zero = steps.find((s) => s.from_views === 0);
-    const rest = steps.filter((s) => s.from_views !== 0);
+    // Нулевая ступень — фикс СТАРОЙ модели: у новых снимков её нет, у
+    // старых она здесь и остаётся за бортом, потому что фикс приходит
+    // своим полем. В таблице — только настоящие пороги.
+    const rest = (t?.steps ?? []).filter((s) => s.from_views !== 0);
     const money = (v: number | null | undefined) =>
       v === null || v === undefined ? null : toRubles(v);
 
-    if (steps.length) {
+    // Фикс считается ЗА РОЛИК и живёт своей парой полей, одной на обе
+    // модели. Раньше он прятался в нулевой ступени лесенки и в окладе
+    // — одно и то же число в двух разных местах, и правка одного не
+    // доезжала до другого.
+    this.fixClient = money(t?.fee_per_video) ?? 0;
+    this.fixCreator = money(t?.creator_fee_per_video);
+
+    if (rest.length) {
       this.mode.set('steps');
-      this.fixClient = zero ? toRubles(zero.client_fee) : 0;
-      this.fixCreator = money(zero?.creator_fee);
       this.rateClient = null;
       this.rateCreator = null;
     } else {
-      // Ступеней нет — проект на ставке за тысячу. Фикс тогда живёт в
-      // окладе: это одно и то же число в двух моделях.
       this.mode.set('rate');
-      this.fixClient = t?.salary_per_month ? toRubles(t.salary_per_month) : 0;
-      this.fixCreator = money(t?.creator_salary_per_month);
       this.rateClient = t?.rate_per_1000_views ? toRubles(t.rate_per_1000_views) : null;
       this.rateCreator = money(t?.creator_rate_per_1000_views);
     }
@@ -221,7 +234,11 @@ export class ProjectTariffComponent {
     const fix = this.fixState();
     if (fix) return fix;
     if (this.mode() === 'rate') {
-      if (this.rateCreator !== null && this.rateClient !== null && this.rateCreator > this.rateClient) {
+      if (
+        this.rateCreator !== null &&
+        this.rateClient !== null &&
+        this.rateCreator > this.rateClient
+      ) {
         return 'За тысячу креатору обещано больше, чем платит заказчик.';
       }
       return '';
@@ -231,7 +248,8 @@ export class ProjectTariffComponent {
       if (r.fromViews === null || r.fromViews <= 0) {
         return 'Порог ступени — число просмотров больше нуля. Нулевой порог — это фикс, он выше.';
       }
-      if (r.clientFee === null || r.clientFee < 0) return 'У каждой ступени должна быть цена периода.';
+      if (r.clientFee === null || r.clientFee < 0)
+        return 'У каждой ступени должна быть цена периода.';
       if (seen.has(r.fromViews)) {
         return 'Две ступени с одним порогом — непонятно, по какой считать.';
       }
@@ -246,11 +264,7 @@ export class ProjectTariffComponent {
   /** Проверка фикса вынесена: она одна на обе модели. */
   private fixState(): string {
     if (this.fixClient !== null && this.fixClient < 0) return 'Фикс не бывает отрицательным.';
-    if (
-      this.fixCreator !== null &&
-      this.fixClient !== null &&
-      this.fixCreator > this.fixClient
-    ) {
+    if (this.fixCreator !== null && this.fixClient !== null && this.fixCreator > this.fixClient) {
       return 'Фикс креатору больше, чем платит заказчик, — почти всегда это описка.';
     }
     return '';
@@ -259,30 +273,28 @@ export class ProjectTariffComponent {
   public save(): void {
     if (this.busy() || this.problem()) return;
     const ladder = this.mode() === 'steps';
-    // Фикс уходит нулевой ступенью: в лесенке это и есть цена периода,
-    // когда порогов не взято.
+    // Нулевой ступени больше нет: её место занял фикс за ролик, и
+    // отправлять её вместе с ним значило бы взять цену дважды.
     const steps: TariffStep[] = ladder
-      ? [
-          {
-            from_views: 0,
-            client_fee: fromRubles(this.fixClient ?? 0),
-            creator_fee: this.fixCreator === null ? null : fromRubles(this.fixCreator),
-          },
-          ...this.rows().map((r) => ({
-            from_views: r.fromViews ?? 0,
-            client_fee: fromRubles(r.clientFee ?? 0),
-            creator_fee: r.creatorFee === null ? null : fromRubles(r.creatorFee),
-          })),
-        ]
+      ? this.rows().map((r) => ({
+          from_views: r.fromViews ?? 0,
+          client_fee: fromRubles(r.clientFee ?? 0),
+          creator_fee: r.creatorFee === null ? null : fromRubles(r.creatorFee),
+        }))
       : [];
     // Две модели не смешиваются: непустая лесенка отменяет ставку за
     // тысячу, и оставить в снимке числа от другого правила счёта значит
     // однажды посчитать проект дважды разными способами.
     const input: BillingTermsInput = {
-      salary_per_month: ladder ? 0 : fromRubles(this.fixClient ?? 0),
+      // Фикс — за ролик, своей парой полей и одинаково в обеих моделях.
+      fee_per_video: fromRubles(this.fixClient ?? 0),
+      creator_fee_per_video: this.fixCreator === null ? null : fromRubles(this.fixCreator),
+      // Оклад за период остаётся в снимке нулём: механика выключена, но
+      // поле в тарифе есть, и оставить в нём прежнее число значило бы
+      // посчитать фикс дважды.
+      salary_per_month: 0,
       rate_per_1000_views: ladder ? 0 : fromRubles(this.rateClient ?? 0),
-      creator_salary_per_month:
-        ladder || this.fixCreator === null ? null : fromRubles(this.fixCreator),
+      creator_salary_per_month: null,
       creator_rate_per_1000_views:
         ladder || this.rateCreator === null ? null : fromRubles(this.rateCreator),
       rate_per_1000_views_over: this.tailRate ? fromRubles(this.tailRate) : 0,

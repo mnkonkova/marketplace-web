@@ -85,13 +85,7 @@ interface DraftStep {
 @Component({
   selector: 'app-admin-tariff',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    NzButtonModule,
-    PageHeadComponent,
-    ProjectTariffComponent,
-  ],
+  imports: [CommonModule, FormsModule, NzButtonModule, PageHeadComponent, ProjectTariffComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tariff.page.html',
   styleUrl: './tariff.page.scss',
@@ -137,17 +131,24 @@ export class AdminTariffPage implements OnInit {
   /** Во что обходится период: вилка по ступеням либо числа старой модели. */
   public feeLabel(r: TariffRow): string {
     if (!r.has_terms) return 'тариф не задан';
+    // Фикс за ролик показываем первым: это основная цена работы, а
+    // ступени и ставка — надбавка за просмотры.
+    const fix = r.fee_per_video ? `${formatMoney(r.fee_per_video)} / ролик` : '';
     if (!r.stepped) {
-      return `${formatMoney(r.salary_per_month)} + ${formatMoney(r.rate_per_1000_views)} / 1000`;
+      const rate = `${formatMoney(r.rate_per_1000_views)} / 1000`;
+      return fix ? `${fix} + ${rate}` : rate;
     }
-    return r.min_fee === r.max_fee
-      ? formatMoney(r.min_fee)
-      : `${formatMoney(r.min_fee)} — ${formatMoney(r.max_fee)}`;
+    if (fix && r.min_fee === 0 && r.max_fee === 0) return fix;
+    const steps =
+      r.min_fee === r.max_fee
+        ? formatMoney(r.min_fee)
+        : `${formatMoney(r.min_fee)} — ${formatMoney(r.max_fee)}`;
+    return fix ? `${fix} + ${steps}` : steps;
   }
 
   public modelLabel(r: TariffRow): string {
     if (!r.has_terms) return 'нет';
-    return r.stepped ? `ступеней ${r.steps_count}` : 'оклад + ставка';
+    return r.stepped ? `ступеней ${r.steps_count}` : 'фикс + ставка';
   }
 
   public readonly current = computed(() => this.versions().find((v) => v.is_current) ?? null);
@@ -208,9 +209,10 @@ export class AdminTariffPage implements OnInit {
     return v.click_bonus_rate != null;
   }
 
-  /** Что остаётся площадке с одного оклада — то, ради чего две стороны. */
+  /** Что остаётся площадке с одного ролика — то, ради чего две стороны. */
   public marginSalary(v: TermsVersion): number {
-    return v.salary_per_month - this.creatorShare(v, 'salary');
+    const client = v.fee_per_video ?? 0;
+    return client - (v.creator_fee_per_video ?? client);
   }
 
   /**

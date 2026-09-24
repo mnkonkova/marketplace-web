@@ -396,7 +396,16 @@ export class ProjectBillingComponent {
    * «Оклады за период» при одном креаторе в составе — не обобщение, а
    * ошибка согласования: читатель ищет глазами вторую строку, которой нет.
    */
-  public readonly salaryTitle = computed(() => (this.accruals().length === 1 ? 'Оклад' : 'Оклады'));
+  public readonly salaryTitle = computed(() => {
+    // Фикс считается за ролик, и «Оклады за период» назвали бы на этой
+    // строке выключенную механику: заплачено за вышедшие ролики, а не за
+    // прожитый месяц.
+    if (this.terms()?.fee_per_video) return 'Фикс за ролики';
+    return this.accruals().length === 1 ? 'Оклад за период' : 'Оклады за период';
+  });
+
+  /** Та же подпись столбцом таблицы — там места на «за период» нет. */
+  public readonly salaryCol = computed(() => (this.terms()?.fee_per_video ? 'Фикс' : 'Оклад'));
 
   public money(v: number | null | undefined): string {
     return formatMoney(v);

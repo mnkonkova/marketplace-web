@@ -35,15 +35,21 @@ describe('ProjectTariffComponent', () => {
       'managerAdoptTerms',
     ]);
     api.managerBilling.and.returnValue(
-      loaded
-        ? (of({ terms: loaded }) as never)
-        : (throwError(() => ({ status: 404 })) as never),
+      loaded ? (of({ terms: loaded }) as never) : (throwError(() => ({ status: 404 })) as never),
     );
     api.managerSaveTerms.and.callFake(
       (_id: string, input: BillingTermsInput) => of(terms(input as never)) as never,
     );
+    // Прайс площадки уже на модели «фикс за ролик»: нулевой ступени в
+    // нём нет, её место занял fee_per_video.
     api.managerAdoptTerms.and.returnValue(
-      of(terms({ steps: [{ from_views: 0, client_fee: 30_000_000 }] })) as never,
+      of(
+        terms({
+          fee_per_video: 100_000,
+          creator_fee_per_video: 50_000,
+          steps: [{ from_views: 300_000, client_fee: 45_000_000 }],
+        }),
+      ) as never,
     );
     const msg = jasmine.createSpyObj<NzMessageService>('msg', ['success', 'error']);
     TestBed.configureTestingModule({
@@ -62,51 +68,53 @@ describe('ProjectTariffComponent', () => {
   }
 
   /**
-   * Фикс — это ступень с нулевым порогом, но в форме он отдельным
-   * полем: человек знает его до всякого KPI и вписывает первым, а в
-   * таблице ищет пороги.
+   * Фикс считается ЗА РОЛИК и приходит своей парой полей, одной на обе
+   * модели. Раньше он прятался в нулевой ступени лесенки — то есть одно
+   * и то же число жило в двух местах.
    */
-  it('нулевая ступень с сервера становится фиксом, остальные — строками', () => {
+  it('фикс за ролик приходит своим полем, ступени — строками таблицы', () => {
     const { cmp } = setup(
       terms({
-        steps: [
-          { from_views: 0, client_fee: 30_000_000, creator_fee: 18_000_000 },
-          { from_views: 300_000, client_fee: 45_000_000, creator_fee: 28_000_000 },
-        ],
+        fee_per_video: 100_000,
+        creator_fee_per_video: 50_000,
+        steps: [{ from_views: 300_000, client_fee: 45_000_000, creator_fee: 28_000_000 }],
       }),
     );
     expect(cmp.mode()).toBe('steps');
-    expect(cmp.fixClient).toBe(300_000);
-    expect(cmp.fixCreator).toBe(180_000);
+    expect(cmp.fixClient).toBe(1_000);
+    expect(cmp.fixCreator).toBe(500);
     expect(cmp.rows()).toEqual([{ fromViews: 300_000, clientFee: 450_000, creatorFee: 280_000 }]);
   });
 
   it('проект без ступеней открывается на ставке за тысячу', () => {
     const { cmp } = setup(
       terms({
-        salary_per_month: 6_000_000,
+        fee_per_video: 100_000,
         rate_per_1000_views: 9_000,
         creator_rate_per_1000_views: 7_000,
       }),
     );
     expect(cmp.mode()).toBe('rate');
-    expect(cmp.fixClient).toBe(60_000);
+    expect(cmp.fixClient).toBe(1_000);
     expect(cmp.rateClient).toBe(90);
     expect(cmp.rateCreator).toBe(70);
   });
 
-  it('ступени: фикс уходит нулевой ступенью, рубли — копейками', () => {
+  it('фикс уходит своим полем, нулевой ступени в лесенке нет', () => {
     const { cmp, api } = setup();
     cmp.setMode('steps');
-    cmp.fixClient = 300_000;
-    cmp.fixCreator = 180_000;
+    cmp.fixClient = 1_000;
+    cmp.fixCreator = 500;
     cmp.addRow();
     cmp.setCell(0, 'fromViews', 1_000_000);
     cmp.setCell(0, 'clientFee', 700_000);
     cmp.save();
     const input = api.managerSaveTerms.calls.mostRecent().args[1];
+    expect(input.fee_per_video).toBe(100_000);
+    expect(input.creator_fee_per_video).toBe(50_000);
+    // Нулевой ступени быть не должно: её место занял фикс за ролик, и
+    // отправить обе значило бы взять цену дважды.
     expect(input.steps).toEqual([
-      { from_views: 0, client_fee: 30_000_000, creator_fee: 18_000_000 },
       { from_views: 1_000_000, client_fee: 70_000_000, creator_fee: null },
     ]);
   });
@@ -127,18 +135,22 @@ describe('ProjectTariffComponent', () => {
     expect(input.salary_per_month).toBe(0);
   });
 
-  it('ставка за тысячу: лесенка не отправляется, фикс идёт окладом', () => {
+  it('ставка за тысячу: лесенка не отправляется, фикс — за ролик', () => {
     const { cmp, api } = setup();
     cmp.setMode('rate');
-    cmp.fixClient = 60_000;
-    cmp.fixCreator = 45_000;
+    cmp.fixClient = 1_000;
+    cmp.fixCreator = 500;
     cmp.rateClient = 90;
     cmp.rateCreator = 70;
     cmp.save();
     const input = api.managerSaveTerms.calls.mostRecent().args[1];
     expect(input.steps).toEqual([]);
-    expect(input.salary_per_month).toBe(6_000_000);
-    expect(input.creator_salary_per_month).toBe(4_500_000);
+    expect(input.fee_per_video).toBe(100_000);
+    expect(input.creator_fee_per_video).toBe(50_000);
+    // Оклад за период выключен: оставить в снимке прежнее число значило
+    // бы посчитать фикс дважды.
+    expect(input.salary_per_month).toBe(0);
+    expect(input.creator_salary_per_month).toBeNull();
     expect(input.rate_per_1000_views).toBe(9_000);
     expect(input.creator_rate_per_1000_views).toBe(7_000);
   });
@@ -151,14 +163,17 @@ describe('ProjectTariffComponent', () => {
   it('пустая клетка креатора уходит как null, а не как ноль', () => {
     const { cmp, api } = setup();
     cmp.setMode('steps');
-    cmp.fixClient = 300_000;
+    cmp.fixClient = 1_000;
     cmp.addRow();
     cmp.setCell(0, 'fromViews', 500_000);
     cmp.setCell(0, 'clientFee', 400_000);
     cmp.save();
-    const steps = api.managerSaveTerms.calls.mostRecent().args[1].steps!;
-    expect(steps[0].creator_fee).toBeNull();
-    expect(steps[1].creator_fee).toBeNull();
+    const input = api.managerSaveTerms.calls.mostRecent().args[1];
+    // И в фиксе за ролик, и в ступени — одно правило: пусто значит
+    // «столько же, сколько заказчику».
+    expect(input.creator_fee_per_video).toBeNull();
+    expect(input.steps!.length).toBe(1);
+    expect(input.steps![0].creator_fee).toBeNull();
   });
 
   it('две ступени с одним порогом не дают сохранить', () => {
@@ -234,9 +249,11 @@ describe('ProjectTariffComponent', () => {
   it('«заполнить из прайса» только подставляет числа — сохраняет человек', () => {
     const { cmp, api } = setup();
     cmp.fromPrice();
-    // Нулевая ступень прайса встала фиксом, а не строкой таблицы.
-    expect(cmp.fixClient).toBe(300_000);
-    expect(cmp.rows()).toEqual([]);
+    // Фикс за ролик пришёл своим полем, ступени — строками таблицы.
+    expect(cmp.fixClient).toBe(1_000);
+    expect(cmp.fixCreator).toBe(500);
+    expect(cmp.rows()).toEqual([{ fromViews: 300_000, clientFee: 450_000, creatorFee: null }]);
+    // Кнопка называется «заполнить», а не «привязать»: сохраняет человек.
     expect(api.managerSaveTerms).not.toHaveBeenCalled();
   });
 });

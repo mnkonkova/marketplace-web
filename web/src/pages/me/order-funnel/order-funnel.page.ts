@@ -31,6 +31,7 @@ import {
 } from '@entities/order/lib/order-status';
 import { formatMoney, groupDigits, monthLabel } from '@entities/billing/lib/money';
 import { parseApiError } from '@shared/api/api-error';
+import { plural } from '@shared/lib/format';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 
 /**
@@ -557,6 +558,10 @@ export class OrderFunnelPage implements OnInit {
 
   public views(n: number): string {
     return groupDigits(n);
+  }
+
+  public plural(n: number, one: string, few: string, many: string): string {
+    return plural(n, one, few, many);
   }
 
   public monthName(key: string): string {

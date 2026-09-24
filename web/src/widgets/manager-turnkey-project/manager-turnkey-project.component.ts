@@ -22,7 +22,12 @@ import {
   shortfall,
 } from '@entities/billing/lib/money';
 import { periodSettled, periodTitle } from '@entities/billing/lib/period';
-import type { Accrual, PeriodTotals, Payment } from '@entities/billing/model/billing.types';
+import type {
+  Accrual,
+  BillingTerms,
+  PeriodTotals,
+  Payment,
+} from '@entities/billing/model/billing.types';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import type { ProjectPerson, Publication } from '@entities/publication/model/publication.types';
 import { ProjectApi } from '@entities/project/api/project.api';
@@ -185,6 +190,15 @@ export class ManagerTurnkeyProjectComponent {
       .filter((p) => p.status === 'confirmed')
       .reduce((sum, p) => sum + p.amount, 0),
   );
+
+  /**
+   * Условия проекта — ради одной подписи: фикс считается ЗА РОЛИК, и
+   * столбец «Оклад» назвал бы здесь выключенную механику. Старые снимки
+   * остались на окладе за период, у них подпись прежняя.
+   */
+  public readonly terms = signal<BillingTerms | null>(null);
+
+  public readonly salaryCol = computed(() => (this.terms()?.fee_per_video ? 'Фикс' : 'Оклад'));
 
   /** Начислено креаторам за показанный период — итогом с сервера. */
   public readonly accruedTotal = computed(() => this.totals()?.total ?? 0);
@@ -580,7 +594,8 @@ export class ManagerTurnkeyProjectComponent {
   public readonly toReview = computed(
     () =>
       this.publications().filter(
-        (p) => p.links.length > 0 && p.review?.status !== 'accepted' && p.review?.status !== 'returned',
+        (p) =>
+          p.links.length > 0 && p.review?.status !== 'accepted' && p.review?.status !== 'returned',
       ).length,
   );
 
@@ -821,7 +836,9 @@ export class ManagerTurnkeyProjectComponent {
       return;
     }
     if (key === 'approve' || key === 'pay') {
-      const rows = this.accruals().filter((a) => (key === 'approve' ? canApprove(a) : canMarkPaid(a)));
+      const rows = this.accruals().filter((a) =>
+        key === 'approve' ? canApprove(a) : canMarkPaid(a),
+      );
       if (!rows.length) return;
       this.moneyBusy.set(true);
       let left = rows.length;
@@ -973,12 +990,14 @@ export class ManagerTurnkeyProjectComponent {
     this.billingApi.managerBilling(id).subscribe({
       next: (r) => {
         this.payments.set(r.payments ?? []);
+        this.terms.set(r.terms ?? null);
         this.totals.set(r.totals ?? null);
         this.period.set(r.period ?? null);
         this.accruals.set(r.accruals ?? []);
       },
       error: () => {
         this.payments.set([]);
+        this.terms.set(null);
         this.totals.set(null);
         this.period.set(null);
         this.accruals.set([]);

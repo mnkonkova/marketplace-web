@@ -91,6 +91,13 @@ export interface TariffStep {
  * соседнего» — на него и отвечает таблица.
  */
 export interface TariffRow {
+  /**
+   * Фикс за ролик — основная цена работы. Ступени и ставка за тысячу
+   * считаются поверх него, за просмотры.
+   */
+  fee_per_video?: number | null;
+  creator_fee_per_video?: number | null;
+
   project_id: string;
   title: string;
   client_name?: string;

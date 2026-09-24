@@ -6,17 +6,17 @@
 @if (loading()) {
   <p class="muted">Загружаем…</p>
 } @else {
-  <p class="muted tr-note">
-    Правка действует с текущего периода; подытоженные не меняются.
-  </p>
+  <p class="muted tr-note">Правка действует с текущего периода; подытоженные не меняются.</p>
 
-  <!-- ФИКС. Отдельным полем, а не строкой таблицы: в лесенке он и есть
-       ступень с порогом ноль, но «от 0 просмотров — 300 000 ₽» человек
-       ищет глазами среди порогов, тогда как фикс он знает до всякого
-       KPI и вписывает первым. -->
+  <!-- ФИКС ЗА РОЛИК. Цена одной вышедшей выкладки, а не месяца: месяц
+       с пятью роликами не должен стоить как месяц с тридцатью.
+       Отдельной парой полей и одинаково в обеих моделях — раньше он
+       прятался в нулевой ступени лесенки и в окладе, то есть одно и то
+       же число жило в двух местах, и правка одного не доезжала до
+       другого. -->
   <div class="tr-fix">
     <label>
-      <span class="lbl">Фикс за период, ₽ заказчику</span>
+      <span class="lbl">Фикс за ролик, ₽ заказчику</span>
       <input class="inp num" type="number" min="0" [(ngModel)]="fixClient" />
     </label>
     <label>
@@ -66,84 +66,84 @@
       </label>
     </div>
   } @else {
+    <p class="muted tr-note">
+      Строка — порог объёма за период и цена периода на нём. Набрали за период столько-то — период
+      стоит столько-то. Ниже нижнего порога платится фикс за вышедшие ролики.
+    </p>
 
-  <p class="muted tr-note">
-    Строка — порог объёма за период и цена периода на нём. Набрали за период столько-то — период
-    стоит столько-то. Ниже нижнего порога платится фикс.
-  </p>
-
-  <div class="tbl-wrap">
-    <table class="tr-tbl">
-      <thead>
-        <tr>
-          <th>от просмотров</th>
-          <th>клиенту, ₽</th>
-          <th>креатору, ₽</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (row of sorted(); track row.i) {
+    <div class="tbl-wrap">
+      <table class="tr-tbl">
+        <thead>
           <tr>
-            <td data-label="от просмотров">
-              <input
-                class="inp num"
-                type="number"
-                min="0"
-                step="10000"
-                [ngModel]="row.r.fromViews"
-                (ngModelChange)="setCell(row.i, 'fromViews', $event)"
-                aria-label="Порог просмотров"
-              />
-            </td>
-            <td data-label="клиенту">
-              <input
-                class="inp num"
-                type="number"
-                min="0"
-                [ngModel]="row.r.clientFee"
-                (ngModelChange)="setCell(row.i, 'clientFee', $event)"
-                aria-label="Цена периода заказчику, рублей"
-              />
-            </td>
-            <td data-label="креатору">
-              <!-- Пусто — «столько же, сколько платит заказчик»: до
+            <th>от просмотров</th>
+            <th>клиенту, ₽</th>
+            <th>креатору, ₽</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of sorted(); track row.i) {
+            <tr>
+              <td data-label="от просмотров">
+                <input
+                  class="inp num"
+                  type="number"
+                  min="0"
+                  step="10000"
+                  [ngModel]="row.r.fromViews"
+                  (ngModelChange)="setCell(row.i, 'fromViews', $event)"
+                  aria-label="Порог просмотров"
+                />
+              </td>
+              <td data-label="клиенту">
+                <input
+                  class="inp num"
+                  type="number"
+                  min="0"
+                  [ngModel]="row.r.clientFee"
+                  (ngModelChange)="setCell(row.i, 'clientFee', $event)"
+                  aria-label="Цена периода заказчику, рублей"
+                />
+              </td>
+              <td data-label="креатору">
+                <!-- Пусто — «столько же, сколько платит заказчик»: до
                    заполнения стороны совпадают и маржи у площадки нет. -->
-              <input
-                class="inp num"
-                type="number"
-                min="0"
-                placeholder="как клиенту"
-                [ngModel]="row.r.creatorFee"
-                (ngModelChange)="setCell(row.i, 'creatorFee', $event)"
-                aria-label="Оклад креатору на ступени, рублей"
-              />
-            </td>
-            <td class="r">
-              <button
-                type="button"
-                class="btn sm"
-                (click)="removeRow(row.i)"
-                [attr.aria-label]="'Убрать ступень от ' + row.r.fromViews"
-              >
-                ×
-              </button>
-            </td>
-          </tr>
-        } @empty {
-          <tr>
-            <td colspan="4" class="muted">
-              Порогов нет — период всегда стоит фикс. Добавьте первый, чтобы цена росла за объём.
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </div>
+                <input
+                  class="inp num"
+                  type="number"
+                  min="0"
+                  placeholder="как клиенту"
+                  [ngModel]="row.r.creatorFee"
+                  (ngModelChange)="setCell(row.i, 'creatorFee', $event)"
+                  aria-label="Оклад креатору на ступени, рублей"
+                />
+              </td>
+              <td class="r">
+                <button
+                  type="button"
+                  class="btn sm"
+                  (click)="removeRow(row.i)"
+                  [attr.aria-label]="'Убрать ступень от ' + row.r.fromViews"
+                >
+                  ×
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="muted">
+                Порогов нет — период стоит ровно столько, сколько роликов вышло. Добавьте первый,
+                чтобы цена росла и за объём просмотров.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
 
-  <div class="tr-acts">
-    <button type="button" class="btn sm" (click)="addRow()">+ ступень</button>
-  </div>
+    <div class="tr-acts">
+      <button type="button" class="btn sm" (click)="addRow()">+ ступень</button>
+    </div>
   }
 
   <details class="tr-extra" [open]="extraOpen()">
@@ -154,8 +154,8 @@
         <span class="lbl">Гарантия, просмотров за период</span>
         <input class="inp num" type="number" min="0" [(ngModel)]="guaranteeViews" />
         <span class="hint">
-          Недобрали — период всё равно оплачивается, а недостающие просмотры уходят в долг и
-          гасятся из следующего.
+          Недобрали — период всё равно оплачивается, а недостающие просмотры уходят в долг и гасятся
+          из следующего.
         </span>
       </label>
 
@@ -194,12 +194,7 @@
        модель, — и к списку ступеней отношения не имеет. Под таблицей
        оно читалось как «добавить ещё строк». -->
   <div class="tr-foot">
-    <button
-      type="button"
-      class="btn primary"
-      [disabled]="busy() || !!problem()"
-      (click)="save()"
-    >
+    <button type="button" class="btn primary" [disabled]="busy() || !!problem()" (click)="save()">
       Сохранить тариф
     </button>
     <button type="button" class="btn sm" [disabled]="busy()" (click)="fromPrice()">

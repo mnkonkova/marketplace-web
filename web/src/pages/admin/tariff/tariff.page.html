@@ -22,76 +22,75 @@
       </button>
     </div>
     @if (view() === 'template') {
-      <button nz-button nzType="primary" nzSize="small" type="button" (click)="openForm()">
-        Выпустить версию прайса
-      </button>
+    <button nz-button nzType="primary" nzSize="small" type="button" (click)="openForm()">
+      Выпустить версию прайса
+    </button>
     }
   </div>
 </app-page-head>
 
 @if (view() === 'projects') {
-  <div class="crm-page tariff">
-    @if (rowsLoading()) {
-      <p class="empty">Загружаем…</p>
-    } @else if (!rows().length) {
-      <p class="empty">Проектов с креаторами пока нет.</p>
-    } @else {
-      <!-- Проект без тарифа считается ПО НУЛЯМ, и на экране денег это
+<div class="crm-page tariff">
+  @if (rowsLoading()) {
+  <p class="empty">Загружаем…</p>
+  } @else if (!rows().length) {
+  <p class="empty">Проектов с креаторами пока нет.</p>
+  } @else {
+  <!-- Проект без тарифа считается ПО НУЛЯМ, и на экране денег это
            выглядит как «ещё не начислили». Поэтому такие идут первыми и
            сосчитаны отдельно. -->
-      @if (missing()) {
-        <p class="reg-warn">
-          Без тарифа {{ missing() }} {{ missing() === 1 ? 'проект' : 'проекта и больше' }} — они
-          считаются по нулям, и на экране денег это выглядит как «ещё не начислили».
-        </p>
-      }
+  @if (missing()) {
+  <p class="reg-warn">
+    Без тарифа {{ missing() }} {{ missing() === 1 ? 'проект' : 'проекта и больше' }} — они считаются
+    по нулям, и на экране денег это выглядит как «ещё не начислили».
+  </p>
+  }
 
-      <!-- Свой класс на обёртке: правила телефона снимают с неё рамку и
+  <!-- Свой класс на обёртке: правила телефона снимают с неё рамку и
            прокрутку, а на этой же странице есть вторая таблица —
            история версий прайса, — которую прокручивать как раз надо. -->
-      <div class="twrap reg-wrap">
-        <table class="reg">
-          <thead>
-            <tr>
-              <th>Проект</th>
-              <th>Заказчик</th>
-              <th>Менеджер</th>
-              <th>Модель</th>
-              <th>Период заказчику</th>
-              <th>Обновлён</th>
-              <th class="r"></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (r of rows(); track r.project_id) {
-              <tr [class.nofee]="!r.has_terms">
-                <td data-label="Проект"><b>{{ r.title || 'Без названия' }}</b></td>
-                <td data-label="Заказчик">{{ r.client_name || '—' }}</td>
-                <td data-label="Менеджер">{{ r.manager_name || 'не назначен' }}</td>
-                <td data-label="Модель">{{ modelLabel(r) }}</td>
-                <td data-label="Период заказчику" class="num">{{ feeLabel(r) }}</td>
-                <td data-label="Обновлён">
-                  {{ r.updated_at ? (r.updated_at | date: 'dd.MM.yyyy') : '—' }}
-                </td>
-                <td class="r">
-                  <button type="button" class="btn sm" (click)="toggleProject(r.project_id)">
-                    {{ openProject() === r.project_id ? 'Свернуть' : 'Править' }}
-                  </button>
-                </td>
-              </tr>
-              @if (openProject() === r.project_id) {
-                <tr class="editor">
-                  <td colspan="7">
-                    <app-project-tariff [projectId]="r.project_id" (saved)="loadRows()" />
-                  </td>
-                </tr>
-              }
-            }
-          </tbody>
-        </table>
-      </div>
-    }
+  <div class="twrap reg-wrap">
+    <table class="reg">
+      <thead>
+        <tr>
+          <th>Проект</th>
+          <th>Заказчик</th>
+          <th>Менеджер</th>
+          <th>Модель</th>
+          <th>Период заказчику</th>
+          <th>Обновлён</th>
+          <th class="r"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of rows(); track r.project_id) {
+        <tr [class.nofee]="!r.has_terms">
+          <td data-label="Проект"><b>{{ r.title || 'Без названия' }}</b></td>
+          <td data-label="Заказчик">{{ r.client_name || '—' }}</td>
+          <td data-label="Менеджер">{{ r.manager_name || 'не назначен' }}</td>
+          <td data-label="Модель">{{ modelLabel(r) }}</td>
+          <td data-label="Период заказчику" class="num">{{ feeLabel(r) }}</td>
+          <td data-label="Обновлён">
+            {{ r.updated_at ? (r.updated_at | date: 'dd.MM.yyyy') : '—' }}
+          </td>
+          <td class="r">
+            <button type="button" class="btn sm" (click)="toggleProject(r.project_id)">
+              {{ openProject() === r.project_id ? 'Свернуть' : 'Править' }}
+            </button>
+          </td>
+        </tr>
+        @if (openProject() === r.project_id) {
+        <tr class="editor">
+          <td colspan="7">
+            <app-project-tariff [projectId]="r.project_id" (saved)="loadRows()" />
+          </td>
+        </tr>
+        } }
+      </tbody>
+    </table>
   </div>
+  }
+</div>
 } @else {
 <div class="crm-page tariff">
   @if (loading()) {
@@ -99,11 +98,11 @@
   } @else { @if (current(); as v) {
   <div class="rates">
     <div class="rate">
-      <span class="cap">Оклад</span>
-      <b>{{ money(v.salary_per_month) }} <small>/ мес с заказчика</small></b>
+      <span class="cap">Фикс за ролик</span>
+      <b>{{ money(v.fee_per_video) }} <small>/ ролик с заказчика</small></b>
       <div class="tier">
         <span class="d">креатору</span>
-        <span class="v">{{ money(creatorShare(v, 'salary')) }}</span>
+        <span class="v">{{ money(v.creator_fee_per_video ?? v.fee_per_video) }}</span>
       </div>
       <div class="tier">
         <span class="d">остаётся площадке</span>
@@ -182,7 +181,7 @@
         <tr>
           <th>От просмотров за период</th>
           <th>Платит заказчик</th>
-          <th>Оклад креатору</th>
+          <th>Креатору</th>
           <th>Остаётся площадке</th>
         </tr>
       </thead>
@@ -229,7 +228,7 @@
         <tr>
           <th>Версия</th>
           <th>Выпущена</th>
-          <th>Оклад</th>
+          <th>Фикс за ролик</th>
           <th>За 1000</th>
           <th>Креатору</th>
           <th>Согласий</th>
@@ -241,7 +240,7 @@
         <tr>
           <td class="num">{{ versionLabel(v) }}</td>
           <td>{{ v.published_at | date: 'd MMM y' }}</td>
-          <td>{{ money(v.salary_per_month) }}</td>
+          <td>{{ money(v.fee_per_video) }}</td>
           <td>{{ money(v.rate_per_1000_views) }}</td>
           <td>{{ money(creatorShare(v, 'rate')) }} / 1000</td>
           <td>{{ v.consented_clients }}</td>
@@ -285,9 +284,13 @@
   </div>
 
   <h3 class="sec">Платит заказчик</h3>
+  <p class="sub">
+    Оклад за месяц выключен: фикс считается за ролик, выше. Поле осталось для старых версий прайса —
+    новую заводите с нулём, иначе фикс посчитается дважды.
+  </p>
   <div class="grid">
     <label>
-      <span class="lbl">Оклад за месяц, ₽</span>
+      <span class="lbl">Оклад за месяц, ₽ — старая модель</span>
       <input class="inp" type="number" min="0" [(ngModel)]="draft.salary" />
     </label>
     <label>
@@ -319,7 +322,7 @@
   </p>
   <div class="grid">
     <label>
-      <span class="lbl">Оклад за месяц, ₽</span>
+      <span class="lbl">Оклад за месяц, ₽ — старая модель</span>
       <input
         class="inp"
         type="number"
@@ -380,16 +383,16 @@
   <h3 class="sec">Ступени</h3>
   <p class="sub">
     Порог объёма и цена периода на нём: «набрали 300 000 — период стоит столько-то». Берётся
-    последняя взятая ступень, а не сумма пройденных. Ступеней может быть сколько угодно; нижнюю с
-    порогом 0 заводите сами — это и есть голый оклад без KPI. Ступеней нет вовсе — версия считается
-    прежней моделью, окладом и ставкой за тысячу.
+    последняя взятая ступень, а не сумма пройденных. Ступеней может быть сколько угодно, но нижней с
+    порогом 0 больше не нужно: её место занял фикс за ролик. Ступеней нет вовсе — сверх фикса
+    считается ставка за тысячу.
   </p>
   @if (draft.steps.length) {
   <div class="steps">
     <div class="steps-head">
       <span>От просмотров</span>
       <span>Платит заказчик, ₽</span>
-      <span>Оклад креатору, ₽</span>
+      <span>Креатору, ₽</span>
       <span></span>
     </div>
     @for (st of draft.steps; track $index) {
@@ -459,5 +462,4 @@
     </button>
   </div>
 </div>
-}
-}
+} }

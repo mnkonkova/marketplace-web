@@ -145,7 +145,6 @@ export class ClientTurnkeyProjectComponent {
    */
   public readonly tab = signal<ClientTab>('summary');
 
-
   /**
    * Шесть разделов — ровно как в макете, и это не дробление ради
    * дробления. За каждым стоит свой вопрос: «как дела» (сводка), «что
@@ -666,7 +665,6 @@ export class ClientTurnkeyProjectComponent {
   private loadedFor = '';
 
   public constructor() {
-
     // Раздел, с которого открыли проект, — одноразово через адрес.
     //
     // Со списка проектов на телефоне ведут три кнопки: «Сводка»,
@@ -770,12 +768,17 @@ export class ClientTurnkeyProjectComponent {
   public readonly money = formatMoney;
 
   /**
-   * Оклад один или их несколько: при одном креаторе «Оклады» — ошибка
+   * Чем подписан столбец фикса.
+   *
+   * Фикс считается за ролик, и «Оклад» назвал бы здесь выключенную
+   * механику. Старые снимки остались на окладе за период — у них
+   * подпись прежняя: при одном креаторе «Оклады» ещё и ошибка
    * согласования, читатель ищет вторую строку, которой нет.
    */
-  public readonly salaryTitle = computed(() =>
-    (this.billing()?.accruals ?? []).length === 1 ? 'Оклад' : 'Оклады',
-  );
+  public readonly salaryTitle = computed(() => {
+    if (this.billing()?.terms?.fee_per_video) return 'Фикс';
+    return (this.billing()?.accruals ?? []).length === 1 ? 'Оклад' : 'Оклады';
+  });
 
   /** Какой период показан: «Период 3 · 15 сентября — 14 октября». */
   public readonly periodTitle = computed(() => periodTitle(this.billing()?.period));

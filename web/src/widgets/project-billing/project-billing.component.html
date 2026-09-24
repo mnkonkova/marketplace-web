@@ -130,7 +130,7 @@
       @if (totals(); as t) {
         <div class="kpis">
           <div class="kpi">
-            <span class="k">{{ salaryTitle() }} за период</span>
+            <span class="k">{{ salaryTitle() }}</span>
             <b>{{ money(t.salaries) }}</b>
           </div>
           <div class="kpi">
@@ -245,9 +245,18 @@
 
     <ng-template #ratesTpl let-t>
       <div class="rates">
+        <!-- Фикс считается ЗА РОЛИК: месяц с пятью роликами не стоит как
+             месяц с тридцатью. Оклад за период остался подписью только у
+             старых снимков — переименовать их задним числом значило бы
+             назвать чужую механику. -->
         <div class="rate">
-          <span class="cap">Оклад</span>
-          <b>{{ money(t.salary_per_month) }}<small>/ мес</small></b>
+          @if (t.fee_per_video) {
+            <span class="cap">Фикс за ролик</span>
+            <b>{{ money(t.fee_per_video) }}<small>/ ролик</small></b>
+          } @else {
+            <span class="cap">Оклад</span>
+            <b>{{ money(t.salary_per_month) }}<small>/ мес</small></b>
+          }
           @for (tier of salaryScope(); track tier.value + tier.note) {
             <span class="tier">
               <span class="v">{{ tier.value }}</span
@@ -255,7 +264,12 @@
             </span>
           }
           <span class="tier-note">
-            Фиксированная оплата каждому креатору за производство с публикацией на всех площадках.
+            @if (t.fee_per_video) {
+              Фиксированная оплата за каждую вышедшую выкладку: производство и публикация на всех
+              площадках.
+            } @else {
+              Фиксированная оплата каждому креатору за производство с публикацией на всех площадках.
+            }
           </span>
         </div>
         <div class="rate">
@@ -459,7 +473,7 @@
               <th>Креатор</th>
               <th>Ролики</th>
               <th>Просмотры</th>
-              <th>Оклад</th>
+              <th>{{ salaryCol() }}</th>
               <th>Бонус</th>
               <th>Вычет</th>
               <th>Итого</th>

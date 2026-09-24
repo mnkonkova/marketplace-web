@@ -600,7 +600,14 @@
           @if (orderEstimate(); as e) {
           <div class="sums">
             <div class="sumrow">
+              <!-- Фикс считается за ролик, и «Оклады, 3 чел.» назвали бы
+                   здесь другую механику: платим за вышедшие ролики, а не
+                   за число людей в составе. -->
+              @if (e.terms.fee_per_video) {
+              <span>Фикс, {{ e.videos }} {{ plural(e.videos, 'ролик', 'ролика', 'роликов') }}</span>
+              } @else {
               <span>Оклады, {{ e.creators }} чел.</span>
+              }
               <b>{{ money(e.salaries) }}</b>
             </div>
             @if (e.has_forecast) {
