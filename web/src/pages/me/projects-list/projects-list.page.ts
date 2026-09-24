@@ -348,8 +348,18 @@ export class ProjectsListPage {
    * палитры рядов кабинета, а не из акцента: два проекта одним цветом
    * не различить, а палитра на то и заведена.
    */
-  public readonly projectSeries = computed<ChartSeries[]>(() =>
-    this.rows()
+  public readonly projectSeries = computed<ChartSeries[]>(() => {
+    // Режем ряд границами ОКНА, которые прислал сервер. Отчёт проекта
+    // отдаёт всю его историю, и без обрезки диаграмма рисовала одно и
+    // то же при «неделе» и при «квартале»: переключатель рядом, а
+    // линия не шевелится.
+    const w = this.overview()?.window;
+    const from = w?.from ?? '';
+    const to = w?.to ?? '';
+    const inWindow = (d: string) => (!from || d >= from) && (!to || d <= to);
+
+    return this.rows()
+      .map((r) => ({ ...r, series: r.series.filter((p) => inWindow(p.date)) }))
       .filter((r) => r.series.length > 1)
       .slice(0, SERIES_COLORS.length)
       .map((r, i) => ({
@@ -357,8 +367,8 @@ export class ProjectsListPage {
         label: r.title,
         color: SERIES_COLORS[i],
         points: r.series,
-      })),
-  );
+      }));
+  });
 
   public readonly hasChart = computed(() => this.projectSeries().length > 0);
 
