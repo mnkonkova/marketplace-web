@@ -25,7 +25,7 @@
   --s-all: #151a17;
   --display: 'Unbounded', 'Arial Black', system-ui, sans-serif;
   --body: 'Onest', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, menlo, monospace;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
 
   // Токены дизайн-системы «Ступеней» — псевдонимами на светлую палитру
   // кабинета. Внутри .sotka встречаются общие компоненты приложения
@@ -88,7 +88,7 @@
   --blue: var(--accent);
   --blue-dim: var(--accent-soft);
   --violet: #7a4fd0;
-  --mono: 'JetBrains Mono', ui-monospace, menlo, monospace;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
   --crm-mono: var(--mono);
 
   color-scheme: light;
@@ -1916,8 +1916,13 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
         padding: 14px 12px;
       }
 
+      // В макете 28 и на телефоне. Замерено на 390: «2 950 000» в
+      // половине экрана при 28 переносится второй строкой, восьмизначное
+      // «12 345 678» — вплоть до 23. Двадцать два — самый крупный
+      // кегль, при котором одной строкой помещается любое число,
+      // которое может прийти.
       .v {
-        font-size: 21px;
+        font-size: 22px;
       }
     }
   }
