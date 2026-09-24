@@ -1,8 +1,22 @@
-@if (userId()) {
+<!-- Справа на десктопе, нижним листом на телефоне. Панель у правого
+     края телефона — это та же полоса во весь экран, только открытая от
+     мизинца и без прокрутки тела; лист берём из общей библиотеки, как и
+     остальные формы кабинета. -->
+@if (touch) {
+  <app-sheet [open]="!!userId()" [title]="name()" [note]="sheetNote()" (closed)="close()">
+    <ng-container *ngTemplateOutlet="cardTpl" />
+  </app-sheet>
+} @else if (userId()) {
   <div class="scrim" (click)="close()"></div>
   <aside class="drawer" role="dialog" aria-modal="true" aria-label="Карточка человека">
+    <ng-container *ngTemplateOutlet="cardTpl" />
+  </aside>
+}
+
+<ng-template #cardTpl>
     <app-list-state [loading]="loading()" [error]="error()" (retry)="retry()">
       @if (card(); as c) {
+        @if (!touch) {
         <header class="dr-hd">
           <span class="av" aria-hidden="true">{{ initial() }}</span>
           <div class="who">
@@ -18,6 +32,7 @@
             <app-crm-icon name="close" />
           </button>
         </header>
+        }
 
         <div class="dr-bd">
           @if (c.moderation; as m) {
@@ -179,5 +194,4 @@
         </div>
       }
     </app-list-state>
-  </aside>
-}
+</ng-template>

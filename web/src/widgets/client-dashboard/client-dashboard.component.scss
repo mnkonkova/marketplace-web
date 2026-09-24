@@ -371,6 +371,30 @@ app-steps {
   line-height: 1.35;
 }
 
+// Автор и вовлечённость — одной строкой под названием: это подпись к
+// ролику, а не ещё два показателя. Крупнее её делать нельзя, иначе она
+// начнёт спорить с просмотрами, ради которых ролик сюда и попал.
+.clip .by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+
+  .who {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .er {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 // Цель 44 px с числом и стрелкой наружу. Значок в 26 пикселей не обещал
 // ничего, не говорил, сколько там просмотров, и промахивался пальцем.
 .go {

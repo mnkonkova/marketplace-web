@@ -1,0 +1,35 @@
+<nz-drawer
+  [nzVisible]="open()"
+  nzPlacement="bottom"
+  [nzClosable]="false"
+  nzHeight="auto"
+  [nzBodyStyle]="{ padding: '0' }"
+  (nzOnClose)="close()"
+>
+  <ng-container *nzDrawerContent>
+    <div
+      class="sh-sheet"
+      (touchstart)="onDragStart($event)"
+      (touchmove)="onDragMove($event)"
+      (touchend)="onDragEnd()"
+      (touchcancel)="onDragEnd()"
+    >
+      <div class="sh-grip">
+        <span></span>
+        @if (title()) {
+          <strong>{{ title() }}</strong>
+        }
+      </div>
+
+      @if (note()) {
+        <p class="sh-note">{{ note() }}</p>
+      }
+
+      <!-- Прокручивается ТЕЛО, а не вся страница: у длинной формы
+           последние поля иначе остаются под краем экрана. -->
+      <div class="sh-body">
+        <ng-content />
+      </div>
+    </div>
+  </ng-container>
+</nz-drawer>

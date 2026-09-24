@@ -1,446 +1,555 @@
+<!-- Шапка сайта над кабинетом — см. список проектов. -->
 <app-header />
 
-<!-- Разметка перенесена из макета ~/tmp/crm_project_creator (1).html.
-     Классы и порядок блоков — оттуда же; .crm-page включает общую часть
-     оболочки (карточки, кнопки, чипы, площадки), она в shared/scss/_crm.scss. -->
-<div class="crm-page">
-  @if (loading()) {
-  <div class="shell solo">
-    <main class="main"><nz-spin nzSize="large" /></main>
-  </div>
-  } @else if (notFound()) {
-  <div class="shell solo">
-    <main class="main">
-      <section class="empty-state">
-        <h1>Проект не найден</h1>
-        <p class="sub">
+<div class="sotka" [attr.data-sec]="section()">
+  <app-sotka-top
+    [showWho]="false"
+    [title]="card()?.title || 'Проект'"
+    [subtitle]="card()?.manager ? 'менеджер: ' + card()!.manager!.display_name : ''"
+    [nav]="nav()"
+    [periodLabel]="period() ? 'Период ' + period()!.seq : ''"
+    [periodDay]="periodEnds() ? 'до ' + (periodEnds() | date: 'd MMM') : ''"
+  />
+
+  <main>
+    @if (loading()) {
+    <div class="role">
+      <div class="span-12 panel"><p class="muted">Загружаем проект…</p></div>
+    </div>
+    } @else if (notFound()) {
+    <div class="role">
+      <div class="span-12 panel">
+        <h1 class="nf-h">Проект не найден</h1>
+        <p class="muted">
           Возможно, вас убрали из состава или ссылка ведёт на чужой проект. Ваши проекты — в списке
           «Мои проекты».
         </p>
-        <p style="margin-top: 14px">
-          <a routerLink="/me/creator/projects">К моим проектам</a>
-        </p>
-      </section>
-    </main>
-  </div>
-  } @else {
-  <div class="shell solo">
-    <main class="main">
-      <!-- ── шапка проекта ───────────────────────────────── -->
-      <div class="hero">
-        <div class="top">
-          <div class="t">
-            @if (card(); as c) {
-            <p class="eyebrow">Проект · вас добавили {{ c.added_at | date: 'dd.MM' }}</p>
-            <h1>{{ c.title }}</h1>
-            @if (c.brief) {
-            <p class="sub" style="margin-top: 6px">{{ c.brief }}</p>
-            } } @else {
-            <p class="eyebrow">Проект</p>
-            <h1>Мои выкладки</h1>
+        <p class="nf-link"><a routerLink="/me/creator/projects">К моим проектам</a></p>
+      </div>
+    </div>
+    } @else {
+    <div class="role">
+      <div class="span-12 sec sec-money">
+        <div class="subgrid">
+          <!-- ПРОШЛЫЙ ПЕРИОД одной плашкой: сколько и в каком состоянии.
+             Это первое, что спрашивают, и ответ на него не должен
+             требовать прокрутки. -->
+          @if (closedRow(); as row) {
+          <div class="span-12 plaque">
+            <b>{{ closedTitle() }}</b>
+            <span class="amt num">{{ money(row.payout_total ?? row.total) }}</span>
+            <div class="grow chips">
+              @if (row.status === 'draft') {
+              <span class="pill neu">считаем</span>
+              } @else {
+              <span class="pill ok">✓ посчитали</span>
+              } @if (row.approved_at) {
+              <span class="pill ok">✓ утвердили {{ row.approved_at | date: 'dd.MM' }}</span>
+              } @if (row.paid_at) {
+              <span class="pill ok">✓ выплатили {{ row.paid_at | date: 'dd.MM' }}</span>
+              } @else {
+              <span class="pill neu">выплата после утверждения</span>
+              }
+            </div>
+            @if (closedApprox()) {
+            <span class="muted small">числа подтянуты: поденной статистики за период уже нет</span>
             }
           </div>
-
-          @if (card()?.manager; as m) {
-          <div class="mgr">
-            <span class="av lg a1">{{ m.display_name.charAt(0) }}</span>
-            <span><b>{{ m.display_name }}</b>менеджер проекта</span>
-            <button type="button" class="btn ghost sm" (click)="openTalk()">Написать</button>
-          </div>
           }
-        </div>
 
-        <!-- Полоса: сделанное, частичное, просроченное. Считается по
-               выкладкам, а не по ссылкам: закрывается ролик целиком. -->
-        <div class="progress">
-          <span class="pbar">
-            <i class="done" [style.width.%]="sharePercent('done')"></i>
-            <i class="part" [style.width.%]="sharePercent('part')"></i>
-            <i class="late" [style.width.%]="sharePercent('late')"></i>
-          </span>
-          <!-- Про ПЕРИОД, а не про проект: выполненный план роликов не
-               заканчивает проект, он живёт дальше — закрываются периоды.
-               «Всё сдано» на этом месте читалось как «всё, проект
-               окончен». -->
-          <span class="pcount">
-            @if (!total()) { Дат выкладок пока нет — их проставит менеджер. } @else { {{ closed() }}
-            из {{ total() }} по плану периода · {{ links().done }} из {{ links().total }} {{
-            plural(links().total, 'ссылки', 'ссылок', 'ссылок') }} @if (periodEnds(); as ends) { ·
-            период до {{ ends | date: 'd MMM' }} } }
-          </span>
-        </div>
-      </div>
-
-      <!-- ── вкладки ──────────────────────────────────────
-           Страница была одной простынёй: деньги, достижения, история,
-           ближайшее дело, тринадцать выкладок и переписка подряд. Три
-           раздела отвечают на три разных вопроса («сколько мне за это
-           будет», «что у меня со сдачей», «что сказал менеджер»), и
-           приходят с ними в разное время.
-
-           Разметка — общая, .tabs/.tab из shared/scss/_crm.scss: та же,
-           что у менеджера и у заказчика. Своей здесь заводить нечего.
-
-           Активная вкладка живёт в АДРЕСЕ: человек даёт ссылку на свои
-           выкладки или на переписку, и она обязана открыться тем, чем
-           делились. Так же сделано в кабинете заказчика. -->
-      <!-- Итог за прошлый период — НАД вкладками и виден с любой.
-           Момент подытога и есть ответ на «сколько я заработал»: числа
-           заморожены и пересчёту не подлежат. Строкой в истории под
-           всеми блоками этот ответ терялся — а он единственный на
-           экране, который человек ждёт неделями.
-
-           Держится не по календарю: период сменится, а деньги останутся
-           неполученными. Уходит, когда начисление выплачено — тогда оно
-           переезжает в «период за периодом». -->
-      @if (lastClosed(); as closed) {
-      <div class="closedbar">
-        <div class="cd">
-          <span class="k">Заработано за прошлый период</span>
-          <b>{{ money(closed.row.total) }}</b>
-          <span class="r">
-            {{ closedTitle() }} @if (closedApprox()) { ·
-            <span class="approx">часть чисел приблизительная</span>
-            }
-          </span>
-        </div>
-        <div class="parts">
-          <span> {{ money(closed.row.salary) }} <i>оклад</i> </span>
-          <span> + {{ money(closed.row.views_bonus) }} <i>за просмотры</i> </span>
-          @if (closed.row.deduction) {
-          <!-- Вычет виден так же, как заработок: спрятать его — значит
-               устроить сюрприз в день выплаты. -->
-          <span class="cut">− {{ money(closed.row.deduction) }} <i>за недосданное</i></span>
-          }
-        </div>
-        <p class="state">{{ closedState() }}</p>
-      </div>
-      }
-
-      <nav class="tabs" role="tablist" aria-label="Разделы проекта">
-        @for (t of tabs; track t.key) {
-        <button
-          type="button"
-          role="tab"
-          class="tab"
-          [class.on]="t.key === tab()"
-          [attr.aria-selected]="t.key === tab()"
-          (click)="setTab(t.key)"
-        >
-          {{ t.title }}
-          <!-- Счётчик только у выкладок и только несданных. Список ушёл
-               под вкладку, и без этого числа человек не знает, надо ли
-               туда заходить вообще. Ноль не пишем: «0» в кружке читается
-               как незакрытое дело, а закрывать нечего. -->
-          @if (t.key === 'pubs' && openCount()) {
-          <span class="cnt">{{ openCount() }}</span>
-          }
-        </button>
-        }
-      </nav>
-
-      @if (tab() === 'overview') {
-      <!-- ── 1. Сколько заработал и сколько заработаю ─────
-           Первым и во всю ширину, без соседей: человек приходит сюда с
-           этим вопросом, и ответ на него должен стоять один. -->
-      <app-creator-ladder
-        [earnings]="earnings()"
-        [publications]="items()"
-        (addVideo)="openAddPublication()"
-      />
-
-      <!-- Карточка «Условия проекта» (оклад, ставка за тысячу, ставка
-           сверх порога) отсюда убрана по решению владельца продукта.
-           Числа тарифа приходили с сервера готовыми (earnings().terms) и
-           в браузере не считались — правило это к разметке не привязано
-           и с её удалением не ослабло. -->
-
-      <!-- ── 2. Что получается лучше всего ──────────────── -->
-      <app-creator-highlights
-        [earnings]="earnings()"
-        [publications]="items()"
-        [report]="report()"
-      />
-
-      <!-- ── 2b. Трудовая биография: период за периодом ─── -->
-      <app-creator-history [earnings]="earnings()" />
-
-      <!-- ── 3. Что делать дальше ────────────────────────
-           Одно действие одной строкой. Ни поздравлений, ни списка из
-           трёх советов сразу: список читается не как задачи, а как
-           упрёк. Нечего делать — строки нет вовсе.
-
-           Добора до ступени здесь БОЛЬШЕ НЕТ. Он стоял тут второй
-           копией: карточка «Заработок за период» выше пишет ровно те же
-           два числа («осталось 100 тыс. просмотров», «≈ +3 564 ₽») и
-           держит ровно такую же кнопку «Добавить ролик». Из двух мест
-           правильное — карточка: числа, ради которых ролик и снимают,
-           стоят там же рядом. Этот блок про ОДНО ближайшее дело и
-           существует ради случая «сдавать нечего» — деньгам в нём места
-           нет. Заодно ушло слово «прогноз», которого на этом экране
-           просили не писать; оговорка про «не начисленное» осталась
-           там, где ей и место, — знаком «≈» в самой карточке.
-
-           Без подсказки экран при этом не остался: кнопка добора живёт
-           в карточке заработка под тем же условием «период открыт»,
-           а карточка рисуется всегда, когда есть прогноз ступени
-           (сервер не отдаёт его без периода). -->
-      @if (nextStep(); as kind) {
-      <div
-        class="next"
-        [class.late]="kind === 'submit' && !!urgent()?.overdue"
-        [class.calm]="kind !== 'submit'"
-      >
-        @if (kind === 'submit') { @if (urgent(); as u) {
-        <span class="cd">{{ daysLeft(u) }}<small>{{ daysWord(u) }}</small></span>
-        <span class="tx">
-          <b>Выкладка {{ index(u) }} — {{ collectedLabel(u) }}</b>
-          {{ urgentHint(u) }}
-        </span>
-        <button type="button" class="btn primary sm" (click)="openSubmit(u)">Сдать ролик</button>
-        } } @else if (kind === 'profile') {
-        <!-- Говорим ровно то, что знаем: в профиле пусто. Не «вы теряете
-             просмотры» — просмотры считаются по сданным ссылкам, а не по
-             профилю, и такое утверждение было бы неправдой у того, кто
-             аккаунт имеет, но в профиль не вписал. -->
-        <!-- Середина объяснения — в отдельном span, и на телефоне тач-слой
-             её гасит (.next .long в creator-project.page.touch.scss).
-             Блок теперь стоит первым экраном, и пять строк устройства
-             бонуса в нём — это пять строк между человеком и кнопкой.
-             Остаётся последствие: площадки без аккаунта в бонус не
-             попадут. Текст один на оба размера намеренно — два разных в
-             шаблоне разошлись бы при первой же правке. -->
-        <span class="tx">
-          <b>Указать в профиле аккаунты: {{ missingAccountsList() }}</b>
-          <span class="long"
-            >Проект идёт на {{ projectPlatforms().length }} {{ plural(projectPlatforms().length,
-            'площадку', 'площадки', 'площадок') }}, один ролик уходит на все, и просмотры по ним
-            складываются в один бонус. </span
-          >Площадки, на которой у вас нет аккаунта, в этом бонусе не будет.
-        </span>
-        <a class="btn primary sm" routerLink="/me" [queryParams]="{ tab: 'contacts' }">В профиль</a>
-        }
-      </div>
-      }
-
-      <!-- Незаполненные площадки — отдельной тихой строкой, когда
-           ближайшим делом стало что-то другое. Повторять их в двух
-           местах сразу не надо, но и молчать о них нельзя: это его
-           деньги. -->
-      @if (missingAccounts().length && nextStep() !== 'profile') {
-      <p class="gap">
-        В профиле не указаны аккаунты: <b>{{ missingAccountsList() }}</b>. Один ролик идёт на все
-        площадки проекта, и просмотры по ним складываются в один бонус —
-        <a routerLink="/me" [queryParams]="{ tab: 'contacts' }">добавить ссылки</a>.
-      </p>
-      } }
-
-      <!-- ── вкладка «Мои выкладки» ───────────────────────
-           Список и «Занятость» — то, с чем работают, а не то, что
-           читают. Материалы проекта живут здесь же: бренд-гайд и
-           обучение открывают, когда СНИМАЮТ, то есть рядом с выкладкой,
-           а не рядом с деньгами. -->
-      @if (tab() === 'pubs') {
-      <div class="two">
-        <div class="pubs">
-          <h2 style="margin-bottom: 12px">Мои выкладки</h2>
-
-          <!-- Порядок показа — displayed(): несданное наверху, сданное
-               под ним. Нумерация при этом идёт от расписания (ordered),
-               иначе «Выкладка 03» перестала бы быть третьей по сроку.
-
-               .mdone сворачивает сданную карточку — теперь на обоих
-               размерах: двенадцать одинаковых «5 из 5 собрано» ничего не
-               добавляют к строке-итогу под списком, а прокрутки стоят
-               четыре тысячи пикселей. .todo — единственная карточка, с
-               которой сегодня что-то делают. -->
-          @for (pub of displayed(); track pub.id) {
-          <article
-            class="slotcard"
-            [class.mdone]="doneFolded() && isDone(pub)"
-            [class.todo]="canSubmit(pub)"
-            [class.done]="badge(pub).tone === 'ok'"
-            [class.late]="badge(pub).tone === 'late'"
-            [class.part]="badge(pub).tone === 'warn'"
-          >
-            <div class="hd">
-              <span
-                class="tag"
-                [class.green]="pub.links.length === projectPlatforms().length"
-                [class.red]="!pub.links.length && pub.overdue"
-                [class.amber]="pub.links.length && pub.links.length < projectPlatforms().length"
-              >
-                {{ pub.links.length }} из {{ projectPlatforms().length }} {{
-                plural(projectPlatforms().length, 'площадки', 'площадок', 'площадок') }}
-              </span>
-
-              <span class="t">
-                <!-- Название, если креатор его дал: по нему ролик и
-                     узнают, а номер выкладки ни о чём не говорит. -->
-                <b>{{ pub.title || 'Выкладка ' + index(pub) }}</b>
-                <span class="m">
-                  <span>{{ badge(pub).label | lowercase }}</span>
-                  @if (selfAdded(pub)) {
-                  <!-- Происхождение выкладки, а не её статус: человеку
-                       полезно видеть, что этот ролик он добавил себе сам,
-                       сверх плана, — и что оклада он не касается. Поэтому
-                       тихой пометкой, а не тегом в один ряд со сроком. -->
-                  <span class="own" title="Вы добавили её сами, сверх плана — на оклад не влияет"
-                    >своя</span
-                  >
-                  }
-                  <span
-                    class="v"
-                    [class.late]="pub.overdue"
-                    [class.soon]="!pub.overdue && badge(pub).tone === 'warn'"
-                    >{{ pub.due_date | date: 'dd.MM' }}</span
-                  >
-                  @if (pub.stats_collected_at) {
-                  <span>·</span>
-                  <span>собрано</span>
-                  <span class="v">{{ pub.stats_collected_at | date: 'dd.MM' }}</span>
-                  }
-                </span>
-              </span>
-
-              <button type="button" class="btn quiet sm" (click)="toggle(pub)">
-                {{ isExpanded(pub) ? 'Свернуть' : 'Показать ссылки' }}
-              </button>
+          <!-- ДЕНЬГИ ТЕКУЩЕГО ПЕРИОДА. Слева из чего сложилось, справа
+             лесенка: деньги приходят скачком на ступени, и полоса
+             прогресса здесь врала бы. -->
+          <div class="span-12 earn">
+            <div class="earn-l">
+              <div class="label">
+                {{ period() ? 'Период ' + period()!.seq : 'Текущий период' }} · заработано на
+                сегодня
+              </div>
+              @if (payout(); as pay) {
+              <div class="calc num">
+                <div class="ln"><span>Оклад</span><b>{{ money(pay.salary) }}</b></div>
+                <div class="ln">
+                  <span>
+                    Бонус за просмотры
+                    <span class="x"
+                      >{{ ladder().passed }} {{ plural(ladder().passed, 'ступень', 'ступени',
+                      'ступеней') }}</span
+                    >
+                  </span>
+                  <b>{{ pay.bonus ? '+ ' + money(pay.bonus) : '—' }}</b>
+                </div>
+                @if (pay.deduction) {
+                <div class="ln crit-line">
+                  <span>
+                    Вычет
+                    <span class="x">
+                      сдано {{ pay.videosDelivered }} из {{ pay.videosPlanned }}
+                    </span>
+                  </span>
+                  <b>− {{ money(pay.deduction) }}</b>
+                </div>
+                }
+                <div class="ln total"><span>Итого</span><b>{{ money(pay.total) }}</b></div>
+              </div>
+              @if (urgent(); as pub) {
+              <p class="muted earn-note">
+                Сдайте ролик до {{ due(pub.due_date) }} — вычет пересчитается.
+                <span class="server">считает сервер</span>
+              </p>
+              } @else {
+              <p class="muted earn-note">
+                Числа считает сервер по вашим просмотрам.
+                <span class="server">сервер</span>
+              </p>
+              } } @else {
+              <p class="muted earn-note">
+                Период ещё не пересчитывали — строки начисления пока нет. Это не ноль: как только
+                сервер посчитает, сумма появится здесь.
+              </p>
+              }
             </div>
 
-            <!-- Ролик вернули. Это единственное место, где креатор узнаёт
-                 замечание словами: раньше оно жило в переписке, то есть
-                 терялось. Карточка остаётся открытой — по ней работают,
-                 а не просматривают. -->
-            @if (pub.review; as rev) { @if (rev.status === 'returned') {
-            <p class="returned">
-              <b>Вернули переделать</b>
-              @if (rev.decided_by_name) { · {{ rev.decided_by_name }} } @if (rev.comment) {
-              <span class="cm">{{ rev.comment }}</span>
+            <div class="earn-r">
+              <div class="earn-head">
+                <div>
+                  <div class="label">
+                    Лесенка · ступень = {{ digits(ladderStep) }} просмотров @if (stepMoney()) { = {{
+                    money(stepMoney()) }} }
+                  </div>
+                  <div class="earn-sub">
+                    <b
+                      >Взято {{ ladder().passed }} {{ plural(ladder().passed, 'ступень', 'ступени',
+                      'ступеней') }}.</b
+                    >
+                    @if (toNext()) {
+                    <span class="muted">До следующей — </span>
+                    <b class="num acc">{{ digits(toNext()) }} просмотров</b>
+                    }
+                  </div>
+                </div>
+                <span class="num muted views-now">
+                  ваши просмотры: <b class="ink">{{ digits(viewsNow()) }}</b>
+                </span>
+              </div>
+
+              <div>
+                <div
+                  class="stairs"
+                  [attr.aria-label]="'Лесенка бонусов: взято ' + ladder().passed + ' ступеней'"
+                >
+                  @for (s of stairs(); track s.n) {
+                  <div
+                    class="step"
+                    [class.done]="s.state === 'done'"
+                    [class.next]="s.state === 'next'"
+                    [class.ghost]="s.state === 'ghost'"
+                    [style.height.px]="s.height"
+                    [title]="s.label + ' просмотров'"
+                  >
+                    @if (s.money) {
+                    <i>{{ s.money }}</i>
+                    }
+                  </div>
+                  }
+                </div>
+                <div class="stairs-x">
+                  @for (s of stairs(); track s.n) {
+                  <span>{{ s.label }}</span>
+                  }
+                </div>
+              </div>
+
+              <!-- Что даст следующий ролик. Прогноз считает сервер тем же
+                 кодом, что и настоящую выплату: своя формула «для
+                 прогноза» разошлась бы с ней молча. -->
+              @if (nextVideoGain()) {
+              <div class="lever">
+                <span class="big num">≈ + {{ money(nextVideoGain()) }}</span>
+                <p>
+                  @if (myMedian(); as m) { Следующий ролик добавит ≈ {{ digits(m.views) }}
+                  просмотров — по вашей медиане за {{ m.basis }} {{ plural(m.basis, 'ролик',
+                  'ролика', 'роликов') }}. } @else {
+                  <!-- Своей медианы ещё нет: роликов слишком мало. Тогда
+                         это число из справочника, и выдавать его за личное
+                         нельзя — по этой строке считают свою зарплату. -->
+                  @if (typical(); as b) { Следующий ролик добавит ≈ {{ digits(b.typical_video_views)
+                  }} просмотров — это типовой ролик, ваших пока мало для своей медианы. } @else {
+                  Столько даст следующая ступень. } }
+                </p>
+                <button type="button" class="btn" (click)="openAddPublication()">
+                  Взять ещё выкладку
+                </button>
+              </div>
               }
-              <span class="hint">Переснимите и сдайте ссылку заново — проверка начнётся сначала.</span>
-            </p>
+            </div>
+          </div>
+
+          <!-- Лучший и слабее — в деньгах, а не в задании: это объяснение
+             суммы. Ступени растут от просмотров, и разговор «почему в
+             этом месяце меньше» начинается ровно с этих двух роликов. -->
+          @if (bestWorst(); as bw) {
+          <div class="span-12 panel">
+            <div class="panel-h">
+              <h2>Лучший и слабее</h2>
+              <span class="sub">по просмотрам за период</span>
+            </div>
+            <div class="bw">
+              <div>
+                <span class="pill ok">лучший</span>
+                <h3 class="bw-h">{{ bw.best.title || 'Без названия' }}</h3>
+                <div class="num">
+                  <b class="bw-v">{{ digits(bw.best.views) }}</b>
+                  <span class="muted">· вышел {{ bw.best.published_at | date: 'dd.MM' }}</span>
+                </div>
+              </div>
+              <div>
+                <span class="pill neu">слабее</span>
+                <h3 class="bw-h">{{ bw.worst.title || 'Без названия' }}</h3>
+                <div class="num">
+                  <b class="bw-v">{{ digits(bw.worst.views) }}</b>
+                  <span class="muted">· вышел {{ bw.worst.published_at | date: 'dd.MM' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+
+      <!-- МОИ ВЫКЛАДКИ: три месяца календарём и два списка. -->
+      <div class="span-12 sec sec-posts">
+        <div class="subgrid">
+          <div class="span-12 panel">
+            <div class="panel-h">
+              <h2>Мои выкладки</h2>
+              <span class="sub">
+                {{ closed() }} из {{ total() }} сдано · {{ links().done }} из {{ links().total }} {{
+                plural(links().total, 'ссылка', 'ссылки', 'ссылок') }}
+              </span>
+            </div>
+
+            <!-- «Это ваш ролик?» — находка сервиса, ждущая ответа.
+               Стоит до календаря: ролик уже вышел и набирает просмотры,
+               а в плане он числится несданным. Ответ на один вопрос
+               закрывает обе неправды сразу.
+
+               Когда находок много, вперёд выходит строка-итог: место
+               перед календарём одно, и отдать его целиком вопросам
+               значит спрятать то, за чем пришли. Ссылка «Посмотреть»
+               возвращает ровно тот же список, ничего по дороге не
+               теряя. -->
+            @if (suggestFolded()) {
+            <button
+              type="button"
+              class="suggest-more"
+              [attr.aria-expanded]="suggestExpanded()"
+              (click)="toggleSuggest()"
+            >
+              <b>{{ suggestSummary() }}</b>
+              <span class="muted">— похоже, ваши. Ответьте, и они встанут в план.</span>
+              <span class="more-act">{{ suggestExpanded() ? 'Свернуть' : 'Посмотреть' }}</span>
+            </button>
+            } @if (suggestListVisible()) { @for (s of suggestions(); track s.id) {
+            <div class="suggest">
+              <span class="grow">
+                <b>Это ваш ролик?</b>
+                Нашли в {{ platformLabel[s.platform] }}{{ s.author_handle ? ' ' + s.author_handle :
+                '' }}@if (s.published_at) { от {{ s.published_at | date: 'd MMMM' }}}@if (s.title)
+                {: «{{ s.title }}»}
+              </span>
+              <a class="btn sm" [href]="s.url" target="_blank" rel="noopener">Открыть</a>
+              @if (s.suggested_due_date) {
+              <button
+                type="button"
+                class="btn sm primary"
+                [disabled]="suggestBusy() === s.id"
+                (click)="linkSuggestion(s)"
+              >
+                Привязать к {{ s.suggested_due_date | date: 'dd.MM' }}
+              </button>
+              }
+              <button
+                type="button"
+                class="btn sm"
+                [disabled]="suggestBusy() === s.id"
+                (click)="dismissSuggestion(s)"
+              >
+                Не мой
+              </button>
+            </div>
             } }
 
-            @if (isExpanded(pub) || canSubmit(pub)) {
-            <div class="body">
-              <div class="plist2">
-                @for (p of projectPlatforms(); track p) {
-                <div class="p2" [class.ok]="!!link(pub, p)">
-                  <span class="ic">{{ platformShort[p] }}</span>
-                  <span class="nm">{{ platformLabel[p] }}</span>
-                  @if (link(pub, p); as l) {
-                  <span class="u">{{ shortUrl(l.url) }}</span>
-                  <span class="v">{{ viewsOf(pub, p) | number }}</span>
-                  } @else {
-                  <span class="u empty">ссылки нет</span>
-                  <!-- Ссылки нет — просмотров не существует. Ноль означал
-                       бы «выложено и не посмотрели», прочерк читался как
-                       тот же ноль. -->
-                  <span class="v"
-                    ><app-nodata [inline]="true" [ghostWidth]="56" [ghostHeight]="13"
-                  /></span>
+            <!-- Замечания менеджера — ПЕРВЫМ делом в разделе выкладок.
+               Возврат без слов сервер не принимает, но и слова без
+               места, где их читают, бесполезны ровно так же: до этого
+               блока решение менеджера не показывалось креатору нигде. -->
+            @for (pub of returned(); track pub.id) {
+            <div class="alert crit ret">
+              <span class="label">Вернули на доработку</span>
+              <b>{{ pub.title || 'Выкладка ' + index(pub) }}</b>
+              @if (pub.review?.comment) {
+              <p class="ret-c">«{{ pub.review?.comment }}»</p>
+              }
+              <div class="ret-f">
+                <span class="muted small">
+                  @if (pub.review?.decided_by_name) { {{ pub.review?.decided_by_name }}, } сдача {{
+                  pub.review?.round }}
+                </span>
+                <button type="button" class="btn sm dark" (click)="openSubmit(pub)">
+                  Пересдать
+                </button>
+              </div>
+            </div>
+            } @if (!total()) {
+            <p class="muted">Дат выкладок пока нет — их проставит менеджер.</p>
+            } @else {
+            <div class="months">
+              @for (m of months(); track m.key) {
+              <div class="mcal">
+                <div class="mcal-h">{{ m.name }}</div>
+                <div class="mcal-g">
+                  @for (w of weekdays; track w) {
+                  <span class="wd">{{ w }}</span>
+                  } @for (b of m.blanks; track b) {
+                  <span></span>
+                  } @for (c of m.cells; track c.date) {
+                  <span
+                    class="c"
+                    [class.d]="c.state === 'd'"
+                    [class.l]="c.state === 'l'"
+                    [class.p]="c.state === 'p'"
+                    [class.today]="c.today"
+                    [title]="c.hint"
+                    >{{ c.num }}</span
+                  >
+                  }
+                </div>
+              </div>
+              }
+            </div>
+            <div class="mcal-legend muted">
+              <span><i class="c d">✓</i>вышел</span>
+              <span><i class="c l">!</i>просрочен</span>
+              <span><i class="c p"></i>в плане</span>
+              <span><i class="c today"></i>сегодня</span>
+            </div>
+
+            <div class="posts2">
+              <div>
+                <div class="label list-h">Надо сдать · {{ plannedList().length }}</div>
+                @if (!plannedList().length) {
+                <p class="muted">Всё сдано. Свободные даты можно взять кнопкой выше.</p>
+                } @else {
+                <div class="list">
+                  @for (pub of plannedList(); track pub.id) {
+                  <div class="row">
+                    <div
+                      class="date"
+                      [class.crit]="dateTone(pub) === 'crit'"
+                      [class.next]="dateTone(pub) === 'next'"
+                      [class.done]="dateTone(pub) === 'done'"
+                    >
+                      <b>{{ dayNum(pub.due_date) }}</b>
+                      <span>{{ dayWord(pub.due_date) }}</span>
+                    </div>
+                    <div class="grow">
+                      <div class="t">
+                        {{ pub.title || 'Выкладка ' + index(pub) }} @if (pub.overdue) {
+                        <span class="pill crit">просрочена</span>
+                        } @else if (pub.id === nearestId()) {
+                        <span class="pill acc">{{ daysLeft(pub) }} {{ daysWord(pub) }}</span>
+                        } @if (selfAdded(pub)) {
+                        <span class="pill neu">сверх плана</span>
+                        }
+                      </div>
+                      <div class="muted small">
+                        @if (reviewLabel(pub)) {
+                        <span class="pill" [class]="'pill ' + reviewTone(pub)">
+                          {{ reviewLabel(pub) }}
+                        </span>
+                        } @if (pub.pending_date_request) { просьба о переносе на {{
+                        due(pub.pending_date_request.requested_date) }} — ждём менеджера } @else if
+                        (pub.status === 'partial') { сданы не все площадки: осталось {{
+                        missing(pub).length }} } @else { {{ urgentHint(pub) }} }
+                      </div>
+                    </div>
+                    @if (canSubmit(pub)) {
+                    <button
+                      type="button"
+                      class="btn sm"
+                      [class.dark]="pub.overdue || pub.id === nearestId()"
+                      (click)="openSubmit(pub)"
+                    >
+                      Сдать
+                    </button>
+                    } @if (!pub.pending_date_request) {
+                    <button
+                      type="button"
+                      class="btn sm"
+                      (click)="openDateRequest(pub)"
+                      title="Попросить перенести дату"
+                    >
+                      Перенести
+                    </button>
+                    }
+                  </div>
                   }
                 </div>
                 }
               </div>
 
-              @if (statsOf(pub); as st) {
-              <div class="totalrow">
-                <span class="l">Всего по ролику</span>
-                <span class="st">
-                  <span>Просмотры <b>{{ st.views | number }}</b></span>
-                  <span>Лайки <b>{{ st.likes | number }}</b></span>
-                  <span
-                    >ER
-                    <b><app-er-value [percent]="st.er" [withoutShares]="st.erWithoutShares" /></b
-                  ></span>
-                </span>
+              <div>
+                <div class="label list-h">Вышли · {{ doneList().length }}</div>
+                @if (!doneList().length) {
+                <p class="muted">Пока ничего не вышло.</p>
+                } @else {
+                <div class="list">
+                  @for (pub of doneList(); track pub.id) {
+                  <div class="row">
+                    <div class="date done">
+                      <b>{{ dayNum(pub.published_at || pub.due_date) }}</b>
+                      <span>{{ dayWord(pub.published_at || pub.due_date) }}</span>
+                    </div>
+                    <div class="grow">
+                      <div class="t">
+                        {{ pub.title || 'Выкладка ' + index(pub) }} @if (reviewLabel(pub)) {
+                        <span class="pill" [class]="'pill ' + reviewTone(pub)">
+                          {{ reviewLabel(pub) }}
+                        </span>
+                        }
+                      </div>
+                      <div class="chips links-row">
+                        @for (p of projectPlatforms(); track p) { @if (link(pub, p); as l) {
+                        <a class="plat" [href]="l.url" target="_blank" rel="noopener"
+                          >{{ platformShort[p] }}</a
+                        >
+                        } @else {
+                        <span class="plat nd" title="Ссылка не прислана"
+                          >{{ platformShort[p] }}</span
+                        >
+                        } }
+                      </div>
+                    </div>
+                    <div class="views-cell">
+                      <div class="mono strong">{{ digits(pub.views) }}</div>
+                      @if (pub.er_percent !== undefined) {
+                      <div class="muted small">ER {{ pub.er_percent.toFixed(1) }}%</div>
+                      }
+                    </div>
+                    <!-- Ролик вышел — это не значит, что ссылка на
+                             него будет жить вечно: аккаунт
+                             перевыкладывают, ролик удаляют, короткая
+                             ссылка протухает. Заменить её надо и здесь,
+                             а не только пока выкладка открыта. -->
+                    <button type="button" class="btn sm" (click)="openSubmit(pub)">Ссылки</button>
+                  </div>
+                  }
+                </div>
+                }
               </div>
-              } @if (canSubmit(pub)) {
-              <div style="display: flex; gap: 9px; flex-wrap: wrap; margin-top: 14px">
-                <button type="button" class="btn primary" (click)="openSubmit(pub)">
-                  {{ pub.links.length ? 'Дослать ссылки' : 'Сдать ролик' }}
-                </button>
-                <button type="button" class="btn quiet" (click)="openDateRequest(pub)">
-                  Не успеваю к сроку
-                </button>
-              </div>
-              <p class="sub" style="margin-top: 10px; font-size: 12.5px">
-                Можно сдать не все площадки сразу — сохраните что есть, остальные дошлёте.
-                Статистику подтянем сами.
-              </p>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- ЗАДАНИЕ и ЧЕК-ЛИСТ: по ним ролик принимают, и лежать они
+             должны там же, где его сдают. -->
+      <div class="span-12 sec sec-brief">
+        <div class="subgrid">
+          <div class="span-7 panel brief">
+            <div class="panel-h">
+              <h2>Задание проекта</h2>
+              @if (card()?.added_at; as at) {
+              <span class="sub">вас добавили {{ at | date: 'dd.MM' }}</span>
+              }
+            </div>
+            @if (card()?.brief) {
+            <p>{{ card()!.brief }}</p>
+            } @else {
+            <p class="muted">Бриф пока не заполнен — спросите менеджера в переписке.</p>
+            }
+            <p class="muted format-note">
+              Формат: вертикаль 9:16, одна публикация на все площадки проекта в один день.
+            </p>
+
+            <div class="label section-h">Чек-лист сдачи</div>
+            @if (noChecklist()) {
+            <p class="muted">Чек-листа у проекта нет — сдавайте ссылками.</p>
+            } @else { @for (item of commonChecklist(); track item.id) {
+            <div class="check" [class.info]="!item.is_required">
+              <span class="box"></span>
+              <span [class.muted]="!item.is_required">
+                @if (!item.is_required) { Инфо: }{{ item.text }}
+              </span>
+            </div>
+            } @for (p of projectPlatforms(); track p) { @for (item of itemsFor(p); track item.id) {
+            <div class="check" [class.info]="!item.is_required">
+              <span class="box"></span>
+              <span [class.muted]="!item.is_required">
+                <span class="plat">{{ platformShort[p] }}</span>
+                {{ item.text }}
+              </span>
+            </div>
+            } } } @if (materials().length) {
+            <div class="label section-h">Материалы</div>
+            <div class="chips">
+              @for (m of materials(); track m.id) {
+              <a class="btn sm" [href]="m.url" target="_blank" rel="noopener">{{ m.title }}</a>
               }
             </div>
             }
-          </article>
-          } @empty {
-          <div class="card">
-            <p class="sub">Выкладок пока нет — менеджер ещё не проставил даты.</p>
           </div>
-          }
 
-          <!-- Строка-итог вместо стопки сданных карточек. Видна только на
-               телефоне (см. .foldrow в page.scss и в тач-слое): на
-               десктопе список помещается целиком и сворачивать нечего. -->
-          @if (closed()) {
-          <button type="button" class="foldrow" (click)="toggleDoneFold()">
-            <span class="fl">
-              <b>{{ closed() }} {{ plural(closed(), 'выкладка', 'выкладки', 'выкладок') }} сдано</b>
-              <span class="fs"
-                >{{ links().done }} из {{ links().total }} {{ plural(links().total, 'ссылки',
-                'ссылок', 'ссылок') }}</span
-              >
-            </span>
-            <span class="fc">{{ doneFolded() ? 'Показать' : 'Свернуть' }}</span>
-          </button>
-          }
-        </div>
-
-        <!-- ── правая колонка ──────────────────────────────
-             Справочное рядом со списком: материалы проекта и занятость.
-             Занятость стоит здесь по просьбе владельца — это про то же
-             самое расписание, что и выкладки, и решают по ней, браться
-             ли за следующий месяц. -->
-        <div class="side">
-          @if (materials().length) {
-          <div class="card" style="margin-bottom: 16px">
-            <h2>Материалы проекта</h2>
-            <p class="sub" style="margin-bottom: 6px">Открылись, когда вас добавили в проект.</p>
-            @for (m of materials(); track m.id) {
-            <div class="matrow" [class]="'matrow ' + m.kind">
-              <span class="ic">{{ materialShort(m.kind) }}</span>
-              <span class="t">
-                <b>{{ m.title }}</b>
-                <span>{{ m.kind | uppercase }}</span>
-              </span>
-              <a class="btn quiet sm" [href]="m.url" target="_blank" rel="noopener"> Открыть </a>
+          <div class="span-5 stack">
+            <!-- «Мои аккаунты» — аккаунты ЭТОГО проекта, которые креатор
+               заводит и правит сам. Раньше блок показывал ссылки из
+               личного профиля, а «Изменить» уводило в кабинет
+               специалиста: под проект берут не обязательно личную
+               страницу, и менять её ради одного проекта неправильно. -->
+            <div class="panel">
+              <app-project-accounts [projectId]="projectId()" role="creator" />
+              @if (missingAccounts().length) {
+              <p class="muted acc-note">
+                Ролик идёт на все площадки проекта: {{ missingAccountsList() }} без аккаунта
+                просмотров не принесёт.
+              </p>
+              }
             </div>
-            }
-          </div>
-          }
 
-          <app-creator-availability />
+            <!-- Занятость месяцами: по ней менеджер зовёт в следующий
+               месяц. Компонент общий с кабинетом специалиста. -->
+            <div class="panel">
+              <div class="panel-h">
+                <h2>Когда я свободен</h2>
+                <span class="sub">по этим месяцам зовут в проекты</span>
+              </div>
+              <app-creator-availability />
+            </div>
+          </div>
         </div>
       </div>
-      }
 
-      <!-- ── вкладка «Переписка» ──────────────────────────
-           Отдельной вкладкой, а не подвалом простыни: переписку
-           открывают ПО ПОВОДУ, и искать её за тринадцатью карточками
-           выкладок не должны. Разделителя перед ней больше нет — вкладка
-           сама и есть разделитель.
-
-           id="talk" оставлен: «Написать» в шапке проекта ведёт сюда, и
-           после переключения вкладки прокрутка ищет этот якорь. -->
-      @if (tab() === 'talk') {
-      <div id="talk">
-        <app-project-comments [projectId]="projectId()" role="creator" [meId]="meId()" />
+      <div class="span-12 sec sec-talk">
+        <div class="subgrid">
+          <div class="span-12 panel">
+            <div class="panel-h">
+              <h2>Переписка @if (card()?.manager; as m) { с {{ m.display_name }} }</h2>
+              <span class="sub">дублируется в бот</span>
+            </div>
+            <app-project-comments [projectId]="projectId()" role="creator" [meId]="meId()" />
+          </div>
+        </div>
       </div>
-      }
-    </main>
-  </div>
-  }
+    </div>
+    }
+  </main>
+
+  <!-- На телефоне страница показывается по разделу за раз: одним
+       свитком она не прокручивается. На десктопе полосы нет, и разделы
+       стоят подряд — так в макете. -->
+  <app-sotka-tabbar [tabs]="phoneTabs" [current]="section()" (pick)="section.set($event)" />
 </div>
 
 <!-- ── модалка сдачи ролика ─────────────────────────────────
@@ -448,15 +557,17 @@
      под ними. Обязательные пункты блокируют отправку — так же, как их
      блокирует сервер, чтобы не отправлять заведомо отклонённый запрос. -->
 @if (submitFor(); as pub) {
-<div class="crm-page">
+<div class="sotka">
   <div class="ovl on" (click)="closeSubmit()">
     <div class="modal" (click)="$event.stopPropagation()">
       <div class="modal-hd">
-        <h2>Выкладка {{ index(pub) }} — сдать ролик</h2>
+        <h2>Выкладка {{ index(pub) }} — {{ canSubmit(pub) ? 'сдать ролик' : 'ссылки ролика' }}</h2>
         <p class="sub">
-          Один ролик идёт во все {{ projectPlatforms().length }} {{
+          @if (canSubmit(pub)) { Один ролик идёт во все {{ projectPlatforms().length }} {{
           plural(projectPlatforms().length, 'площадку', 'площадки', 'площадок') }}. Можно сдать не
-          все сразу — остальные дошлёте позже.
+          все сразу — остальные дошлёте позже. } @else { Ролик сдан. Ссылку можно заменить: аккаунт
+          перевыкладывают, ролик удаляют, короткая ссылка протухает. Если это другой ролик —
+          счётчики по нему начнутся заново. }
         </p>
       </div>
 
@@ -480,11 +591,18 @@
           <div class="top">
             <span class="ic">{{ platformShort[p] }}</span>
             <b>{{ platformLabel[p] }}</b>
-            @if (link(pub, p)) {
+            @if (link(pub, p); as l) {
             <span class="tag green">сдано</span>
+            <a class="lnk" [href]="l.url" target="_blank" rel="noopener">открыть</a>
+            <!-- Ролик удаляют с площадки, аккаунт перевыкладывают, адрес
+                 протухает. Раньше новый адрес писали менеджеру в
+                 переписку, и он переносил его руками. -->
+            <button type="button" class="btn sm push" (click)="startEditLink(pub, p)">
+              {{ editingLink() === p ? 'Не менять' : 'Заменить' }}
+            </button>
             }
           </div>
-          @if (!link(pub, p)) {
+          @if (!link(pub, p) || editingLink() === p) {
           <input
             class="inp"
             type="url"
@@ -496,7 +614,25 @@
                не рисовались нигде, а обязательные из них всё равно гасили
                кнопку «Сдать»: креатор видел «не отмечено обязательных
                пунктов: 1» и не мог отметить ни одного. -->
-          @for (item of itemsFor(p); track item.id) {
+          @if (editingLink() === p) {
+          <div class="acts" style="margin-top: 8px">
+            <button
+              type="button"
+              class="btn primary"
+              [disabled]="linkBusy() || !urlValue(p).trim()"
+              (click)="saveEditedLink(pub, p)"
+            >
+              Переслать ссылку
+            </button>
+            <span class="sub">
+              Если это другой ролик, счётчики по нему начнутся заново, а проверка откроется снова.
+            </span>
+          </div>
+          }
+          <!-- Чеклист — только при сдаче: у сданного ролика его уже
+               прошли, и показывать пустые галочки при замене ссылки
+               значит спрашивать работу заново. -->
+          @if (canSubmit(pub)) { @for (item of itemsFor(p); track item.id) {
           <label class="ck" [class.on]="isChecked(item)">
             <span class="box" [class.flagged]="isFlagged(item)">
               <span nz-icon nzType="check" nzTheme="outline"></span>
@@ -510,7 +646,7 @@
             </span>
             <input type="checkbox" hidden [checked]="isChecked(item)" (change)="toggleItem(item)" />
           </label>
-          } }
+          } } }
         </div>
         }
         <!-- Чеклиста у проекта может не быть вовсе: он снимается с шаблона
@@ -544,7 +680,12 @@
       </div>
 
       <div class="modal-ft">
-        <button type="button" class="btn quiet" (click)="closeSubmit()">Отмена</button>
+        <button type="button" class="btn quiet" (click)="closeSubmit()">
+          {{ canSubmit(pub) ? 'Отмена' : 'Закрыть' }}
+        </button>
+        <!-- У сданного ролика сдавать нечего: каждая ссылка правится
+             своей кнопкой в строке площадки и сохраняется сразу. -->
+        @if (canSubmit(pub)) {
         <button
           type="button"
           class="btn primary"
@@ -553,6 +694,7 @@
         >
           Сдать
         </button>
+        }
       </div>
     </div>
   </div>
@@ -563,7 +705,7 @@
      Дату ставит менеджер, креатор её не меняет — только просит. Пока
      просьба висит, выкладка не считается просроченной. -->
 @if (dateFor(); as pub) {
-<div class="crm-page">
+<div class="sotka">
   <div class="ovl on" (click)="closeDateRequest()">
     <div class="modal" (click)="$event.stopPropagation()">
       <div class="modal-hd">
@@ -620,7 +762,7 @@
      правило про оклад — без него человек побоится нажать, и будет прав:
      в чужих системах такое обычно наказывается. -->
 @if (addOpen()) {
-<div class="crm-page">
+<div class="sotka">
   <div class="ovl on" (click)="closeAddPublication()">
     <div class="modal" (click)="$event.stopPropagation()">
       <div class="modal-hd">

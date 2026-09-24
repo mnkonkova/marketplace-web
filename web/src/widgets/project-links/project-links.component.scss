@@ -1,0 +1,134 @@
+@use 'breakpoints' as bp;
+
+// Словарь кабинета (.sotka) даёт .plat, .btn, .inp; здесь только
+// устройство списка.
+:host {
+  display: block;
+}
+
+.pl-note {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pl-group + .pl-group {
+  margin-top: 8px;
+}
+
+// Заголовок человека — целиком кнопка: по нему раскрывают, и целиться в
+// маленькую стрелку справа незачем.
+.pl-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+
+  .grow {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    gap: 1px;
+  }
+
+  .pl-chev {
+    color: var(--muted);
+  }
+}
+
+.pl-empty {
+  margin: 8px 0 0 10px;
+}
+
+.pl-pub {
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid var(--line);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.pl-t {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.pl-plats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  // Площадка здесь — кнопка, а не подпись: по ней открывают правку.
+  .plat {
+    border: 1px solid var(--line);
+    cursor: pointer;
+  }
+
+  .plat.on {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
+.pl-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+
+  .lbl {
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .grow {
+    flex: 1;
+    min-width: 0;
+  }
+
+  // «Перейти» — ссылка, а не кнопка: её открывают в новой вкладке, и
+  // средняя кнопка мыши с ctrl-кликом должны работать. Выравниваем её
+  // с кнопками рядом, у <a> своей высоты нет.
+  a.btn {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: bp.$touch) {
+  // Правка в одну строку на телефоне не помещается: адрес длинный, а
+  // рядом две кнопки. Поле во всю ширину, кнопки под ним поровну.
+  .pl-edit {
+    flex-wrap: wrap;
+
+    .grow {
+      flex: 1 0 100%;
+      min-height: 44px;
+    }
+
+    .btn {
+      flex: 1 1 120px;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
+
+  .pl-plats .plat {
+    min-width: 48px;
+    height: 44px;
+  }
+}

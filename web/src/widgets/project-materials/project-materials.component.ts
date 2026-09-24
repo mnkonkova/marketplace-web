@@ -30,6 +30,8 @@ import {
 } from '@entities/publication/lib/materials';
 import { parseApiError } from '@shared/api/api-error';
 import { withScheme } from '@shared/lib/url';
+import { SheetComponent } from '@shared/ui/sheet/sheet.component';
+import { isTouchDevice } from '@shared/lib/touch';
 
 export type MaterialsRole = 'client' | 'creator' | 'manager';
 
@@ -40,12 +42,19 @@ export type MaterialsRole = 'client' | 'creator' | 'manager';
 @Component({
   selector: 'app-project-materials',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzButtonModule, NzInputModule],
+  imports: [CommonModule, FormsModule, NzButtonModule, NzInputModule, SheetComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-materials.component.html',
   styleUrl: './project-materials.component.scss',
 })
 export class ProjectMaterialsComponent {
+  /**
+   * На тач-экране форма добавления открывается нижним листом: внутри
+   * длинной страницы она оказывалась ниже экрана, и нажатие на
+   * «Добавить материал» выглядело как «ничего не произошло».
+   */
+  public readonly touch = isTouchDevice();
+
   private readonly api = inject(PublicationApi);
 
   private readonly msg = inject(NzMessageService);

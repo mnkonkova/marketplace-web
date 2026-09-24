@@ -1,353 +1,194 @@
-// Менеджерская шапка проекта «креаторы под ключ».
-//
-// Общий словарь макета (.card, .tabs, .tag, .av, .btn) живёт в
-// shared/scss/_crm.scss под .crm-page — здесь только то, что есть
-// исключительно на этом экране: шапка с составом и строка рисков.
+@use 'breakpoints' as bp;
 
-.phead {
-  display: flex;
-  align-items: flex-start;
-  gap: 18px;
-  flex-wrap: wrap;
+// Кабинет менеджера. Словарь — общий (.sotka); здесь только то, чего в
+// макете не было отдельным классом.
 
-  .ttl {
-    flex: 1;
-    min-width: 260px;
-  }
+:host {
+  display: block;
+}
 
-  h1 {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-  }
+.alerts-h {
+  margin-bottom: 10px;
 
-  .meta {
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-    font-size: 13px;
-    color: var(--muted);
-
-    b {
-      color: var(--text);
-      font-weight: 600;
-    }
+  h2 {
+    font-size: 17px;
   }
 }
 
-// Аватары наезжают друг на друга: состав читается как группа людей, а не
-// как список. Обводка цветом фона рисует зазор между кружками. Подпись
-// сверху — чтобы одинокий кружок с буквой в углу карточки не читался как
-// «чей-то аватар» неизвестно зачем.
-.crew {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-
-  .crew-lbl {
-    color: var(--muted, #7e8d88);
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .avs {
-    display: flex;
-    align-items: center;
-  }
-
-  .av {
-    margin-left: -8px;
-    border: 2px solid var(--bg);
-
-    &:first-child {
-      margin-left: 0;
-    }
-  }
-}
-
-// Что горит — над вкладками, а не внутри одной из них: с этого менеджер
-// начинает день, и прятать это за переключателем нельзя.
-// «Где сейчас горит» — тревоги карточками.
-//
-// Полоса прозой во всю ширину читалась как подпись к чему-то: глаз
-// скользил по ней и уходил к вкладкам. Карточка с числом в начале
-// останавливает: сперва «сколько», потом «что», потом кнопка.
-// Слева цветная полоса — по ней блок узнаётся боковым зрением, не
-// читая.
-.alerts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-  gap: 12px;
-  margin: 18px 0 0;
-}
-
-.alert {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px 14px 19px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--card);
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 4px;
-    background: var(--muted-2);
-  }
-
-  &.crit {
-    border-color: var(--red-dim);
-    background: rgba(224, 96, 78, 0.07);
-
-    &::before {
-      background: var(--red);
-    }
-  }
-
-  &.warn {
-    border-color: rgba(224, 168, 60, 0.36);
-    background: rgba(224, 168, 60, 0.07);
-
-    &::before {
-      background: #e0a83c;
-    }
-  }
-
-  // Возвращённый ролик — не авария: работа идёт, но её ход зависит от
-  // человека на той стороне. Синий отличает «ждём ответа» от «горит».
-  &.info {
-    border-color: var(--blue-dim);
-    background: rgb(110 168 254 / 7%);
-
-    &::before {
-      background: var(--blue);
-    }
-  }
-}
-
-.alert-lbl {
-  margin: 0;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-// Число впереди текста и крупнее всего в карточке: ради него читают.
-.alert-val {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 0;
-
-  b {
-    font-family: var(--font-head);
-    font-size: 26px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1;
-  }
-
-  span {
-    color: var(--muted);
-    font-size: 12.5px;
-  }
-}
-
-.alert.crit .alert-val b {
-  color: var(--red);
-}
-
-.alert-tx {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.45;
-  max-width: 52ch;
-}
-
-.alert-act {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: auto;
-  padding-top: 6px;
-}
-
-// Спокойный день — одна строка, а не пустое место: «тревог нет» тоже
-// ответ, и его надо сказать словами.
-.allcalm {
-  margin: 18px 0 0;
-  color: var(--muted);
+.alert .sum-note {
   font-size: 13px;
-}
-
-.tabs {
-  margin-top: 18px;
-}
-
-// Боковая колонка — из макета: список проектов, сводка дня, контакты.
-// .shell/.main/.aside-lbl/.plist/.pitem описаны в shared/scss/_crm.scss.
-.aside {
-  .empty {
-    margin: 0;
-    color: var(--muted-2, #74827e);
-    font-size: 12.5px;
-  }
-}
-
-.todaybox .calm {
-  margin: 0;
-  color: var(--muted, #7e8d88);
-  font-size: 13px;
-}
-
-.todaybox .row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 13px;
-
-  & + .row {
-    margin-top: 8px;
-  }
-
-  span {
-    color: var(--muted, #7e8d88);
-  }
-
-  .late {
-    color: var(--red, #e0604e);
-  }
-
-  // Коралловый — предупреждение (см. --warn). От красной просрочки
-  // строка отличается не цветом, а подписью слева: «Выложено частично»
-  // и «Просрочено» — разные слова, а не разные оттенки.
-  .warn {
-    color: var(--amber, #f0553c);
-  }
-}
-
-.contacts {
-  .noname {
-    color: var(--muted-2, #74827e);
-    font-weight: 400;
-  }
-
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 13px;
-
-  b {
-    font-size: 13.5px;
-  }
-
-  a {
-    color: var(--blue, #4b8fd6);
-    text-decoration: none;
-    overflow-wrap: anywhere;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-// Лента просмотров. Число проекта — то же, что у заказчика, и стоит
-// первым: с него начинается разговор про деньги в обе стороны.
-.viewsbar {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin: 18px 0 0;
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--card);
-}
-
-.vb-lbl {
-  margin: 0;
-  color: var(--muted-2);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.vb-num {
-  font-family: var(--font-head);
-  font-size: 30px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.vb-meta {
-  flex: 1;
-  min-width: 200px;
-  margin: 0;
+  font-family: var(--body);
   color: var(--muted);
+  font-weight: 400;
+}
+
+.alert-text {
   font-size: 12.5px;
 }
 
-// Легенда состояний. Ноль, «не меряли» и «сбой» — три разные вещи, и
-// ради этой разницы легенда и стоит: прочерк их не различает, а счёт
-// выставляется по ним.
-.vb-legend {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--muted-2);
+.section-h {
+  margin: 16px 0 6px;
+}
+
+.table-note {
+  font-size: 12px;
+  margin: 10px 0 0;
+}
+
+// Пустая площадка у креатора — красным: ролик идёт на все пять, и та,
+// где человека нет, просмотров не приносит.
+.plat.missing {
+  color: var(--crit);
+  border-color: var(--crit);
+}
+
+.deal-second {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.margin {
+  font-size: 22px;
+}
+
+.deal-btn {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.roster-note {
   font-size: 11.5px;
+  margin: 10px 0 0;
+}
 
-  li {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+.roster-btn {
+  margin-top: 8px;
+  display: inline-flex;
+}
+
+.small {
+  font-size: 12px;
+}
+
+// Деньги: очередь шагов, таблица, плашка расчёта, журнал.
+.pstep .step-note {
+  font-size: 12px;
+}
+
+.deduct .small {
+  display: block;
+  font-size: 11px;
+}
+
+.settle {
+  margin-top: 14px;
+}
+
+.period-note {
+  font-size: 12.5px;
+  margin: 10px 0 0;
+}
+
+// Колонки раздела не тянутся друг под друга: проверка ролика рядом с
+// длинным чек-листом растягивалась пустым белым полем на два экрана.
+.subgrid {
+  align-items: start;
+}
+
+// Разбор роликов одного креатора: медиана, крайние и столбики по
+// выпускам. Раскрывается прямо под строкой — сравнивать человека надо,
+// не теряя из виду остальных.
+.crew-stats > td {
+  padding: 4px 14px 16px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.02));
+}
+
+.cs-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin-bottom: 12px;
+}
+
+.cs-num {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+
+  b {
+    font-size: 17px;
   }
 
-  .st {
-    display: inline-grid;
-    place-items: center;
-    height: 20px;
-    padding: 0 6px;
-    border: 1px solid var(--line-2);
-    border-radius: 6px;
-    font-family: var(--font-mono, ui-monospace, Menlo, monospace);
-    font-size: 10.5px;
+  .small {
+    overflow: hidden;
+    max-width: 30ch;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// Столбики: высота от лучшего ролика этого же человека. Сравнивать надо
+// со своим потолком, а не с чужим — иначе у слабого креатора весь ряд
+// прижат к нулю и разбора не видно вовсе.
+.cs-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 64px;
+  padding: 0;
+}
+
+.cs-bar {
+  display: flex;
+  align-items: flex-end;
+  flex: 1 1 6px;
+  min-width: 6px;
+  max-width: 28px;
+  height: 100%;
+
+  i {
+    display: block;
+    width: 100%;
+    border-radius: 3px 3px 0 0;
+    background: var(--accent-soft, #dfe3ff);
   }
 
-  .st-0 {
-    font-weight: 700;
+  &.best i {
+    background: var(--accent);
   }
 
-  .st-nd {
-    border-style: dashed;
+  &.worst i {
+    background: var(--crit-soft, #f8e0da);
   }
 
-  .st-err {
-    border-color: transparent;
-    background: rgba(224, 96, 78, 0.16);
-    color: var(--red);
+  &:hover i {
+    filter: brightness(0.94);
+  }
+}
+
+.cs-note {
+  margin: 8px 0 0;
+}
+
+@media (max-width: bp.$touch) {
+  .crew-stats > td {
+    padding: 8px 0 14px;
+  }
+
+  .cs-head {
+    gap: 10px 18px;
+  }
+
+  // На телефоне столбики выше: ряд в 64 пикселя на узком экране
+  // превращается в полоску, по которой ничего не сравнить.
+  .cs-bars {
+    height: 80px;
+  }
+
+  .cs-bar {
+    min-height: 44px;
+    align-items: flex-end;
   }
 }

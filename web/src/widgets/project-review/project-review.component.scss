@@ -1,91 +1,57 @@
-// Проверка ролика. Стили перенесены из макета (.review, .player,
-// .revcheck, .pf) на токены CRM-страницы: те же размеры и та же сетка,
-// цвета — из дизайн-системы, а не копией макетных значений.
+@use 'breakpoints' as bp;
+
+// Блок стоит внутри панели кабинета (.sotka), и словарь у него оттуда.
+// Здесь — только плитка ролика: в макете на её месте плеер, а у нас
+// ролик лежит на чужой площадке и открывается там.
 :host {
   display: block;
 }
 
-.rev-block {
-  margin: 20px 0;
-  padding: 18px 20px;
-  border: 1px solid var(--border-strong, #2a3532);
-  border-radius: var(--r-card, 16px);
-  background: var(--surface);
-
-  h2 {
-    margin: 0;
-    font-size: 17px;
-  }
-}
-
-.rev-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.rev-head-tx .sub {
-  margin: 4px 0 0;
-  max-width: 72ch;
-  color: var(--text-dim);
-  font-size: 13px;
-}
-
-.empty {
-  margin: 14px 0 0;
-  color: var(--text-dim);
-  font-size: 13.5px;
-  max-width: 68ch;
-}
-
-// Возврат — состояние ролика, а не итог действия: он висит, пока
-// креатор не пересдаст, и читается раньше списка пунктов.
-.rev-state {
-  margin: 12px 0 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--bad-line, rgb(255 100 112 / 14%));
-  color: var(--bad, #ff6470);
-  font-size: 13px;
-}
-
-.review {
-  display: grid;
-  grid-template-columns: 150px 1fr;
-  gap: 16px;
-  margin-top: 14px;
-
-  @media (max-width: 560px) {
-    grid-template-columns: 1fr;
-  }
-}
-
-// Плитка ролика. Кадр — настоящий, когда площадка его отдаёт (YouTube);
-// в остальных случаях остаётся градиент макета. Выдуманного плеера с
-// таймкодом здесь нет намеренно: ролик лежит на чужой площадке, и
-// полоса воспроизведения показывала бы то, чего мы не знаем.
 .player {
-  position: relative;
-  display: block;
-  aspect-ratio: 9/16;
-  border-radius: 10px;
-  overflow: hidden;
-  background: linear-gradient(160deg, #3a2a1f, #8a5a36 55%, #d8a46a);
-  background-size: cover;
-  background-position: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
   text-decoration: none;
+  color: #fff;
 
-  &::after {
-    content: '';
+  &:hover {
+    text-decoration: none;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  // Кадр, если площадка его отдаёт, — подложкой под портретом.
+  .frame {
     position: absolute;
-    left: 50%;
-    top: 45%;
-    transform: translate(-40%, -50%);
-    border-left: 16px solid rgb(255 255 255 / 90%);
-    border-top: 10px solid transparent;
-    border-bottom: 10px solid transparent;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.35;
+  }
+
+  .who {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    padding: 0 8px;
+
+    b {
+      font-size: 13px;
+      font-weight: 600;
+      text-shadow: 0 1px 6px rgb(0 0 0 / 45%);
+    }
+  }
+
+  // Треугольник «играть» из макета здесь не нужен: плеера нет, и
+  // обещать его нельзя.
+  &::after {
+    content: none;
   }
 
   .tc {
@@ -96,78 +62,21 @@
     display: flex;
     gap: 4px;
     flex-wrap: wrap;
-    color: #fff;
-    font-family: var(--crm-mono, ui-monospace, Menlo, monospace);
-    font-size: 10px;
+    justify-content: center;
 
     i {
-      padding: 1px 4px;
-      border-radius: 4px;
-      background: rgb(0 0 0 / 45%);
       font-style: normal;
+      font-family: var(--mono);
+      font-size: 9px;
+      background: rgb(0 0 0 / 45%);
+      border-radius: 4px;
+      padding: 1px 4px;
     }
   }
 }
 
-.revcheck {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-top: 1px solid var(--border);
-
-  &:first-child {
-    border-top: 0;
-  }
-
-  .grow {
-    flex: 1;
-    font-size: 13.5px;
-  }
-}
-
-// «Да/нет» одной кнопкой-переключателем: третье состояние — ни одна не
-// нажата — означает «ещё не смотрел», и его видно именно отсутствием
-// заливки.
-.pf {
-  display: flex;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-
-  button {
-    border: 0;
-    background: var(--surface);
-    padding: 3px 9px;
-    color: var(--text-dim);
-    font-size: 11.5px;
-    font-weight: 600;
-    cursor: pointer;
-
-    &[aria-pressed='true'].y {
-      background: var(--ok);
-      color: #fff;
-    }
-
-    &[aria-pressed='true'].n {
-      background: var(--bad);
-      color: #fff;
-    }
-  }
-}
-
-.note {
-  display: block;
-  width: 100%;
+.rev-note {
   margin-top: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-hover, #191c21);
-  color: var(--text);
-  font: inherit;
-  font-size: 13.5px;
-  resize: vertical;
 }
 
 .rev-acts {
@@ -176,9 +85,89 @@
   margin-top: 8px;
   flex-wrap: wrap;
   align-items: center;
+}
 
-  .hint {
-    color: var(--text-faint);
-    font-size: 12px;
+.hint,
+.queue-note {
+  font-size: 12px;
+}
+
+.queue-note {
+  margin: 10px 0 0;
+}
+
+.returned {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.small {
+  font-size: 12px;
+}
+
+// Где откроется ролик. Подпись нужна потому, что площадку выбираем мы:
+// YouTube, если он есть, иначе Reels, иначе TikTok — там ролик
+// открывается страницей с плеером, а не лентой, которая тут же уносит
+// в следующий.
+.player .who .where {
+  font-style: normal;
+  font-size: 11px;
+  opacity: 0.85;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 45%);
+}
+
+// Ссылки ролика над чек-листом: менеджер смотрит их тут же, тут и
+// правит. Адрес длинный — обрезаем, а не переносим: три строки ссылки
+// отодвигают вниз то, ради чего экран открыт.
+.revlinks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.revlink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .grow {
+    flex: 1;
+    min-width: 0;
+  }
+
+  a.grow {
+    overflow: hidden;
+    color: var(--accent);
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ic {
+    flex: 0 0 auto;
+    min-width: 34px;
+    padding: 3px 6px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    color: var(--muted);
+    font-size: 11px;
+    text-align: center;
+  }
+}
+
+@media (max-width: bp.$touch) {
+  .revlink {
+    flex-wrap: wrap;
+
+    .btn {
+      min-height: 44px;
+    }
+
+    a.grow,
+    .inp {
+      flex: 1 0 100%;
+    }
   }
 }

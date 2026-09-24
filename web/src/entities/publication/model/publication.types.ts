@@ -352,6 +352,39 @@ export interface CreatorProjectCard extends CreatorProject {
   manager?: ProjectPerson;
   // Пять площадок списком — чтобы у фронта не было своей копии порядка.
   platforms?: Platform[];
+  /**
+   * Своя медиана просмотров. Из неё считается «следующий ролик добавит
+   * примерно столько» — то есть обещание, поэтому число типичное, а не
+   * среднее. Пусто, пока мерить не на чем.
+   */
+  median?: CreatorMedian;
+}
+
+/**
+ * Найденный на площадке ролик, ждущий ответа «мой / не мой».
+ *
+ * Сервис видит ролик раньше, чем креатор успевает вставить ссылку, но
+ * ничего не привязывает сам: ошибка сопоставления припишет человеку
+ * чужую работу, и узнают об этом из счёта.
+ */
+export interface LinkSuggestion {
+  id: string;
+  project_id: string;
+  project_title: string;
+  creator_user_id: string;
+  platform: Platform;
+  url: string;
+  title?: string;
+  author_handle?: string;
+  published_at?: string;
+  created_at: string;
+  /**
+   * Выкладка, к которой предлагаем привязать. Считается сервером при
+   * чтении, поэтому перенос срока подсказку не ломает. Пусто —
+   * подходящей выкладки сейчас нет.
+   */
+  suggested_publication_id?: string;
+  suggested_due_date?: string;
 }
 
 // ---- материалы проекта ----
@@ -369,6 +402,17 @@ export interface CreatorProjectCard extends CreatorProject {
 export interface ProjectAccount {
   id: string;
   project_id: string;
+  /**
+   * Чей это аккаунт. Ролики выходят с аккаунтов КРЕАТОРОВ, и список без
+   * владельца читается как чужая связка ключей: видно пять строк и
+   * непонятно, с кого спрашивать, когда ссылка перестала отвечать.
+   *
+   * Пусто у настоящих брендовых доступов — почты, рекламного кабинета,
+   * аккаунта самого бренда.
+   */
+  creator_user_id?: string;
+  /** Подпись владельца. Считает сервер, в таблице доступов её нет. */
+  creator_name?: string;
   /** Пятёрка площадок плюс other: доступ бывает и к почте, и к кабинету. */
   platform: Platform | 'other';
   title: string;
@@ -382,6 +426,8 @@ export interface ProjectAccount {
 }
 
 export interface ProjectAccountInput {
+  /** Чей аккаунт. Пусто — доступ без владельца, брендовый. */
+  creator_user_id?: string;
   platform: Platform | 'other';
   title?: string;
   url?: string;
@@ -445,6 +491,24 @@ export interface ProjectPerson {
   display_name: string;
   added_at: string;
   account_links?: AccountLinks;
+  /**
+   * Сколько просмотров человек обычно даёт за ролик. Медиана, а не
+   * среднее: один залетевший ролик поднимает среднее вдвое и обещает то,
+   * чего обычно не бывает. Пусто, пока измеренных роликов мало.
+   */
+  median?: CreatorMedian;
+  /** Колокольчик в плане: писать ли этому человеку накануне срока. */
+  remind_day_before?: boolean;
+}
+
+/** Медиана просмотров и то, на скольких роликах она посчитана. */
+export interface CreatorMedian {
+  views: number;
+  /**
+   * Сколько роликов легло в расчёт. Идёт вместе с числом: «медиана 190
+   * тыс. по 12 роликам» и «по 3» — разной силы утверждения.
+   */
+  basis: number;
 }
 
 // ---- библиотека чеклистов ----
@@ -502,9 +566,16 @@ export interface ReminderPrefs {
   overdue: boolean;
   incomplete: boolean;
   manager_digest: boolean;
+  /**
+   * Напомнить накануне срока — умолчание проекта. Единственный вид,
+   * выключенный по умолчанию: остальные три были с самого начала и на
+   * них рассчитывают, а этот появился позже. Колокольчик напротив
+   * креатора в плане сильнее этой настройки.
+   */
+  day_before: boolean;
   updated_at?: string;
 }
 
 export type ReminderPrefsPatch = Partial<
-  Pick<ReminderPrefs, 'due_today' | 'overdue' | 'incomplete' | 'manager_digest'>
+  Pick<ReminderPrefs, 'due_today' | 'overdue' | 'incomplete' | 'manager_digest' | 'day_before'>
 >;

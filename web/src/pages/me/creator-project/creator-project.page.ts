@@ -1,12 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -25,6 +17,8 @@ import {
   ALL_PLATFORMS,
   ChecklistItem,
   CreatorProjectCard,
+  LinkSuggestion,
+  ProjectAccount,
   Platform,
   Publication,
   PublicationReport,
@@ -53,33 +47,36 @@ import {
   takenOn,
   ymdLocal,
 } from '@entities/publication/lib/extra-publication';
-import { formatMoney } from '@entities/billing/lib/money';
+import { formatMoney, groupDigits } from '@entities/billing/lib/money';
 import { periodTitle } from '@entities/billing/lib/period';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { CreatorAvailabilityComponent } from '@widgets/creator-availability/creator-availability.component';
-import { CreatorHighlightsComponent } from '@widgets/creator-highlights/creator-highlights.component';
-import { CreatorHistoryComponent } from '@widgets/creator-history/creator-history.component';
-import { CreatorLadderComponent } from '@widgets/creator-ladder/creator-ladder.component';
 import { BillingApi } from '@entities/billing/api/billing.api';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
-import { missingAccountLinks, nextStepKind } from '@entities/billing/lib/creator-highlights';
+import { nextStepKind } from '@entities/billing/lib/creator-highlights';
 import { MeRepository } from '@entities/me/repository/me.repository';
 import type { MeProfile } from '@entities/me/model/me.types';
 import type { Material } from '@entities/publication/model/publication.types';
 import { parseApiError } from '@shared/api/api-error';
 import { plural } from '@shared/lib/format';
-import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import { ProjectAccountsComponent } from '@widgets/project-accounts/project-accounts.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
-import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
-import { NodataComponent } from '@shared/ui/nodata/nodata.component';
+import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
+import { SotkaTopComponent, SotkaNavItem } from '@widgets/sotka-top/sotka-top.component';
+import { SotkaTabbarComponent, SotkaTab } from '@widgets/sotka-tabbar/sotka-tabbar.component';
+import { LADDER_STEP, LadderVideo, ladderState, shortViews } from '@entities/billing/lib/ladder';
+import { videosInPeriod } from '@entities/billing/lib/creator-highlights';
 
-/**
- * Разделы страницы. Ключи латиницей: они уходят в адрес (`?tab=pubs`), а
- * кириллица в query-string превращается в процентную кашу, которую
- * человек не перечитает.
- */
-export type CreatorTab = 'overview' | 'pubs' | 'talk';
+// Сколько находок помещается на экран, не отнимая его у выкладок.
+//
+// Сервис обходит аккаунты креаторов каждый день и кладёт всё новое, так
+// что десяток карточек — обычное утро понедельника. Стоят они ПЕРЕД
+// календарём выкладок, ради которого страницу и открывают: три вопроса
+// человек прочитает, стену из десяти пролистает мимо — вместе с
+// календарём. Три и меньше не сворачиваем вовсе: прятать то, что и так
+// видно целиком, значит просить лишнее нажатие ни за что.
+const SUGGEST_FOLD_AT = 3;
 
 // Страница проекта глазами креатора: карточка проекта, его выкладки,
 // чеклист, материалы, заработок и цифры по его же роликам. Шапка берётся
@@ -99,18 +96,16 @@ export type CreatorTab = 'overview' | 'pubs' | 'talk';
     NzModalModule,
     NzSpinModule,
     NzTagModule,
-    AppHeaderComponent,
     CreatorAvailabilityComponent,
-    CreatorHighlightsComponent,
-    CreatorHistoryComponent,
-    CreatorLadderComponent,
+    ProjectAccountsComponent,
     ProjectCommentsComponent,
-    ErValueComponent,
-    NodataComponent,
+    AppHeaderComponent,
+    SotkaTopComponent,
+    SotkaTabbarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-project.page.html',
-  styleUrls: ['./creator-project.page.scss', './creator-project.page.touch.scss'],
+  styleUrl: './creator-project.page.scss',
 })
 export class CreatorProjectPage {
   private readonly api = inject(PublicationApi);
@@ -131,14 +126,96 @@ export class CreatorProjectPage {
 
   private readonly router = inject(Router);
 
-  private readonly destroyRef = inject(DestroyRef);
-
   private readonly msg = inject(NzMessageService);
 
   // Свой id — чтобы в переписке свои сообщения были подписаны «Вы».
   public readonly meId = inject(AuthSessionStore).userId;
 
   public readonly platformLabel = PLATFORM_LABEL;
+
+  // ---- «это ваш ролик?» ----
+  //
+  // Сервис видит ролик на аккаунте раньше, чем креатор успевает вставить
+  // ссылку. Привязать его молча нельзя: ошибка сопоставления припишет
+  // человеку чужую работу. Поэтому — вопрос и два ответа.
+
+  /** Находки по ЭТОМУ проекту: сервер отдаёт их по всем сразу. */
+  public readonly suggestions = signal<LinkSuggestion[]>([]);
+
+  /** id находки, по которой сейчас идёт запрос. */
+  public readonly suggestBusy = signal<string | null>(null);
+
+  /** Раскрыт ли свёрнутый список находок. Закрыт, пока не попросили. */
+  public readonly suggestExpanded = signal(false);
+
+  /**
+   * Нужна ли свёртка. Считается от длины списка, а не запоминается при
+   * загрузке: креатор отвечает на находки прямо здесь, и как только их
+   * осталось три, строка-итог обязана уйти сама — иначе человек сидит
+   * перед кнопкой «показать» ради трёх карточек.
+   */
+  public readonly suggestFolded = computed(() => this.suggestions().length > SUGGEST_FOLD_AT);
+
+  /** Видны ли сами карточки: без свёртки — всегда. */
+  public readonly suggestListVisible = computed(
+    () => !this.suggestFolded() || this.suggestExpanded(),
+  );
+
+  /**
+   * Что написано на свёртке. Число в тексте, а не «есть находки»:
+   * решение «открывать сейчас или после выкладок» человек принимает
+   * именно по количеству.
+   */
+  public readonly suggestSummary = computed(() => {
+    const n = this.suggestions().length;
+    return `Нашли ${n} ${plural(n, 'ролик', 'ролика', 'роликов')}`;
+  });
+
+  public toggleSuggest(): void {
+    this.suggestExpanded.update((v) => !v);
+  }
+
+  private loadSuggestions(projectId: string): void {
+    this.api.creatorSuggestions().subscribe({
+      next: (r) => this.suggestions.set((r.items ?? []).filter((s) => s.project_id === projectId)),
+      // Молча: страница выкладок из-за подсказки падать не должна.
+      error: () => this.suggestions.set([]),
+    });
+  }
+
+  public linkSuggestion(s: LinkSuggestion): void {
+    this.suggestBusy.set(s.id);
+    this.api.creatorLinkSuggestion(s.id, s.suggested_publication_id).subscribe({
+      next: () => {
+        this.suggestBusy.set(null);
+        this.dropSuggestion(s.id);
+        this.msg.success('Привязали — проверьте ссылки на других площадках.');
+        this.fetch(this.projectId(), true);
+      },
+      error: (e) => {
+        this.suggestBusy.set(null);
+        this.msg.error(parseApiError(e, 'Не удалось привязать ролик.').message);
+      },
+    });
+  }
+
+  public dismissSuggestion(s: LinkSuggestion): void {
+    this.suggestBusy.set(s.id);
+    this.api.creatorDismissSuggestion(s.id).subscribe({
+      next: () => {
+        this.suggestBusy.set(null);
+        this.dropSuggestion(s.id);
+      },
+      error: (e) => {
+        this.suggestBusy.set(null);
+        this.msg.error(parseApiError(e, 'Не удалось отклонить находку.').message);
+      },
+    });
+  }
+
+  private dropSuggestion(id: string): void {
+    this.suggestions.set(this.suggestions().filter((x) => x.id !== id));
+  }
 
   public readonly platformShort = PLATFORM_SHORT;
 
@@ -150,30 +227,6 @@ export class CreatorProjectPage {
    * звать его было больше некому.
    */
   public readonly money = formatMoney;
-
-  /**
-   * Три раздела на три разных вопроса.
-   *
-   * «Общая» первой: человек приходит сюда с вопросом «сколько мне за это
-   * будет», и открываться страница обязана ответом на него, а не списком
-   * дел. «Мои выкладки» — то, с чем работают руками, за один щелчок.
-   * «Переписка» третьей: её открывают по поводу, а не при каждом заходе.
-   */
-  public readonly tabs: readonly { key: CreatorTab; title: string }[] = [
-    { key: 'overview', title: 'Общая' },
-    { key: 'pubs', title: 'Мои выкладки' },
-    { key: 'talk', title: 'Переписка' },
-  ];
-
-  /**
-   * Открытая вкладка живёт в АДРЕСЕ, а не в памяти компонента.
-   *
-   * Ссылку на свои выкладки креатор кидает менеджеру («вот, две не
-   * сданы»), а ссылку на переписку — себе на другое устройство. Ссылка,
-   * открывающаяся общей вкладкой, показывает не то, чем делились. Так же
-   * сделано в кабинете заказчика (pages/me/projects-list).
-   */
-  public readonly tab = signal<CreatorTab>('overview');
 
   public readonly loading = signal(true);
 
@@ -285,11 +338,23 @@ export class CreatorProjectPage {
    * вовсе (см. PROFILE_PLATFORMS), и звать заполнить то, что нечем
    * заполнить, — худший вид совета.
    */
-  public readonly missingAccounts = computed(() =>
-    this.profile()
-      ? missingAccountLinks(this.projectPlatforms(), this.profile()?.social_links)
-      : [],
-  );
+  /**
+   * Аккаунты проекта — по ним и считаем, чего не хватает.
+   *
+   * Раньше считалось по личному профилю специалиста, и человек с полным
+   * профилем видел «всё привязано», сдавая ролики с других аккаунтов.
+   * Пусто, пока список не приехал: «не привязано ничего» до загрузки —
+   * это обвинение на пустом месте.
+   */
+  public readonly projectAccounts = signal<ProjectAccount[]>([]);
+
+  public readonly missingAccounts = computed(() => {
+    if (!this.accountsLoaded()) return [];
+    const have = new Set(this.projectAccounts().map((a) => a.platform));
+    return this.projectPlatforms().filter((p) => !have.has(p));
+  });
+
+  private readonly accountsLoaded = signal(false);
 
   /** «YouTube, ВКонтакте» — перечисление площадок одной строкой. */
   public readonly missingAccountsList = computed(() =>
@@ -305,13 +370,6 @@ export class CreatorProjectPage {
   public readonly busy = signal(false);
 
   public constructor() {
-    // Подписка, а не разовое чтение: «назад» в браузере обязан вернуть ту
-    // вкладку, с которой ушли, — иначе кнопка «назад» после переписки
-    // выкидывает на общую и выглядит как потеря места.
-    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((q) => {
-      const key = q.get('tab');
-      this.tab.set(this.tabs.some((t) => t.key === key) ? (key as CreatorTab) : 'overview');
-    });
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.projectId.set(id);
@@ -321,17 +379,293 @@ export class CreatorProjectPage {
     }
   }
 
-  public setTab(t: CreatorTab): void {
-    if (t === this.tab()) return;
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      // В адресе живёт только НЕ умолчание: ссылка на общую — это просто
-      // /me/creator/projects/{id}, без хвоста.
-      queryParams: { tab: t === 'overview' ? null : t },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
+  // ═══ кабинет креатора по макету ═══════════════════════════
+  //
+  // Одна страница, а не вкладки: в макете деньги, выкладки, задание и
+  // переписка стоят сверху вниз одним потоком. Это не «всё сразу» —
+  // это один разговор: сколько мне за это будет → что для этого надо
+  // сдать → по каким правилам → и с кем поговорить, если что.
+
+  /**
+   * Открытый раздел НА ТЕЛЕФОНЕ.
+   *
+   * На десктопе страница одна и разделов у неё нет — там стоит весь
+   * разговор сверху вниз, как в макете. Телефон тот же разговор не
+   * прокручивает, поэтому разделы показываются по одному; переключает их
+   * нижняя полоса, а прячет — тач-слой по data-sec. Десктоп про этот
+   * сигнал просто не знает.
+   */
+  public readonly section = signal('money');
+
+  public readonly phoneTabs: readonly SotkaTab[] = [
+    { key: 'money', title: 'Деньги', icon: 'coin' },
+    { key: 'posts', title: 'Выкладки', icon: 'cal' },
+    { key: 'brief', title: 'Задание', icon: 'doc' },
+    { key: 'talk', title: 'Переписка', icon: 'chat' },
+  ];
+
+  public readonly digits = groupDigits;
+
+  public readonly short = shortViews;
+
+  public readonly ladderStep = LADDER_STEP;
+
+  public readonly nav = computed<SotkaNavItem[]>(() => [
+    { title: 'Мои проекты', link: '/me/creator/projects' },
+    {
+      title: this.card()?.title ?? 'Проект',
+      link: `/me/creator/projects/${this.projectId()}`,
+      current: true,
+    },
+  ]);
+
+  // ---- деньги периода ----
+
+  /** Своё начисление за текущий период. Нет строки — не посчитано. */
+  public readonly earned = computed(() => {
+    const p = this.period();
+    const rows = this.earnings()?.accruals ?? [];
+    if (!p) return null;
+    return rows.find((a) => a.period_start.slice(0, 10) === p.starts_on.slice(0, 10)) ?? null;
+  });
+
+  /** Что заработано у КРЕАТОРА: его сторона тарифа, не клиентская. */
+  public readonly payout = computed(() => {
+    const row = this.earned();
+    if (!row) return null;
+    return {
+      salary: row.payout_salary ?? row.salary,
+      bonus:
+        (row.payout_views_bonus ?? row.views_bonus) + (row.payout_click_bonus ?? row.click_bonus),
+      deduction: row.payout_deduction ?? row.deduction,
+      total: row.payout_total ?? row.total,
+      videosPlanned: row.videos_planned,
+      videosDelivered: row.videos_delivered,
+    };
+  });
+
+  private readonly allVideos = computed<LadderVideo[]>(() =>
+    this.items()
+      .filter((p) => p.status !== 'cancelled' && !!p.published_at)
+      .map((p) => ({ id: p.id, title: p.title, views: p.views, published_at: p.published_at })),
+  );
+
+  public readonly periodVideos = computed(() => videosInPeriod(this.allVideos(), this.period()));
+
+  /** Перенос с прошлого периода уже в счёте ступеней. */
+  public readonly carryIn = computed(() => this.period()?.carry_in_creator ?? 0);
+
+  public readonly viewsNow = computed(
+    () => this.carryIn() + this.periodVideos().reduce((s, v) => s + v.views, 0),
+  );
+
+  public readonly ladder = computed(() => ladderState(this.viewsNow()));
+
+  public readonly forecast = computed(() => this.earnings()?.next_step_forecast ?? null);
+
+  public readonly toNext = computed(() => this.forecast()?.views_to_go ?? this.ladder().toNext);
+
+  /**
+   * Лесенка: двенадцать ступеней от текущей.
+   *
+   * Показываем окно вокруг пройденного, а не всю историю от нуля: на
+   * сороковой ступени сорок столбиков превращаются в забор, по которому
+   * не видно ни своего места, ни следующей цели.
+   */
+  public readonly stairs = computed(() => {
+    const passed = this.ladder().passed;
+    const first = Math.max(1, passed - 5);
+    const perStep = this.stepMoney();
+    return Array.from({ length: 12 }, (_, i) => {
+      const n = first + i;
+      return {
+        n,
+        height: 14 + (i + 1) * 10,
+        state: n <= passed ? 'done' : n === passed + 1 ? 'next' : n === passed + 2 ? 'ghost' : '',
+        money: perStep && n <= passed + 2 ? this.money(perStep * n) : '',
+        label: `${(n * LADDER_STEP) / 1000}т`,
+      };
     });
+  });
+
+  /**
+   * Сколько денег даёт ступень.
+   *
+   * Берём из ступенчатого тарифа его стороны, если он выпущен: там цена
+   * ступени названа прямо. Иначе — из ставки за тысячу, но только когда
+   * она есть: выдуманная цена ступени здесь хуже пустого места, по ней
+   * человек считает свою зарплату.
+   */
+  public readonly stepMoney = computed(() => {
+    const t = this.earnings()?.terms;
+    if (!t) return 0;
+    const steps = t.steps ?? [];
+    if (steps.length >= 2) {
+      const diff = steps[1].fee - steps[0].fee;
+      return diff > 0 ? diff : 0;
+    }
+    return t.rate_per_1000_views ? Math.round((t.rate_per_1000_views * LADDER_STEP) / 1000) : 0;
+  });
+
+  /** Что даст следующий ролик: прогноз сервера, а не наша арифметика. */
+  public readonly nextVideoGain = computed(() => this.forecast()?.forecast_payout ?? 0);
+
+  public readonly typical = computed(() => this.earnings()?.benchmark ?? null);
+
+  /**
+   * «Сколько обычно даёт ваш ролик».
+   *
+   * Сначала СВОЯ медиана — по всем роликам этого креатора. Её считает
+   * сервер и отдаёт вместе с карточкой проекта. Подпись «по вашей
+   * медиане» до сих пор стояла над типовым числом из справочника, то
+   * есть над чужим: своё и среднее по площадке — разные величины, и
+   * человек считает по этой строке свою зарплату.
+   *
+   * null — измеренных роликов мало, и медианы нет. Тогда строка честно
+   * говорит про справочник, а не выдаёт его за личное.
+   */
+  public readonly myMedian = computed(() => this.card()?.median ?? null);
+
+  // ---- плашка прошлого месяца ----
+
+  /** Начисление за прошлый период: сколько и в каком оно состоянии. */
+  public readonly closedRow = computed(() => {
+    const prev = this.lastClosed()?.period;
+    if (!prev) return null;
+    const rows = this.earnings()?.accruals ?? [];
+    return rows.find((a) => a.period_start.slice(0, 10) === prev.starts_on.slice(0, 10)) ?? null;
+  });
+
+  // ---- календари трёх месяцев ----
+
+  public readonly weekdays = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+
+  private monthKey(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
+
+  /**
+   * Три месяца подряд: прошлый, текущий, следующий.
+   *
+   * Ровно как в макете, и это не украшение: выкладки живут по месяцам, и
+   * человеку надо видеть, что было, что идёт и что уже назначено дальше,
+   * — иначе «свободных дней в сентябре» он не найдёт.
+   */
+  public readonly months = computed(() => {
+    const now = new Date();
+    const names = [
+      'Январь',
+      'Февраль',
+      'Март',
+      'Апрель',
+      'Май',
+      'Июнь',
+      'Июль',
+      'Август',
+      'Сентябрь',
+      'Октябрь',
+      'Ноябрь',
+      'Декабрь',
+    ];
+    const todayKey = this.dayKey(now);
+    const byDate = new Map<string, Publication[]>();
+    for (const p of this.ordered()) {
+      const k = p.due_date.slice(0, 10);
+      byDate.set(k, [...(byDate.get(k) ?? []), p]);
+    }
+
+    return [-1, 0, 1].map((shift) => {
+      const base = new Date(now.getFullYear(), now.getMonth() + shift, 1);
+      const key = this.monthKey(base);
+      const days = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+      const blanks = (base.getDay() + 6) % 7;
+      const cells = Array.from({ length: days }, (_, i) => {
+        const num = i + 1;
+        const date = `${key}-${String(num).padStart(2, '0')}`;
+        const pubs = byDate.get(date) ?? [];
+        return {
+          num,
+          date,
+          today: date === todayKey,
+          state: this.dayState(pubs, date, todayKey),
+          hint: pubs.length ? pubs.map((p) => p.title || 'выкладка').join(', ') : '',
+        };
+      });
+      const total = cells.filter((c) => c.state).length;
+      return {
+        key,
+        name: `${names[base.getMonth()]} ${base.getFullYear()}`,
+        blanks: Array.from({ length: blanks }, (_, i) => i),
+        cells,
+        total,
+      };
+    });
+  });
+
+  /** Состояние дня в календаре: вышел, просрочен, в плане, назначен. */
+  private dayState(pubs: Publication[], date: string, today: string): string {
+    if (!pubs.length) return '';
+    if (pubs.some((p) => p.status === 'done' || p.status === 'closed_manually')) return 'd';
+    if (pubs.some((p) => p.overdue)) return 'l';
+    if (date < today) return 'l';
+    return 'p';
+  }
+
+  private dayKey(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate(),
+    ).padStart(2, '0')}`;
+  }
+
+  // ---- два списка выкладок ----
+
+  /** Что надо сдать: несданное, ближний срок первым. */
+  public readonly plannedList = computed(() => this.ordered().filter((p) => !this.isDone(p)));
+
+  /** Что вышло: свежее первым, с разделителями по периодам. */
+  public readonly doneList = computed(() =>
+    [...this.ordered().filter((p) => this.isDone(p))].reverse(),
+  );
+
+  /** Ближайший несданный — у него в списке синяя дата. */
+  public readonly nearestId = computed(() => {
+    const today = this.dayKey(new Date());
+    const next = this.plannedList().find((p) => p.due_date.slice(0, 10) >= today);
+    return next?.id ?? '';
+  });
+
+  public dayNum(date: string): string {
+    return date.slice(8, 10);
+  }
+
+  public dayWord(date: string): string {
+    const d = new Date(`${date.slice(0, 10)}T00:00:00`);
+    const wd = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'][d.getDay()] ?? '';
+    const mo = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'][
+      d.getMonth()
+    ];
+    return `${wd} · ${mo}`;
+  }
+
+  /** Вид плашки даты: просрочено, ближайшее, сдано, просто план. */
+  public dateTone(pub: Publication): string {
+    if (this.isDone(pub)) return 'done';
+    if (pub.overdue) return 'crit';
+    if (pub.id === this.nearestId()) return 'next';
+    return '';
+  }
+
+  // ---- свои аккаунты ----
+
+  /** Ссылка на свой аккаунт площадки. Пусто — площадка не привязана. */
+  // ---- лучший и худший ролик ----
+
+  public readonly bestWorst = computed(() => {
+    const vs = this.periodVideos().filter((v) => v.views > 0);
+    if (vs.length < 2) return null;
+    const sorted = [...vs].sort((a, b) => b.views - a.views);
+    return { best: sorted[0], worst: sorted[sorted.length - 1] };
+  });
 
   // Выкладки в порядке дедлайна: номер «Выкладка 03» — это позиция в
   // расписании, отдельного поля с номером или темой ролика в API нет.
@@ -529,10 +863,6 @@ export class CreatorProjectPage {
    * не просто лишняя — она искала бы элемент, которого на общей вкладке
    * в DOM нет, и кнопка молча не делала бы ничего.
    */
-  public openTalk(): void {
-    this.setTab('talk');
-  }
-
   public index(pub: Publication): string {
     const i = this.ordered().findIndex((p) => p.id === pub.id);
     return String(i + 1).padStart(2, '0');
@@ -652,6 +982,43 @@ export class CreatorProjectPage {
    * Молчание тут читается двумя способами сразу, и оба вредные: креатор
    * решит, что требований нет, а менеджер — что тот их проигнорировал.
    */
+  // ---- решение менеджера по ролику ----
+  //
+  // Менеджер возвращает ролик с замечанием — «00:00–00:03 логотипа нет,
+  // перемонтируй начало». Слова эти до сих пор не показывались КРЕАТОРУ
+  // нигде: возврат без замечания сервер не принимает, а замечание без
+  // места, где его читают, бесполезно ровно так же.
+
+  /** Ролики, возвращённые на доработку. Первое дело в кабинете. */
+  public readonly returned = computed(() =>
+    this.ordered().filter((p) => p.review?.status === 'returned'),
+  );
+
+  /** Подпись решения по ролику. Пусто — решения ещё нет. */
+  public reviewLabel(pub: Publication): string {
+    switch (pub.review?.status) {
+      case 'accepted':
+        return 'принят';
+      case 'returned':
+        return 'вернули';
+      case 'in_review':
+        return 'на проверке';
+      default:
+        return '';
+    }
+  }
+
+  public reviewTone(pub: Publication): string {
+    switch (pub.review?.status) {
+      case 'accepted':
+        return 'ok';
+      case 'returned':
+        return 'crit';
+      default:
+        return 'neu';
+    }
+  }
+
   public readonly noChecklist = computed(() => this.checklist().length === 0);
 
   public itemsFor(platform: Platform): ChecklistItem[] {
@@ -684,6 +1051,48 @@ export class CreatorProjectPage {
 
   public closeSubmit(): void {
     this.submitFor.set(null);
+  }
+
+  // ---- пересдача ссылки ----
+  //
+  // Ролик удаляют с площадки, аккаунт перевыкладывают, короткая ссылка
+  // протухает — и новый адрес есть ровно у автора. Раньше он писал его в
+  // переписку, а менеджер переносил руками: лишний шаг, на котором
+  // ссылка живёт в чате, а не в сервисе.
+
+  /** Какую площадку сейчас пересдаём. null — никакую. */
+  public readonly editingLink = signal<Platform | null>(null);
+
+  public readonly linkBusy = signal(false);
+
+  public startEditLink(pub: Publication, platform: Platform): void {
+    if (this.editingLink() === platform) {
+      this.editingLink.set(null);
+      return;
+    }
+    // Подставляем текущий адрес: чаще всего правят его, а не вставляют
+    // с нуля — у ролика меняется хвост, а не весь путь.
+    this.setUrl(platform, this.link(pub, platform)?.url ?? '');
+    this.editingLink.set(platform);
+  }
+
+  public saveEditedLink(pub: Publication, platform: Platform): void {
+    const url = this.urlValue(platform).trim();
+    if (!url || this.linkBusy()) return;
+    this.linkBusy.set(true);
+    this.api.creatorEditLink(pub.id, platform, url).subscribe({
+      next: () => {
+        this.linkBusy.set(false);
+        this.editingLink.set(null);
+        this.setUrl(platform, '');
+        this.msg.success('Ссылка пересдана.');
+        this.fetch(this.projectId(), true);
+      },
+      error: (e) => {
+        this.linkBusy.set(false);
+        this.msg.error(parseApiError(e, 'Не удалось переслать ссылку.').message);
+      },
+    });
   }
 
   public urlValue(platform: Platform): string {
@@ -921,12 +1330,12 @@ export class CreatorProjectPage {
         this.items.set([...this.items(), created]);
         // И сразу показываем КУДА добавили.
         //
-        // Кнопка добора стоит в карточке заработка, на общей вкладке —
-        // там числа, ради которых ролик и добирают. Список выкладок
-        // соседний, и без этого перехода человек нажимал «Добавить
-        // ролик», получал всплывашку и смотрел на неизменившийся экран:
-        // строка появлялась там, куда он не смотрит.
-        this.setTab('pubs');
+        // Кнопка добора стоит в карточке заработка — там числа, ради
+        // которых ролик и добирают. На десктопе список выкладок стоит
+        // прямо под ней, а на телефоне это соседний раздел: без этого
+        // перехода человек нажимал «Добавить ролик», получал всплывашку
+        // и смотрел на неизменившийся экран.
+        this.section.set('posts');
         this.msg.success('Выкладка добавлена. Сдадите ссылки, когда ролик выйдет.');
       },
       error: (e) => {
@@ -988,6 +1397,16 @@ export class CreatorProjectPage {
     this.api.creatorMaterials(id).subscribe({
       next: (r) => this.materials.set(r.items),
       error: () => this.materials.set([]),
+    });
+    this.loadSuggestions(id);
+    // Аккаунты проекта: по ним считается, каких площадок не хватает.
+    // Молча: блок «Мои аккаунты» рисует себя сам и сам же скажет о сбое.
+    this.api.creatorAccounts(id).subscribe({
+      next: (r) => {
+        this.projectAccounts.set(r.items ?? []);
+        this.accountsLoaded.set(true);
+      },
+      error: () => this.accountsLoaded.set(false),
     });
     // Профиль грузим отдельно и молча: он нужен ровно одному блоку, и
     // ронять из-за него страницу выкладок незачем. Не пришёл — блока про

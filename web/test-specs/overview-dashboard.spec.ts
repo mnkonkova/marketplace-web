@@ -354,3 +354,4 @@ describe('дашборд заказчика: разбор по площадка�
     expect(dashes.length).toBe(0);
   });
 });
+

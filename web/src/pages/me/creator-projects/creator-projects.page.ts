@@ -1,15 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import { CreatorProject } from '@entities/publication/model/publication.types';
-import { dueLabel } from '@entities/publication/lib/publication-status';
+import { daysLeft } from '@entities/publication/lib/publication-status';
+import { plural } from '@shared/lib/format';
 import { parseApiError } from '@shared/api/api-error';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { BackLinkComponent } from '@shared/nav/back-link.component';
+import { SotkaNavItem, SotkaTopComponent } from '@widgets/sotka-top/sotka-top.component';
 
 // «Мои проекты» креатора: проекты, где он в действующем составе, со
 // счётчиками только по своим выкладкам. До этой ручки на страницу выкладок
@@ -22,13 +22,7 @@ import { BackLinkComponent } from '@shared/nav/back-link.component';
 @Component({
   selector: 'app-creator-projects-page',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    NzSpinModule,
-    AppHeaderComponent,
-    BackLinkComponent,
-  ],
+  imports: [CommonModule, RouterLink, AppHeaderComponent, SotkaTopComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-projects.page.html',
   styleUrl: './creator-projects.page.scss',
@@ -72,8 +66,36 @@ export class CreatorProjectsPage {
     this.items().reduce((s, p) => s + p.publications_overdue, 0),
   );
 
-  public due(date: string): string {
-    return dueLabel(date);
+  /** Вторая строка шапки: из скольких проектов состоит работа. */
+  public readonly subtitle = computed(() => {
+    const n = this.items().length;
+    if (!n) return '';
+    return `${n} ${plural(n, 'проект', 'проекта', 'проектов')} в работе`;
+  });
+
+  /** Полоса разделов кабинета: в списке открыт он сам. */
+  public readonly nav = computed<readonly SotkaNavItem[]>(() => [
+    { title: 'Мои проекты', link: '/me/creator/projects', current: true },
+  ]);
+
+  /**
+   * Срок ближайшей выкладки предложением.
+   *
+   * Общий dueLabel даёт «−4 дня» — подпись для колонки таблицы, где знак
+   * и есть сообщение. В строке списка это читается как опечатка, и
+   * просрочку приходится доосмысливать; здесь она названа словом.
+   */
+  public dueLine(p: CreatorProject): string {
+    if (!p.next_due_date) {
+      // Не «план выполнен» — это уже сказано плашкой у названия. Здесь
+      // отвечаем на следующий вопрос: а когда будет что делать.
+      return p.publications_total ? 'новые даты поставит менеджер' : 'дат выкладок пока нет';
+    }
+    const d = daysLeft(p.next_due_date);
+    if (d === 0) return 'сегодня';
+    const n = Math.abs(d);
+    const tail = plural(n, 'день', 'дня', 'дней');
+    return d < 0 ? `просрочено на ${n} ${tail}` : `через ${n} ${tail}`;
   }
 
   public closed(p: CreatorProject): number {
@@ -97,11 +119,11 @@ export class CreatorProjectsPage {
   }
 
   /** Зелёным — только то, что действительно сделано. */
-  public stateTone(p: CreatorProject): 'late' | 'open' | 'idle' | 'done' {
-    if (p.publications_overdue) return 'late';
-    if (p.publications_open) return 'open';
+  public stateTone(p: CreatorProject): 'crit' | 'warn' | 'neu' | 'ok' {
+    if (p.publications_overdue) return 'crit';
+    if (p.publications_open) return 'warn';
     // Ноль выкладок — не повод для зелёного: хвалить не за что.
-    if (!p.publications_total) return 'idle';
-    return 'done';
+    if (!p.publications_total) return 'neu';
+    return 'ok';
   }
 }

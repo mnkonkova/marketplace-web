@@ -98,6 +98,10 @@ describe('CreatorProjectPage: итог за прошлый период', () => 
             creatorList: () => of({ items: [] }),
             creatorChecklist: () => of({ items: [] }),
             creatorMaterials: () => of({ items: [] }),
+            // Находки «это ваш ролик?» тянутся вместе со страницей.
+            creatorSuggestions: () => of({ items: [] }),
+            // «Мои аккаунты» — аккаунты проекта, тянутся вместе со страницей.
+            creatorAccounts: () => of({ items: [], secrets_enabled: true }),
             creatorReport: () => of({ collapsed: false }),
           },
         },

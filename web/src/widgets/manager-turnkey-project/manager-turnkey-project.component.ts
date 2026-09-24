@@ -14,11 +14,23 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
 import { formatMoney } from '@entities/billing/lib/money';
-import type { PeriodTotals, Payment } from '@entities/billing/model/billing.types';
+import {
+  canApprove,
+  canMarkPaid,
+  isPreviewPeriod,
+  recalcAffects,
+  shortfall,
+} from '@entities/billing/lib/money';
+import { periodSettled, periodTitle } from '@entities/billing/lib/period';
+import type { Accrual, PeriodTotals, Payment } from '@entities/billing/model/billing.types';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import type { ProjectPerson, Publication } from '@entities/publication/model/publication.types';
 import { ProjectApi } from '@entities/project/api/project.api';
-import type { ProjectFullView, ProjectManagerView } from '@entities/project/model/project.types';
+import type {
+  ProjectEvent,
+  ProjectFullView,
+  ProjectManagerView,
+} from '@entities/project/model/project.types';
 import { closedCount, daysLeft } from '@entities/publication/lib/publication-status';
 import { plural } from '@shared/lib/format';
 
@@ -42,13 +54,34 @@ interface ManagerAlert {
   text: string;
   actions: ManagerAlertAction[];
 }
-import { ZeroComponent } from '@shared/ui/zero/zero.component';
-import { ProjectBillingComponent } from '@widgets/project-billing/project-billing.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
 import { ProjectAccountsComponent } from '@widgets/project-accounts/project-accounts.component';
+import { ProjectChecklistComponent } from '@widgets/project-checklist/project-checklist.component';
 import { ProjectMaterialsComponent } from '@widgets/project-materials/project-materials.component';
-import { ProjectPublicationsComponent } from '@widgets/project-publications/project-publications.component';
 import { ProjectReviewComponent } from '@widgets/project-review/project-review.component';
+import { ProjectAutopingComponent } from '@widgets/project-autoping/project-autoping.component';
+import { ProjectLinksComponent } from '@widgets/project-links/project-links.component';
+import { PublicationPlanComponent } from '@widgets/publication-plan/publication-plan.component';
+import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
+import { SotkaTopComponent, SotkaNavItem } from '@widgets/sotka-top/sotka-top.component';
+import { SotkaTabbarComponent, SotkaTab } from '@widgets/sotka-tabbar/sotka-tabbar.component';
+import { groupDigits } from '@entities/billing/lib/money';
+import { periodRange } from '@entities/billing/lib/period';
+import type { BillingPeriod } from '@entities/billing/model/billing.types';
+import {
+  ALL_PLATFORMS,
+  type AccountLinks,
+  type Platform,
+} from '@entities/publication/model/publication.types';
+import { PLATFORM_LABEL, PLATFORM_SHORT } from '@entities/publication/lib/publication-status';
+import { parseApiError } from '@shared/api/api-error';
+import { NzModalService } from 'ng-zorro-antd/modal';
+import { NzDrawerService } from 'ng-zorro-antd/drawer';
+import {
+  AddCreatorDialogComponent,
+  AddCreatorDialogData,
+} from '@features/project-creators/add-creator.dialog';
+import { isTouchDevice } from '@shared/lib/touch';
 
 /**
  * Проект «креаторы под ключ» глазами менеджера.
@@ -68,31 +101,27 @@ import { ProjectReviewComponent } from '@widgets/project-review/project-review.c
  *
  * Разметка перенесена из макета ~/tmp/crm_project_manager (1).html.
  */
-type TabKey = 'plan' | 'crew' | 'talk' | 'stats' | 'pay' | 'mat';
-
-/** Вкладки, которые умеет показывать виджет выкладок. */
-type PubSection = 'plan' | 'crew' | 'stats' | 'mat';
-
 @Component({
   selector: 'app-manager-turnkey-project',
   standalone: true,
   imports: [
     CommonModule,
     RouterLink,
-    ProjectBillingComponent,
     ProjectCommentsComponent,
     ProjectAccountsComponent,
+    ProjectChecklistComponent,
     ProjectMaterialsComponent,
-    ProjectPublicationsComponent,
     ProjectReviewComponent,
-    ZeroComponent,
+    ProjectAutopingComponent,
+    ProjectLinksComponent,
+    PublicationPlanComponent,
+    SotkaAvaComponent,
+    SotkaTopComponent,
+    SotkaTabbarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './manager-turnkey-project.component.html',
-  styleUrls: [
-    './manager-turnkey-project.component.scss',
-    './manager-turnkey-project.component.touch.scss',
-  ],
+  styleUrl: './manager-turnkey-project.component.scss',
 })
 export class ManagerTurnkeyProjectComponent {
   private readonly api = inject(PublicationApi);
@@ -105,11 +134,25 @@ export class ManagerTurnkeyProjectComponent {
 
   private readonly msg = inject(NzMessageService);
 
+  private readonly modal = inject(NzModalService);
+
+  private readonly drawer = inject(NzDrawerService);
+
+  private readonly touch = isTouchDevice();
+
   public readonly project = input.required<ProjectFullView>();
 
   public readonly meId = input<string>('');
 
-  public readonly tab = signal<TabKey>('plan');
+  /**
+   * Рисовать ли свою шапку.
+   *
+   * Внутри CRM-оболочки её рисовать нельзя: там уже есть полоса с путём
+   * и разделами, и вторая шапка над ней — это два «где я» на одном
+   * экране. Отдельно страница проекта не живёт, но вход у неё один, и
+   * решает вызывающий, а не виджет.
+   */
+  public readonly chrome = input(true);
 
   /** Состав проекта: он же счётчик на вкладке «Креаторы». */
   public readonly crew = signal<ProjectPerson[]>([]);
@@ -226,12 +269,6 @@ export class ManagerTurnkeyProjectComponent {
 
   /** Предоплату завели, но денег не дождались — это другой текст. */
   public readonly prepaymentAwaited = computed(() => !!this.prepayment());
-
-  /** Часть виджета выкладок под текущую вкладку. */
-  public readonly pubSection = computed<PubSection>(() => {
-    const t = this.tab();
-    return t === 'crew' || t === 'stats' || t === 'mat' ? t : 'plan';
-  });
 
   /**
    * «Сегодня» — три числа, с которых начинается день: что просрочено,
@@ -351,10 +388,7 @@ export class ManagerTurnkeyProjectComponent {
         text:
           `Получено ${this.money(this.receivedFromClient())}, начислено ${this.money(this.accruedTotal())} за период. ` +
           'Деньги приходят мимо системы — получение отмечает менеджер.',
-        actions:
-          this.tab() === 'pay'
-            ? []
-            : [{ title: 'Открыть начисления', kind: 'primary', act: 'pay' }],
+        actions: [{ title: 'Открыть начисления', kind: 'primary', act: 'pay' }],
       });
     }
 
@@ -450,21 +484,51 @@ export class ManagerTurnkeyProjectComponent {
           done += 1;
           finish();
         },
-        error: () => {
-          failed += 1;
+        error: (e: unknown) => {
+          // Уже напоминали сегодня — это не провал: креатор получил
+          // напоминание утром, и считать его в «не ушло» неправда.
+          if (parseApiError(e, '').code === 'already_reminded') done += 1;
+          else failed += 1;
           finish();
         },
       });
     }
   }
 
+  /**
+   * Кнопка тревоги ведёт туда, где с ней работают.
+   *
+   * Экран теперь одна лента, а на телефоне — разделы: переключения
+   * вкладки мало, надо ещё и доехать до места. Поэтому здесь и
+   * переключение раздела (его видит телефон), и прокрутка к блоку (её
+   * видит десктоп). Раньше кнопка звала setTab у вкладок, которых на
+   * экране не осталось, и не делала ровно ничего.
+   */
   public onAlertAction(act: ManagerAlertAction['act']): void {
     if (act === 'remind') {
       this.remindBurning();
       return;
     }
-    // Проверка живёт на вкладке плана — там же, где следят за сроками.
-    this.setTab(act === 'pay' ? 'pay' : 'plan');
+    const section = act === 'pay' ? 'pay' : act === 'review' ? 'review' : 'plan';
+    this.setSection(section);
+    this.scrollToSection(section);
+  }
+
+  /**
+   * Доехать до блока на десктопе.
+   *
+   * Через requestAnimationFrame: раздел мог быть скрыт тач-слоем, и до
+   * следующей отрисовки его высота нулевая — прокрутка уехала бы не
+   * туда. `block: 'start'` со сдвигом на липкую полосу пути: без сдвига
+   * заголовок блока прячется под ней.
+   */
+  private scrollToSection(section: string): void {
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`.sec-${section}`);
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY - 70;
+      window.scrollTo({ top, behavior: 'smooth' });
+    });
   }
 
   /** Дата коротко: «17.09». Текст тревоги собирается в коде, а не в шаблоне. */
@@ -479,8 +543,398 @@ export class ManagerTurnkeyProjectComponent {
     return plural(n, one, few, many);
   }
 
-  public setTab(t: TabKey): void {
-    this.tab.set(t);
+  // ═══ кабинет менеджера по макету ══════════════════════════
+
+  public readonly digits = groupDigits;
+
+  public readonly platforms = ALL_PLATFORMS;
+
+  public readonly platformShort = PLATFORM_SHORT;
+
+  public readonly platformLabel = PLATFORM_LABEL;
+
+  /**
+   * Открытый раздел НА ТЕЛЕФОНЕ.
+   *
+   * На десктопе экран идёт одной лентой — тревоги, план, проверка,
+   * состав, деньги, — и это в макете так и есть: менеджер проходит их
+   * сверху вниз. На телефоне та же лента не прокручивается, поэтому
+   * разделы показываются по одному (см. data-sec в тач-слое).
+   */
+  public readonly section = signal('alerts');
+
+  public setSection(key: string): void {
+    this.section.set(key);
+  }
+
+  public readonly phoneTabs = computed<SotkaTab[]>(() => [
+    { key: 'alerts', title: 'Горит', icon: 'bell', badge: this.alerts().length },
+    { key: 'plan', title: 'План', icon: 'cal' },
+    { key: 'links', title: 'Ссылки', icon: 'grid' },
+    { key: 'review', title: 'Проверка', icon: 'check', badge: this.toReview() },
+    { key: 'team', title: 'Команда', icon: 'users' },
+    { key: 'pay', title: 'Деньги', icon: 'wallet' },
+  ]);
+
+  /** Сколько роликов ждёт проверки — счётчик на вкладке. */
+  public readonly toReview = computed(
+    () =>
+      this.publications().filter(
+        (p) => p.links.length > 0 && p.review?.status !== 'accepted' && p.review?.status !== 'returned',
+      ).length,
+  );
+
+  public readonly nav = computed<SotkaNavItem[]>(() => [
+    { title: 'Мои проекты', link: '/manager/projects' },
+    { title: this.project().title, link: `/manager/projects/${this.project().id}`, current: true },
+  ]);
+
+  public readonly subtitleLine = computed(() => {
+    const parts: string[] = [];
+    const n = this.crew().length;
+    if (n) parts.push(`${n} ${plural(n, 'креатор', 'креатора', 'креаторов')}`);
+    const client = this.project().client?.display_name;
+    if (client) parts.push(client);
+    return parts.join(' · ');
+  });
+
+  /** Период проекта: его границы считает сервер, здесь только подпись. */
+  public readonly period = signal<BillingPeriod | null>(null);
+
+  public readonly periodLabel = computed(() => {
+    const p = this.period();
+    return p ? `Период ${p.seq}` : '';
+  });
+
+  public readonly periodDay = computed(() => {
+    const p = this.period();
+    return p ? periodRange(p) : '';
+  });
+
+  public readonly periodPercent = computed<number | null>(() => {
+    const p = this.period();
+    if (!p) return null;
+    const a = Date.parse(p.starts_on);
+    const b = Date.parse(p.ends_on);
+    if (!a || !b || b <= a) return null;
+    const now = Date.now();
+    if (now <= a) return 0;
+    if (now >= b) return 100;
+    return Math.round(((now - a) / (b - a)) * 100);
+  });
+
+  /** Строка состава: аккаунты, счётчики и состояние по выкладкам. */
+  public readonly crewRows = computed(() =>
+    this.crew().map((person) => {
+      const mine = this.publications().filter(
+        (p) => p.creator_user_id === person.user_id && p.status !== 'cancelled',
+      );
+      return {
+        person,
+        links: (person.account_links ?? {}) as AccountLinks,
+        planned: mine.length,
+        done: mine.filter((p) => p.status === 'done' || p.status === 'closed_manually').length,
+        late: mine.filter((p) => p.overdue).length,
+        review: mine.some((p) => p.links.length && p.review?.status !== 'accepted'),
+        views: mine.reduce((s, p) => s + p.views, 0),
+        next: [...mine]
+          .filter((p) => p.status === 'planned' || p.status === 'partial')
+          .sort((a, b) => a.due_date.localeCompare(b.due_date))[0],
+      };
+    }),
+  );
+
+  // ---- статистика креатора в проекте ----
+  //
+  // Менеджер решает по человеку два вопроса: звать ли его в следующий
+  // месяц и почему у него так мало. Оба упираются в цифры, которых на
+  // экране не было: в строке стояли «роликов» и «просмотры», то есть
+  // сумма — а сумма одинаково выглядит и у ровного исполнителя, и у
+  // того, у кого один ролик выстрелил, а остальные девять пустые.
+
+  /** Чья статистика раскрыта. Пусто — ничья. */
+  public readonly openCrew = signal<string>('');
+
+  public toggleCrew(userID: string): void {
+    this.openCrew.set(this.openCrew() === userID ? '' : userID);
+  }
+
+  /**
+   * Разбор роликов одного креатора В ЭТОМ ПРОЕКТЕ.
+   *
+   * Считаем только по измеренным: ролик, вышедший вчера и ещё не
+   * собранный, — это не ноль просмотров, а отсутствие измерения.
+   * Посчитав его нулём, можно уронить медиану вдвое одной свежей
+   * выкладкой и объявить человека слабым на ровном месте.
+   */
+  public crewStats(userID: string) {
+    const measured = this.publications()
+      .filter((p) => p.creator_user_id === userID && p.status !== 'cancelled' && p.views > 0)
+      .sort((a, b) => (a.published_at ?? a.due_date).localeCompare(b.published_at ?? b.due_date));
+    if (!measured.length) return null;
+
+    const byViews = [...measured].sort((a, b) => a.views - b.views);
+    const mid = Math.floor(byViews.length / 2);
+    // Медиана, а не среднее: один залетевший ролик поднимает среднее
+    // вдвое и обещает то, чего обычно не бывает.
+    const median =
+      byViews.length % 2
+        ? byViews[mid].views
+        : Math.round((byViews[mid - 1].views + byViews[mid].views) / 2);
+    const max = byViews[byViews.length - 1].views;
+
+    return {
+      median,
+      basis: measured.length,
+      best: byViews[byViews.length - 1],
+      worst: byViews[0],
+      // Столбики в порядке выхода: так видно не только разброс, но и
+      // куда он движется. Высота от лучшего — сравнивать надо со своим
+      // же потолком, а не с чужим.
+      bars: measured.map((p) => ({
+        pub: p,
+        height: max > 0 ? Math.max(4, Math.round((p.views / max) * 100)) : 4,
+        best: p.id === byViews[byViews.length - 1].id,
+        worst: byViews.length > 1 && p.id === byViews[0].id,
+      })),
+    };
+  }
+
+  /** Куда ведёт столбик — на сам ролик, а не в пустоту. */
+  public pubUrl(p: Publication): string {
+    return p.links[0]?.url ?? '';
+  }
+
+  /** Пинг одному креатору — по его ближайшей несданной выкладке. */
+  public remindCreator(row: { person: ProjectPerson; next?: Publication }): void {
+    if (!row.next) {
+      this.msg.info(`У ${row.person.display_name} нет несданных выкладок.`);
+      return;
+    }
+    this.api.managerRemind(row.next.id).subscribe({
+      next: () => this.msg.success(`Напомнили: ${row.person.display_name}.`),
+      error: (e) => {
+        const err = parseApiError(e, 'Напоминание не ушло.');
+        // 409 already_reminded — бот сегодня уже написал по этой
+        // выкладке. Это не отказ, а ответ «уже сделано».
+        if (err.code === 'already_reminded') {
+          this.msg.info(`Сегодня ${row.person.display_name} уже напоминали — следующее завтра.`);
+          return;
+        }
+        this.msg.error(err.message);
+      },
+    });
+  }
+
+  // ═══ деньги: очередь шагов, начисления, расчёт, журнал ═══
+  //
+  // Разметка по макету: четыре шага подряд, таблица начислений, плашка
+  // расчёта с заказчиком и журнал. Порядок не декоративный — это
+  // единственное место, где деньги двигаются руками, и шаги идут строго
+  // друг за другом: пересчитали → период подытожился → утвердили →
+  // выплатили. Кнопка есть только у следующего шага.
+
+  public readonly accruals = signal<Accrual[]>([]);
+
+  public readonly moneyBusy = signal(false);
+
+  public readonly periodTitleText = computed(() => periodTitle(this.period()));
+
+  /** Строки периода: кто, оклад, ступени, бонус, вычет, итого. */
+  public readonly payRows = computed(() =>
+    this.accruals().map((a) => ({
+      a,
+      short: shortfall(a),
+      bonus: (a.payout_views_bonus ?? a.views_bonus) + (a.payout_click_bonus ?? a.click_bonus),
+      salary: a.payout_salary ?? a.salary,
+      deduction: a.payout_deduction ?? a.deduction,
+      total: a.payout_total ?? a.total,
+    })),
+  );
+
+  /** Период ещё идёт — суммы предварительные. */
+  public readonly moneyPreview = computed(
+    () => isPreviewPeriod(this.accruals()) || this.period()?.status === 'open',
+  );
+
+  /**
+   * На каком шаге очередь. 0 — пересчитать, 1 — ждём подытога,
+   * 2 — утвердить, 3 — выплатить, 4 — всё.
+   */
+  public readonly payStage = computed(() => {
+    const rows = this.accruals();
+    if (!rows.length || isPreviewPeriod(rows)) return 0;
+    if (this.period()?.status === 'open') return 1;
+    if (rows.some((a) => canApprove(a))) return 2;
+    if (rows.some((a) => canMarkPaid(a))) return 3;
+    return 4;
+  });
+
+  public readonly paySteps = computed(() => {
+    const stage = this.payStage();
+    const affected = recalcAffects(this.accruals());
+    return [
+      {
+        key: 'recalc',
+        title: 'Пересчитать',
+        note: 'просмотры с площадок',
+        action: affected || !this.accruals().length ? 'Пересчитать' : '',
+      },
+      {
+        key: 'lock',
+        title: 'Подытожить',
+        // Кнопки нет намеренно: период запирается сам через две недели
+        // после конца. Ручного подытога в продукте нет, и рисовать
+        // кнопку, которой не существует, нельзя.
+        note: 'сам, через две недели после конца периода',
+        action: '',
+      },
+      { key: 'approve', title: 'Утвердить', note: 'сумма фиксируется', action: 'Утвердить всех' },
+      { key: 'pay', title: 'Выплатить', note: 'отправка на карты', action: 'Отметить выплату' },
+    ].map((s, i) => ({
+      ...s,
+      state: i < stage ? 'done' : i === stage ? 'cur' : '',
+      action: i === stage ? s.action : '',
+    }));
+  });
+
+  /** Рассчитались ли с заказчиком за показанный период. */
+  public readonly settled = computed(() => periodSettled(this.period(), this.payments()));
+
+  public onPayStep(key: string): void {
+    const id = this.project().id;
+    if (this.moneyBusy()) return;
+    if (key === 'recalc') {
+      this.moneyBusy.set(true);
+      this.billingApi.managerRecalcAccruals(id).subscribe({
+        next: (r) => {
+          this.accruals.set(r.items);
+          this.moneyBusy.set(false);
+          this.msg.success('Пересчитали по свежим просмотрам.');
+          this.load(id);
+        },
+        error: (e) => {
+          this.moneyBusy.set(false);
+          this.msg.error(parseApiError(e, 'Не удалось пересчитать.').message);
+        },
+      });
+      return;
+    }
+    if (key === 'approve' || key === 'pay') {
+      const rows = this.accruals().filter((a) => (key === 'approve' ? canApprove(a) : canMarkPaid(a)));
+      if (!rows.length) return;
+      this.moneyBusy.set(true);
+      let left = rows.length;
+      for (const a of rows) {
+        const req =
+          key === 'approve'
+            ? this.billingApi.managerApproveAccrual(id, a.id)
+            : this.billingApi.managerMarkAccrualPaid(id, a.id);
+        req.subscribe({
+          next: (saved) => {
+            this.accruals.update((list) => list.map((x) => (x.id === saved.id ? saved : x)));
+            if (--left === 0) {
+              this.moneyBusy.set(false);
+              this.msg.success(key === 'approve' ? 'Суммы утверждены.' : 'Выплаты отмечены.');
+            }
+          },
+          error: (e) => {
+            if (--left === 0) this.moneyBusy.set(false);
+            this.msg.error(parseApiError(e, 'Шаг не прошёл.').message);
+          },
+        });
+      }
+    }
+  }
+
+  /**
+   * Отметить, что с заказчиком рассчитались.
+   *
+   * Пока отметки нет, у него крупно висит плашка «к оплате». Снимает её
+   * не календарь, а этот шаг: деньги приходят мимо системы, и получение
+   * подтверждает человек — именем.
+   */
+  public markSettled(): void {
+    const id = this.project().id;
+    const kind = this.payments().some((p) => p.kind === 'final') ? 'final' : 'prepayment';
+    this.moneyBusy.set(true);
+    this.billingApi.managerConfirmPayment(id, kind).subscribe({
+      next: () => {
+        this.moneyBusy.set(false);
+        this.msg.success('Отметили расчёт — плашка у заказчика снята.');
+        this.load(id);
+      },
+      error: (e) => {
+        this.moneyBusy.set(false);
+        this.msg.error(parseApiError(e, 'Не удалось отметить расчёт.').message);
+      },
+    });
+  }
+
+  /** Журнал действий по проекту: кто что сделал и когда. */
+  public readonly journal = signal<ProjectEvent[]>([]);
+
+  public eventText(e: ProjectEvent): string {
+    const who = e.actor_display_name || (e.actor_type === 'system' ? 'система' : 'сотрудник');
+    const what: Record<string, string> = {
+      created: 'завёл проект',
+      assigned: 'сменил ответственного',
+      stage_advance: 'двинул стадию',
+      step_transition: 'двинул шаг',
+      comment: 'написал комментарий',
+    };
+    return `${who} · ${what[e.event_kind] ?? e.event_kind}`;
+  }
+
+  /** План поменялся — перечитываем выкладки. */
+  public reload(): void {
+    const id = this.project().id;
+    this.api.managerList(id).subscribe({
+      next: (r) => this.publications.set(r.items),
+      error: () => undefined,
+    });
+  }
+
+  /**
+   * Добавить креатора в состав.
+   *
+   * Раньше на этом месте стояла ссылка на самого себя с ?crew=1 — она
+   * никуда не вела и просто подкидывала страницу наверх. Окно поиска
+   * людей уже есть и работает в составе проекта по воронке; берём его,
+   * а на телефоне открываем шторкой.
+   */
+  public addCreator(): void {
+    const data: AddCreatorDialogData = { projectID: this.project().id };
+    const done = (res: unknown): void => {
+      if (!res) return;
+      this.msg.success('Креатор добавлен в состав.');
+      this.load(this.project().id);
+    };
+    if (this.touch) {
+      this.drawer
+        .create<AddCreatorDialogComponent, AddCreatorDialogData, unknown>({
+          nzTitle: 'Добавить креатора',
+          nzContent: AddCreatorDialogComponent,
+          nzData: data,
+          nzPlacement: 'bottom',
+          nzHeight: 'auto',
+          nzBodyStyle: { padding: '0 16px 24px' },
+        })
+        .afterClose.subscribe(done);
+      return;
+    }
+    this.modal
+      .create({
+        nzTitle: 'Добавить креатора в проект',
+        nzContent: AddCreatorDialogComponent,
+        nzData: data,
+        nzFooter: null,
+      })
+      .afterClose.subscribe(done);
+  }
+
+  public openClientView(): void {
+    void this.router.navigate(['/me/projects', this.project().id]);
   }
 
   /** Имена тех, у кого горит: «у Анастасии и Андрея» читается лучше цифры. */
@@ -508,16 +962,26 @@ export class ManagerTurnkeyProjectComponent {
       next: (r) => this.siblings.set(r.items),
       error: () => this.siblings.set([]),
     });
+    // Журнал: кто что делал с проектом. В макете он стоит под
+    // начислениями — там же, где деньги двигаются руками.
+    this.projectApi.managerListEvents(id).subscribe({
+      next: (r) => this.journal.set(r.items.slice(-12).reverse()),
+      error: () => this.journal.set([]),
+    });
     // Платежи проекта, а не месяца: предоплата у проекта одна. Условий у
     // проекта может не быть вовсе — тогда и предупреждать не о чем.
     this.billingApi.managerBilling(id).subscribe({
       next: (r) => {
         this.payments.set(r.payments ?? []);
         this.totals.set(r.totals ?? null);
+        this.period.set(r.period ?? null);
+        this.accruals.set(r.accruals ?? []);
       },
       error: () => {
         this.payments.set([]);
         this.totals.set(null);
+        this.period.set(null);
+        this.accruals.set([]);
       },
     });
   }

@@ -1,0 +1,68 @@
+// Без инкапсуляции: содержимое живёт в оверлее ng-zorro, классы с
+// префиксом sh-.
+
+.ant-drawer-bottom .ant-drawer-content {
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+}
+
+.ant-drawer-bottom .ant-drawer-header {
+  display: none;
+}
+
+// Вся шторка — зона жеста, и браузеру панорамирование здесь запрещено:
+// иначе Safari начинает свою прокрутку до наших обработчиков и фон едет
+// под листом.
+.sh-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: 88dvh;
+  overscroll-behavior: contain;
+  touch-action: none;
+  color: var(--text);
+}
+
+.ant-drawer-mask {
+  touch-action: none;
+}
+
+.sh-grip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 10px 16px 12px;
+  cursor: grab;
+
+  span {
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border-strong);
+  }
+
+  strong {
+    color: var(--text);
+    font-size: 16px;
+    text-align: center;
+  }
+}
+
+.sh-note {
+  flex: none;
+  margin: 0 16px 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+// Тело прокручивается само и отдаёт браузеру обычную инерцию.
+.sh-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 16px calc(18px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}

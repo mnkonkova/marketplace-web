@@ -1,0 +1,497 @@
+// Тач-слой CRM: админка и менеджерские списки на телефоне.
+//
+// Почему глобально, а не в каждой странице: правила касаются разметки,
+// которую рисует ng-zorro (nz-table, пагинация) и общие компоненты
+// (app-page-head), — scoped-стили страницы до них не дотягиваются без
+// ::ng-deep в каждом файле. Шесть копий одного и того же паттерна уже
+// были написаны по страницам и успели разойтись в мелочах: где-то
+// лейбл 110px, где-то 130, где-то его нет вовсе.
+//
+// Главная мысль слоя: ТАБЛИЦА НА ТЕЛЕФОНЕ — НЕ ТАБЛИЦА. Горизонтальная
+// прокрутка прячет половину строки, и сравнить две строки уже нельзя;
+// «перевёрнутая» таблица (лейбл слева, значение справа, восемь строк на
+// запись) честнее, но одна запись занимает целый экран, и список из
+// двухсот человек листать невозможно. Поэтому строка становится
+// карточкой: заголовок, подпись, статусы чипами, остальное — мелкими
+// строками под ними.
+//
+// Роль колонки задаётся её НАЗВАНИЕМ — ниже словарь. Так правило живёт
+// в одном месте и читается как список колонок CRM; новая колонка,
+// которой в словаре нет, по умолчанию рисуется подписанной строкой, то
+// есть безопасно.
+
+// ::ng-deep здесь НЕ нужен и был бы вреден: этот файл глобальный,
+// инкапсуляции в нём нет, а для браузера ::ng-deep — неизвестный
+// псевдоэлемент, из-за которого он выбрасывает всё правило целиком.
+// Молча: ни ошибки сборки, ни предупреждения — просто ничего не
+// применяется.
+@use 'breakpoints' as bp;
+@use 'touch' as touch;
+
+@media (max-width: bp.$touch) {
+  // `:root` для веса: у страниц есть свои правила на те же классы
+  // (.filters, .phead), и у них ровно такой же вес — спор решался бы
+  // порядком подключения, а компонентные стили Angular подставляет
+  // ПОСЛЕ глобальных. Лишний `:root` делает исход предсказуемым.
+  :root .crm-shell {
+    // ── шапка раздела ────────────────────────────────────
+    .phead {
+      gap: 10px;
+      margin-bottom: 14px;
+
+      h1 {
+        font-size: 22px;
+      }
+
+      // Пояснение к разделу — две строки максимум. Целиком оно занимает
+      // треть экрана, а читают его один раз.
+      .sub {
+        display: -webkit-box;
+        overflow: hidden;
+        font-size: 13px;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+
+      .acts {
+        display: flex;
+        flex: 1 1 100%;
+        gap: 8px;
+
+        > * {
+          flex: 1;
+          min-height: touch.$tap;
+        }
+      }
+    }
+
+    // ── фильтры ──────────────────────────────────────────
+    //
+    // Четыре поля в столбик — это семьсот пикселей до первой строки
+    // списка: человек открывает раздел и не видит ни одной записи.
+    // Поиск во всю ширину, остальное по двое в ряд.
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      align-items: stretch;
+
+      .search-input,
+      > label,
+      > .wide {
+        grid-column: 1 / -1;
+      }
+
+      nz-select {
+        width: 100%;
+        min-width: 0 !important;
+      }
+
+      .ant-select-selector,
+      .search-input {
+        min-height: touch.$tap !important;
+      }
+
+      // Кегль поменьше: «Все менеджеры» и «Давно не двигались» в
+      // половине ширины обрезались многоточием, а обрезанный фильтр не
+      // отвечает на вопрос, что в нём выбрано.
+      .ant-select,
+      .search-input {
+        font-size: 13.5px;
+      }
+    }
+
+    .counter {
+      margin-bottom: 8px;
+    }
+
+    // ── цели под палец ───────────────────────────────────
+    //
+    // Пройдено линейкой по живым экранам: «Применить», «Добавить
+    // аккаунт», имя в карточке пользователя, кнопки сводки и стрелки
+    // пагинации были от 20 до 36 пикселей — в такие попадают курсором,
+    // а не пальцем. 44 — та высота, ниже которой промах перестаёт быть
+    // случайностью.
+    // `.content` в селекторе не для красоты: у страниц свои правила на
+    // те же классы (.go у сводки — 32px), и вес у них такой же. Лишний
+    // уровень решает спор правилом, а не порядком подключения.
+    .content {
+      .ant-btn,
+      .ant-btn-sm,
+      .ant-pagination-item,
+      .ant-pagination-item-link,
+      .dots,
+      .person,
+      .go,
+      .all {
+        min-height: touch.$tap;
+      }
+
+      // У кнопок, которые на десктопе были мелкими, заодно поля: 44 в
+      // высоту и 8 по бокам — это всё ещё промах вбок.
+      .ant-btn-sm,
+      .go,
+      .all {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding-inline: 14px;
+      }
+
+      // Переключатель вида и заголовок карточки — самые частые цели
+      // списка проектов: первым выбирают, как смотреть, вторым
+      // открывают проект. На десктопе оба набраны мелко (30 и 24
+      // пикселя), потому что там целятся курсором.
+      .seg button,
+      .shareurl .copy,
+      td .title {
+        display: inline-flex;
+        align-items: center;
+        min-height: touch.$tap;
+      }
+
+      .shareurl .copy {
+        padding-inline: 14px;
+      }
+
+      // Контакты клиента: адрес почты стоит отдельной строкой, по нему
+      // звонят и пишут — это цель, а не часть абзаца.
+      .contacts a,
+      .mrow a {
+        display: inline-flex;
+        align-items: center;
+        min-height: touch.$tap;
+      }
+    }
+
+    // Путь наверху: по нему возвращаются, и «Проекты» в 20 пикселей —
+    // самая частая цель экрана.
+    .crumbs a,
+    .crumbs b {
+      display: inline-flex;
+      align-items: center;
+      min-height: touch.$tap;
+    }
+
+    // Имя в карточке — цель на всю ширину строки: по нему открывают
+    // карточку человека, и целиться в текст пальцем неудобно.
+    .person {
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    // Выпадающие списки внутри страниц CRM: ширина задана под десктоп
+    // («Период 1 · 15 сентября — 14 октября» в одну строку), и на
+    // телефоне такой список распирал страницу вбок.
+    .crm-page {
+      nz-select,
+      .ant-select {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+
+      .periodbar,
+      .billbar,
+      .switchrow {
+        flex-wrap: wrap;
+      }
+    }
+
+    // ── строка таблицы → карточка ────────────────────────
+    .ant-table {
+      min-width: 0 !important;
+
+      .ant-table-content {
+        // Прокрутки внутри карточек быть не должно: она осталась от
+        // таблицы и на телефоне только прячет правый край карточки.
+        overflow-x: visible;
+      }
+
+      .ant-table-thead {
+        display: none;
+      }
+
+      .ant-table-tbody {
+        tr {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px 10px;
+
+          // Перенос после заголовка и меню. Без него у карточки, где
+          // нет подписи под заголовком (команда), статусная плашка
+          // заезжала на строку с именем и отталкивала меню на середину:
+          // строка читалась как «имя, плашка, троеточие посередине».
+          &::after {
+            content: '';
+            order: 25;
+            flex: 1 0 100%;
+            height: 0;
+            margin: 0;
+          }
+          padding: 12px 14px;
+          border: 1px solid var(--border);
+          border-radius: var(--r-card, 16px);
+          margin-bottom: 10px;
+          background: var(--surface);
+        }
+
+        td {
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+          order: 50;
+          flex: 1 1 100%;
+          padding: 0 !important;
+          border: none !important;
+          overflow-wrap: anywhere;
+          font-size: 13px;
+
+          &:empty {
+            display: none;
+          }
+        }
+
+        // По умолчанию ячейка — подписанная строка: заголовок колонки
+        // слева, значение справа. Так видно и то, чего нет в словаре
+        // ниже, а новая колонка не остаётся без имени.
+        //
+        // Вес правила намеренно минимальный (один класс тега): всё, что
+        // ниже, уточняет его селектором на имя колонки и побеждает без
+        // !important. Обратный порядок — общий селектор тяжелее
+        // частного — и был ошибкой первой версии: подписи чипов не
+        // применялись, а почему, из файла было не видно.
+        td::before {
+          content: attr(data-label);
+          flex: 0 0 auto;
+          min-width: 112px;
+          color: var(--text-dim);
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+
+        // Ячейка без имени колонки подписи не получает — иначе на её
+        // месте осталась бы пустая колонка в 112 пикселей.
+        td:not([data-label])::before,
+        td[data-label='']::before {
+          content: none;
+        }
+
+        // ЗАГОЛОВОК карточки: по нему её и находят глазами.
+        td[data-label='Имя'],
+        td[data-label='Название'],
+        td[data-label='Человек'],
+        td[data-label='Что сделал'] {
+          order: 10;
+          flex: 1 1 60%;
+          font-size: 15.5px;
+          font-weight: 600;
+        }
+
+        td[data-label='Имя']::before,
+        td[data-label='Название']::before,
+        td[data-label='Человек']::before,
+        td[data-label='Что сделал']::before {
+          content: none;
+        }
+
+        // ПОДПИСЬ под заголовком: чей это проект, чья почта, кто сделал.
+        td[data-label='Email'],
+        td[data-label='Клиент'],
+        td[data-label='Описание'],
+        td[data-label='Кто'] {
+          order: 30;
+          flex: 1 1 100%;
+          margin-top: -2px;
+          color: var(--text-muted);
+        }
+
+        td[data-label='Email']::before,
+        td[data-label='Клиент']::before,
+        td[data-label='Описание']::before,
+        td[data-label='Кто']::before {
+          content: none;
+        }
+
+        // СТАТУСЫ — чипами в ряд. Подпись к ним короткая и строчная:
+        // плашка «Да» сама по себе не отвечает на вопрос «да что?», а
+        // заголовок колонки капслоком в ряду плашек перетягивает на
+        // себя всё внимание.
+        td[data-label='Роль'],
+        td[data-label='Статус'],
+        td[data-label='Допущен'],
+        td[data-label='Доступ'],
+        td[data-label='Модерация'],
+        td[data-label='Почта подтверждена'],
+        td[data-label='Версия'] {
+          order: 40;
+          flex: 0 0 auto;
+          gap: 5px;
+        }
+
+        td[data-label='Допущен']::before,
+        td[data-label='Доступ']::before,
+        td[data-label='Модерация']::before,
+        td[data-label='Почта подтверждена']::before,
+        td[data-label='Версия']::before {
+          min-width: 0;
+          text-transform: lowercase;
+          letter-spacing: 0;
+        }
+
+        // У плашки роли и статуса имя написано на ней самой — вторая
+        // подпись рядом была бы повтором.
+        td[data-label='Роль']::before,
+        td[data-label='Статус']::before {
+          content: none;
+        }
+
+        td[data-label='Допущен']::before {
+          content: 'допуск';
+        }
+
+        td[data-label='Модерация']::before {
+          content: 'модерация';
+        }
+
+        td[data-label='Почта подтверждена']::before {
+          content: 'почта';
+        }
+
+        // Меню строки — в правый верхний угол карточки, рядом с
+        // заголовком: это её действия, а не ещё одно поле.
+        td.r,
+        td[data-label=''] {
+          display: flex;
+          justify-content: flex-end;
+          order: 20;
+          flex: 0 0 auto;
+          margin-left: auto;
+          text-align: right;
+
+          &::before {
+            content: none !important;
+          }
+
+          // Точка входа в действия строки: на телефоне в неё попадают
+          // пальцем, а не курсором.
+          button,
+          a {
+            min-width: touch.$tap;
+            min-height: touch.$tap;
+          }
+        }
+      }
+    }
+
+    // Пагинация: цели под палец, «по сколько на странице» на телефоне
+    // не нужен — до него не долистывают.
+    .ant-table-pagination {
+      flex-wrap: wrap;
+      gap: 4px;
+      justify-content: center;
+
+      .ant-pagination-options {
+        display: none;
+      }
+
+      li {
+        min-width: touch.$tap-sm;
+        height: touch.$tap-sm;
+        line-height: touch.$tap-sm;
+      }
+    }
+
+    // ── окна → нижний лист ───────────────────────────────
+    //
+    // Те же окна, что в кабинете: своя разметка (.ovl/.dlg), а не
+    // ng-zorro. По центру экрана они оставляют полоски фона сверху и
+    // снизу и открываются далеко от большого пальца.
+    .ovl {
+      align-items: flex-end;
+      padding: 0;
+    }
+
+    .dlg {
+      width: 100%;
+      max-height: 92dvh;
+      border-right: 0;
+      border-bottom: 0;
+      border-left: 0;
+      border-radius: 20px 20px 0 0;
+    }
+
+    .dlg-ft {
+      gap: 8px;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
+
+      button {
+        flex: 1;
+        min-height: touch.$tap;
+      }
+    }
+
+    // Широкие таблицы, размеченные вручную (история версий прайса,
+    // журнал): их не переворачиваем — там читают ряд целиком, — но
+    // прокручиваем внутри рамки, а не всей страницей.
+    .twrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+}
+
+// ── окна ng-zorro на телефоне ───────────────────────────────────
+//
+// Формы кабинета открываются нижним листом из общей библиотеки
+// (shared/ui/sheet, на nz-drawer). Окна, которые остались окнами
+// (подтверждения, чужие диалоги), тоже приводим к листу — но только
+// формой: своей прокрутки у них нет, и содержимое обязано прокручиваться
+// внутри, а не уезжать за край экрана.
+@media (max-width: bp.$touch) {
+  .ant-modal-wrap {
+    display: flex;
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .ant-modal {
+    top: 0;
+    max-width: 100%;
+    width: 100% !important;
+    margin: 0;
+    padding-bottom: 0;
+    vertical-align: bottom;
+  }
+
+  .ant-modal-content {
+    max-height: 92dvh;
+    overflow-y: auto;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .ant-modal-footer {
+    display: flex;
+    gap: 8px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+
+    .ant-btn {
+      flex: 1;
+      min-height: touch.$tap;
+      margin: 0 !important;
+    }
+  }
+
+  .ant-modal-confirm-btns {
+    display: flex;
+    gap: 8px;
+
+    .ant-btn {
+      flex: 1;
+      min-height: touch.$tap;
+      margin: 0 !important;
+    }
+  }
+}

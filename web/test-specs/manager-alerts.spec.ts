@@ -12,6 +12,8 @@ import type { ProjectFullView } from '@entities/project/model/project.types';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import type { Publication } from '@entities/publication/model/publication.types';
 import { ManagerTurnkeyProjectComponent } from '@widgets/manager-turnkey-project/manager-turnkey-project.component';
+import { NzModalService } from 'ng-zorro-antd/modal';
+import { NzDrawerService } from 'ng-zorro-antd/drawer';
 
 /**
  * «Где сейчас горит» — первое, что читают на экране менеджера.
@@ -74,8 +76,11 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
       } as never) as never,
     );
 
-    const projects = jasmine.createSpyObj<ProjectApi>('projectApi', ['managerAssigned']);
+    const projects = jasmine.createSpyObj<ProjectApi>('projectApi', ['managerAssigned', 'managerListEvents']);
     projects.managerAssigned.and.returnValue(EMPTY);
+    // Журнал под начислениями: событий в этих тестах нет, но ручка
+    // дёргается при загрузке проекта.
+    projects.managerListEvents.and.returnValue(EMPTY);
 
     TestBed.configureTestingModule({
       providers: [
@@ -86,6 +91,11 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
         { provide: ProjectApi, useValue: projects },
         { provide: Router, useValue: jasmine.createSpyObj<Router>('router', ['navigate']) },
         { provide: NzMessageService, useValue: jasmine.createSpyObj('msg', ['success', 'error']) },
+        // Окна кабинета открываются через общий помощник: на десктопе
+        // окном, на телефоне шторкой. Компоненту нужны оба сервиса,
+        // даже если в этом тесте их не зовут.
+        { provide: NzModalService, useValue: jasmine.createSpyObj('modal', ['create', 'confirm']) },
+        { provide: NzDrawerService, useValue: jasmine.createSpyObj('drawer', ['create']) },
       ],
     });
     TestBed.overrideComponent(ManagerTurnkeyProjectComponent, { set: { template: '' } });

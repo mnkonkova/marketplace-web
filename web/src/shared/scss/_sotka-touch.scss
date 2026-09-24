@@ -1,0 +1,560 @@
+// Тач-слой кабинетов «Сотки» — перенос из раздела «TOUCH» макета
+// ~/tmp/sotka-cabinets.html.
+//
+// Это не «то же самое, но уже»: на телефоне меняется способ работы.
+// Разделы уезжают вниз, в зону большого пальца; таблицы превращаются в
+// карточки, потому что двадцать одна колонка плана и шесть колонок
+// роликов на 390 px не помещаются ни при каком кегле; окна приезжают
+// снизу листом, а не встают по центру; у всего нажимаемого появляется
+// высота, в которую попадают пальцем, а не курсором.
+//
+// Числа те же самые: просмотры, цена просмотра, выплаты — один в один с
+// десктопом. Тач-версия отличается вёрсткой, а не содержанием.
+
+@use 'breakpoints' as bp;
+@use 'touch' as touch;
+
+@media (max-width: bp.$touch) {
+  .sotka {
+    .only-phone {
+      display: block;
+    }
+
+    // Возврат из display: none — про видимость, а не про раскладку: у
+    // строки свой флекс, и блок ставил её содержимое в столбик.
+    .row.only-phone {
+      display: flex;
+    }
+
+    .no-phone {
+      display: none !important;
+    }
+
+    // ── разделы одной страницы ───────────────────────────
+    //
+    // Кабинет креатора и менеджера на десктопе — одна страница сверху
+    // вниз: это один разговор, и разрывать его вкладками там незачем. На
+    // телефоне тот же разговор не прокручивается — поэтому разделы
+    // показываются по одному, а переключает их нижняя полоса. Состояние
+    // живёт в data-sec на корне кабинета, и десктоп его просто не
+    // замечает: правила ниже действуют только здесь.
+    &[data-sec] .sec {
+      display: none;
+    }
+
+    &[data-sec='money'] .sec-money,
+    &[data-sec='posts'] .sec-posts,
+    &[data-sec='brief'] .sec-brief,
+    &[data-sec='talk'] .sec-talk,
+    &[data-sec='alerts'] .sec-alerts,
+    &[data-sec='plan'] .sec-plan,
+    &[data-sec='links'] .sec-links,
+    &[data-sec='review'] .sec-review,
+    &[data-sec='team'] .sec-team,
+    &[data-sec='pay'] .sec-pay {
+      display: block;
+    }
+
+    // ── шапка ────────────────────────────────────────────
+    .top-in {
+      padding: 8px 14px;
+      gap: 10px;
+    }
+
+    // Период с полосой пройденного на 390 px отнимает строку у названия
+    // проекта, а прочитать его всё равно негде: он повторяется в деньгах
+    // датами.
+    .period {
+      display: none;
+    }
+
+
+    // Сегменты не помещаются в строку рядом с заголовком: уезжают под
+    // него во всю ширину и прокручиваются, а каждая кнопка — цель под
+    // палец.
+    .segbar {
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+
+      button,
+      a {
+        min-height: touch.$tap;
+        white-space: nowrap;
+      }
+    }
+
+    .proj b {
+      font-size: 14px;
+    }
+
+    .who-box {
+      margin-left: auto;
+    }
+
+    .subnav {
+      padding: 10px 14px 0;
+      @include touch.swipe-row;
+
+      button,
+      a {
+        min-height: touch.$tap;
+        margin-right: 14px;
+      }
+    }
+
+    // ── земля и сетка ────────────────────────────────────
+    main {
+      padding: 4px 14px 16px;
+    }
+
+    // Место под полосу разделов — только там, где полоса есть: на
+    // списке проектов её нет, и пустые 96 px внизу читались как
+    // «страница не догрузилась».
+    &:has(app-sotka-tabbar) {
+      main {
+        padding-bottom: calc(96px + env(safe-area-inset-bottom));
+      }
+    }
+
+    .role,
+    .subgrid {
+      gap: 12px;
+    }
+
+    .ribbon {
+      padding: 12px 14px 4px;
+      gap: 12px;
+
+      .views .big {
+        font-size: 34px;
+      }
+
+      // Легенда счётчиков — справочник, а не данные. На телефоне она
+      // съедала экран целиком до первого настоящего числа.
+      .legend {
+        display: none;
+      }
+    }
+
+    // ── поверхности ──────────────────────────────────────
+    .panel {
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .hero,
+    .earn {
+      border-radius: 18px;
+    }
+
+    .hero-l,
+    .earn-l {
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .plaque,
+    .plaque-big,
+    .plaque-settled {
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .plaque-big .amt {
+      font-size: 32px;
+    }
+
+    // ── цели касания ─────────────────────────────────────
+    //
+    // РОСТ У ВСЕХ КНОПОК ОДИН. Размерной иерархии на телефоне нет
+    // намеренно: экран узкий, кнопки стоят рядами по две-три, и ряд из
+    // 48, 44 и 40 читается не как «эта главная», а как несведённая
+    // вёрстка. Что главное, говорит заливка (.primary/.dark), а не
+    // лишние четыре пикселя.
+    //
+    // Радиус тоже один — 12. Разнобой 14/12/10/2 виден даже там, где
+    // разницы в росте нет: у кнопок ng-zorro свой квадратный угол из
+    // темы antd, и рядом со своими они выглядят чужими.
+    .btn {
+      min-height: touch.$tap;
+      border-radius: 12px;
+      font-size: 15px;
+      padding: 0 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      &.sm {
+        font-size: 14px;
+        padding: 0 12px;
+        // Радиус повторяем: у .btn.sm он свой (6px) в десктопном
+        // словаре, и без этой строки «Сдать» снова становится угловатой.
+        border-radius: 12px;
+      }
+    }
+
+    // Свёртка находок — цель во всю ширину панели: нажимаема вся строка,
+    // а не слово «Посмотреть» в ней. Высота задана явно, потому что при
+    // коротком числе («Нашли 4 ролика») строка сама по себе ниже пальца,
+    // а промах по ней попадает в календарь под ней.
+    .suggest-more {
+      min-height: touch.$tap;
+      padding: 10px 14px;
+    }
+
+    .row {
+      min-height: 60px;
+      padding: 10px 0;
+    }
+
+    // Значок площадки — цель, а не подпись: 20 пикселей в высоту
+    // хватает глазу и не хватает пальцу.
+    //
+    // Размер ОДИН НА ВСЕ значки, включая те, у которых ссылки нет.
+    // Сначала подросли только кликабельные, и ряд поехал: «TT» большой,
+    // «ДЗ» без ссылки — маленький. Ряд площадок читается как одна
+    // строка, и разнобой в ней выглядит поломкой, а не подсказкой. Чем
+    // они отличаются, говорит пунктир и цвет, а не рост.
+    .plat {
+      min-width: 48px;
+      height: touch.$tap;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    // Кнопки ng-zorro внутри кабинета (переписка, материалы, доступы).
+    // Радиус приводим к своему: тема antd рисует 2 пикселя, и рядом с
+    // кнопками кабинета они выглядят квадратными наклейками.
+    .ant-btn,
+    .ant-btn-sm {
+      min-height: touch.$tap;
+      padding-inline: 14px;
+      border-radius: 12px;
+    }
+
+    // Значки-квадраты: панель форматирования переписки, стрелки, «ещё».
+    // Им ширина не нужна, но рост — тот же: ряд, где значок на шесть
+    // пикселей ниже соседней кнопки, выглядит сбоем выравнивания.
+    .tt-bar button,
+    .linkish {
+      min-height: touch.$tap;
+    }
+
+    // Значки-квадраты равняем на плашку площадки: тот же радиус, тот
+    // же рост — ряд читается одной строкой.
+    .tt-bar button {
+      min-width: touch.$tap;
+      height: touch.$tap;
+      border-radius: 10px !important;
+    }
+
+    // Ссылки, стоящие отдельной строкой: шапка и «нужен ещё проект».
+    // В тексте абзаца ссылку не растягиваем — там её опознают по цвету
+    // и целятся по слову.
+    .tail a {
+      display: inline-flex;
+      align-items: center;
+      min-height: touch.$tap;
+    }
+
+    .toggle {
+      min-height: 54px;
+    }
+
+    .sw {
+      width: 50px;
+      height: 30px;
+
+      &::after {
+        width: 26px;
+        height: 26px;
+      }
+
+      &:checked::after {
+        transform: translateX(20px);
+      }
+    }
+
+    input,
+    textarea,
+    select {
+      @include touch.field;
+    }
+
+    .inp,
+    .compose input,
+    .edit input,
+    .addrow input,
+    .addrow select {
+      @include touch.field;
+
+      border-radius: 12px;
+    }
+
+    // ── вкладки ──────────────────────────────────────────
+    //
+    // Верхний ряд вкладок на телефоне не рисуется вовсе: те же разделы
+    // стоят внизу полосой (widgets/sotka-tabbar). Два переключателя
+    // одного и того же на одном экране — это вопрос «а эти куда?».
+    .ptabs {
+      display: none;
+    }
+
+    // Топ роликов: площадки уходят под название. Пять наклеек в одной
+    // строке с номером, названием и просмотрами на 390 px не помещаются
+    // — строка растаскивала за собой всю страницу вбок.
+    .top3 .row {
+      flex-wrap: wrap;
+      row-gap: 6px;
+
+      .vnum {
+        min-width: 0;
+      }
+
+      .acc-cell {
+        order: 3;
+        flex: 1 0 100%;
+        flex-wrap: wrap;
+        padding-left: 32px;
+      }
+    }
+
+    // ── ленты вместо рядов ───────────────────────────────
+    .tops {
+      display: flex;
+      gap: 10px;
+      margin: 0 -14px;
+      padding: 2px 14px 4px;
+      scroll-padding: 0 14px;
+      @include touch.swipe-row;
+
+      scroll-snap-type: x mandatory;
+
+      > * {
+        width: 276px;
+        scroll-snap-align: start;
+      }
+    }
+
+    .vcard {
+      border-radius: 16px;
+    }
+
+    .quote {
+      grid-template-columns: 1fr;
+    }
+
+    .pipeline {
+      grid-template-columns: 1fr;
+    }
+
+    .review {
+      grid-template-columns: 1fr;
+    }
+
+    // Да/нет в проверке — настоящие кнопки, а не буквы. Проверку
+    // проходят по пунктам подряд, и промах здесь стоит возврата ролика
+    // не по делу.
+    .revcheck {
+      min-height: 56px;
+      gap: 10px;
+    }
+
+    .pf {
+      border-radius: 12px;
+
+      button {
+        min-width: 58px;
+        min-height: touch.$tap;
+        font-size: 14px;
+      }
+    }
+
+    .player {
+      aspect-ratio: 4 / 3;
+    }
+
+    // ── таблицы становятся карточками ────────────────────
+    //
+    // Не «таблица с прокруткой»: горизонтальная прокрутка прячет
+    // половину строки, и сравнить две строки уже нельзя. Каждая строка
+    // становится карточкой, а заголовок колонки — подписью внутри неё
+    // (td[data-label]).
+    .tbl-wrap {
+      overflow-x: visible;
+    }
+
+    table.cards {
+      display: block;
+
+      thead {
+        display: none;
+      }
+
+      tbody,
+      tfoot {
+        display: block;
+      }
+
+      tr {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 2px 10px;
+        align-items: baseline;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        margin-bottom: 8px;
+        background: var(--surface);
+      }
+
+      td {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        border: 0;
+        padding: 3px 0;
+        grid-column: 1 / -1;
+        text-align: left;
+
+        &::before {
+          content: attr(data-label);
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: var(--muted);
+          font-weight: 600;
+          flex: none;
+        }
+
+        &.r {
+          text-align: right;
+        }
+
+        // Ячейка, которая и есть заголовок карточки: подпись ей не
+        // нужна, и стоит она первой на всю ширину.
+        &.head {
+          justify-content: flex-start;
+          font-weight: 600;
+
+          &::before {
+            content: none;
+          }
+        }
+
+        &.cov {
+          width: auto;
+        }
+      }
+
+      tfoot td {
+        border-top: 0;
+      }
+    }
+
+    // ── календари ────────────────────────────────────────
+    .cal {
+      gap: 3px;
+    }
+
+    .day {
+      min-height: 54px;
+      padding: 4px;
+    }
+
+    .mcal-g .c {
+      height: 34px;
+      font-size: 12px;
+    }
+
+    .months {
+      gap: 14px;
+    }
+
+    // ── лесенка ──────────────────────────────────────────
+    .stairs {
+      height: 96px;
+    }
+
+    .step i {
+      display: none;
+    }
+
+    .stairs-x span {
+      font-size: 8px;
+    }
+
+    // ── переписка ────────────────────────────────────────
+    .chat {
+      max-height: none;
+    }
+
+    .msg {
+      max-width: 90%;
+      font-size: 14px;
+    }
+
+    .compose {
+      position: sticky;
+      bottom: 0;
+      background: var(--surface);
+      padding-top: 8px;
+    }
+
+    // ── окна становятся нижними листами ──────────────────
+    .ovl {
+      align-items: flex-end;
+      padding: 0;
+    }
+
+    .modal {
+      width: 100%;
+      max-height: 92dvh;
+      border-radius: 22px 22px 0 0;
+      border-right: 0;
+      border-bottom: 0;
+      border-left: 0;
+    }
+
+    .modal-hd {
+      padding: 18px 16px 0;
+    }
+
+    .modal-bd {
+      padding: 14px 16px;
+    }
+
+    .modal-ft {
+      padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+
+      .btn {
+        flex: 1;
+      }
+    }
+
+    .mbox {
+      border-radius: 22px 22px 0 0;
+      max-height: 92dvh;
+    }
+  }
+
+  // Кнопки внутри листов и окон кабинета.
+  //
+  // Лист рисуется в оверлее ng-zorro, вне .sotka, и правила кабинета до
+  // него не достают: «Сохранить» и «Отмена» в листе «Добавить аккаунт»
+  // оставались квадратными наклейками из темы antd и ниже соседних
+  // кнопок. Условие по тому, что на экране: открыт кабинет — значит и
+  // лист над ним кабинетный.
+  body:has(.sotka) .ant-drawer .ant-btn,
+  body:has(.sotka) .ant-modal .ant-btn,
+  body:has(.crm-shell) .ant-drawer .ant-btn,
+  body:has(.crm-shell) .ant-modal .ant-btn {
+    min-height: touch.$tap;
+    border-radius: 12px;
+  }
+}

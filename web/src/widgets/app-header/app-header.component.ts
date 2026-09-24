@@ -56,13 +56,17 @@ export class AppHeaderComponent implements OnInit {
 
   // CRM v5: показываем разные пункты по role. Пока role не подгружена,
   // считаем что это базовый юзер (показываем «Кабинет» как раньше).
-  public readonly showManagerCabinet = computed(() => this.auth.role() === 'manager');
+  // Роли не исключают друг друга: менеджер бывает и креатором, клиент —
+  // специалистом. Поэтому пункты шапки считаются по НАЛИЧИЮ роли, а не
+  // по одной derived-строке: иначе менеджер-креатор видел только CRM, а
+  // свои выкладки открыть было неоткуда.
+  public readonly showManagerCabinet = computed(() => this.auth.roles().includes('manager'));
 
-  public readonly showAdminCabinet = computed(() => this.auth.role() === 'admin');
+  public readonly showAdminCabinet = computed(() => this.auth.roles().includes('admin'));
 
   public readonly showSpecialistCabinet = computed(() => {
-    const r = this.auth.role();
-    return r === 'specialist' || r === '';
+    const r = this.auth.roles();
+    return r.includes('specialist') || !r.length;
   });
 
   /**
@@ -72,7 +76,7 @@ export class AppHeaderComponent implements OnInit {
    * ведёт на /me — портфолио и ставки, — и проекты оставались доступны
    * только по прямому адресу.
    */
-  public readonly showCreatorProjects = computed(() => this.auth.role() === 'specialist');
+  public readonly showCreatorProjects = computed(() => this.auth.roles().includes('specialist'));
 
   // CTA «Создать проект» — это корзина витрины: набрал специалистов,
   // нажал, оформил заказ. Специалисту она не нужна — он сам себе клиент в
@@ -92,10 +96,18 @@ export class AppHeaderComponent implements OnInit {
   // - client         → /me/projects (его проекты — 99% активности);
   // - manager, admin → /me/projects (контакты заполняются в карточках проектов,
   //                    специалистский /me им не нужен).
+  /**
+   * Куда ведёт «Кабинет».
+   *
+   * У специалиста это его карточка — портфолио и ставки; у остальных —
+   * портфель проектов заказчика. Специалист проверяется первым: у
+   * менеджера-креатора есть и то и другое, но «Кабинет» для него — своя
+   * карточка, а чужие проекты открываются пунктом «Менеджер».
+   */
   public readonly cabinetLink = computed(() => {
-    const role = this.auth.role();
-    if (role === 'client' || role === 'manager' || role === 'admin') return '/me/projects';
-    return '/me'; // specialist (и '' пока сессия грузится — fallback на cabinet)
+    const roles = this.auth.roles();
+    if (!roles.length) return '/me'; // сессия ещё грузится
+    return roles.includes('specialist') ? '/me' : '/me/projects';
   });
 
   // logout — очищает токены и редиректит на главную. Вызывается из шапки.

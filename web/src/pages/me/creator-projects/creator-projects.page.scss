@@ -1,168 +1,80 @@
 @use 'breakpoints' as bp;
 
+// Разметка — словарём кабинета (shared/scss/_sotka.scss): это тот же
+// кабинет, что и страница проекта. Здесь только то, чего в словаре нет.
 :host {
   display: block;
-  min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
 }
 
-.creator-projects {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 20px 24px 64px;
-}
-
-.center {
-  display: grid;
-  place-items: center;
-  padding: 80px 0;
-}
-
-.hero {
-  margin: 12px 0 20px;
-
-  h1 {
-    margin: 0 0 6px;
-    font-size: clamp(22px, 1.4vw + 18px, 28px);
+// Пять колонок вместо шести: графика просмотров у креатора в списке нет
+// — сервер отдаёт по проекту только счётчики выкладок.
+//
+// Только на широком экране: ниже 900 словарь раскладывает строку в две
+// колонки карточкой, и своя сетка поверх него уводила страницу за край.
+@media (min-width: 901px) {
+  .projects .prj {
+    grid-template-columns: minmax(220px, 2.4fr) 1fr 1.1fr auto;
   }
 }
 
-.note {
-  margin: 0;
-  max-width: 74ch;
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-.late-line {
-  margin: 10px 0 0;
-  color: var(--danger);
-  font-size: 13.5px;
-}
-
-.cards {
-  display: grid;
-  align-items: stretch;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-// Карточка — ссылка целиком: попадать в мелкую строку внизу мышью
-// неудобно, а нажимаемым выглядит весь прямоугольник.
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  height: 100%;
-  padding: 16px 18px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-card, 16px);
-  background: var(--surface);
+// Строка — ссылка целиком: попадать в мелкую подпись внизу неудобно, а
+// нажимаемой выглядит вся строка.
+a.prj {
   color: inherit;
   text-decoration: none;
 
   &:hover {
-    border-color: var(--cta-hover);
+    background: var(--surface-2);
+
+    .go {
+      color: var(--accent);
+    }
   }
 
-  // Фокус виден: по карточкам ходят и с клавиатуры.
   &:focus-visible {
-    outline: 2px solid var(--cta, #f0553c);
-    outline-offset: 2px;
-  }
-
-  header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  h2 {
-    margin: 0;
-    font-size: 17px;
-  }
-
-  &.late {
-    border-color: rgba(224, 96, 78, 0.55);
+    outline: 2px solid var(--ink);
+    outline-offset: -2px;
+    border-radius: 8px;
   }
 }
 
-// Состояние проекта. Цвет здесь несёт смысл, поэтому плашка своя:
-// глобальный .ant-tag в styles.scss красит любой nzColor в зелёный
-// !important, и «просрочено» выглядело бы так же, как «сдано».
-.state {
-  flex: 0 0 auto;
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-size: 11.5px;
-  line-height: 1.5;
-  white-space: nowrap;
-
-  &.late {
-    background: var(--bad-bg);
-    color: var(--bad);
-  }
-
-  // Токена --warning в системе нет и не было: правило молча падало на
-  // запасной янтарь #faad14. Теперь этот янтарь значит «выросло», и
-  // «есть несданное» в нём читалось бы как похвала. Берём настоящий
-  // --warn (коралловый). Цветом эта плашка ничего и не сообщает —
-  // сообщает подпись в ней; цвет только расставляет вес.
-  &.open {
-    background: var(--warn-bg);
-    color: var(--warn);
-  }
-
-  // Работа не начиналась: ни зелёного, ни тревоги — просто состояние.
-  &.idle {
-    border: 1px solid var(--border-strong);
-    color: var(--text-muted);
-  }
-
-  // --success тоже не существует: запасной #52c41a — третий зелёный на
-  // сайте рядом с --ok и --accent.
-  &.done {
-    background: var(--ok-bg);
-    color: var(--ok);
-  }
-}
-
-.counts {
-  margin: 0;
-  font-size: 14px;
-}
-
-.meta {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-// Строка-указатель, а не вторая кнопка: нажимается вся карточка, и
-// стрелка тут обещала бы отдельную цель.
 .go {
-  margin-top: auto;
-  padding-top: 6px;
-  color: var(--cta-hover);
-  font-size: 13.5px;
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
-.empty {
-  grid-column: 1 / -1;
-  padding: 24px;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--r-card, 16px);
-  color: var(--text-muted);
-  font-size: 14px;
+.ms.next {
+  margin-top: 2px;
 }
 
+.crit-ink {
+  color: var(--crit);
+}
+
+// На телефоне строка разворачивается в столбик: шапки колонок там нет
+// (словарь её прячет), и «2 из 29» рядом с названием осталось бы числом
+// без вопроса. Подпись берём из того же data-label, что стоит в ячейке.
 @media (max-width: bp.$touch) {
-  .creator-projects {
-    padding: 16px 14px 48px;
+  .projects .prj {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .projects .prj > [data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .go {
+    display: inline-block;
+    min-height: 40px;
+    line-height: 40px;
   }
 }

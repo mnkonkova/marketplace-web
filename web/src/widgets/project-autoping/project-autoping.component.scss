@@ -1,3 +1,5 @@
+@use 'breakpoints' as bp;
+
 :host {
   display: block;
 }
@@ -50,5 +52,38 @@
   .tx span {
     color: var(--text-muted);
     font-size: 12.5px;
+  }
+}
+
+// На телефоне тумблер уезжал под текст: строка складывалась в четыре
+// строчки описания и переключатель шириной в палец справа от них, и
+// попасть в него можно было только с края экрана. Кладём подпись и
+// тумблер друг под друга, а сам переключатель — крупнее: это
+// единственная цель в строке.
+@media (max-width: bp.$touch) {
+  .ping-block {
+    margin: 14px 0 0;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .switchrow {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding: 12px;
+
+    .tx {
+      flex: 1 0 100%;
+      min-width: 0;
+    }
+
+    // Цель под палец: 44 по высоте, и сам тумблер прижат к левому краю,
+    // а не к дальнему — большой палец до правого края не достаёт.
+    nz-switch,
+    .ant-switch {
+      min-height: 28px;
+      transform: scale(1.15);
+      transform-origin: left center;
+    }
   }
 }

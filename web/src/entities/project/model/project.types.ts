@@ -104,6 +104,10 @@ export interface ProjectClientView extends ProjectBase {
   current_step_status?: StepStatus;
   revisions_total: number;
   specialist_display_name?: string;
+  // Имя менеджера проекта. Вкладка переписки в кабинете подписана
+  // именем человека («Ирина, ваш менеджер»), а не «поддержкой», и брать
+  // это имя больше неоткуда. Пусто = менеджер ещё не назначен.
+  manager_display_name?: string;
   // Основная категория исполнителя (e.g., «Видеооператор», «Дизайнер»).
   // Используется как опознавательный знак карточки когда у клиента
   // несколько проектов.

@@ -1,221 +1,383 @@
+<!-- Шапка сайта над кабинетом. Кабинет — не отдельный продукт: из него
+     ходят на витрину, в поиск специалистов и в свой профиль, а на
+     телефоне это единственное меню, в котором всё это лежит. Полоса
+     кабинета ниже отвечает на другой вопрос — где я и в какой роли. -->
 <app-header />
 
-<main class="projects-list">
-  <!-- Два разговора кабинета разведены по вкладкам: «что у меня в
-       работе» и «что я за это получил».
+<div class="sotka">
+  <app-sotka-top
+    [showWho]="false"
+    title="Все проекты"
+    [subtitle]="
+      overview()
+        ? overview()!.projects_total +
+          ' ' +
+          plural(overview()!.projects_total, 'проект', 'проекта', 'проектов') +
+          ' · ' +
+          runningCount() +
+          ' ' +
+          plural(runningCount(), 'идёт', 'идут', 'идут')
+        : ''
+    "
+  />
 
-       Вкладки — ПОДЧЁРКНУТЫЕ, а не таблетки, и это не косметика. Ниже, в
-       семидесяти пикселях отсюда, стоит переключатель окна дашборда —
-       тоже три кнопки в ряд. Пока обе группы выглядели одинаковыми
-       таблетками, они обещали одинаковое последствие: одна меняет экран,
-       вторая — числа на нём, и жали наугад. Разные роли — разные формы.
+  <main>
+    <div class="role">
+      <!-- Шапка экрана. Справа — окно, за которое посчитаны числа: без
+           него «6,9%» на экране не отличить от «6,9% за всё время», а это
+           разные утверждения. -->
+      <div class="span-12 pf-head">
+        <div>
+          <div class="label">Сводка по всем проектам · {{ rangeLabel[range()].toLowerCase() }}</div>
+          <h1>Все проекты</h1>
+        </div>
+        <div class="pf-head-r">
+          @if (asOf(); as ts) {
+            <span class="server">сервер · {{ ts | date: 'd.MM, HH:mm' }}</span>
+          }
+        </div>
+      </div>
 
-       Выхода здесь нет и быть не должно: он живёт один на весь сайт — в
-       шапке. Вкладка «Выйти» рядом с разделами кабинета обещает раздел,
-       а уносит со страницы. -->
-  <nav class="tabs" role="tablist" aria-label="Разделы кабинета">
-    @for (t of tabs; track t.key) {
-    <button
-      type="button"
-      role="tab"
-      class="tab"
-      [class.on]="t.key === tab()"
-      [attr.aria-selected]="t.key === tab()"
-      (click)="setTab(t.key)"
-    >
-      {{ t.title }}
-    </button>
-    }
-  </nav>
+      <!-- Четыре числа одной лентой — как в макете: цена просмотра,
+           вовлечённость, просмотры, потрачено. Порядок тот же: сначала
+           «почём», потом «сколько». -->
+      <div class="span-12 pf-hero">
+        <div>
+          <div class="label">Цена просмотра · CPV</div>
+          <div class="v num">{{ cpv() || '—' }}</div>
+          <!-- Цену считаем по факту за всё время проектов, а не за окно:
+               сравнивать её с прошлым месяцем сервер не умеет, и рисовать
+               здесь стрелку было бы выдумкой. -->
+          <div class="pf-sub muted">за всё время</div>
+        </div>
+        <div>
+          <div class="label">Вовлечённость · ER</div>
+          <div class="v num">
+            @if (er()) {
+              {{ er() }}<small>%</small>
+            } @else {
+              —
+            }
+          </div>
+          <div class="pf-sub">
+            @if (erDelta() !== null && erDelta() !== 0) {
+              <span [class]="erDelta()! > 0 ? 'up-good' : 'down-bad'">
+                {{ erDelta()! > 0 ? '↑' : '↓' }} {{ absDecimal(erDelta()!) }} п.
+              </span>
+              <span class="muted">к {{ prevLabel() }}</span>
+            } @else {
+              <span class="muted">за {{ rangeLabel[range()].toLowerCase() }}</span>
+            }
+          </div>
+        </div>
+        <div>
+          <div class="label">Просмотры</div>
+          <div class="v num views-v">{{ digits(viewsTotal()) }}</div>
+          <div class="pf-sub muted">
+            {{ runningCount() }}
+            {{ plural(runningCount(), 'проект идёт', 'проекта идут', 'проектов идут') }}
+            @if (videosTotal()) {
+              · {{ videosTotal() }}
+              {{ plural(videosTotal(), 'ролик', 'ролика', 'роликов') }}
+            }
+          </div>
+        </div>
+        <div>
+          <div class="label">Потрачено</div>
+          <div class="v num">{{ money(spent()) }}</div>
+          <div class="pf-sub muted">по факту, без счетов к оплате</div>
+        </div>
+      </div>
 
-  <!-- Заголовок про РЕЗУЛЬТАТ, а не про раздел. «Мои проекты» называет
-       место, в которое человек уже пришёл, и не говорит ничего; этот же
-       экран показывают начальству и вставляют в коммерческое
-       предложение, и первая строка в нём обязана отвечать на вопрос, с
-       которым его открыли. -->
-  <header class="head">
-    <h1>{{ headline() }}</h1>
-  </header>
+      <!-- ДАШБОРД. На месте каталога креаторов: заказчик приходит сюда
+           с вопросом «что у нас происходит», а не «кого бы нанять».
+           Подбор состава — это воронка заказа, отдельная дорога, и
+           ссылка на неё стоит внизу страницы.
 
-  @if (tab() === 'projects') {
-  <!-- Реестр — тот же компонент, что под дашбордом, и те же числа: он
-       владелец сводки и рисует строку проекта одним способом. Вторая
-       копия строки разошлась бы с первой на ближайшей правке. -->
-  <app-client-overview [clientName]="contacts().display_name" [withDashboard]="false" />
+           Окно данных переключается ЗДЕСЬ, в самих данных: второй такой
+           же переключатель в шапке страницы обещал бы другое действие —
+           две одинаковые таблетки в семидесяти пикселях друг от друга
+           человек жмёт наугад. -->
+      <div class="span-12">
+        <app-client-dashboard
+          [data]="overview()"
+          [range]="range()"
+          [clientName]="clientName()"
+          (rangeChange)="setRange($event)"
+        />
+      </div>
 
-  <!-- Проекты ПО ВОРОНКЕ — отдельным списком и другой карточкой.
-       У них нет ни роликов, ни площадок, ни цены тысячи: их содержание —
-       стадии и согласования, и мерить их просмотрами нечем. В реестре
-       выше они стояли бы пустыми строками. -->
-  @if (loading()) {
-  <div class="center"><nz-spin nzSize="large"></nz-spin></div>
-  } @else if (funnelProjects().length) {
-  <h2 class="fhead">Проекты по этапам</h2>
-  <p class="subtitle">Цветной бейдж показывает, на ком сейчас «мяч».</p>
-  <div class="cards">
-    @for (p of funnelProjects(); track p.id) {
-    <article
-      class="card"
-      [class.waiting]="p.display_status === 'waiting_action'"
-      [class.completed]="p.display_status === 'completed'"
-      (click)="open(p)"
-    >
-      <header class="card-head">
-        <nz-tag [nzColor]="color(p.display_status)"> {{ label(p.display_status) }} </nz-tag>
-        <span class="progress-num">{{ p.progress | number: '1.0-0' }}%</span>
-      </header>
+      <!-- Проекты одной строкой. Пауза — это не ноль: у проекта без
+           периода стоит «периода нет», а не «0 просмотров». -->
+      <div class="span-8 panel">
+        <div class="panel-h">
+          <h2>Проекты</h2>
+          <span class="sub">
+            {{ rows().length }} {{ plural(rows().length, 'проект', 'проекта', 'проектов') }} ·
+            {{ runningCount() }} {{ plural(runningCount(), 'идёт', 'идут', 'идут') }}
+          </span>
+        </div>
 
-      <h3>{{ p.title }}</h3>
-
-      @if (funnelProjects().length > 1 && (p.specialist_primary_category ||
-      p.specialist_display_name)) {
-      <p class="spec-badge">
-        @if (p.specialist_primary_category) {
-        <span class="spec-cat">{{ p.specialist_primary_category }}</span>
-        } @if (p.specialist_display_name) {
-        <span class="spec-name">· {{ p.specialist_display_name }}</span>
+        @if (loading()) {
+          <p class="muted">Загружаем проекты…</p>
+        } @else if (!rows().length) {
+          <p class="muted">Проектов пока нет.</p>
+        } @else {
+          <div class="projects">
+            <div class="prj head label">
+              <span>Проект</span>
+              <span>Просмотры по дням</span>
+              <span>CPV</span>
+              <span>ER</span>
+              <span>Потрачено</span>
+              <span></span>
+            </div>
+            @for (p of rows(); track p.id) {
+              <div class="prj">
+                <div>
+                  <div class="nm">
+                    {{ p.title }}
+                    <span class="pill" [class]="'pill ' + p.tone">{{ p.state }}</span>
+                  </div>
+                  <div class="ms">{{ p.meta }}</div>
+                  @if (p.progress !== null && p.progress > 0) {
+                    <div class="prog"><i [style.width.%]="p.progress"></i></div>
+                  }
+                  @if (p.next) {
+                    <div class="ms next">
+                      Следующая выкладка: <span class="ink">{{ p.next }}</span>
+                    </div>
+                  }
+                </div>
+                <div class="spark">
+                  @if (p.series.length > 1) {
+                    <app-line-chart
+                      [points]="p.series"
+                      [compact]="true"
+                      [height]="30"
+                      color="var(--accent)"
+                    />
+                    <div class="mv acc">{{ p.viewsLabel }}</div>
+                  } @else if (p.turnkey) {
+                    <span class="st st-nd">периода нет</span>
+                  }
+                </div>
+                <div class="mv" data-label="CPV">{{ p.cpv }}</div>
+                <div class="mv" data-label="ER">{{ p.er }}</div>
+                <div class="mv" data-label="Потрачено">{{ p.spent }}</div>
+                <!-- На телефоне эти три кнопки встают внизу карточки:
+                     разделы проекта — то, ради чего в него заходят, и
+                     заставлять открывать проект, чтобы потом искать в
+                     нём «Деньги», значит считать два нажатия за одно.
+                     На десктопе видна только «Открыть»: там разделы
+                     стоят вкладками в самом проекте, и вторая дорога к
+                     ним с соседнего экрана обещала бы другое место. -->
+                <div class="prj-act">
+                  <button type="button" class="btn sm only-phone" (click)="open(p, 'summary')">
+                    Сводка
+                  </button>
+                  <button type="button" class="btn sm only-phone" (click)="open(p, 'money')">
+                    Деньги
+                  </button>
+                  <button type="button" class="btn sm dark" (click)="open(p)">
+                    <span class="no-phone">Открыть</span>
+                    <span class="only-phone">Открыть проект</span>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
         }
-      </p>
-      } @if (p.current_step_title) {
-      <p class="cur">
-        <span class="cur-label">Сейчас:</span>
-        <strong>{{ p.current_step_title }}</strong>
-      </p>
+      </div>
+
+      <div class="span-4 stack">
+        <div class="panel">
+          <div class="panel-h">
+            <h2>К оплате</h2>
+            <span class="amt num">{{ money(dueTotal()) }}</span>
+          </div>
+          @if (!due().length) {
+            <p class="muted">Неоплаченных счетов нет.</p>
+          } @else {
+            <div class="list">
+              @for (d of due(); track d.projectId + d.kind + d.amount) {
+                <div class="row">
+                  <span class="pill" [class]="'pill ' + d.tone">{{
+                    d.paid ? 'оплачен' : d.kind
+                  }}</span>
+                  <div class="grow">
+                    <div class="t" [class.muted]="d.paid">{{ d.project }}</div>
+                    <div class="muted small">{{ d.note }}</div>
+                  </div>
+                  <b class="mono" [class.faint]="d.paid">{{ digits(d.amount / 100) }}</b>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">
+            <h2>Где дешевле просмотр</h2>
+            <span class="sub">CPV по проектам</span>
+          </div>
+          @if (!cpvBars().length) {
+            <p class="muted">Сравнивать пока нечего: просмотров нет ни у одного проекта.</p>
+          } @else {
+            <div class="cpvbars num">
+              @for (b of cpvBars(); track b.title) {
+                <div class="cpvbar" [class.best]="b.best">
+                  <span>
+                    {{ b.title }}
+                    @if (b.paused) {
+                      <span class="faint">· пауза</span>
+                    }
+                  </span>
+                  <div class="track"><i [style.width.%]="b.width"></i></div>
+                  <span class="mono">{{ b.value }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="span-7 panel top3">
+        <div class="panel-h">
+          <h2>Топ-3 ролика по всем проектам</h2>
+          <span class="sub">{{ rangeLabel[range()].toLowerCase() }}</span>
+        </div>
+        @if (!topRows().length) {
+          <p class="muted">Роликов за это окно ещё не было.</p>
+        } @else {
+          <div class="list">
+            @for (v of topRows(); track v.id) {
+              <div class="row">
+                <span class="rank">{{ v.rank }}</span>
+                <div class="grow">
+                  <div class="t">{{ v.title }}</div>
+                  <div class="muted small">
+                    @if (v.creator) {
+                      <span>{{ v.creator }}</span>
+                    }
+                    @if (v.creator && v.project) {
+                      <span>&nbsp;·&nbsp;</span>
+                    }
+                    @if (v.project) {
+                      <span class="pill neu">{{ v.project }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="acc-cell">
+                  @for (l of v.links; track l.platform) {
+                    <a class="plat" [href]="l.url" target="_blank" rel="noopener">
+                      {{ platShort[l.platform] }}
+                    </a>
+                  }
+                </div>
+                <div class="vnum">
+                  <div class="mono strong">{{ digits(v.views) }}</div>
+                  @if (v.er) {
+                    <div class="muted small">ER {{ v.er }}%{{ v.erStar ? '*' : '' }}</div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="span-5 panel">
+        <div class="panel-h">
+          <h2>Ближайшие выкладки</h2>
+          @if (upcoming().length) {
+            <span class="sub">
+              {{ upcomingSpan() }} · {{ upcomingCount() }}
+              {{ plural(upcomingCount(), 'ролик', 'ролика', 'роликов') }}
+            </span>
+          }
+        </div>
+        @if (!upcoming().length) {
+          <p class="muted">На ближайшие дни выкладок не запланировано.</p>
+        } @else {
+          <div class="list">
+            @for (d of upcoming(); track d.date) {
+              <div class="row row-top">
+                <div class="date" [class.next]="d.first">
+                  <b>{{ d.day }}</b>
+                  <span>{{ d.weekday }}</span>
+                </div>
+                <div class="grow who-col">
+                  @for (i of d.items; track i.name + i.project) {
+                    <div class="who-line">
+                      <span class="strong">{{ i.name }}</span>
+                      <span class="muted">· {{ i.project }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Незаконченный заказ — долг перед человеком, а не предложение:
+           без него он заведёт второй такой же и будет ждать ответы по
+           обоим. -->
+      @for (o of activeOrders(); track o.id) {
+        <div class="span-12 plaque">
+          <span class="pill acc">заказ в работе</span>
+          <div class="grow">
+            <b>Заявка на команду</b>
+            <span class="muted">· {{ orderStatusLabel(o) }}</span>
+          </div>
+          <button type="button" class="btn dark" (click)="openOrder(o.id)">
+            Продолжить заказ
+          </button>
+        </div>
       }
 
-      <nz-progress
-        [nzPercent]="p.progress"
-        nzSize="small"
-        [nzShowInfo]="false"
-        [nzStrokeColor]="
-              p.display_status === 'waiting_action' ? '#f59e0b' :
-              p.display_status === 'completed' ? '#10b981' :
-              '#2dd4bf'
-            "
-      ></nz-progress>
-
-      <footer class="card-foot">
-        <span>
-          <span nz-icon nzType="calendar" nzTheme="outline"></span>
-          {{ p.created_at | date: 'd MMM y' }}
-        </span>
-        @if (p.budget) {
-        <span>
-          <span nz-icon nzType="dollar" nzTheme="outline"></span>
-          {{ p.budget | number }} ₽
-        </span>
-        }
-      </footer>
-    </article>
-    }
-  </div>
-  } @else if (!projects().length) {
-  <nz-empty nzNotFoundContent="Пока нет проектов"></nz-empty>
-  }
-
-  <!-- Контакты — ПОД проектами. Это настройка, а не работа: заполняют её
-       один раз, а место она занимала первым экраном навсегда. Пока
-       способа связи нет, блок раскрыт сам (см. contactsExpanded) — в
-       этом случае он и правда важнее списка. -->
-  <section class="contacts-panel" [class.expanded]="contactsExpanded()">
-    <button type="button" class="contacts-head" (click)="toggleContacts()">
-      <span class="icon-wrap">
-        <span nz-icon nzType="contacts" nzTheme="outline"></span>
-      </span>
-      <div class="title-block">
-        <strong>Контакты для связи</strong>
-        <small>
-          @if (contactsFilled()) {
-          <span class="status-ok">✓ заполнены</span>
-          <span class="status-sep">·</span>
-          <span class="preview">{{ contactsPreview() }}</span>
-          } @else {
-          <span class="status-warn">Укажите телефон или Telegram — иначе менеджер не свяжется</span>
-          }
-        </small>
+      <!-- Контакты заказчика. Менеджер пишет в телеграм, звонит по
+           телефону и подписывает счета именем — без этих трёх полей он
+           идёт спрашивать их в переписке. Стоят внизу, а не сверху:
+           заполняют их один раз, а смотрят на экран каждый день. -->
+      <div class="span-12 panel">
+        <div class="panel-h">
+          <h2>Ваши контакты</h2>
+          <span class="sub">видит только ваш менеджер</span>
+        </div>
+        <form class="cts" (submit)="$event.preventDefault(); saveContacts()">
+          <label class="ct">
+            <span class="label">Как к вам обращаться</span>
+            <input class="inp" [(ngModel)]="contactForm.display_name" name="display_name"
+                   maxlength="120" placeholder="Имя или название компании" />
+          </label>
+          <label class="ct">
+            <span class="label">Телеграм</span>
+            <input class="inp" [(ngModel)]="contactForm.telegram" name="telegram"
+                   maxlength="64" placeholder="@username" />
+          </label>
+          <label class="ct">
+            <span class="label">Телефон</span>
+            <input class="inp" [(ngModel)]="contactForm.phone" name="phone" type="tel"
+                   maxlength="32" placeholder="+7 900 000-00-00" />
+          </label>
+          <div class="ct-act">
+            <button type="submit" class="btn dark" [disabled]="contactsBusy()">
+              {{ contactsBusy() ? 'Сохраняем…' : 'Сохранить' }}
+            </button>
+            @if (contactsSaved()) {
+              <span class="muted small">Сохранено</span>
+            }
+          </div>
+        </form>
       </div>
-      <span class="caret" [class.up]="contactsExpanded()">
-        <span nz-icon nzType="down" nzTheme="outline"></span>
-      </span>
-    </button>
-    @if (contactsExpanded()) {
-    <div class="contacts-body">
-      <div class="contacts-grid">
-        <label class="contact-field">
-          <span class="field-icon">👤</span>
-          <span class="field-label">Имя</span>
-          <input nz-input [(ngModel)]="displayName" placeholder="Как к вам обращаться" />
-        </label>
-        <label class="contact-field">
-          <span class="field-icon">📞</span>
-          <span class="field-label">Телефон</span>
-          <input nz-input [(ngModel)]="phone" placeholder="+7 999 ..." />
-        </label>
-        <label class="contact-field">
-          <span class="field-icon">✈️</span>
-          <span class="field-label">Telegram</span>
-          <input nz-input [(ngModel)]="telegram" placeholder="@username" />
-        </label>
-      </div>
-      <div class="contacts-actions">
-        <span class="actions-hint">Заполните один раз — подтянется во все брифы автоматически</span>
-        <button nz-button nzType="primary" [nzLoading]="contactsSaving()" (click)="saveContacts()">
-          Сохранить
-        </button>
+
+      <div class="span-12 tail">
+        <a routerLink="/me/orders/new" class="muted">Нужен ещё один проект под ключ? →</a>
       </div>
     </div>
-    }
-  </section>
-  } @else {
-  <!-- Имя передаём из уже загруженных контактов: второй запрос за тем же
-       именем этому экрану не нужен. -->
-  <app-client-overview [clientName]="contacts().display_name" />
-  }
+  </main>
 
-  <!-- Вход в воронку заказа — ВНИЗУ и тихим видом.
-       Он стоял первым экраном и держал единственный коралл страницы,
-       хотя коралл значит «действие», а действие здесь — не «закажите
-       ещё», а то, ради чего экран открыли. Человек, который уже платит
-       за проект, приходит сюда смотреть результат; предложение завести
-       второй проект читается после результата, а не вместо него.
-
-       Незаконченный заказ — другое дело: это долг перед человеком, а не
-       предложение, и он поднимается наверх плашкой с действием. -->
-  <section class="turnkey-panel">
-    <div class="turnkey-text">
-      <strong>Нужен ещё один проект под ключ?</strong>
-      <!-- Середина фразы — в отдельном span, и на телефоне тач-слой её
-           гасит (см. .turnkey-text .long в projects-list.page.touch.scss).
-           Текст один на оба размера намеренно: два разных в шаблоне
-           разошлись бы при первой же правке. -->
-      <small>
-        Соберём команду креаторов на месяц<span class="long"
-          >: вы отмечаете людей в каталоге, они сами берут заявку</span
-        >. Смету видно до создания заказа.
-      </small>
-    </div>
-    <div class="turnkey-actions">
-      <button type="button" class="quiet-btn" (click)="startTurnkey()">Посчитать смету</button>
-    </div>
-  </section>
-
-  <!-- Незаконченный заказ. Отдельно от предложения и НАД ним: без него
-       человек заведёт второй такой же и будет ждать ответы по обоим. -->
-  @for (o of activeOrders(); track o.id) {
-  <section class="order-resume">
-    <span class="ot">
-      <strong>Заказ в работе</strong>
-      <small>{{ orderStatusLabel(o) }}</small>
-    </span>
-    <button type="button" class="quiet-btn" (click)="openOrder(o.id)">Продолжить заказ</button>
-  </section>
-  }
-</main>
-
-<!-- Футер. Тот же, что на публичных страницах, а не свой: поддержка,
-     оферта и политика должны жить в одном месте, иначе телефон
-     поддержки однажды поправят в одном футере из двух. До этой правки
-     в кабинете футера не было вовсе — со дна списка проектов уйти было
-     некуда, кроме как прокрутить обратно. -->
-<app-support-footer />
-
+  <app-support-footer />
+</div>

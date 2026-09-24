@@ -179,3 +179,16 @@
     text-align: right;
   }
 }
+
+// Кнопки формы отказа: на телефоне она открывается нижней шторкой, и
+// действия в ней — во всю ширину, у самого пальца.
+.reject-acts {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+
+  button {
+    flex: 1;
+    min-height: 44px;
+  }
+}

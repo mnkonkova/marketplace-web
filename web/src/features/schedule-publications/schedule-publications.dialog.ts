@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NZ_MODAL_DATA, NzModalRef } from 'ng-zorro-antd/modal';
+import { panelData, panelRef } from '@shared/lib/panel';
 
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import { BatchRequest } from '@entities/publication/model/publication.types';
@@ -277,13 +277,18 @@ function key(d: Date): string {
   ],
 })
 export class SchedulePublicationsDialogComponent {
-  private readonly modalRef = inject(NzModalRef);
+  // Окно на десктопе, нижняя шторка на телефоне — см. shared/lib/panel.
+  private readonly panel = panelRef();
 
   private readonly api = inject(PublicationApi);
 
   private readonly msg = inject(NzMessageService);
 
-  public readonly data = inject<SchedulePublicationsData>(NZ_MODAL_DATA);
+  public readonly data = panelData<SchedulePublicationsData>();
+
+  private closeWith(result?: unknown): void {
+    this.panel.close(result);
+  }
 
   public readonly weekdays = WEEKDAYS;
 
@@ -295,7 +300,7 @@ export class SchedulePublicationsDialogComponent {
   private readonly scheduled = new Map<string, Set<string>>(
     (() => {
       const out = new Map<string, Set<string>>();
-      for (const p of inject<SchedulePublicationsData>(NZ_MODAL_DATA).existing ?? []) {
+      for (const p of panelData<SchedulePublicationsData>().existing ?? []) {
         if (p.status === 'cancelled') continue;
         const day = p.due_date.slice(0, 10);
         const set = out.get(day) ?? new Set<string>();
@@ -497,7 +502,7 @@ export class SchedulePublicationsDialogComponent {
       next: (res) => {
         this.busy.set(false);
         this.msg.success(`Создано выкладок: ${res.created}`);
-        this.modalRef.destroy(res);
+        this.closeWith(res);
       },
       error: (e) => {
         this.busy.set(false);
@@ -507,7 +512,7 @@ export class SchedulePublicationsDialogComponent {
   }
 
   public cancel(): void {
-    this.modalRef.destroy();
+    this.closeWith();
   }
 }
 

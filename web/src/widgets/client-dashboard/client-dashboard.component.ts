@@ -318,6 +318,17 @@ export class ClientDashboardComponent {
     return v.platform as Platform;
   }
 
+  /**
+   * Что значит звёздочка у ER.
+   *
+   * Ноль репостов и «площадка их не отдала» — разные утверждения, и
+   * подпись обязана их различать: по ER сравнивают роликов между собой.
+   */
+  public erHint(v: OverviewTopVideo): string {
+    const base = 'Лайки, комментарии и репосты к просмотрам за период';
+    return v.er_without_shares ? `${base}. Репосты площадка не отдала — их тут нет.` : base;
+  }
+
   /** Цвет площадки, разбавленный до фона плашки. */
   public tint(platform: string): string {
     return `${PLATFORM_COLOR[platform as Platform] ?? '#888'}22`;

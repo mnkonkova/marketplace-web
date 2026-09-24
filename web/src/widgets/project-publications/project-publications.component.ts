@@ -788,7 +788,15 @@ export class ProjectPublicationsComponent {
       },
       error: (e) => {
         this.pubBusy.set(null);
-        this.msg.error(parseApiError(e, 'Не удалось отправить напоминание.').message);
+        const err = parseApiError(e, 'Не удалось отправить напоминание.');
+        // 409 already_reminded — не отказ, а факт: сегодня по этой
+        // выкладке бот уже написал. Красная плашка на этом месте
+        // говорит «не получилось», хотя получилось ещё утром.
+        if (err.code === 'already_reminded') {
+          this.msg.info('Сегодня по этой выкладке уже напоминали — следующее завтра.');
+          return;
+        }
+        this.msg.error(err.message);
       },
     });
   }

@@ -50,52 +50,11 @@ th.r {
 }
 
 @media (max-width: bp.$touch) {
-  .filters {
-    flex-direction: column;
-    align-items: stretch;
-
-    .search-input,
-    ::ng-deep nz-select {
-      width: 100%;
-      min-width: 0 !important;
-    }
+  // Раскладку фильтров на телефоне задаёт общий слой CRM
+  // (shared/scss/_crm-touch.scss): сетка по двое в ряд и поля под
+  // палец. Здесь остаётся только то, что есть на этой странице.
+  .filters .search-input {
+    min-width: 0;
   }
 
-  // NzTable → card-layout с inline-лейблами (тот же паттерн что в managers).
-  ::ng-deep .ant-table {
-    min-width: 0 !important;
-
-    .ant-table-thead {
-      display: none;
-    }
-
-    .ant-table-tbody {
-      tr {
-        display: block;
-        border: 1px solid var(--border);
-        border-radius: var(--r-card);
-        padding: 10px 12px;
-        margin-bottom: 10px;
-        background: var(--surface);
-      }
-
-      td {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-        padding: 4px 0 !important;
-        border: none !important;
-
-        &[data-label]::before {
-          content: attr(data-label);
-          flex-shrink: 0;
-          min-width: 130px;
-          color: var(--text-muted);
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-      }
-    }
-  }
 }

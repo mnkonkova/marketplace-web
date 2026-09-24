@@ -144,7 +144,10 @@ export class ProjectChecklistComponent {
    * библиотеки не доезжает до идущих проектов, а не про запрет уточнять
    * свой собственный список.
    */
-  public addItem(): void {
+  public addItem(event?: Event): void {
+    // Отправку формы браузеру не отдаём: она перезагрузит страницу и
+    // унесёт с собой всё, что менеджер успел набрать на экране.
+    event?.preventDefault();
     const text = this.draftText().trim();
     if (!text || this.busy()) return;
     this.busy.set(true);

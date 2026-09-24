@@ -1,732 +1,128 @@
-// Словарь макета (карточки, кнопки, чипы, площадки, чеклист) — общий для
-// страниц проекта. Подключаем в компонент, а не глобально: эти экраны
-
-// Страница выкладок креатора — перенос макета
-// ~/tmp/crm_project_creator (1).html, раздел «специфика креатора».
-// Общая часть (карточки, кнопки, чипы, площадки, чеклист) — в
-// shared/scss/_crm.scss под классом .crm-page, который эта страница носит.
+// Кабинет креатора. Словарь кабинета — общий (.sotka); здесь только то,
+// чего в макете не было отдельным классом.
 
 :host {
   display: block;
 }
 
-// ── шапка проекта ────────────────────────────────────────
-.hero {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 22px;
-  margin-bottom: 18px;
-
-  .top {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-bottom: 18px;
-
-    .t {
-      flex: 1;
-      min-width: 220px;
-    }
-  }
-
-  .mgr {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--muted);
-
-    b {
-      color: var(--text);
-      display: block;
-      font-size: 13.5px;
-    }
-  }
+.nf-h {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
 }
 
-.progress {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-// Полоса читается слева направо: сделанное, частичное, просроченное.
-.pbar {
-  flex: 1;
-  min-width: 180px;
-  height: 8px;
-  border-radius: 99px;
-  background: #20242a;
-  overflow: hidden;
-  display: flex;
-
-  i {
-    display: block;
-    height: 100%;
-
-    &.done {
-      background: linear-gradient(90deg, var(--green-dim), var(--green));
-    }
-
-    &.part {
-      background: var(--amber);
-    }
-
-    &.late {
-      background: var(--red);
-    }
-  }
-}
-
-// Счёт плана — текст с числами, а не машинная строка: моноширинный
-// растягивал «11 из 11 по плану периода» в телеграфную ленту. Разряды
-// держит tabular-nums (он включён глобально на body).
-.pcount {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-// ── что делать дальше ────────────────────────────────────
-//
-// Три состояния и три тона. Просрочка красная, ближайший срок —
-// коралловый (янтарь теперь значит «выросло», и срок в цвете роста
-// читался бы как награда), а «добрать до ступени» и «заполнить профиль»
-// — спокойные: это возможность, а не задание, и кричать о ней нечестно.
-//
-// Цветом одним коралловый срок от красной просрочки не отличить, и
-// отличать его цветом не требуется: слева стоит число дней, и оно же
-// говорит, срок это или просрочка. Полоса слева — второй, нецветовой
-// признак: у срочного она есть, у спокойного её нет.
-.next {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  border-radius: 14px;
-  padding: 15px 18px;
-  margin-bottom: 18px;
-  background: var(--warn-bg);
-  border: 1px solid var(--amber-dim);
-  border-left: 3px solid var(--amber);
-
-  &.late {
-    background: rgb(224 96 78 / 8%);
-    border-color: var(--red-dim);
-    border-left-color: var(--red);
-
-    .cd {
-      color: var(--red);
-    }
-  }
-
-  &.calm {
-    background: var(--bg-elevated);
-    border: 1px solid var(--line-2);
-  }
-
-  .cd {
-    font-family: var(--font-head);
-    font-size: 30px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.03em;
-    line-height: 1;
-    color: var(--amber);
-    flex: 0 0 auto;
-
-    small {
-      display: block;
-      font-size: 10.5px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      font-weight: 600;
-      margin-top: 5px;
-      opacity: 0.8;
-      font-family: var(--font-body);
-      letter-spacing: 0.1em;
-    }
-  }
-
-  .tx {
-    flex: 1;
-    min-width: 180px;
-    font-size: 13.5px;
-    color: var(--muted);
-
-    b {
-      display: block;
-      color: var(--text);
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 3px;
-    }
-  }
-}
-
-// Незаполненные площадки тихой строкой — когда ближайшим делом стало
-// что-то другое. Молчать о них нельзя (это его деньги), но и поднимать
-// их над просрочкой незачем.
-.gap {
-  margin: -6px 0 18px;
-  color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.55;
-
-  b {
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  a {
-    color: var(--coral);
-  }
-}
-
-// ── карточка выкладки ────────────────────────────────────
-.slotcard {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  margin-bottom: 12px;
-  overflow: hidden;
-
-  // Рамка — единственный статус, который виден, не читая: сдано,
-  // частично, просрочено.
-  //
-  // .todo сильнее всех: это единственная карточка, с которой сегодня
-  // что-то делают, и она стоит первой в списке. Коралловая рамка здесь
-  // — не «тревога», а «вот твоё действие»; ровно тот же коралл, что у
-  // кнопки внутри неё.
-  &.todo {
-    border-color: var(--coral);
-  }
-
-  &.done {
-    border-color: var(--green-dim);
-  }
-
-  &.part {
-    border-color: var(--amber-dim);
-  }
-
-  &.late {
-    border-color: var(--red-dim);
-  }
-
-  .hd {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 15px 18px;
-    flex-wrap: wrap;
-
-    .t {
-      flex: 1;
-      min-width: 170px;
-
-      b {
-        display: block;
-        font-size: 15.5px;
-        font-weight: 600;
-        margin-bottom: 4px;
-      }
-
-      .m {
-        font-size: 12.5px;
-        color: var(--muted-2);
-        display: flex;
-        gap: 9px;
-        flex-wrap: wrap;
-        align-items: center;
-
-        // Дата срока. Моноширинный здесь означал бы «машинный код»;
-        // это дата, и читают её как дату.
-        .v {
-          font-family: var(--font-head);
-          font-weight: 700;
-          font-variant-numeric: tabular-nums;
-
-          &.late {
-            color: var(--red);
-          }
-
-          &.soon {
-            color: var(--amber);
-          }
-        }
-      }
-    }
-  }
-
-  .body {
-    padding: 16px 18px;
-    border-top: 1px solid var(--line);
-  }
-}
-
-// Пометка «своя» у выкладки, которую креатор завёл себе сам. Тихая
-// намеренно: это происхождение ролика, а не его статус, и спорить со
-// сроком в том же ряду она не должна.
-.own {
-  padding: 1px 7px;
-  border: 1px solid var(--line-2, #2a3532);
-  border-radius: 999px;
-  color: var(--muted-2, #74827e);
-  font-size: 11px;
-  cursor: help;
-}
-
-// Правило про оклад в окне «добавить ролик». Стоит выше поля даты и
-// выделено рамкой: без него человек не нажмёт кнопку — и будет прав.
-.keeprule {
-  margin: 0 0 16px;
-  padding: 11px 13px;
-  border: 1px solid var(--line-2, #2a3532);
-  border-radius: 10px;
-  background: var(--bg-elevated, #0e1413);
-  color: var(--muted, #7e8d88);
-  font-size: 13px;
-  line-height: 1.55;
-
-  b {
-    color: var(--text, #f2f7f5);
-  }
-}
-
-// День занят своей же выкладкой. Отказ, а не подсказка, — поэтому цветом.
-.taken {
-  margin: 8px 0 0;
-  color: var(--coral, #f0553c);
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-
-.plist2 {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.p2 {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-  flex-wrap: wrap;
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  .ic {
-    width: 32px;
-    height: 28px;
-    border-radius: 8px;
-    display: grid;
-    place-items: center;
-    flex: 0 0 auto;
-    font-size: 10.5px;
-    font-weight: 700;
-    border: 1px solid var(--line-2);
-    background: var(--bg-elevated);
-    color: var(--muted-2);
-  }
-
-  &.ok .ic {
-    background: rgb(47 189 143 / 12%);
-    border-color: var(--green-dim);
-    color: var(--green);
-  }
-
-  .nm {
-    width: 78px;
-    flex: 0 0 auto;
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  // Адрес — машинная строка, и моноширинный здесь остаётся: он и
-  // сообщает, что это не текст, а ссылка.
-  .u {
-    flex: 1;
-    min-width: 160px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--blue);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-
-    &.empty {
-      color: var(--muted-2);
-    }
-  }
-
-  // Просмотры по площадке — число, а не код.
-  .v {
-    font-family: var(--font-head);
-    font-size: 14px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
-    min-width: 72px;
-    text-align: right;
-
-    small {
-      color: var(--green);
-      font-size: 11px;
-      margin-left: 5px;
-    }
-  }
-}
-
-.totalrow {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--line-2);
-  border-radius: 11px;
-  padding: 11px 14px;
+.nf-link {
   margin-top: 14px;
-  flex-wrap: wrap;
-
-  .l {
-    flex: 1;
-    min-width: 130px;
-    font-size: 13px;
-    color: var(--muted);
-  }
-
-  .st {
-    display: flex;
-    gap: 18px;
-    font-size: 12.5px;
-    color: var(--muted);
-    flex-wrap: wrap;
-
-    b {
-      color: var(--text);
-      font-family: var(--font-head);
-      font-variant-numeric: tabular-nums;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-  }
 }
 
-// ── материалы ────────────────────────────────────────────
-.matrow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--line);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  .ic {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    display: grid;
-    place-items: center;
-    flex: 0 0 auto;
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  &.doc .ic {
-    background: rgb(75 143 214 / 14%);
-    color: var(--blue);
-  }
-
-  &.video .ic {
-    background: rgb(240 85 60 / 14%);
-    color: var(--coral);
-  }
-
-  &.link .ic {
-    background: rgb(155 123 212 / 14%);
-    color: var(--violet);
-  }
-
-  .t {
-    flex: 1;
-    min-width: 0;
-
-    b {
-      display: block;
-      font-size: 13.5px;
-      font-weight: 600;
-    }
-
-    span {
-      font-size: 11.5px;
-      color: var(--muted-2);
-      font-family: var(--mono);
-    }
-  }
-}
-
-// Список прошлых периодов (.money, .past) уехал в app-creator-history —
-// вместе со своими стилями. В боковой колонке он был архивом мелким
-// шрифтом, а это трудовая биография человека: сколько заработал,
-// сколько сняли, как шли просмотры.
-
-// ── занятость по месяцам ─────────────────────────────────
-.months {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.mo {
-  border: 1px solid var(--line-2);
-  background: var(--bg-elevated);
-  border-radius: 10px;
-  padding: 8px 5px;
-  cursor: pointer;
-  font-family: inherit;
-  color: var(--muted);
+.small {
   font-size: 12px;
+}
+
+.ink {
+  color: var(--ink);
+}
+
+.acc {
+  color: var(--accent);
+}
+
+.strong {
   font-weight: 600;
-  text-align: center;
-
-  &.on {
-    color: var(--green);
-    border-color: var(--green-dim);
-    background: rgb(47 189 143 / 10%);
-
-    small {
-      color: var(--green);
-    }
-  }
-
-  // Не отмеченный месяц — третье состояние, а не «свободен»: клиент
-  // видит его как неизвестность.
-  &.busy {
-    color: var(--red);
-    border-color: var(--red-dim);
-    background: rgb(224 96 78 / 10%);
-  }
-
-  small {
-    display: block;
-    font-size: 10px;
-    color: var(--muted-2);
-    font-weight: 400;
-    margin-top: 2px;
-  }
 }
 
-// ── две колонки ──────────────────────────────────────────
-.two {
-  display: grid;
-  grid-template-columns: 1fr 336px;
-  gap: 20px;
-  align-items: start;
-}
-
-@media (max-width: 940px) {
-  .two {
-    grid-template-columns: 1fr;
-  }
-}
-
-// Строка-итог «11 выкладок сдано» — и способ развернуть свёрнутое.
-//
-// Телефонная: на 390 px дюжина одинаковых карточек «5 из 5 собрано» —
-// это метры прокрутки до той единственной, которую сегодня сдают.
-// Карточки никуда не делись, строка их и разворачивает.
-//
-// Тач-слой (creator-project.page.touch.scss) поднимает высоту до цели
-// под палец и показывает строку; на десктопе сворачивать нечего —
-// вкладка держит весь список целиком.
-.foldrow {
-  display: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  padding: 11px 16px;
-  border: 1px solid var(--line-2);
-  border-radius: 12px;
-  background: var(--bg-elevated);
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-
-  &:hover {
-    border-color: var(--line-3);
-  }
-
-  .fl {
-    display: flex;
-    min-width: 0;
-    align-items: baseline;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  // Точка состояния вместо заливки: сданное — это спокойный факт, и
-  // зелёная плашка во всю строку кричала бы о нём громче, чем о
-  // несданном.
-  .fl::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    flex: none;
-    border-radius: 50%;
-    background: var(--green);
-    transform: translateY(-2px);
-  }
-
-  .fs {
-    color: var(--muted);
-    font-size: 12.5px;
-  }
-
-  .fc {
-    flex: none;
-    color: var(--coral);
-    font-size: 13px;
-    font-weight: 600;
-  }
-}
-
-// Свёрнутая сданная выкладка прячется ТОЛЬКО на телефоне — правило
-// живёт в тач-слое.
-//
-// Сворачивали на обоих размерах, и повод был: список лежал посреди
-// простыни, и двенадцать одинаковых «5 из 5 собрано» стояли между
-// человеком и деньгами. Теперь список — отдельная вкладка, денег под ним
-// нет, а свёрнутый до одной строки он превращает эту вкладку в пустую:
-// человек нажал «Мои выкладки» и увидел, что выкладок будто бы нет. На
-// 390 px повод остался — там та же дюжина карточек это метры прокрутки
-// внутри самой вкладки.
-
-.divider {
-  height: 1px;
-  background: var(--line);
-  margin: 18px 0;
-}
-
-.empty-state {
-  max-width: 520px;
-  margin: 60px auto;
-  text-align: center;
-
-  a {
-    color: var(--coral);
-  }
-}
-
-// Итог за прошлый период.
-//
-// Крупно намеренно: это единственное число на экране, которого человек
-// ждёт неделями, и оно не должно читаться наравне с подписью к графику.
-// Латунь — «выросло», тот же цвет, что у заработка и ступеней.
-.closedbar {
-  display: flex;
-  align-items: flex-start;
-  gap: 28px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-  padding: 20px 24px;
-  border: 1px solid var(--border-strong, #2c313a);
-  border-left: 3px solid var(--brass, #f0b357);
-  border-radius: var(--r-card, 16px);
-  background: var(--surface);
-
-  .cd {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .k {
-    color: var(--text-muted);
-    font-size: 13px;
-  }
+// Деньги периода
+.crit-line {
+  color: var(--crit);
 
   b {
-    color: var(--brass, #f0b357);
-    font-family: var(--font-num, inherit);
-    font-size: 34px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
-  }
-
-  .r {
-    color: var(--text-dim);
-    font-size: 12.5px;
-  }
-
-  .approx {
-    color: var(--warn);
-  }
-
-  .parts {
-    display: flex;
-    gap: 18px;
-    flex-wrap: wrap;
-    color: var(--text);
-    font-size: 14px;
-
-    i {
-      color: var(--text-dim);
-      font-size: 12.5px;
-      font-style: normal;
-    }
-  }
-
-  .cut {
-    color: var(--warn);
-  }
-
-  .state {
-    flex-basis: 100%;
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 12.5px;
+    color: var(--crit);
   }
 }
 
-// Возврат ролика: замечание менеджера словами. Красная рамка, а не
-// тихая подпись, — это не пометка о состоянии, а работа, которую ждут.
-.returned {
+.earn-note {
+  font-size: 12px;
   margin: 10px 0 0;
-  padding: 10px 12px;
-  border: 1px solid var(--bad-line, rgb(255 100 112 / 35%));
-  border-radius: 10px;
-  background: rgb(255 100 112 / 8%);
+}
+
+.earn-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.earn-sub {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.views-now {
+  font-size: 12px;
+}
+
+// Выкладки
+.list-h {
+  margin-bottom: 4px;
+}
+
+.links-row {
+  margin-top: 3px;
+}
+
+.views-cell {
+  text-align: right;
+  min-width: 84px;
+}
+
+// Задание
+.format-note {
   font-size: 13px;
-  line-height: 1.5;
+  margin: 0 0 8px;
+}
 
-  b {
-    color: var(--bad, #ff6470);
+.section-h {
+  margin: 14px 0 6px;
+}
+
+.acc-note {
+  font-size: 12px;
+  margin: 10px 0 0;
+}
+
+// Лучший и слабее
+.bw-h {
+  font-size: 14px;
+  margin: 6px 0 2px;
+}
+
+.bw-v {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+// Возврат на доработку: замечание менеджера читают раньше всего
+// остального в разделе выкладок, поэтому блок стоит первым и выглядит
+// как дело, а не как подпись.
+.alert.ret {
+  display: block;
+  margin-bottom: 12px;
+
+  .ret-c {
+    margin: 6px 0 0;
+    font-size: 14px;
+    line-height: 1.45;
   }
 
-  .cm {
-    display: block;
-    margin-top: 4px;
-    color: var(--text);
-  }
-
-  .hint {
-    display: block;
-    margin-top: 4px;
-    color: var(--text-dim);
-    font-size: 12.5px;
+  .ret-f {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
   }
 }

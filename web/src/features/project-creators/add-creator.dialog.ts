@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NZ_MODAL_DATA, NzModalRef } from 'ng-zorro-antd/modal';
+import { panelData, panelRef } from '@shared/lib/panel';
 import {
   EMPTY,
   Subject,
@@ -26,6 +26,12 @@ interface CreatorSearchItem {
   phone?: string;
   display_name?: string;
   kind: string;
+  /**
+   * Сколько просмотров человек обычно даёт за ролик. Медиана, а не
+   * среднее. Приходит только у тех, кто роликов сдал достаточно, чтобы
+   * число что-то значило.
+   */
+  median?: { views: number; basis: number };
 }
 
 export interface AddCreatorDialogData {
@@ -99,7 +105,12 @@ export interface AddCreatorDialogData {
   ],
 })
 export class AddCreatorDialogComponent {
-  private readonly modalRef = inject(NzModalRef);
+  // Окно на десктопе, нижняя шторка на телефоне — см. shared/lib/panel.
+  private readonly panel = panelRef();
+
+  private closeWith(result?: unknown): void {
+    this.panel.close(result);
+  }
 
   private readonly api = inject(PublicationApi);
 
@@ -109,7 +120,7 @@ export class AddCreatorDialogComponent {
 
   private readonly msg = inject(NzMessageService);
 
-  public readonly data = inject<AddCreatorDialogData>(NZ_MODAL_DATA);
+  public readonly data = panelData<AddCreatorDialogData>();
 
   public readonly candidates = signal<CreatorSearchItem[]>([]);
 
@@ -148,12 +159,26 @@ export class AddCreatorDialogComponent {
     this.q$.next(q);
   }
 
+  /**
+   * Подпись кандидата.
+   *
+   * Медиана здесь не украшение: креатора выбирают по тому, сколько он
+   * обычно даёт, и список из одних почт — это выбор вслепую.
+   */
   public formatLabel(u: CreatorSearchItem): string {
-    return [u.display_name, u.email, u.phone].filter(Boolean).join(' · ');
+    const parts = [u.display_name, u.email, u.phone].filter(Boolean) as string[];
+    if (u.median) parts.push(`медиана ${this.shortViews(u.median.views)}`);
+    return parts.join(' · ');
+  }
+
+  private shortViews(v: number): string {
+    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1).replace('.', ',')} млн`;
+    if (v >= 1_000) return `${Math.round(v / 1_000)} тыс.`;
+    return String(v);
   }
 
   public cancel(): void {
-    this.modalRef.destroy();
+    this.closeWith();
   }
 
   public submit(): void {
@@ -176,7 +201,7 @@ export class AddCreatorDialogComponent {
       .subscribe(() => {
         this.saving.set(false);
         this.msg.success('Креатор добавлен в проект');
-        this.modalRef.destroy(this.creatorID);
+        this.closeWith(this.creatorID);
       });
   }
 }

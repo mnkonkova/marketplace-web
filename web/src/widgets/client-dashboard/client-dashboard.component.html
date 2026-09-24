@@ -194,6 +194,20 @@
                   <span class="ttl">{{
                     v.title || 'Ролик от ' + (v.published_at | date: 'd MMMM')
                   }}</span>
+                  <!-- Кто снял и насколько зашло. Просмотры говорят, что
+                     ролик разошёлся; ER — что его досмотрели и обсудили,
+                     а имя — к кому идти повторять. Без этих двух строк
+                     список «что выстрелило» упирается в тупик. -->
+                  <span class="by">
+                    @if (v.creator_display_name) {
+                      <span class="who">{{ v.creator_display_name }}</span>
+                    }
+                    @if (v.er_percent !== undefined) {
+                      <span class="er" [title]="erHint(v)">
+                        ER {{ v.er_percent | number: '1.0-1' }}%{{ v.er_without_shares ? '*' : '' }}
+                      </span>
+                    }
+                  </span>
                   <!-- Цель 44px и число внутри: значок в 26 пикселей не
                      обещал ничего и промахивался пальцем. -->
                   <a class="go" [href]="v.url" target="_blank" rel="noopener">

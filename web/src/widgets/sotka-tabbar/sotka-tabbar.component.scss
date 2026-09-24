@@ -1,0 +1,83 @@
+@use 'breakpoints' as bp;
+
+// Полоса есть только на телефоне: на десктопе разделы стоят вкладками
+// над содержимым, и вторая их копия внизу обещала бы другое место.
+:host {
+  display: none;
+}
+
+@media (max-width: bp.$touch) {
+  :host {
+    display: block;
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+  }
+
+  .tabbar {
+    display: grid;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    padding: 4px 6px calc(6px + env(safe-area-inset-bottom));
+  }
+
+  .tab {
+    border: 0;
+    background: none;
+    min-height: 52px;
+    // Иначе колонка растягивается под самую длинную подпись, и
+    // последняя кнопка уезжает за край экрана: у `1fr` минимум — по
+    // содержимому, а многоточие у подписи до него не доходит.
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--faint);
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    &[aria-current='page'] {
+      color: var(--ink);
+      font-weight: 600;
+
+      svg {
+        color: var(--accent);
+      }
+    }
+  }
+
+  .badge {
+    position: absolute;
+    top: 4px;
+    left: calc(50% + 5px);
+    min-width: 17px;
+    height: 17px;
+    border-radius: 9px;
+    background: var(--crit);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+  }
+
+  .t {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

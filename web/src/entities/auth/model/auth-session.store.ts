@@ -47,9 +47,41 @@ export class AuthSessionStore {
 
   public readonly isAdmin = computed(() => this.session()?.is_admin ?? false);
 
+  /**
+   * ВСЕ роли человека сразу — они друг друга не исключают.
+   *
+   * Менеджер бывает и креатором: он ведёт чужие проекты и сам снимает в
+   * своих. Клиент бывает специалистом (kind = 'both'). Одна строка
+   * role() отвечает на вопрос «кто он главным образом», и для выбора
+   * заголовка этого хватает — но не для доступа: по ней менеджер-креатор
+   * не попадал в собственный кабинет выкладок, потому что «менеджер»
+   * перекрывал «специалиста».
+   *
+   * Пустой массив, пока сессия не загружена: это «ещё не знаем», а не
+   * «никто», и guard в этом случае идёт за /me.
+   */
+  public readonly roles = computed<string[]>(() => {
+    const s = this.session();
+    if (!s) return [];
+    const out: string[] = [];
+    if (s.is_admin) out.push('admin');
+    if (s.is_manager) out.push('manager');
+    if (s.kind === 'specialist' || s.kind === 'both') out.push('specialist');
+    // Клиентом человек остаётся всегда, кроме чистого специалиста: заказ
+    // под ключ может оформить и менеджер, и админ.
+    if (s.kind !== 'specialist') out.push('client');
+    return out;
+  });
+
+  /** Есть ли у человека такая роль. Для доступа — только это, не role(). */
+  public hasRole(...roles: string[]): boolean {
+    const mine = this.roles();
+    return roles.some((r) => mine.includes(r));
+  }
+
   // CRM-роль для UI — derived. Приоритет: admin > manager > специалист по kind
-  // > клиент. Пустая строка пока сессия пустая (до fetchMe). Guard'ы и шапка
-  // дальше работают со строкой как раньше — это единственный нюанс контракта.
+  // > клиент. Отвечает на вопрос «кем он здесь главным образом», и годится
+  // для заголовков и умолчаний. Для ДОСТУПА её мало: см. roles().
   public readonly role = computed(() => {
     const s = this.session();
     if (!s) return '';

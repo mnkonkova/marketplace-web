@@ -56,6 +56,8 @@ import { ViewSwitchComponent } from '@shared/ui/view-switch/view-switch.componen
 import { CreateProjectDialogComponent } from '@features/create-project/create-project.dialog';
 import { withFromPage } from '@shared/nav/from-page';
 import { AdminBoardComponent } from '@pages/admin/board/board.page';
+import { openPanel } from '@shared/lib/panel';
+import { NzDrawerService } from 'ng-zorro-antd/drawer';
 
 /**
  * Все проекты площадки: список или канбан, фильтры — в адресе.
@@ -97,6 +99,8 @@ export class AdminProjectsListPage implements OnInit {
   private readonly adminApi = inject(AdminApi);
 
   private readonly modal = inject(NzModalService);
+
+  private readonly drawer = inject(NzDrawerService);
 
   private readonly router = inject(Router);
 
@@ -210,14 +214,15 @@ export class AdminProjectsListPage implements OnInit {
   }
 
   public openCreate(): void {
-    const ref = this.modal.create({
-      nzTitle: 'Создать проект',
-      nzContent: CreateProjectDialogComponent,
-      nzFooter: null,
-      nzWidth: 520,
-      nzData: { mode: 'admin' },
-    });
-    ref.afterClose.subscribe((created) => {
+    openPanel(
+      { modal: this.modal, drawer: this.drawer },
+      {
+        title: 'Создать проект',
+        content: CreateProjectDialogComponent,
+        data: { mode: 'admin' },
+        width: 520,
+      },
+    ).subscribe((created) => {
       if (created) this.fetch(this.filters());
     });
   }

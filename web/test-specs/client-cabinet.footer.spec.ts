@@ -40,7 +40,14 @@ describe('кабинет заказчика: футер', () => {
           get: () => of({ user_id: 'u1', display_name: 'PetFlat', phone: '', telegram: '' }),
         },
       },
-      { provide: OrderApi, useValue: { listOrders: () => of({ items: [] }) } },
+      {
+          provide: OrderApi,
+          useValue: {
+            listOrders: () => of({ items: [] }),
+            // Условия тянутся ради объёма роликов в смете.
+            terms: () => of({ terms: { videos_first_month: 30 }, consented: true }),
+          },
+        },
       {
         provide: NzMessageService,
         useValue: jasmine.createSpyObj('msg', ['success', 'error', 'warning']),

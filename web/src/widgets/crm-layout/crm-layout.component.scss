@@ -41,7 +41,9 @@
     height: 30px;
     border-radius: 8px;
     background: var(--text);
-    color: #000;
+    // Цвет земли, а не #000: на светлой теме кабинета «текст» тёмный, и
+    // чёрная буква по нему не читается вовсе.
+    color: var(--bg);
     font-size: 15px;
     font-weight: 800;
     letter-spacing: 0;
@@ -351,12 +353,15 @@
     top: 0;
     left: 0;
     width: 272px;
-    box-shadow: 40px 0 80px -40px #000;
     transform: translateX(-102%);
     transition: transform 0.2s ease;
   }
 
+  // Тень — только у открытого меню. У закрытого она размазана на 80
+  // пикселей вправо и вылезает из-под края экрана тёмной полосой вдоль
+  // всей страницы: меню спрятано, а его тень видно.
   .crm-shell.nav-open .side {
+    box-shadow: 40px 0 80px -40px #000;
     transform: none;
   }
 

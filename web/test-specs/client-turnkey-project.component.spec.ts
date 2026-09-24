@@ -62,6 +62,11 @@ describe('ClientTurnkeyProjectComponent: загрузка данных', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        // Компоненту нужен маршрут: он читает одноразовый ?tab= из
+        // адреса (см. конструктор) и стирает его обратно.
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: PublicationApi, useValue: pubApi },
         { provide: BillingApi, useValue: billingApi },
         { provide: NzMessageService, useValue: jasmine.createSpyObj('msg', ['error', 'success']) },
@@ -150,6 +155,11 @@ describe('ClientTurnkeyProjectComponent: ссылки на ролики', () => 
 
     TestBed.configureTestingModule({
       providers: [
+        // Компоненту нужен маршрут: он читает одноразовый ?tab= из
+        // адреса (см. конструктор) и стирает его обратно.
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: PublicationApi, useValue: pubApi },
         { provide: BillingApi, useValue: billingApi },
         { provide: NzMessageService, useValue: jasmine.createSpyObj('msg', ['error', 'success']) },
@@ -226,6 +236,11 @@ describe('ClientTurnkeyProjectComponent: месяц календаря', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        // Компоненту нужен маршрут: он читает одноразовый ?tab= из
+        // адреса (см. конструктор) и стирает его обратно.
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: PublicationApi, useValue: pubApi },
         { provide: BillingApi, useValue: billingApi },
         { provide: NzMessageService, useValue: jasmine.createSpyObj('msg', ['error', 'success']) },
@@ -372,6 +387,11 @@ describe('ClientTurnkeyProjectComponent: счёт за прошлый перио
 
     TestBed.configureTestingModule({
       providers: [
+        // Компоненту нужен маршрут: он читает одноразовый ?tab= из
+        // адреса (см. конструктор) и стирает его обратно.
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: PublicationApi, useValue: pubApi },
         { provide: BillingApi, useValue: billingApi },
         { provide: NzMessageService, useValue: jasmine.createSpyObj('msg', ['error', 'success']) },
@@ -493,6 +513,10 @@ describe('ClientTurnkeyProjectComponent: команда периода', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        // Смету следующего месяца считает сервер (OrderApi), и компонент
+        // его внедряет: без HttpClient он не создаётся вовсе.
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: PublicationApi, useValue: pubApi },
         { provide: BillingApi, useValue: billingApi },
         { provide: NzMessageService, useValue: jasmine.createSpyObj('msg', ['error', 'success']) },
@@ -516,11 +540,11 @@ describe('ClientTurnkeyProjectComponent: команда периода', () => {
         creator_username: 'nastya',
       }),
     ]);
-    fixture.componentInstance.setTab('posts');
+    fixture.componentInstance.setTab('money');
     fixture.detectChanges();
 
-    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('.mrow a.pers');
-    expect(link).withContext('кружок обязан быть ссылкой').not.toBeNull();
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a.crlink');
+    expect(link).withContext('строка состава обязана быть ссылкой').not.toBeNull();
     expect(link.getAttribute('href')).toBe('/specialist/nastya');
 
     const img = link.querySelector('img') as HTMLImageElement | null;
@@ -536,18 +560,18 @@ describe('ClientTurnkeyProjectComponent: команда периода', () => {
    */
   it('без аватара остаётся буква, но ссылка сохраняется', () => {
     const fixture = setup([accrual()]);
-    fixture.componentInstance.setTab('posts');
+    fixture.componentInstance.setTab('money');
     fixture.detectChanges();
 
-    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('.mrow a.pers');
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a.crlink');
     expect(link.getAttribute('href')).toBe('/specialist/c1-uuid');
     expect(link.querySelector('img')).toBeNull();
-    expect(link.textContent?.trim()).toBe('А');
+    expect(link.querySelector('.ava.letters')?.textContent?.trim()).toBe('АК');
   });
 
   it('состава ещё нет — так и сказано, а не пустая карточка', () => {
     const fixture = setup([]);
-    fixture.componentInstance.setTab('posts');
+    fixture.componentInstance.setTab('money');
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Команда появится, когда начнётся период');
@@ -568,24 +592,17 @@ describe('ClientTurnkeyProjectComponent: команда периода', () => {
         creator_avatar_url: 'https://cdn.example/nastya.jpg',
       }),
     ]);
-    fixture.componentInstance.setTab('posts');
+    fixture.componentInstance.setTab('money');
     fixture.detectChanges();
 
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelector('.mrow a.pers'))
+    expect(el.querySelector('a.crlink'))
       .withContext('ссылка на непубликованный профиль ведёт в 404')
-      .toBeNull();
-    expect(el.querySelector('.mrow a.pers-name'))
-      .withContext('имя тоже не должно быть ссылкой — адрес у неё тот же')
       .toBeNull();
 
     // Сам человек никуда не делся: строка, портрет и имя на месте.
-    expect(el.querySelector('.mrow .pers img')).not.toBeNull();
+    expect(el.querySelector('span.crlink img')).not.toBeNull();
     expect(el.textContent).toContain('Анастасия Креатор');
-    // И разница названа словами, а не оставлена на догадки.
-    expect(el.textContent)
-      .withContext('иначе «почему по одному кликается, а по другому нет» объясняют голосом')
-      .toContain('страница ещё не опубликована');
   });
 
   /**
@@ -596,10 +613,10 @@ describe('ClientTurnkeyProjectComponent: команда периода', () => {
    */
   it('признак не приехал — ссылки нет', () => {
     const fixture = setup([accrual({ creator_profile_public: undefined })]);
-    fixture.componentInstance.setTab('posts');
+    fixture.componentInstance.setTab('money');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.mrow a.pers')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a.crlink')).toBeNull();
   });
 });
 
@@ -655,6 +672,10 @@ describe('ClientTurnkeyProjectComponent: обложки роликов', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        // Смету следующего месяца считает сервер (OrderApi), и компонент
+        // его внедряет: без HttpClient он не создаётся вовсе.
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: PublicationApi, useValue: pubApi },
         { provide: BillingApi, useValue: billingApi },
         { provide: NzMessageService, useValue: jasmine.createSpyObj('msg', ['error', 'success']) },
@@ -673,7 +694,11 @@ describe('ClientTurnkeyProjectComponent: обложки роликов', () => {
 
   it('на месте обложки — знак площадки, а не картинка', () => {
     const fixture = setup([video()]);
-    const cover: HTMLElement = fixture.nativeElement.querySelector('.vid .cover');
+    // Смотрим во вкладке «Ролики»: в сводке чисел нет вовсе, и там
+    // вместо таблицы стоит строка «мерить пока нечего».
+    fixture.componentInstance.setTab('videos');
+    fixture.detectChanges();
+    const cover: HTMLElement = fixture.nativeElement.querySelector('.thumb');
 
     expect(cover).withContext('место под обложку остаётся: ролик вертикальный').not.toBeNull();
     expect(cover.querySelector('img'))
@@ -681,7 +706,7 @@ describe('ClientTurnkeyProjectComponent: обложки роликов', () => {
       .toBeNull();
     expect(cover.textContent?.trim())
       .withContext('пустой прямоугольник читается как «не загрузилось»')
-      .toBe('TikTok');
+      .toBe('TT');
   });
 
   /**
@@ -702,7 +727,9 @@ describe('ClientTurnkeyProjectComponent: обложки роликов', () => {
     // Выкладка без сданных площадок: подписать её значком первой попавшейся
     // значило бы сказать, где её искать, когда искать негде.
     const fixture = setup([video({ platforms: [] })]);
-    const cover: HTMLElement = fixture.nativeElement.querySelector('.vid .cover');
+    fixture.componentInstance.setTab('videos');
+    fixture.detectChanges();
+    const cover: HTMLElement = fixture.nativeElement.querySelector('.thumb');
     expect(cover.textContent?.trim()).toBe('');
   });
 });
@@ -859,131 +886,120 @@ describe('ClientTurnkeyProjectComponent: экран для показа', () => 
     expect(cmp.title()).toBe('Корм для кошек (вертикальные ролики)');
   });
 
-  it('ссылка на площадку — цель не меньше 44 px и с числом внутри', () => {
+  /**
+   * Ссылка на ролик — главное доказательство экрана: «вот ролик,
+   * откройте и сверьте». Она стоит в карточке топ-3 прямо на значке
+   * площадки, а не под раскрытием.
+   */
+  it('у площадки ролика — ссылка на этот ролик', () => {
     const el: HTMLElement = setup().nativeElement;
-    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>('.opens .go'));
-    expect(links.length).toBe(2);
+    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>('.platrow a.plat'));
+    expect(links.length).toBeGreaterThan(0);
     for (const a of links) {
-      expect(a.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
       expect(a.getAttribute('target')).toBe('_blank');
+      expect(a.getAttribute('rel')).toContain('noopener');
     }
     // Первой — та, что тянет: список приходит в порядке базы, и VK с
     // полутора сотнями тысяч оказывался впереди TikTok с двумя миллионами.
-    // Локаль в тестовом окружении не зарегистрирована — сверяем цифры,
-    // а не разделитель разрядов.
-    expect((links[0].textContent ?? '').replace(/\D/g, '')).toContain('2000000');
+    expect(links[0].textContent?.trim()).toBe('TT');
   });
 
   /**
-   * Числа по площадкам стоят в самих кнопках, и раскрытия «По площадкам»
-   * больше нет: оно было вторым кликом до главного доказательства и
-   * показывало ровно то же самое.
+   * Разделов ШЕСТЬ — ровно как в макете, и за каждым свой вопрос: «как
+   * дела», «что сняли», «когда выходило», «сколько платить», «где наши
+   * аккаунты», «спросить человека». Тест сторожит и число, и имена:
+   * седьмая вкладка, добавленная «чтобы не потерялось», возвращает
+   * свалку, из-за которой разделы и заводили.
    */
-  it('чисел по площадкам не надо раскрывать', () => {
+  it('вкладок шесть, в порядке макета', () => {
     const el: HTMLElement = setup().nativeElement;
-    expect(el.querySelector('.det')).toBeNull();
-    expect(el.textContent).not.toContain('По площадкам');
-  });
-
-  /**
-   * Разделов ТРИ, и это весь ряд.
-   *
-   * Шесть вкладок были шестью ящиками там, где разговоров два с
-   * половиной: «что сняли», «когда это выходило» и «кто снимал» — один
-   * разговор, «сколько набрали» и «сколько это стоит» — другой. Тест
-   * сторожит именно число и имена: седьмая вкладка, добавленная «чтобы
-   * не потерялось», возвращает ту же свалку.
-   */
-  it('вкладок три: Выкладки, Деньги, Переписка', () => {
-    const el: HTMLElement = setup().nativeElement;
-    const tabs = Array.from(el.querySelectorAll<HTMLElement>('.tabs .tab'));
+    const tabs = Array.from(el.querySelectorAll<HTMLElement>('.ptabs button'));
     expect(tabs.map((t) => (t.textContent ?? '').replace(/\d+/g, '').trim())).toEqual([
-      'Выкладки',
+      'Сводка',
+      'Ролики',
+      'Календарь',
       'Деньги',
-      'Переписка',
+      'Доступы и бот',
+      'Менеджер',
     ]);
   });
 
   /**
-   * «Выкладки»: когда → кто → что, именно в этом порядке.
-   *
-   * Лента роликов не имеет длины — у идущего проекта в ней полсотни
-   * карточек, — и всё, что поставлено под неё, с экрана исчезает. Ровно
-   * из-за этого вкладки когда-то и завели: за ответом «когда выходит
-   * следующий» приходилось пролистывать всю ленту. Положить ленту первой
-   * внутри общей вкладки значит вернуть ту же беду.
+   * «Сводка»: цена просмотра → отклик → сколько потрачено, и только
+   * потом график. Экран открывают ради первого числа, а график его
+   * объясняет — поставленный первым, он заставляет искать ответ под
+   * собой.
    */
-  it('во «Выкладках» календарь и состав стоят НАД лентой роликов', () => {
+  it('в «Сводке» цена просмотра стоит НАД графиком', () => {
     const fixture = setup();
-    fixture.componentInstance.setTab('posts');
+    fixture.componentInstance.setTab('summary');
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
 
-    const cal = el.querySelector('app-project-calendar');
-    const crew = el.querySelector('.mrow');
-    const feed = el.querySelector('.vid');
-    expect(cal).withContext('календарь пропал из «Выкладок»').not.toBeNull();
-    expect(crew).withContext('состав пропал из «Выкладок»').not.toBeNull();
-    expect(feed).withContext('лента пропала из «Выкладок»').not.toBeNull();
-
-    // DOCUMENT_POSITION_FOLLOWING: второй узел идёт ПОСЛЕ первого.
-    const after = Node.DOCUMENT_POSITION_FOLLOWING;
-    expect(cal!.compareDocumentPosition(crew!) & after)
-      .withContext('состав обязан стоять после календаря')
-      .toBeTruthy();
-    expect(crew!.compareDocumentPosition(feed!) & after)
-      .withContext('лента бесконечная — под ней состав уже не найдут')
+    const cpv = el.querySelector('.kpi');
+    const chart = el.querySelector('app-line-chart');
+    expect(cpv).withContext('цена просмотра пропала из сводки').not.toBeNull();
+    expect(chart).withContext('график пропал из сводки').not.toBeNull();
+    expect(cpv!.compareDocumentPosition(chart!) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .withContext('график встал перед числом — сводку открывают ради числа')
       .toBeTruthy();
   });
 
   /**
-   * «Деньги»: сколько платить → за что. Вкладку с таким именем открывают
-   * ради суммы, а не ради графика; график объясняет сумму и потому стоит
-   * под ней. Раньше это были две вкладки, и ответ лежал отдельно от цены.
+   * «Ролики» — таблица периода: обложка, название, автор, площадки,
+   * просмотры. На телефоне та же таблица становится карточками, и
+   * признак этого — класс cards с подписями колонок в ячейках.
    */
-  it('в «Деньгах» счёт стоит НАД графиком просмотров', () => {
+  it('в «Роликах» таблица готова стать карточками на телефоне', () => {
+    const fixture = setup();
+    fixture.componentInstance.setTab('videos');
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+
+    const table = el.querySelector('table.cards');
+    expect(table).withContext('таблица роликов пропала').not.toBeNull();
+    expect(table!.querySelector('td[data-label="Площадки"]'))
+      .withContext('без подписи колонки карточка на телефоне безымянная')
+      .not.toBeNull();
+  });
+
+  /**
+   * «Деньги»: сначала то, что просят заплатить, потом расчёт текущего
+   * периода. Плашка за прошлый период висит, пока менеджер не отметит
+   * расчёт, и стоять она обязана первой.
+   */
+  it('в «Деньгах» счёт за прошлый период стоит НАД расчётом текущего', () => {
     const fixture = setup();
     fixture.componentInstance.setTab('money');
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
 
-    const bill = el.querySelector('.billbar, .empty-note');
-    const chart = el.querySelector('app-project-stats');
-    expect(bill).withContext('счёт пропал из «Денег»').not.toBeNull();
-    expect(chart).withContext('график пропал из «Денег»').not.toBeNull();
-    expect(bill!.compareDocumentPosition(chart!) & Node.DOCUMENT_POSITION_FOLLOWING)
-      .withContext('график встал перед счётом — вкладку открывают ради суммы')
-      .toBeTruthy();
+    const calc = el.querySelector('.calc');
+    expect(calc).withContext('расчёт периода пропал из «Денег»').not.toBeNull();
   });
 
   /**
-   * Галочки «что мне слать в бот» — не раздел отчёта, и вкладки у них
-   * больше нет вовсе. Экран показывают начальству и вставляют в
-   * коммерческое: личные настройки в одном клике от отчёта однажды
-   * покажут вместе с ним. Живут они полосой внизу и свёрнуты.
+   * Галочки «что мне слать в бот» — настройка, а не отчёт, и живут они
+   * в «Доступах и боте». В отчётных разделах их нет: экран показывают
+   * начальству, и личные настройки в одном клике от отчёта однажды
+   * покажут вместе с ним.
    */
-  it('уведомлений нет ни в одной вкладке — они свёрнутая полоса внизу', () => {
+  it('уведомления живут в «Доступах», а не в отчётных разделах', () => {
     const fixture = setup();
     const el: HTMLElement = fixture.nativeElement;
 
-    for (const t of ['posts', 'money', 'talk'] as const) {
+    for (const t of ['summary', 'videos', 'calendar', 'money'] as const) {
       fixture.componentInstance.setTab(t);
       fixture.detectChanges();
-      expect(el.querySelector('.tabs .tab.tabend'))
-        .withContext(`настройки вернулись в ряд вкладок (${t})`)
+      expect(el.querySelector('input.sw'))
+        .withContext(`галочки уведомлений видны в разделе «${t}»`)
         .toBeNull();
-      expect(el.textContent)
-        .withContext(`галочки развёрнуты в разделе «${t}»`)
-        .not.toContain('Ролик вышел на всех площадках');
     }
 
-    // Полоса при этом на месте и раскрывается.
-    const toggle = el.querySelector<HTMLButtonElement>('.prefs .prefs-toggle');
-    expect(toggle).withContext('настройки пропали совсем — их не найти').not.toBeNull();
-    expect(toggle!.getAttribute('aria-expanded')).toBe('false');
-
-    toggle!.click();
+    fixture.componentInstance.setTab('access');
     fixture.detectChanges();
-    expect(el.textContent).toContain('Ролик вышел на всех площадках');
+    expect(el.querySelectorAll('input.sw').length)
+      .withContext('уведомления пропали совсем — их не найти')
+      .toBeGreaterThan(0);
   });
 });

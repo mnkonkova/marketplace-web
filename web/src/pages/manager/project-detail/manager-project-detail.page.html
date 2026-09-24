@@ -178,7 +178,7 @@
     }
   </header>
   } @if (p.kind === 'creators_turnkey') {
-  <app-manager-turnkey-project [project]="p" [meId]="meId()" />
+  <app-manager-turnkey-project [project]="p" [meId]="meId()" [chrome]="false" />
   } @else {
   <app-project-publications [projectID]="p.id" [kind]="p.kind" />
 

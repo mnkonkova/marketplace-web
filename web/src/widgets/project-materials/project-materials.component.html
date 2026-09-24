@@ -69,7 +69,12 @@
     }
 
     @if (adding()) {
-      <form class="add" (submit)="$event.preventDefault(); add()">
+      <!-- На тач-экране — нижний лист из общей библиотеки: он
+           прокручивается и закрывается смахиванием. На десктопе форма
+           раскрывается на месте, как раньше. -->
+      @if (touch) {
+        <app-sheet [open]="true" title="Новый материал" (closed)="cancelAdd()">
+<form class="add in-sheet" (submit)="$event.preventDefault(); add()">
         <label class="fld">
           <span>Название</span>
           <input nz-input [(ngModel)]="newTitle" name="title" placeholder="Бренд-гайд PetFlat" />
@@ -102,6 +107,43 @@
           на видео.
         </p>
       </form>
+        </app-sheet>
+      } @else {
+<form class="add" (submit)="$event.preventDefault(); add()">
+        <label class="fld">
+          <span>Название</span>
+          <input nz-input [(ngModel)]="newTitle" name="title" placeholder="Бренд-гайд PetFlat" />
+        </label>
+        <label class="fld">
+          <span>Ссылка</span>
+          <input nz-input type="url" [(ngModel)]="newUrl" name="url" placeholder="disk.example/brand.pdf" />
+        </label>
+        <label class="fld narrow">
+          <span>Тип</span>
+          <select [(ngModel)]="newKind" name="kind">
+            @for (k of kinds; track k) {
+              <option [value]="k">{{ kindLabel[k] }}</option>
+            }
+          </select>
+        </label>
+        <label class="fld narrow">
+          <span>Кому видно</span>
+          <select [(ngModel)]="newAudience" name="audience">
+            <option value="creators">Креаторам</option>
+            <option value="client">Заказчику</option>
+          </select>
+        </label>
+        <div class="add-actions">
+          <button nz-button type="button" (click)="cancelAdd()">Отмена</button>
+          <button nz-button nzType="primary" [nzLoading]="busy()" type="submit">Добавить</button>
+        </div>
+        <p class="note">
+          Файлы храним ссылкой: загрузчика документов в API нет, поэтому кладите ссылку на диск или
+          на видео.
+        </p>
+      </form>
+      }
+
     }
   </section>
 }

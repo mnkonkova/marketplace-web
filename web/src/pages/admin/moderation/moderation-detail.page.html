@@ -110,6 +110,8 @@
     </button>
   </footer>
 
+  <!-- Кнопки внутри шаблона, а не в подвале окна: на телефоне это
+       нижняя шторка, а у неё подвала нет. -->
   <ng-template #rejectTpl>
     <p>Опишите, что должен исправить специалист, чтобы пройти модерацию:</p>
     <textarea
@@ -120,6 +122,12 @@
       placeholder="Например: фото не соответствует политике, в bio реклама стороннего сервиса"
     ></textarea>
     <p class="hint">{{ rejectReason.length }} / 500</p>
+    <div class="reject-acts">
+      <button nz-button type="button" (click)="closeReject()">Отмена</button>
+      <button nz-button nzDanger type="button" [nzLoading]="busy()" (click)="confirmReject()">
+        Отклонить
+      </button>
+    </div>
   </ng-template>
   } @else {
   <nz-alert nzType="error" nzMessage="Профиль не найден" nzShowIcon />

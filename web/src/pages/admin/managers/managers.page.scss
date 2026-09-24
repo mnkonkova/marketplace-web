@@ -254,42 +254,4 @@ th.r {
     }
   }
 
-  // NzTable → card-layout с inline-лейблами: thead скрыт, вместо него у
-  // каждой ячейки data-label, который CSS выводит префиксом.
-  ::ng-deep .ant-table {
-    min-width: 0 !important;
-
-    .ant-table-thead {
-      display: none;
-    }
-
-    .ant-table-tbody {
-      tr {
-        display: block;
-        margin-bottom: 10px;
-        padding: 10px 12px;
-        border: 1px solid var(--border);
-        border-radius: var(--r-card);
-        background: var(--surface);
-      }
-
-      td {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-        padding: 4px 0 !important;
-        border: none !important;
-
-        &[data-label]::before {
-          content: attr(data-label);
-          flex-shrink: 0;
-          min-width: 110px;
-          color: var(--text-muted);
-          font-size: 12px;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-        }
-      }
-    }
-  }
 }

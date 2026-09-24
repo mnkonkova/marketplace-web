@@ -35,7 +35,7 @@ describe('ProjectAccountsComponent', () => {
   }
 
   function setup(opts: {
-    role?: 'manager' | 'client';
+    role?: 'manager' | 'client' | 'creator';
     items?: ProjectAccount[];
     secretsEnabled?: boolean;
     secret?: ReturnType<typeof of>;
@@ -76,7 +76,10 @@ describe('ProjectAccountsComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: PublicationApi, useValue: api },
-        { provide: NzMessageService, useValue: jasmine.createSpyObj('msg', ['success', 'error']) },
+        {
+          provide: NzMessageService,
+          useValue: jasmine.createSpyObj('msg', ['success', 'error', 'info']),
+        },
       ],
     });
     const fixture = TestBed.createComponent(ProjectAccountsComponent);
@@ -123,7 +126,7 @@ describe('ProjectAccountsComponent', () => {
     const el = fixture.nativeElement as HTMLElement;
     const labels = [...el.querySelectorAll('button')].map((b) => b.textContent?.trim());
     expect(labels).not.toContain('Править');
-    expect(labels).not.toContain('Добавить доступ');
+    expect(labels).not.toContain('Добавить аккаунт');
   });
 
   it('менеджер правит и добавляет', () => {
@@ -132,7 +135,7 @@ describe('ProjectAccountsComponent', () => {
       b.textContent?.trim(),
     );
     expect(labels).toContain('Править');
-    expect(labels).toContain('Добавить доступ');
+    expect(labels).toContain('Добавить аккаунт');
   });
 
   /**
@@ -193,7 +196,51 @@ describe('ProjectAccountsComponent', () => {
   it('пустой список объясняется словами, а не пустым местом', () => {
     const { fixture } = setup({ role: 'client', items: [] });
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'Менеджер ещё не заполнил доступы',
+      'Менеджер ещё не заполнил',
     );
+  });
+
+  /**
+   * «Такой уже есть» — не отказ, а подсказка, куда идти.
+   *
+   * У человека по одной строке на площадку, и заводя вторую, он почти
+   * всегда хочет заменить адрес в первой: аккаунт сменили, ролики
+   * теперь выходят с другого. Красная плашка «поправьте существующий»
+   * отправляла его искать эту строку глазами.
+   */
+  it('дубликат площадки переключает на правку существующей строки', () => {
+    const existing = account({ id: 'a1', platform: 'tiktok', creator_user_id: 'u1' });
+    const { cmp, api, fixture } = setup({ role: 'manager', items: [existing] });
+    api.managerAddAccount.and.returnValue(
+      throwError(() => ({ status: 409, error: { error: 'account_exists' } })),
+    );
+
+    cmp.startAdd('u1');
+    cmp.form.platform = 'tiktok';
+    cmp.form.url = 'https://www.tiktok.com/@brand2';
+    cmp.save();
+    fixture.detectChanges();
+
+    expect(cmp.editing()).toBe('a1');
+    const msg = TestBed.inject(NzMessageService) as jasmine.SpyObj<NzMessageService>;
+    expect(msg.info).toHaveBeenCalled();
+    expect(msg.error).not.toHaveBeenCalled();
+  });
+
+  /** Строки не нашлось — тогда это настоящая ошибка, и о ней говорят. */
+  it('дубликат без найденной строки остаётся ошибкой', () => {
+    const { cmp, api, fixture } = setup({ role: 'manager', items: [] });
+    api.managerAddAccount.and.returnValue(
+      throwError(() => ({ status: 409, error: { error: 'account_exists' } })),
+    );
+
+    cmp.startAdd('u1');
+    cmp.form.platform = 'vk';
+    cmp.form.url = 'https://vk.com/brand';
+    cmp.save();
+    fixture.detectChanges();
+
+    const msg = TestBed.inject(NzMessageService) as jasmine.SpyObj<NzMessageService>;
+    expect(msg.error).toHaveBeenCalled();
   });
 });

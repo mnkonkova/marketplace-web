@@ -82,6 +82,10 @@ describe('CreatorProjectPage: чек-лист при сдаче ролика', (
             creatorList: () => of({ items: [pub()] }),
             creatorChecklist: () => of({ items: checklist }),
             creatorMaterials: () => of({ items: [] }),
+            // Находки «это ваш ролик?» тянутся вместе со страницей.
+            creatorSuggestions: () => of({ items: [] }),
+            // «Мои аккаунты» — аккаунты проекта, тянутся вместе со страницей.
+            creatorAccounts: () => of({ items: [], secrets_enabled: true }),
             creatorReport: () => of({ collapsed: false }),
           },
         },

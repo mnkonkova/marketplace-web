@@ -1,4 +1,5 @@
 @use '../../../shared/scss/breakpoints' as bp;
+@use '../../../shared/scss/touch' as touch;
 
 .section-title {
   margin: 0 0 12px;
@@ -527,12 +528,20 @@
     cursor: default;
   }
 
+  // Меню растёт ВЛЕВО от кнопки, а не вправо.
+  //
+  // Кнопка «⋯» стоит у правого края полосы крошек, и меню шириной в 180
+  // пикселей от неё уезжало за край экрана: на телефоне «Удалить проект»
+  // просто не влезало. Привязка к правому краю — единственное место, где
+  // ширина меню никуда не упирается.
   .menu {
     position: absolute;
     top: calc(100% + 6px);
-    left: 0;
+    right: 0;
+    left: auto;
     z-index: 21;
     min-width: 180px;
+    max-width: calc(100vw - 24px);
     padding: 4px;
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -561,6 +570,21 @@
       }
     }
   }
+
+  // На телефоне пункт меню — цель под палец, а не строка текста: в
+  // тринадцать пикселей высотой попадают курсором.
+  @media (max-width: bp.$touch) {
+    .dots {
+      width: 44px;
+      height: 44px;
+    }
+
+    .menu button {
+      min-height: 44px;
+      padding: 10px 14px;
+      font-size: 15px;
+    }
+  }
 }
 
 .feed li.none {
@@ -570,4 +594,15 @@
 
 .confirm-hint {
   margin-bottom: 8px;
+}
+
+
+// Меню карточки проекта: 28×28 — курсорная цель. На телефоне это
+// единственный вход в действия проекта, и промахиваться по нему
+// человек будет чаще, чем попадать.
+@media (max-width: bp.$touch) {
+  .dots {
+    width: touch.$tap;
+    height: touch.$tap;
+  }
 }

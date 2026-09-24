@@ -1,141 +1,197 @@
-<!-- Панель перенесена из макета (блок «Проверка ролика»): слева плитка
-     ролика, справа обязательные пункты с «да/нет», замечание и два
-     решения. Плеера у нас нет и быть не может — ролик лежит на чужой
-     площадке, — поэтому плитка открывает его там, где он есть. -->
-<section class="rev-block crm-page">
-  <div class="rev-head">
-    <div class="rev-head-tx">
-      <h2>Проверка ролика</h2>
-      @if (current(); as pub) {
-        <p class="sub">
-          {{ pub.creator_name || 'Креатор' }}
-          @if (pub.title) {
-            · «{{ pub.title }}»
-          }
-          @if (submittedOn(pub)) {
-            · сдан {{ submittedOn(pub) }}
-          }
-          @if (pub.review && pub.review.round > 1) {
-            · сдача {{ pub.review.round }}-я
-          }
-          @if (rest()) {
-            <br />Ещё {{ rest() }} в очереди на проверку.
-          }
-        </p>
-      } @else {
-        <p class="sub">
-          Проверяют сданные ролики — по одному, начиная с того, что ждёт дольше всех.
-        </p>
+<!-- Перенос из макета, блок «Проверка ролика»: слева плитка ролика,
+     справа обязательные пункты с «да/нет», замечание и два решения.
+     Плеера у нас нет и быть не может — ролик лежит на чужой площадке, —
+     поэтому плитка открывает его там, где он есть. -->
+<div class="panel-h">
+  <h2>Проверка ролика</h2>
+  @if (current(); as pub) {
+    <span class="sub">
+      {{ pub.creator_name || 'Креатор' }}
+      @if (pub.title) {
+        · «{{ pub.title }}»
       }
+      @if (submittedOn(pub)) {
+        · сдан {{ submittedOn(pub) }}
+      }
+      @if (pub.review && pub.review.round > 1) {
+        · сдача {{ pub.review.round }}-я
+      }
+    </span>
+  } @else {
+    <span class="sub">по одному, начиная с того, что ждёт дольше всех</span>
+  }
+</div>
+
+@if (loading()) {
+  <p class="muted">Загружаем…</p>
+} @else {
+  @if (current(); as pub) {
+  <div class="review">
+    <!-- На месте кадра — ПОРТРЕТ АВТОРА. Кадр площадка отдаёт не
+         всегда, а человек есть всегда; к тому же менеджер проверяет
+         ролики подряд и узнаёт их по автору быстрее, чем по превью.
+         Нажатие открывает сам ролик на площадке. -->
+    <a
+      class="player"
+      [href]="watchUrl()"
+      target="_blank"
+      rel="noopener"
+      [attr.aria-label]="watchOn() ? 'Открыть ролик: ' + watchOn() : 'Открыть ролик на площадке'"
+    >
+      @if (cover(); as url) {
+        <img class="frame" [src]="url" alt="" />
+      }
+      <span class="who">
+        <app-sotka-ava [name]="creatorName() || 'Креатор'" [size]="56" />
+        <b>{{ creatorName() || 'Креатор' }}</b>
+        @if (watchOn(); as where) {
+          <i class="where">смотреть в {{ where }}</i>
+        }
+      </span>
+      <span class="tc">
+        @for (p of platforms(); track p) {
+          <i>{{ platformLabel[p] }}</i>
+        }
+      </span>
+    </a>
+
+    <div>
+      <!-- Ссылки ролика: менеджер смотрит их здесь же, здесь и правит.
+           Ролик удаляют с площадки, креатор присылает новый адрес — и до
+           сих пор переносить его было некуда: правка ссылки жила на
+           старом экране выкладок, которого у этих проектов нет. -->
+      <div class="revlinks">
+        @for (l of links(); track l.platform) {
+          <div class="revlink">
+            <span class="ic">{{ platformShort[l.platform] }}</span>
+            @if (editing() === l.platform) {
+              <input
+                class="inp grow"
+                type="url"
+                [ngModel]="editUrl()"
+                (ngModelChange)="editUrl.set($event)"
+                [attr.aria-label]="'Новый адрес: ' + platformLabel[l.platform]"
+              />
+              <button
+                type="button"
+                class="btn sm primary"
+                [disabled]="linkBusy() || !editUrl().trim()"
+                (click)="saveLink(l.platform)"
+              >
+                Сохранить
+              </button>
+              <button type="button" class="btn sm" (click)="editing.set(null)">Отмена</button>
+            } @else {
+              <a class="grow" [href]="l.url" target="_blank" rel="noopener">{{ l.url }}</a>
+              <button type="button" class="btn sm" (click)="startEdit(l)">Заменить</button>
+            }
+          </div>
+        }
+        @if (editing()) {
+          <p class="muted hint">
+            Другой ролик — счётчики по этой ссылке начнутся заново, а проверка откроется снова.
+          </p>
+        }
+      </div>
+
+      <div id="revList">
+        @for (it of items(); track it.id) {
+          <div class="revcheck">
+            <span class="grow">{{ it.text }}</span>
+            <span class="pf">
+              <button
+                type="button"
+                class="y"
+                [attr.aria-pressed]="verdict(it) === true"
+                (click)="setVerdict(it, true)"
+              >
+                да
+              </button>
+              <button
+                type="button"
+                class="n"
+                [attr.aria-pressed]="verdict(it) === false"
+                (click)="setVerdict(it, false)"
+              >
+                нет
+              </button>
+            </span>
+          </div>
+        } @empty {
+          <p class="muted">
+            В чек-листе проекта нет обязательных пунктов — проверять по списку нечего. Добавьте их
+            в чек-лист рядом.
+          </p>
+        }
+      </div>
+
+      <textarea
+        class="note rev-note"
+        rows="3"
+        aria-label="Замечание креатору"
+        placeholder="Что переделать: «00:00–00:03 — логотипа нет, перемонтируй начало»"
+        [ngModel]="comment()"
+        (ngModelChange)="comment.set($event)"
+      ></textarea>
+
+      <div class="rev-acts">
+        <button type="button" class="btn dark" [disabled]="busy()" (click)="decide('return')">
+          Вернуть с замечанием
+        </button>
+        <button
+          type="button"
+          class="btn"
+          [class.primary]="canAccept()"
+          [disabled]="!canAccept() || busy()"
+          (click)="decide('accept')"
+        >
+          Принять
+        </button>
+        @if (!canAccept() && items().length) {
+          <span class="muted hint">Принять можно, когда по каждому пункту стоит «да».</span>
+        }
+      </div>
     </div>
   </div>
 
-  @if (loading()) {
-    <p class="empty">Загружаем…</p>
-  } @else {
-    @if (current(); as pub) {
-      @if (pub.review; as rev) {
-        @if (rev.status === 'returned') {
-          <p class="rev-state">
-            Возвращён с замечанием
-            @if (rev.decided_by_name) {
-              · {{ rev.decided_by_name }}
-            }
-            . Ждём пересдачу.
-          </p>
-        }
-      }
-
-      <div class="review">
-        <a
-          class="player"
-          [class.has-cover]="cover()"
-          [style.background-image]="cover() ? 'url(' + cover() + ')' : null"
-          [href]="watchUrl()"
-          target="_blank"
-          rel="noopener"
-          aria-label="Открыть ролик на площадке"
-        >
-          <span class="tc">
-            @for (p of platforms(); track p) {
-              <i>{{ platformLabel[p] }}</i>
-            }
-          </span>
-        </a>
-
-        <div>
-          <div class="rev-list">
-            @for (it of items(); track it.id) {
-              <div class="revcheck">
-                <span class="grow">{{ it.text }}</span>
-                <span class="pf">
-                  <button
-                    type="button"
-                    class="y"
-                    [attr.aria-pressed]="verdict(it) === true"
-                    (click)="setVerdict(it, true)"
-                  >
-                    да
-                  </button>
-                  <button
-                    type="button"
-                    class="n"
-                    [attr.aria-pressed]="verdict(it) === false"
-                    (click)="setVerdict(it, false)"
-                  >
-                    нет
-                  </button>
-                </span>
-              </div>
-            } @empty {
-              <p class="empty">
-                В чек-листе проекта нет обязательных пунктов — проверять по списку нечего. Добавьте
-                их во вкладке «Материалы».
-              </p>
-            }
-          </div>
-
-          <textarea
-            class="note"
-            rows="3"
-            aria-label="Замечание креатору"
-            placeholder="Что переделать: «00:00–00:03 — логотипа нет, перемонтируй начало»"
-            [ngModel]="comment()"
-            (ngModelChange)="comment.set($event)"
-          ></textarea>
-
-          <div class="rev-acts">
-            <!-- «Вернуть» — тёмная кнопка макета: в CRM это ghost. Голый
-                 .btn здесь фона не имеет вовсе и выходит белым пятном. -->
-            <button class="btn ghost" type="button" [disabled]="busy()" (click)="decide('return')">
-              Вернуть с замечанием
-            </button>
-            <button
-              class="btn"
-              type="button"
-              [class.primary]="canAccept()"
-              [class.quiet]="!canAccept()"
-              [disabled]="!canAccept() || busy()"
-              (click)="decide('accept')"
-            >
-              Принять
-            </button>
-            @if (!canAccept() && items().length) {
-              <span class="hint">Принять можно, когда по каждому пункту стоит «да».</span>
-            }
-          </div>
-        </div>
-      </div>
-    } @else {
-      <!-- Пусто по двум разным причинам, и путать их нельзя: сдавать
-           нечего или всё проверено. -->
-      <p class="empty">
-        @if (pubs().length) {
-          Все сданные ролики проверены.
-        } @else {
-          Сданных роликов пока нет — проверять нечего.
-        }
-      </p>
-    }
+  @if (rest()) {
+    <p class="muted queue-note">
+      Ещё {{ rest() }} {{ rest() === 1 ? 'ролик ждёт' : 'роликов ждут' }} проверки — откроются
+      следующими.
+    </p>
   }
-</section>
+  } @else {
+    <!-- Пусто по двум разным причинам, и путать их нельзя. -->
+    <p class="muted">
+      @if (!pubs().length) {
+        Сданных роликов пока нет — проверять нечего.
+      } @else if (returned().length) {
+        Все сданные ролики проверены. Ждём пересдачу по возвращённым.
+      } @else {
+        Все сданные ролики проверены.
+      }
+    </p>
+  }
+}
+
+<!-- Возвращённые ждут креатора, а не менеджера, — в очередь они не
+     попадают. Но и исчезать им нельзя: это работа, которая стоит. -->
+@if (returned().length) {
+  <div class="returned">
+    <div class="label">Ждут пересдачи · {{ returned().length }}</div>
+    <div class="list">
+      @for (p of returned(); track p.id) {
+        <div class="row">
+          <app-sotka-ava [name]="p.creator_name || 'Креатор'" [size]="28" />
+          <div class="grow">
+            <div class="t">{{ p.creator_name || 'Креатор' }}</div>
+            @if (p.review?.comment) {
+              <div class="muted small">{{ p.review!.comment }}</div>
+            }
+          </div>
+          <span class="pill warn">вернули</span>
+        </div>
+      }
+    </div>
+  </div>
+}

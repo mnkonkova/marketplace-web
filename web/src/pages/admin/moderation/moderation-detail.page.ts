@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  TemplateRef,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -13,6 +20,8 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { AdminApi, ModerationSpecialistDetail } from '@entities/admin/api/admin.api';
+import { type PanelHandle, openPanelHandle } from '@shared/lib/panel';
+import { NzDrawerService } from 'ng-zorro-antd/drawer';
 
 @Component({
   selector: 'app-admin-moderation-detail',
@@ -42,6 +51,10 @@ export class AdminModerationDetailPage implements OnInit {
   private readonly api = inject(AdminApi);
 
   private readonly modal = inject(NzModalService);
+
+  private readonly drawer = inject(NzDrawerService);
+
+  private rejectPanel?: PanelHandle;
 
   private readonly msg = inject(NzMessageService);
 
@@ -92,16 +105,37 @@ export class AdminModerationDetailPage implements OnInit {
     });
   }
 
-  public openReject(tplRef: unknown): void {
+  /**
+   * Причина отказа. На десктопе окном, на телефоне нижней шторкой —
+   * через общий помощник, как и остальные формы кабинета.
+   *
+   * Кнопки живут в самом шаблоне, а не в подвале окна: у шторки подвала
+   * нет, и две разные пары кнопок для двух способов показа разъехались
+   * бы на первой же правке текста.
+   */
+  public openReject(tplRef: TemplateRef<unknown>): void {
     this.rejectReason = '';
-    this.modal.create({
-      nzTitle: 'Отклонить публикацию',
-      nzContent: tplRef as never,
-      nzOkText: 'Отклонить',
-      nzOkDanger: true,
-      nzOkDisabled: false,
-      nzOnOk: () => this.submitReject(),
-    });
+    this.rejectPanel = openPanelHandle(
+      { modal: this.modal, drawer: this.drawer },
+      { title: 'Отклонить публикацию', content: tplRef, width: 520 },
+    );
+  }
+
+  /** Закрыть форму отказа — тем же способом, каким открыли. */
+  public closeReject(): void {
+    this.rejectPanel?.close();
+    this.rejectPanel = undefined;
+  }
+
+  public confirmReject(): void {
+    const res = this.submitReject();
+    if (res instanceof Promise) {
+      void res.then((ok) => {
+        if (ok) this.closeReject();
+      });
+      return;
+    }
+    if (res) this.closeReject();
   }
 
   public submitReject(): boolean | Promise<boolean> {

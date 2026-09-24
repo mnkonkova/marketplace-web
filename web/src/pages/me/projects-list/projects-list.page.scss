@@ -1,517 +1,199 @@
-@use 'layout';
-// Кабинет живёт в том же контейнере, что и шапка над ним: свой потолок
-// в 1100px оставлял на 1440-м мониторе по 170px пустого поля с каждой
-// стороны, и дашборд — пять карточек площадок, график и ряд KPI —
-// тесал сам себя в колонку уже, чем меню над ним.
-//
-// Инклуд последним — см. комментарий в specialist-profile.page.scss:
-// миксин раскрывается во вложенные правила, а объявление после
-// вложенного Sass встречает предупреждением mixed-decls.
-.projects-list {
-  margin: 32px auto 64px;
+@use 'breakpoints' as bp;
+@use 'touch' as touch;
 
-  @include layout.page-container;
-}
+// Экран «Все проекты» заказчика. Словарь кабинета — общий (.sotka в
+// shared/scss/_sotka.scss); здесь только то, что есть на этом экране и
+// больше нигде.
 
-.head {
+.pf-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 28px;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
 
   h1 {
-    margin: 0 0 6px;
-    font-size: 32px;
-    letter-spacing: -0.5px;
-  }
-
-  .subtitle {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 14px;
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 24px;
+    letter-spacing: -0.02em;
+    margin-top: 4px;
   }
 }
 
-.contacts-panel {
-  background: linear-gradient(135deg, var(--surface) 0%, rgba(45, 212, 191, 0.02) 100%);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  margin-bottom: 28px;
-  overflow: hidden;
-  transition:
-    border-color 200ms ease,
-    box-shadow 200ms ease;
-
-  &.expanded {
-    border-color: rgba(45, 212, 191, 0.4);
-    box-shadow: 0 4px 24px rgba(45, 212, 191, 0.08);
-  }
-
-  &:not(.expanded):hover {
-    border-color: rgba(255, 255, 255, 0.16);
-  }
-}
-
-.contacts-head {
-  width: 100%;
-  background: transparent;
-  border: none;
-  padding: 16px 20px;
-  color: var(--text);
-  display: grid;
-  grid-template-columns: 40px 1fr auto;
-  align-items: center;
-  gap: 14px;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.02);
-  }
-}
-
-.icon-wrap {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: rgba(45, 212, 191, 0.12);
+.pf-head-r {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
 
-  [nz-icon] {
-    color: #2dd4bf;
-    font-size: 18px;
+  // Переключатель окна стоит в ряду сегментов кабинета, а не отдельной
+  // группой кнопок: это выбор вида, а не действие.
+  .roles {
+    margin-left: 0;
   }
 }
 
-.title-block {
+.pf-sub {
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+
+.catalog-lead {
+  margin: 0 0 12px;
+  max-width: 70ch;
+}
+
+.cat-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cat-kind {
+  font-size: 12.5px;
+}
+
+.catalog-foot {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+
+  .push {
+    margin-left: auto;
+  }
+}
+
+// Реестр проектов
+.prj .ms.next {
+  margin-top: 4px;
+}
+
+.prj .mv.acc {
+  color: var(--accent);
+}
+
+.ink {
+  color: var(--ink);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.strong {
+  font-weight: 500;
+}
+
+.amt {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+
+// Ближайшие выкладки: в одном дне несколько человек, и день не должен
+// растягиваться по вертикали вместе с ними.
+.row.row-top {
+  align-items: flex-start;
+}
+
+.who-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 2px;
+}
+
+.who-line {
+  font-size: 13px;
+}
+
+.tail {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 12.5px;
+}
+
+// Контакты заказчика: три коротких поля в строку, кнопка следом.
+// Отдельная сетка, а не .subgrid — у полей своя ширина, и растягивать
+// «Телеграм» на треть экрана незачем.
+.cts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px 14px;
+  align-items: end;
+}
+
+.ct {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-
-  strong {
-    font-size: 15px;
-    font-weight: 600;
-  }
-
-  small {
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  .status-ok {
-    color: #10b981;
-    font-weight: 500;
-  }
-
-  .status-warn {
-    color: #f59e0b;
-  }
-
-  .status-sep {
-    color: var(--text-dim);
-  }
-
-  .preview {
-    color: var(--text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 280px;
-  }
 }
 
-.caret {
-  color: var(--text-dim);
+.ct-act {
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: transform 200ms ease;
-
-  &.up {
-    transform: rotate(180deg);
-  }
-
-  [nz-icon] {
-    font-size: 12px;
-  }
-}
-
-.contacts-body {
-  padding: 4px 20px 20px;
-  border-top: 1px solid var(--border);
-  animation: slide-down 200ms ease;
-}
-
-@keyframes slide-down {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.contacts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 14px;
-  margin: 20px 0 16px;
-}
-
-.contact-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  position: relative;
-
-  .field-icon {
-    position: absolute;
-    top: 30px;
-    left: 12px;
-    font-size: 14px;
-    z-index: 1;
-    opacity: 0.7;
-    pointer-events: none;
-  }
-
-  .field-label {
-    color: var(--text-muted);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 500;
-  }
-
-  input {
-    padding-left: 36px !important;
-  }
-}
-
-.contacts-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-
-  .actions-hint {
-    color: var(--text-dim);
-    font-size: 12px;
-    flex: 1;
-    min-width: 200px;
-  }
-}
-
-.center {
-  display: flex;
-  justify-content: center;
-  padding: 60px 0;
-}
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-}
-
-.card {
-  position: relative;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
-  cursor: pointer;
-  transition:
-    transform 150ms ease,
-    box-shadow 150ms ease,
-    border-color 150ms ease;
-
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    border-color: rgba(255, 255, 255, 0.16);
-  }
-
-  &.waiting {
-    border-color: rgba(245, 158, 11, 0.45);
-    box-shadow:
-      0 0 0 1px rgba(245, 158, 11, 0.18),
-      0 8px 24px rgba(245, 158, 11, 0.08);
-  }
-
-  &.completed {
-    opacity: 0.78;
-  }
-
-  &.waiting::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 12px;
-    background: radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 60%);
-    pointer-events: none;
-  }
-
-  h3 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 600;
-    line-height: 1.35;
-  }
-}
-
-.card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-
-  .progress-num {
-    font-size: 13px;
-    color: var(--text-dim);
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.cur {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1.4;
-
-  .cur-label {
-    color: var(--text-dim);
-    margin-right: 4px;
-  }
-
-  strong {
-    color: var(--text);
-    font-weight: 500;
-  }
-}
-
-.card-foot {
-  display: flex;
-  gap: 14px;
-  color: var(--text-dim);
-  font-size: 12px;
-  margin-top: 4px;
-
-  span {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-
-    [nz-icon] {
-      font-size: 12px;
-    }
-  }
-}
-
-// Опознавательный знак карточки проекта (категория + имя спеца).
-// Показывается когда у клиента ≥2 проектов — чтобы было понятно
-// «вот этот для Иванова-видеооператора, а вот этот для Петрова-дизайнера».
-.spec-badge {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-
-  .spec-cat {
-    color: var(--accent);
-    font-weight: 600;
-  }
-
-  .spec-name {
-    color: var(--text-dim);
-  }
-}
-
-// Вход в воронку заказа. Стоит ВНИЗУ и тихим видом.
-//
-// Он был первым экраном кабинета и держал единственный коралл страницы —
-// а коралл значит «действие». Действие на этом экране одно: открыть
-// проект и посмотреть, что получилось. Человек, который уже платит,
-// приходит сюда за результатом; предложение завести второй проект
-// читается ПОСЛЕ результата, а не вместо него.
-.turnkey-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-top: 30px;
-  padding: 16px 20px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--bg-elevated);
-}
-
-.turnkey-text {
-  flex: 1;
-  min-width: 260px;
-
-  strong {
-    display: block;
-    font-size: 15px;
-    margin-bottom: 4px;
-  }
-
-  small {
-    display: block;
-    color: var(--text-muted);
-    font-size: 12.5px;
-    line-height: 1.5;
-  }
-}
-
-.turnkey-actions {
-  display: flex;
   gap: 10px;
-  flex-wrap: wrap;
 }
 
-// Разделы кабинета — ПОДЧЁРКНУТЫЕ вкладки.
-//
-// Форма здесь третья по счёту, и каждая смена была по делу.
-//
-// Сначала это были два слова в пустоте с линией на всю ширину под ними:
-// нажималась только надпись, полоса шла до края и приклеивала вкладки к
-// карточке снизу, а подчёркивание было бирюзовым — цвета, которого в
-// палитре нет.
-//
-// Потом их сделали таблеткой, как окно дашборда. Это вылечило область
-// нажатия и цвет, но завело новую беду: в семидесяти пикселях ниже
-// стоит переключатель окна — такая же таблетка из трёх кнопок. Две
-// одинаковые формы обещают одинаковое последствие, а последствия разные:
-// здесь меняется ЭКРАН, там — ЧИСЛА на нём. Жали наугад.
-//
-// Теперь подчёркивание — но с исправленными бедами первой версии:
-// нажимается вся кнопка целиком (её видно по подложке на наведении),
-// линия идёт только под самими вкладками, а не до края экрана, и цвет
-// её — цвет текста из палитры. Форма отличается от окна данных, роли
-// больше не путаются.
-.tabs {
-  display: inline-flex;
-  gap: 4px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--border);
-}
-
-.tab {
-  position: relative;
-  min-height: 44px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 10px 10px 0 0;
-  background: transparent;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 15px;
-  cursor: pointer;
-  transition: 0.15s;
-
-  &:hover {
-    background: var(--surface);
-    color: var(--text);
-  }
-
-  // Подчёркивание рисует псевдоэлемент, а не border: border сдвигал бы
-  // текст на пиксель при переключении.
-  &::after {
-    content: '';
-    position: absolute;
-    right: 10px;
-    bottom: -1px;
-    left: 10px;
-    height: 2px;
-    border-radius: 2px;
-    background: transparent;
-  }
-
-  &.on {
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  &.on::after {
-    background: var(--text);
-  }
-}
-
-// Заголовок списка проектов по воронке. Второй список на вкладке, и без
-// названия он читался бы как продолжение реестра — а числа в нём другие.
-.fhead {
-  margin: 30px 0 4px;
-  font-family: var(--font-head);
-  font-size: 17px;
-  font-weight: 700;
-}
-
-// Тихая кнопка: обводка и текст, без заливки. Коралл на этом экране
-// значит «действие, которого от вас ждут», а от заказчика здесь ничего
-// не ждут — предложение завести ещё один проект действием не является.
-.quiet-btn {
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  background: var(--bg-elevated);
-  color: var(--text);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.15s;
-
-  &:hover {
-    border-color: var(--border-hover);
-  }
-}
-
-// Незаконченный заказ — это долг перед человеком, а не предложение:
-// без него он заведёт второй такой же и будет ждать ответы по обоим.
-// Поэтому у него, в отличие от плашки выше, есть пометка состояния.
-.order-resume {
+// Кнопки разделов в строке проекта. На десктопе — одна «Открыть»
+// справа, на телефоне весь ряд уезжает вниз карточки.
+.prj-act {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-  padding: 14px 20px;
-  border: 1px solid var(--border-strong);
-  border-radius: 14px;
-  background: var(--surface);
+  justify-content: flex-end;
+  gap: 8px;
+}
 
-  .ot {
+@media (max-width: bp.$touch) {
+  // Строка проекта на телефоне — карточка: числа столбиком с
+  // подписями, кнопки внизу. Подписи берём из data-label: шапку
+  // колонок словарь на этой ширине прячет, и «0,05 ₽» осталось бы
+  // числом без вопроса.
+  .projects .prj {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .projects .prj > [data-label] {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    border-top: 1px solid var(--line-2, var(--line));
+    padding-top: 6px;
   }
 
-  strong {
-    font-size: 14.5px;
+  .projects .prj > [data-label]::before {
+    content: attr(data-label);
+    font-family: var(--body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
-  small {
-    color: var(--text-muted);
-    font-size: 12.5px;
+  .prj-act {
+    flex-wrap: wrap;
+    justify-content: stretch;
+
+    .btn {
+      flex: 1 1 120px;
+      min-height: touch.$tap;
+      justify-content: center;
+    }
+
+    // «Открыть проект» — главное действие карточки, ему целая строка.
+    .btn.dark {
+      flex: 1 0 100%;
+    }
   }
 }

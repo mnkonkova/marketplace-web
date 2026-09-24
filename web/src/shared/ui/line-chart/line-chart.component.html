@@ -85,7 +85,15 @@
     />
 
     @for (t of xTicks(); track t.date) {
-      <text class="tick" [attr.x]="t.x" [attr.y]="height() - 8" text-anchor="middle">
+      <!-- Крайние даты прижимаем к своей стороне: по центру они
+           наполовину вылезали за поле графика, а обрезать их нечему —
+           у svg здесь overflow: visible. -->
+      <text
+        class="tick"
+        [attr.x]="t.x"
+        [attr.y]="height() - 8"
+        [attr.text-anchor]="$first ? 'start' : $last ? 'end' : 'middle'"
+      >
         {{ t.date | date: 'd MMM' }}
       </text>
     }

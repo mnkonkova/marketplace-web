@@ -1,74 +1,91 @@
+<!-- Тот же кабинет, что и проект: список и проект — один разговор, и
+     переход между ними не должен менять ни фон, ни шапку. Раньше
+     список жил на тёмной витрине, а проект — в светлом кабинете, и
+     переход читался как уход на другой сайт. -->
+<!-- Шапка сайта над кабинетом: из кабинета ходят на витрину, в свой
+     профиль и в поиск, а на телефоне это единственное меню, где всё
+     это лежит. Полоса кабинета ниже отвечает на другой вопрос — где я
+     и в какой роли. -->
 <app-header />
 
-<main class="creator-projects">
-  <app-back-link defaultUrl="/me/specialist" />
+<div class="sotka">
+  <app-sotka-top
+    title="Мои проекты"
+    [subtitle]="subtitle()"
+    [nav]="nav()"
+    [showWho]="false"
+  />
 
-  <header class="hero">
-    <h1>Мои проекты</h1>
-    <p class="note">
-      Проекты, где вы в действующем составе. Счётчики — только по вашим выкладкам: чужие вы не
-      видите нигде.
-    </p>
-    @if (totalOverdue()) {
-    <p class="late-line">Просрочено выкладок: {{ totalOverdue() }}. Начните с них.</p>
-    }
-  </header>
-
-  @if (loading()) {
-  <div class="center"><nz-spin nzSize="large"></nz-spin></div>
-  } @else {
-  <ul class="cards">
-    @for (p of ordered(); track p.project_id) {
-    <!-- Карточка — ссылка целиком. Мелкая строка внизу была
-         единственным, во что можно попасть, хотя нажимаемым выглядел
-         весь прямоугольник. Настоящая <a>, а не обработчик клика: иначе
-         не работают ctrl-клик, средняя кнопка и «открыть в новой
-         вкладке», а фокус с клавиатуры не виден. Вложенных кнопок и
-         ссылок внутри нет — иначе ссылка в ссылке. -->
-    <li>
-      <a
-        class="card"
-        [class.late]="p.publications_overdue > 0"
-        [routerLink]="['/me/creator/projects', p.project_id]"
-      >
-        <header>
-          <h2>{{ p.title }}</h2>
-          <!-- Своя плашка, а не nz-tag: в styles.scss у .ant-tag стоит
-               безусловный зелёный !important, и любой nzColor — хоть
-               'red', хоть 'default' — рисуется одинаково зелёным. Здесь
-               цвет несёт смысл: зелёным помечено только сделанное, и
-               пустой проект зелёным быть не должен. -->
-          <span class="state" [class]="'state ' + stateTone(p)">{{ stateLabel(p) }}</span>
-        </header>
-
-        <!-- Нулевое состояние отдельной веткой. «Всё сдано», «0 из 0
-             роликов закрыто» и «Несданного нет» на проекте без единой
-             выкладки — три утверждения, и все три неправда: ничего не
-             сдано, потому что ничего и не было. -->
-        @if (!p.publications_total) {
-        <p class="counts">Работа ещё не началась — дат выкладок пока нет.</p>
-        <p class="meta">
-          Первый период начнётся с первой вышедшей выкладки. В проекте с {{ p.added_at | date: 'd
-          MMM y' }}.
-        </p>
-        } @else {
-        <p class="counts">{{ closed(p) }} из {{ p.publications_total }} по плану периода</p>
-        <p class="meta">
-          @if (p.next_due_date) { Ближайший срок — {{ p.next_due_date | date: 'd MMM' }} · {{
-          due(p.next_due_date) }}. } @else { План периода выполнен — период идёт дальше, новые даты
-          поставит менеджер. } В проекте с {{ p.added_at | date: 'd MMM y' }}.
-        </p>
+  <main>
+    <div class="role">
+      <div class="span-12 pf-head">
+        <div>
+          <div class="label">Кабинет креатора</div>
+          <h1>Мои проекты</h1>
+        </div>
+        @if (totalOverdue(); as late) {
+          <div class="pf-head-r">
+            <span class="pill crit">просрочено {{ late }}</span>
+          </div>
         }
+      </div>
 
-        <span class="go">Мои выкладки в проекте</span>
-      </a>
-    </li>
-    } @empty {
-    <li class="empty">
-      Вас пока не добавили ни в один проект. Как добавят — материалы, чеклист и даты выкладок
-      откроются здесь.
-    </li>
-    }
-  </ul>
-  }
-</main>
+      <div class="span-12 panel">
+        <div class="panel-h">
+          <h2>Проекты</h2>
+          <span class="sub">
+            счётчики только по вашим выкладкам — чужие вы не видите нигде
+          </span>
+        </div>
+
+        @if (loading()) {
+          <p class="muted">Загружаем проекты…</p>
+        } @else if (!ordered().length) {
+          <p class="muted">
+            Вас пока не добавили ни в один проект. Как добавят — материалы, чеклист и даты выкладок
+            откроются здесь.
+          </p>
+        } @else {
+          <div class="projects">
+            <div class="prj head label">
+              <span>Проект</span>
+              <span>Сдано по плану</span>
+              <span>Ближайший срок</span>
+              <span></span>
+            </div>
+            @for (p of ordered(); track p.project_id) {
+              <a class="prj" [routerLink]="['/me/creator/projects', p.project_id]">
+                <div>
+                  <div class="nm">
+                    {{ p.title }}
+                    <span class="pill" [class]="'pill ' + stateTone(p)">{{ stateLabel(p) }}</span>
+                  </div>
+                  <div class="ms">В проекте с {{ p.added_at | date: 'd MMM y' }}</div>
+                </div>
+
+                <div class="mv" data-label="Сдано по плану">
+                  @if (p.publications_total) {
+                    {{ closed(p) }} из {{ p.publications_total }}
+                  } @else {
+                    <span class="st st-nd">плана ещё нет</span>
+                  }
+                </div>
+
+                <div data-label="Ближайший срок">
+                  @if (p.next_due_date) {
+                    <div class="mv">{{ p.next_due_date | date: 'd MMM' }}</div>
+                  }
+                  <div class="ms" [class.crit-ink]="p.publications_overdue > 0">
+                    {{ dueLine(p) }}
+                  </div>
+                </div>
+
+                <div><span class="go">Мои выкладки →</span></div>
+              </a>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </main>
+</div>

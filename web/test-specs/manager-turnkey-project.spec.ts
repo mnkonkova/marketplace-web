@@ -8,6 +8,9 @@ import type { Publication, PublicationStatus } from '@entities/publication/model
 import { ProjectApi } from '@entities/project/api/project.api';
 import type { ProjectFullView } from '@entities/project/model/project.types';
 import { ManagerTurnkeyProjectComponent } from '@widgets/manager-turnkey-project/manager-turnkey-project.component';
+import { NzModalService } from 'ng-zorro-antd/modal';
+import { NzDrawerService } from 'ng-zorro-antd/drawer';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 /**
  * Шапка проекта у менеджера.
@@ -60,17 +63,25 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
       }) as never,
     );
 
-    const projects = jasmine.createSpyObj<ProjectApi>('projects', ['managerAssigned']);
+    const projects = jasmine.createSpyObj<ProjectApi>('projects', ['managerAssigned', 'managerListEvents']);
     projects.managerAssigned.and.returnValue(of({ items: [] }) as never);
+    // Журнал под начислениями: дёргается при загрузке проекта.
+    projects.managerListEvents.and.returnValue(of({ items: [] }) as never);
 
     const billing = jasmine.createSpyObj<BillingApi>('billing', ['managerBilling']);
     billing.managerBilling.and.returnValue(of({ payments }) as never);
 
     TestBed.configureTestingModule({
       providers: [
+        // Окна («добавить креатора», простановка дат) открываются через
+        // общий помощник: на десктопе окном, на телефоне шторкой.
+        // Компоненту нужны оба сервиса, даже если в тесте их не зовут.
+        provideNoopAnimations(),
         { provide: PublicationApi, useValue: api },
         { provide: ProjectApi, useValue: projects },
         { provide: BillingApi, useValue: billing },
+        { provide: NzModalService, useValue: jasmine.createSpyObj('modal', ['create', 'confirm']) },
+        { provide: NzDrawerService, useValue: jasmine.createSpyObj('drawer', ['create']) },
       ],
     });
     TestBed.overrideComponent(ManagerTurnkeyProjectComponent, { set: { template: '' } });

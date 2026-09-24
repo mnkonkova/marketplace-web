@@ -12,10 +12,11 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
-import { TariffStep, TermsVersion } from '@entities/billing/model/billing.types';
+import { TariffRow, TariffStep, TermsVersion } from '@entities/billing/model/billing.types';
 import { formatMoney, fromRubles, toRubles } from '@entities/billing/lib/money';
 import { parseApiError } from '@shared/api/api-error';
 import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
+import { ProjectTariffComponent } from '@widgets/project-tariff/project-tariff.component';
 
 /**
  * Прайс площадки: сколько платит заказчик за креатора и сколько из этого
@@ -76,7 +77,13 @@ interface DraftStep {
 @Component({
   selector: 'app-admin-tariff',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzButtonModule, PageHeadComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    NzButtonModule,
+    PageHeadComponent,
+    ProjectTariffComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tariff.page.html',
   styleUrl: './tariff.page.scss',
@@ -94,12 +101,68 @@ export class AdminTariffPage implements OnInit {
 
   public readonly formOpen = signal(false);
 
+  // ---- реестр: строка — проект ----
+  //
+  // Прайс площадки один на всех, а договариваются с каждым заказчиком
+  // отдельно. Вопрос к этому разделу звучит не «какой у нас прайс», а
+  // «по каким условиям идёт вот этот проект и чем он отличается от
+  // соседнего»: ответить на него можно было только обойдя проекты по
+  // одному. Версия прайса осталась второй вкладкой — как шаблон, с
+  // которого заполняют новый проект.
+
+  public readonly view = signal<'projects' | 'template'>('projects');
+
+  public readonly rows = signal<TariffRow[]>([]);
+
+  public readonly rowsLoading = signal(true);
+
+  /** Какой проект раскрыт на правку. Пусто — ни один. */
+  public readonly openProject = signal<string>('');
+
+  /** Проекты без тарифа: считаются по нулям, и это надо чинить. */
+  public readonly missing = computed(() => this.rows().filter((r) => !r.has_terms).length);
+
+  public toggleProject(id: string): void {
+    this.openProject.set(this.openProject() === id ? '' : id);
+  }
+
+  /** Во что обходится период: вилка по ступеням либо числа старой модели. */
+  public feeLabel(r: TariffRow): string {
+    if (!r.has_terms) return 'тариф не задан';
+    if (!r.stepped) {
+      return `${formatMoney(r.salary_per_month)} + ${formatMoney(r.rate_per_1000_views)} / 1000`;
+    }
+    return r.min_fee === r.max_fee
+      ? formatMoney(r.min_fee)
+      : `${formatMoney(r.min_fee)} — ${formatMoney(r.max_fee)}`;
+  }
+
+  public modelLabel(r: TariffRow): string {
+    if (!r.has_terms) return 'нет';
+    return r.stepped ? `ступеней ${r.steps_count}` : 'оклад + ставка';
+  }
+
   public readonly current = computed(() => this.versions().find((v) => v.is_current) ?? null);
 
   public draft: Draft = emptyDraft();
 
   public ngOnInit(): void {
     this.load();
+    this.loadRows();
+  }
+
+  public loadRows(): void {
+    this.rowsLoading.set(true);
+    this.api.adminTariffRegistry().subscribe({
+      next: (r) => {
+        this.rows.set(r.items);
+        this.rowsLoading.set(false);
+      },
+      error: (e) => {
+        this.rowsLoading.set(false);
+        this.msg.error(parseApiError(e, 'Не удалось загрузить тарифы проектов.').message);
+      },
+    });
   }
 
   private load(): void {

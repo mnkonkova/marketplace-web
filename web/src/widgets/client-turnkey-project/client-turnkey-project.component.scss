@@ -1,868 +1,274 @@
-// Словарь макета (карточки, кнопки, чипы, площадки, чеклист) — общий для
-// страниц проекта. Подключаем в компонент, а не глобально: эти экраны
+@use 'breakpoints' as bp;
 
-// Стили перенесены из макета ~/tmp/crm_project_client (1).html.
-// Общая часть оболочки — в shared/scss/_crm.scss под классом .crm-page,
-// который эта разметка на себе носит.
+// Проект глазами заказчика. Словарь кабинета — общий (.sotka); здесь
+// только то, чего в макете не было отдельным классом.
 
 :host {
   display: block;
 }
-// Общая часть оболочки — в shared/scss/_crm.scss под .crm-page.
-// Здесь только то, что есть у клиента и больше нигде.
 
-.phead {
-  display: flex;
-  align-items: flex-start;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-
-  .ttl {
-    flex: 1;
-    min-width: 260px;
-  }
-
-  .meta {
-    display: flex;
-    align-items: center;
-    gap: 6px 14px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-    color: var(--muted);
-    font-size: 13px;
-
-    b {
-      color: var(--text);
-      font-weight: 600;
-    }
-
-    .per {
-      color: var(--text);
-      font-weight: 600;
-    }
-  }
-
-  // Состояние периода — точкой и словом. Открытый и подытоженный период
-  // это два разных счёта: у первого сумма ещё вырастет, у второго она
-  // окончательная, и по датам одно от другого не отличить.
-  .dotstate {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-
-    &::before {
-      content: '';
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--ice);
-    }
-
-    &.open::before {
-      background: var(--ok);
-    }
-  }
-}
-
-.pacts {
-  display: flex;
-  gap: 9px;
-  flex-wrap: wrap;
-}
-
-// ── ОТВЕТ: объём и цена тысячи рядом ─────────────────────
-//
-// Было шесть равных плиток: просмотры, цена тысячи, «можно проверить»,
-// лайки, комментарии, ER. Шесть одинаковых рамок объявляют шесть чисел
-// одинаково важными, то есть ни одно — главным, и «56 ₽ за тысячу»
-// стояло тем же кеглем, что «Комментарии». Здесь две половины одной
-// мысли: объём растёт — цена тысячи падает, и продаёт их отношение.
-
-.answer {
-  display: grid;
-  gap: 0;
-  grid-template-columns: 1fr 1fr;
-  margin-bottom: 20px;
-  border: 1px solid var(--line-2);
-  border-radius: 18px;
-  background: var(--card);
-  overflow: hidden;
-
-  .half {
-    padding: 24px 26px;
-  }
-
-  // Латунная кромка у объёма, ледяная подложка у цены: два цвета смысла
-  // держат половины различимыми и без линейки между ними.
-  .half.views {
-    border-left: 3px solid var(--brass);
-  }
-
-  .half.price {
-    border-left: 1px solid var(--line);
-    background: var(--card-2);
-  }
-
-  .eyebrow {
-    margin: 0 0 10px;
-    color: var(--muted-2);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  .big {
-    display: block;
-    font-family: var(--font-head);
-    font-size: clamp(34px, 4vw, 54px);
-    font-variant-numeric: tabular-nums;
-    font-weight: 800;
-    letter-spacing: -0.035em;
-    line-height: 0.94;
-  }
-
-  .big.brass {
-    color: var(--brass);
-  }
-
-  .big.ice {
-    color: var(--ice);
-  }
-
-  .big .unit {
-    margin-left: 0.14em;
-    color: var(--muted);
-    font: 700 0.42em/1 var(--font-body);
-    font-style: normal;
-  }
-
-  .say {
-    max-width: 60ch;
-    margin: 12px 0 0;
-    color: var(--muted);
-    font-size: 13.5px;
-    line-height: 1.5;
-  }
-
-  .say.small {
-    font-size: 12.5px;
-  }
-
-  app-steps {
-    margin-top: 16px;
-  }
-
-  .scale {
-    margin: 8px 0 0;
-    color: var(--muted-2);
-    font-size: 11.5px;
-  }
-
-  // Отклик одной строкой: лайки, комментарии и ER — один разложенный
-  // показатель, а не три независимых.
-  .react {
-    margin-top: 22px;
-    padding-top: 16px;
-    border-top: 1px solid var(--line);
-  }
-
-  .react-row {
-    display: flex;
-    gap: 10px 26px;
-    flex-wrap: wrap;
-  }
-
-  .react-row .r {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .react-row .rv {
-    font-family: var(--font-head);
-    font-size: 21px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1;
-  }
-
-  .react-row i {
-    color: var(--muted-2);
-    font-size: 11.5px;
-    font-style: normal;
-  }
-}
-
-@media (max-width: 900px) {
-  .answer {
-    grid-template-columns: 1fr;
-  }
-
-  .answer .half.price {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-  }
-}
-
-// ── ролики ───────────────────────────────────────────────
-.vid {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  margin-bottom: 11px;
-  overflow: hidden;
-
-  .row {
-    display: flex;
-    gap: 14px;
-    padding: 14px;
-    align-items: flex-start;
-  }
-
-  .bd {
-    flex: 1;
-    min-width: 0;
-
-    .t {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      flex-wrap: wrap;
-      margin-bottom: 3px;
-
-      b {
-        font-size: 14.5px;
-        font-weight: 600;
-      }
-    }
-  }
-
-  .who {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--muted-2);
-    margin-bottom: 9px;
-  }
-
-  .who-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text);
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-
-  // Портрет автора ролика. Буква остаётся, когда аватара нет: это честно,
-  // а пустой кружок читался бы как несработавшая загрузка.
-  .who-av {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex: 0 0 auto;
-
-    &.letter {
-      display: grid;
-      place-items: center;
-      background: var(--line-2);
-      color: var(--text);
-      font-size: 11px;
-      font-weight: 600;
-    }
-  }
-
-  .nums {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    margin-bottom: 9px;
-
-    .n {
-      font-size: 11.5px;
-      color: var(--muted-2);
-
-      b {
-        display: block;
-        font-family: var(--mono);
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--text);
-        font-variant-numeric: tabular-nums;
-        letter-spacing: -0.02em;
-        margin-top: 1px;
-      }
-    }
-  }
-}
-
-// Обложка вертикальная: ролик снимают в 9:16, и заглушка должна об этом
-// напоминать, а не показывать горизонтальный прямоугольник.
-// Место обложки. Настоящего кадра у нас нет и не будет, пока ролик
-// живёт на чужой площадке: мы храним про него ссылку, счётчики и дату —
-// ни кадра, ни адреса превью в publication_links не лежит.
-//
-// Поэтому здесь не «картинка, которая не загрузилась», а подпись: знак
-// площадки на её цвете. Пропорция 2:3 — вертикаль, как сами ролики.
-.cover {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 72px;
-  // 9:16 ровно — родная пропорция вертикального ролика. Было 2:3, то
-  // есть «примерно вертикально»: рядом с насечками, у каждой из которых
-  // честные 9:16, это читалось как небрежность.
-  aspect-ratio: 9 / 16;
-  flex: 0 0 auto;
-
-  // Настоящий кадр (выводится из ссылки YouTube) закрывает плашку
-  // целиком: подложка-цвет площадки под ним уже не нужна.
-  .shot {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 9px;
-  }
-  padding: 7px;
-  border: 1px solid var(--line-2);
-  border-radius: 10px;
-  // Цвет площадки подложкой задаётся инлайном, из PLATFORM_COLOR:
-  // площадку узнают по цвету раньше, чем прочтут название. Сплошная
-  // рамка вокруг ровного серого пятна — это и есть то, как выглядит
-  // незагрузившееся фото, и именно от этого мы уходим.
-  overflow: hidden;
-
-  .pl {
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-}
-
-// ── доли площадок ────────────────────────────────────────
-.platbars {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pbrow {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  font-size: 12.5px;
-
-  .pn {
-    width: 76px;
-    flex: 0 0 auto;
-    font-weight: 600;
-  }
-
-  .track {
-    flex: 1;
-    height: 20px;
-    border-radius: 6px;
-    background: #181c21;
-    overflow: hidden;
-    min-width: 60px;
-
-    i {
-      display: block;
-      height: 100%;
-      border-radius: 6px;
-    }
-  }
-
-  .val {
-    font-family: var(--mono);
-    font-size: 12.5px;
-    min-width: 62px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-// ── команда месяца ───────────────────────────────────────
-.mrow {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--line);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  // Кружок исполнителя — ссылка с портретом внутри. Кружок побольше
-  // обычного (.av 32px): в него теперь смотрят, а не читают букву.
-  .pers {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    overflow: hidden;
-    text-decoration: none;
-    transition:
-      transform 0.12s ease,
-      box-shadow 0.12s ease;
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 0 0 2px var(--accent);
-    }
-  }
-
-  // Кружок без ссылки: страницы у человека ещё нет (профиль не прошёл
-  // модерацию — публичная ручка отдаёт на него 404). Портрет остаётся,
-  // подъём и обводка на наведении — нет: ими кружок обещает переход,
-  // которого не будет, а обещание, за которым ничего не следует, хуже
-  // прямого «идти некуда».
-  .pers-off {
-    cursor: default;
-
-    &:hover {
-      transform: none;
-      box-shadow: none;
-    }
-  }
-
-  .bd {
-    flex: 1;
-    min-width: 0;
-
-    b,
-    .pers-name {
-      font-size: 13.5px;
-      font-weight: 600;
-      display: block;
-      color: var(--text);
-      text-decoration: none;
-    }
-
-    // Имя БЕЗ ссылки — <b class="pers-name">: та же строка, тот же кегль,
-    // но без цвета наведения. Подсветка на неведущем имени читается как
-    // сломанная ссылка.
-    a.pers-name:hover {
-      color: var(--accent);
-    }
-
-    // Почему по одному кликается, а по другому нет. Строчка мелкая и
-    // приглушённая: это оговорка о человеке, а не претензия к нему.
-    .hidden-note {
-      font-style: normal;
-      color: var(--muted-2);
-    }
-
-    span {
-      font-size: 11.5px;
-      color: var(--muted-2);
-    }
-  }
-
-  .v {
-    font-family: var(--mono);
-    font-size: 13px;
-    text-align: right;
-    white-space: nowrap;
-
-    small {
-      display: block;
-      font-size: 10.5px;
-      color: var(--muted-2);
-      font-family: Inter, sans-serif;
-    }
-  }
-}
-
-// ── открыть и проверить ──────────────────────────────────
-//
-// Были значки в 26 пикселей: «TT», «IG», «YT» в ряд. Палец по ним
-// промахивался, а сам значок не говорил ни сколько там просмотров, ни
-// что он куда-то ведёт, — числа лежали под вторым кликом, в раскрытии
-// «По площадкам». Теперь это кнопка в 44 пикселя с названием площадки,
-// её числом и стрелкой наружу: главное доказательство продукта не
-// должно прятаться под раскрытием.
-.ft {
-  display: block;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.ft .eyebrow {
-  margin: 0 0 8px;
-  color: var(--muted-2);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.opens {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.go {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--line-2);
-  border-radius: 12px;
-  background: var(--card-2);
-  color: var(--text);
-  text-decoration: none;
-  transition: border-color 0.15s;
-
-  &:hover {
-    border-color: var(--line-3);
-  }
-
-  .pdot {
-    width: 8px;
-    height: 8px;
-    flex: 0 0 auto;
-    border-radius: 50%;
-  }
-
-  .gl {
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .gv {
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-  }
-
-  .arr {
-    color: var(--muted);
-    font-size: 13px;
-  }
-
-  // Ссылки нет: площадка отмечена, а URL не сдан. Мёртвая ссылка хуже
-  // её отсутствия, поэтому кнопкой это и не выглядит — нажимать нечего.
-  &.off {
-    border-style: dashed;
-    background: none;
-    color: var(--muted);
-    cursor: default;
-  }
-
-  .nolink {
-    color: var(--muted-2);
-    font-size: 12px;
-  }
-}
-
-// Счёт периода. «Сколько платить» — не пятый кубик в ряду с лайками, а
-// свой вопрос со своей строкой, и сумма в нём набрана тем же кеглем и
-// той же гарнитурой, что просмотры наверху: это числа одного разговора.
-.billbar {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  margin-bottom: 16px;
-  padding: 20px 22px;
-  border: 1px solid var(--line-2);
-  border-radius: 16px;
-  background: var(--card-2);
-  flex-wrap: wrap;
-
-  .sum {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .sum > b {
-    font-family: var(--font-head);
-    font-size: 34px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1;
-  }
-
-  // Плашки состояния периода. Их две, и выглядят они по-разному
-  // намеренно: «предварительно» значит «подожди, изменится»,
-  // «приблизительно» — «период подытожен, но мерить было нечем».
-  .state {
-    align-self: flex-start;
-    padding: 1px 9px;
-    border-radius: 999px;
-    font-size: 11px;
-    line-height: 1.6;
-  }
-
-  .prelim {
-    border: 1px solid rgb(250 173 20 / 35%);
-    background: rgb(250 173 20 / 12%);
-    color: #ffc953;
-  }
-
-  .approx {
-    border: 1px dashed var(--line-2);
-    color: var(--muted);
-  }
-
-  // Порядок оплаты словами, не кнопкой: спрашивают здесь «сколько и
-  // куда платить», а не «как вы это посчитали».
-  .how {
-    flex: 1;
-    min-width: 280px;
-    margin: 0;
-    color: var(--muted);
-    font-size: 12.5px;
-    line-height: 1.55;
-  }
-}
-
-// ── уведомления: полоса внизу, а не вкладка ──────────────
-//
-// Вкладки «Уведомления» больше нет вовсе. Это настройка — галочки «что
-// мне слать в бот», — а не раздел отчёта, и даже отодвинутая к краю ряда
-// она стояла среди разделов и обещала содержание того же рода. Экран
-// показывают начальству; личные галочки в одном клике от отчёта однажды
-// покажут вместе с ним.
-//
-// Имена классов проверены по словарю .crm-page: правила оттуда достают до
-// содержимого компонента (инкапсуляция защищает наружу, но не внутрь), и
-// занятое имя увозит блок неизвестно куда. .prefs/.prefs-toggle/.prefs-body
-// в словаре свободны. А вот .ck внутри — НАРОЧНО из словаря: это тот же
-// чекбокс, что везде в CRM, и свой был бы вторым.
-.prefs {
-  margin: 28px 0 0;
-  border-top: 1px solid var(--line);
-  padding-top: 12px;
-}
-
-.prefs-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: var(--muted-2);
-  font-size: 12.5px;
-
-  &:hover {
-    color: var(--text);
-  }
-
-  .chev {
-    font-size: 11px;
-    line-height: 1;
-  }
-}
-
-.prefs-body {
-  padding-top: 6px;
-  max-width: 52ch;
-}
-
-// «Из чего сложилась сумма» на вкладке «Деньги» больше нет: разбор по
-// ставкам стоит наверху страницы, над вкладками, и виден с любой из них.
-// Два разложения одной суммы на одном экране человек первым делом идёт
-// сверять.
-
-// Подпись суммы — одним словарём на обе плашки.
-.billbar .sum .k,
-.duebar .dd .k {
-  color: var(--muted-2);
+.legend-note {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
-// Состав счёта — один словарь на обе плашки: и у текущего периода, и у
-// подытоженного это одни и те же слагаемые. Две копии разошлись бы
-// кеглем на первой же правке, и один и тот же счёт выглядел бы
-// по-разному в зависимости от того, закрыт период или нет.
-.duebar .parts {
-  display: flex;
-  gap: 22px;
-  flex: 1;
-  min-width: 240px;
-  flex-wrap: wrap;
-  color: var(--muted);
+.no-stats {
+  margin: 0;
+  max-width: 70ch;
+}
+
+.kpi-note,
+.tariff-note {
   font-size: 12.5px;
-
-  b {
-    display: block;
-    margin-top: 2px;
-    color: var(--text);
-    font-family: var(--font-head);
-    font-size: 15px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
-  }
-
-  b.ice {
-    color: var(--ice);
-  }
-
-  i {
-    display: block;
-    color: var(--muted-2);
-    font-style: normal;
-  }
+  margin: 6px 0 0;
+  max-width: 60ch;
 }
 
-// Счёт за подытоженный прошлый период. Заметнее обычной плитки: это
-// единственное место, где от заказчика ждут действия с деньгами.
-// Счёт за прошлый период. Единственное на странице, что требует
-// действия, — и выглядеть он обязан соответственно.
-//
-// Прежняя плашка была ростом со строку и стояла между двумя другими
-// такими же: «к оплате 1 050 000 ₽» читалось наравне с подписью к
-// графику, и в глаза бросалась ровно настолько же. Здесь она крупнее
-// всего вокруг: поля вдвое шире, сумма кеглем заголовка, слева цветная
-// полоса — на неё натыкаешься, а не ищешь её.
-//
-// Зелёный, а не красный: заказчик ничего не нарушил, счёт просто
-// закрыт и ждёт оплаты. Красным мы показываем сломанное.
-.duebar {
-  position: relative;
+.money-btn {
+  margin-top: 10px;
+}
+
+// Полоса отклика и кружки легенды: цвет несёт смысл, поэтому он задан
+// классом, а не инлайном в разметке.
+.acc-bg {
+  background: var(--accent);
+}
+
+.warn-bg {
+  background: var(--warn);
+}
+
+.ok-bg {
+  background: var(--ok);
+}
+
+// Итоги площадок под графиком. Поденного разбора по площадкам сервер не
+// отдаёт, и пять линий здесь были бы выдумкой — стоят настоящие итоги.
+.plat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.plat-cell {
   display: flex;
+  gap: 8px;
   align-items: center;
-  gap: 28px;
-  margin-bottom: 22px;
-  padding: 24px 26px 24px 30px;
-  border: 1px solid rgb(82 196 26 / 34%);
-  border-radius: 18px;
-  background: rgb(82 196 26 / 7%);
-  flex-wrap: wrap;
 
-  // Полоса слева: плашка узнаётся боковым зрением раньше, чем её
-  // прочтут. Псевдоэлементом, а не border-left — скругление угла
-  // рамкой в 4px выглядит сколом.
-  &::before {
-    content: '';
-    position: absolute;
-    top: 14px;
-    bottom: 14px;
-    left: 0;
-    width: 4px;
-    border-radius: 0 4px 4px 0;
-    background: var(--green);
-  }
-
-  // Числа те же, что у текущего периода, и набраны так же: разница
-  // между «пока идёт» и «пора платить» — в рамке и полосе слева, а не
-  // в кегле. Своя типографика здесь означала бы, что это другой счёт.
-  .dd {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .dd > b {
-    font-family: var(--font-head);
-    font-size: 38px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1;
-  }
-
-  .dd .r {
-    color: var(--muted);
-    font-size: 12.5px;
-  }
-
-  // Признак приблизительности стоит СНАРУЖИ ката, у самой суммы: то, что
-  // часть чисел подтянута, — это про счёт, а не про порядок оплаты, и
-  // прятать его нельзя. Под катом лежит объяснение почему.
-  .approx {
-    padding: 1px 8px;
-    border: 1px dashed rgb(82 196 26 / 34%);
-    border-radius: 999px;
-    white-space: nowrap;
-  }
-
-  // Кат. Оговорки — про «как так вышло», а не про «сколько и куда
-  // платить»: развёрнутыми они давали плашке четыре абзаца, в которых
-  // сумма читалась наравне с объяснением, почему просмотры подтянуты.
-  .how-toggle {
-    margin: 4px 0 0;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--muted);
-    font: inherit;
-    font-size: 12.5px;
-    text-decoration: underline dotted;
-    text-underline-offset: 3px;
-    cursor: pointer;
-
-    &:hover {
-      color: var(--text);
-    }
-  }
-
-  .how {
-    width: 100%;
-    margin: 10px 0 0;
-    padding-top: 14px;
-    border-top: 1px solid rgb(82 196 26 / 20%);
-    color: var(--muted);
-    font-size: 12.5px;
-    line-height: 1.55;
-
-    p {
-      margin: 0 0 8px;
-    }
-
-    p:last-child {
-      margin-bottom: 0;
-    }
+  .t {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 14px;
   }
 }
 
-// Дата выхода рядом с названием: подпись — название, дата уточняет.
-.t .when {
-  color: var(--muted-2);
-  font-family: var(--mono);
+.plat-sub {
   font-size: 11.5px;
 }
 
-// Пустая вкладка, названная словами.
-//
-// «Нет данных» и «сбой загрузки» на экране различаются только тем, что
-// первое подписано. Тон приглушённый: это не тревога и не ошибка, а
-// состояние проекта, у которого просто ещё ничего не вышло.
-.empty-note {
-  margin: 18px 0;
-  max-width: 64ch;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1.55;
+// Кадр ролика. Настоящего кадра у внешнего ролика может не быть вовсе —
+// он лежит на чужой площадке. Тогда на месте кадра стоит знак площадки:
+// пустой прямоугольник читается как «картинка не загрузилась», то есть
+// как поломка, а знак говорит то, что есть.
+.thumb {
+  width: 70px;
+  align-items: center;
+  justify-content: center;
+
+  .thumb-plat {
+    position: relative;
+    z-index: 1;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: center;
+    padding: 0 4px;
+  }
+
+  // Треугольника «играть» у подложки без кадра нет: плеера мы не
+  // обещаем — ролик открывается на площадке.
+  &::after {
+    content: none;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &.sm {
+    width: 38px;
+    border-radius: 5px;
+  }
+
+  &.xs {
+    width: 34px;
+    border-radius: 5px;
+  }
+}
+
+.vcard-body {
+  min-width: 0;
+}
+
+.vcard-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 4px;
+  min-width: 0;
+
+  // Длинное имя жмётся многоточием, а не выталкивает дату из карточки:
+  // в ленте на телефоне «Анастасия Креатор» и «15.09» налезали друг на
+  // друга.
+  .who-name {
+    font-weight: 500;
+    font-size: 12.5px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dot-date {
+    flex: none;
+  }
+}
+
+.dot-date {
+  font-size: 12px;
+}
+
+.vcard-num {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+td.cov {
+  width: 44px;
+}
+
+.vt {
+  font-weight: 500;
+}
+
+// Календарь
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.day-note {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.row.row-top {
+  align-items: flex-start;
+}
+
+.who-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.day-plats {
+  margin-top: 4px;
+}
+
+.small {
+  font-size: 12px;
+}
+
+// Деньги
+.due-h {
+  font-size: 19px;
+  margin: 8px 0 4px;
+}
+
+.due-note {
+  margin-top: 6px;
+}
+
+.due-r {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.period-note {
+  font-size: 12.5px;
+  margin: 10px 0 0;
+}
+
+.smeta-l {
+  font-size: 13px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.ink {
+  color: var(--ink);
+}
+
+.acc-login {
+  overflow-wrap: anywhere;
+}
+
+// Переписка — общий компонент приложения. Внутри кабинета он встаёт на
+// светлую землю: токены дизайн-системы переопределены псевдонимами в
+// .sotka, поэтому своих правок ему здесь не нужно.
+.chat-panel app-project-comments {
+  display: block;
+}
+
+.tail {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 12.5px;
+}
+
+// Проход в «Доступы и бот» с телефона: вкладки такой в нижней полосе
+// нет — там пять мест, и справочник в них не попал.
+.access-jump {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+
+  // Раскладку задаём только на телефоне. Стили компонента дописываются
+  // в <head> позже глобальных, а специфичность у них равная — значит
+  // безусловный display: flex пересилил бы `.sotka .only-phone
+  // { display: none }`, и телефонный переход в «Доступы» встал бы
+  // панелью в сводке на широком экране, где тот же раздел уже вкладкой.
+  @media (max-width: bp.$touch) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .chev {
+    color: var(--faint);
+    font-size: 22px;
+    line-height: 1;
+  }
 }

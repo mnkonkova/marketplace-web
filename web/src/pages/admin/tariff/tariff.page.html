@@ -1,12 +1,98 @@
 <app-page-head
-  title="Прайс креаторов"
-  subtitle="Сколько платит заказчик за креатора и сколько из этого получает сам креатор. Версия не правится — выпускается новая."
+  title="Тарифы"
+  subtitle="Строка — проект: условия у каждого свои. Прайс площадки остался шаблоном, с которого заполняют новый проект."
 >
-  <button head-action nz-button nzType="primary" nzSize="small" type="button" (click)="openForm()">
-    Выпустить версию прайса
-  </button>
+  <div head-action class="head-acts">
+    <!-- Переключатель вида той же деталью, что и окно сводки: это
+         взаимоисключающий выбор, а не две независимые ссылки. -->
+    <div class="segbar" aria-label="Что показывать">
+      <button
+        type="button"
+        [attr.aria-selected]="view() === 'projects'"
+        (click)="view.set('projects')"
+      >
+        Проекты
+      </button>
+      <button
+        type="button"
+        [attr.aria-selected]="view() === 'template'"
+        (click)="view.set('template')"
+      >
+        Шаблон площадки
+      </button>
+    </div>
+    @if (view() === 'template') {
+      <button nz-button nzType="primary" nzSize="small" type="button" (click)="openForm()">
+        Выпустить версию прайса
+      </button>
+    }
+  </div>
 </app-page-head>
 
+@if (view() === 'projects') {
+  <div class="crm-page tariff">
+    @if (rowsLoading()) {
+      <p class="empty">Загружаем…</p>
+    } @else if (!rows().length) {
+      <p class="empty">Проектов с креаторами пока нет.</p>
+    } @else {
+      <!-- Проект без тарифа считается ПО НУЛЯМ, и на экране денег это
+           выглядит как «ещё не начислили». Поэтому такие идут первыми и
+           сосчитаны отдельно. -->
+      @if (missing()) {
+        <p class="reg-warn">
+          Без тарифа {{ missing() }} {{ missing() === 1 ? 'проект' : 'проекта и больше' }} — они
+          считаются по нулям, и на экране денег это выглядит как «ещё не начислили».
+        </p>
+      }
+
+      <!-- Свой класс на обёртке: правила телефона снимают с неё рамку и
+           прокрутку, а на этой же странице есть вторая таблица —
+           история версий прайса, — которую прокручивать как раз надо. -->
+      <div class="twrap reg-wrap">
+        <table class="reg">
+          <thead>
+            <tr>
+              <th>Проект</th>
+              <th>Заказчик</th>
+              <th>Менеджер</th>
+              <th>Модель</th>
+              <th>Период заказчику</th>
+              <th>Обновлён</th>
+              <th class="r"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rows(); track r.project_id) {
+              <tr [class.nofee]="!r.has_terms">
+                <td data-label="Проект"><b>{{ r.title || 'Без названия' }}</b></td>
+                <td data-label="Заказчик">{{ r.client_name || '—' }}</td>
+                <td data-label="Менеджер">{{ r.manager_name || 'не назначен' }}</td>
+                <td data-label="Модель">{{ modelLabel(r) }}</td>
+                <td data-label="Период заказчику" class="num">{{ feeLabel(r) }}</td>
+                <td data-label="Обновлён">
+                  {{ r.updated_at ? (r.updated_at | date: 'dd.MM.yyyy') : '—' }}
+                </td>
+                <td class="r">
+                  <button type="button" class="btn sm" (click)="toggleProject(r.project_id)">
+                    {{ openProject() === r.project_id ? 'Свернуть' : 'Править' }}
+                  </button>
+                </td>
+              </tr>
+              @if (openProject() === r.project_id) {
+                <tr class="editor">
+                  <td colspan="7">
+                    <app-project-tariff [projectId]="r.project_id" (saved)="loadRows()" />
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+} @else {
 <div class="crm-page tariff">
   @if (loading()) {
   <p class="empty">Загружаем…</p>
@@ -352,4 +438,5 @@
     </button>
   </div>
 </div>
+}
 }

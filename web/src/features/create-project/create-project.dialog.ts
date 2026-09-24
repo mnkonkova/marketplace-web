@@ -10,7 +10,7 @@ import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NZ_MODAL_DATA, NzModalRef } from 'ng-zorro-antd/modal';
+import { panelData, panelRef } from '@shared/lib/panel';
 import {
   catchError,
   debounceTime,
@@ -207,7 +207,8 @@ interface DialogData {
   ],
 })
 export class CreateProjectDialogComponent {
-  private readonly modalRef = inject(NzModalRef);
+  // Окно на десктопе, нижняя шторка на телефоне — см. shared/lib/panel.
+  private readonly panel = panelRef();
 
   private readonly api = inject(ProjectApi);
 
@@ -219,7 +220,7 @@ export class CreateProjectDialogComponent {
 
   private readonly router = inject(Router);
 
-  public readonly data = inject<DialogData>(NZ_MODAL_DATA);
+  public readonly data = panelData<DialogData>();
 
   // Вид проекта решает всё остальное: у креаторов вместо воронки план
   // выкладок, у продакшна — шаги, у общего проекта один срок сдачи.
@@ -301,7 +302,7 @@ export class CreateProjectDialogComponent {
   }
 
   public cancel(): void {
-    this.modalRef.destroy();
+    this.panel.close();
   }
 
   public submit(): void {
@@ -353,7 +354,7 @@ export class CreateProjectDialogComponent {
       .subscribe((created) => {
         this.saving.set(false);
         this.msg.success('Проект создан');
-        this.modalRef.destroy(created);
+        this.panel.close(created);
         // Отдельной /admin/projects/:id страницы нет — manager-project-detail
         // пропускает admin через requireRole('manager','admin'). Используем
         // его для обоих режимов. Раньше admin-mode шёл на несуществующий

@@ -18,6 +18,7 @@ import {
   CreatorProject,
   CreatorProjectCard,
   DateRequest,
+  LinkSuggestion,
   Material,
   MaterialInput,
   NotificationPrefs,
@@ -225,6 +226,57 @@ export class PublicationApi {
     );
   }
 
+  /**
+   * Поставить одну выкладку на дату.
+   *
+   * Пачкой ставят план на месяц, а дальше он живёт: креатор заболел,
+   * вместо выбывшего взяли нового, один день сняли совсем. Отказы
+   * приходят с готовым текстом: 409 day_taken — на этот день у креатора
+   * уже есть выкладка, 409 period_locked — период подытожен, 409
+   * creator_not_in_project — его нет в составе.
+   *
+   * dueDate — ГГГГ-ММ-ДД.
+   */
+  public managerAddPublication(
+    projectId: string,
+    creatorUserId: string,
+    dueDate: string,
+    draftLeadDays = 0,
+  ): Observable<Publication> {
+    return this.http.post<Publication>(`${this.api}/manager/projects/${projectId}/publications`, {
+      creator_user_id: creatorUserId,
+      due_date: dueDate,
+      draft_lead_days: draftLeadDays,
+    });
+  }
+
+  /**
+   * Перенести дату выкладки.
+   *
+   * Только по плановой и только пока по ней ничего не сдано: 409
+   * publication_started. Открытая просьба креатора о переносе
+   * закрывается этим же действием — сервер сам отвечает на неё
+   * «одобрено» или «отклонено», смотря куда поставили дату.
+   */
+  public managerMoveDueDate(pubId: string, dueDate: string): Observable<Publication> {
+    return this.http.put<Publication>(`${this.api}/manager/publications/${pubId}/due_date`, {
+      due_date: dueDate,
+    });
+  }
+
+  /**
+   * Снять запланированную выкладку.
+   *
+   * Не то же, что «закрыть неполную»: там ролик вышел не везде, здесь
+   * выкладки не будет вовсе. Сданное не снимается (409
+   * publication_started).
+   */
+  public managerCancelPublication(pubId: string, reason: string): Observable<Publication> {
+    return this.http.post<Publication>(`${this.api}/manager/publications/${pubId}/cancel`, {
+      reason,
+    });
+  }
+
   public managerCancelBatch(projectId: string, batchId: string): Observable<{ cancelled: number }> {
     return this.http.post<{ cancelled: number }>(
       `${this.api}/manager/projects/${projectId}/publications/cancel_batch`,
@@ -269,6 +321,41 @@ export class PublicationApi {
     return this.http.delete<void>(
       `${this.api}/manager/projects/${projectId}/creators/${creatorId}`,
     );
+  }
+
+  /**
+   * Колокольчик «напомнить накануне» — у каждого креатора свой.
+   * Сильнее настройки проекта: напоминание включают тому, кто забывает.
+   */
+  public managerSetCreatorReminder(
+    projectId: string,
+    creatorId: string,
+    dayBefore: boolean,
+  ): Observable<{ day_before: boolean }> {
+    return this.http.put<{ day_before: boolean }>(
+      `${this.api}/manager/projects/${projectId}/creators/${creatorId}/reminders`,
+      { day_before: dayBefore },
+    );
+  }
+
+  // ---- «это ваш ролик?» ----
+  //
+  // Находки приходят по всем проектам сразу: карточка рождается от
+  // площадки, а не от проекта, и гонять человека по шести вкладкам за
+  // ней — значит не показать её вовсе.
+
+  public creatorSuggestions(): Observable<ListResp<LinkSuggestion>> {
+    return this.http.get<ListResp<LinkSuggestion>>(`${this.api}/me/creator/suggestions`);
+  }
+
+  public creatorLinkSuggestion(id: string, publicationId?: string): Observable<Publication> {
+    return this.http.post<Publication>(`${this.api}/me/creator/suggestions/${id}/link`, {
+      publication_id: publicationId ?? '',
+    });
+  }
+
+  public creatorDismissSuggestion(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.api}/me/creator/suggestions/${id}`);
   }
 
   // Снимок, подключённый к проекту. Правки в нём остаются внутри проекта:
@@ -344,6 +431,17 @@ export class PublicationApi {
    * Если ролик другой, сервер удаляет его прежние замеры: две разные
    * записи в одной линии графика — это не история, это выдумка.
    */
+  /**
+   * Креатор пересылает свою ссылку: ролик удалили с площадки, адрес
+   * протух. Снять площадку он не может — пустой адрес сервер отклонит.
+   */
+  public creatorEditLink(pubId: string, platform: Platform, url: string): Observable<Publication> {
+    return this.http.put<Publication>(
+      `${this.api}/me/creator/publications/${pubId}/links/${platform}`,
+      { url },
+    );
+  }
+
   public managerEditLink(pubId: string, platform: Platform, url: string): Observable<Publication> {
     return this.http.put<Publication>(
       `${this.api}/manager/publications/${pubId}/links/${platform}`,
@@ -435,6 +533,53 @@ export class PublicationApi {
   ): Observable<{ password: string }> {
     return this.http.get<{ password: string }>(
       `${this.api}/manager/projects/${projectId}/accounts/${accountId}/secret`,
+    );
+  }
+
+  // ---- «мои аккаунты» у креатора ----
+  //
+  // Аккаунты ЭТОГО проекта, а не личная страница из профиля: под проект
+  // креатор заводит отдельные и ведёт их сам.
+
+  public creatorAccounts(projectId: string): Observable<ProjectAccountsResponse> {
+    return this.http.get<ProjectAccountsResponse>(
+      `${this.api}/me/creator/projects/${projectId}/accounts`,
+    );
+  }
+
+  public creatorAddAccount(
+    projectId: string,
+    body: ProjectAccountInput,
+  ): Observable<ProjectAccount> {
+    return this.http.post<ProjectAccount>(
+      `${this.api}/me/creator/projects/${projectId}/accounts`,
+      body,
+    );
+  }
+
+  public creatorUpdateAccount(
+    projectId: string,
+    accountId: string,
+    body: ProjectAccountInput,
+  ): Observable<ProjectAccount> {
+    return this.http.put<ProjectAccount>(
+      `${this.api}/me/creator/projects/${projectId}/accounts/${accountId}`,
+      body,
+    );
+  }
+
+  public creatorRemoveAccount(projectId: string, accountId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.api}/me/creator/projects/${projectId}/accounts/${accountId}`,
+    );
+  }
+
+  public creatorAccountSecret(
+    projectId: string,
+    accountId: string,
+  ): Observable<{ password: string }> {
+    return this.http.get<{ password: string }>(
+      `${this.api}/me/creator/projects/${projectId}/accounts/${accountId}/secret`,
     );
   }
 

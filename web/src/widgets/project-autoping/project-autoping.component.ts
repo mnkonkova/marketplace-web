@@ -8,9 +8,9 @@ import { PublicationApi } from '@entities/publication/api/publication.api';
 import { ReminderPrefs } from '@entities/publication/model/publication.types';
 import { parseApiError } from '@shared/api/api-error';
 
-type PingField = 'due_today' | 'overdue' | 'incomplete' | 'manager_digest';
+type PingField = 'day_before' | 'due_today' | 'overdue' | 'incomplete' | 'manager_digest';
 
-// Автопинг проекта: четыре выключателя по четырём видам напоминаний.
+// Автопинг проекта: по выключателю на каждый вид напоминания.
 // Выключенное напоминание не откладывается — оно не отправляется вовсе;
 // кнопка «напомнить сейчас» живёт отдельно и автопингом не управляется.
 @Component({
@@ -35,6 +35,11 @@ export class ProjectAutopingComponent {
   // Тексты из макета: под каждым тумблером — то, что реально придёт
   // человеку в бот, а не название поля.
   public readonly rows: { field: PingField; title: string; note: string }[] = [
+    {
+      field: 'day_before',
+      title: 'Креатору в бот — накануне срока',
+      note: 'Всем на проекте сразу. Колокольчик в плане сильнее — им включают поимённо.',
+    },
     {
       field: 'due_today',
       title: 'Креатору в бот — утром в день выкладки',
@@ -64,8 +69,18 @@ export class ProjectAutopingComponent {
     });
   }
 
+  /**
+   * Умолчание у «накануне» обратное остальным.
+   *
+   * Нет строки настроек — пингуется всё, кроме напоминания накануне: оно
+   * появилось позже трёх остальных, и включать его молча всем значило бы
+   * завтра утром написать каждому креатору каждого проекта, никого не
+   * спросив. Поэтому «по умолчанию true» здесь не для всех полей.
+   */
   public value(field: PingField): boolean {
-    return this.prefs()?.[field] ?? true;
+    const p = this.prefs();
+    if (!p) return field !== 'day_before';
+    return p[field] ?? field !== 'day_before';
   }
 
   // PUT принимает частичное тело: шлём одно поле, остальные бэк не

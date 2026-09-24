@@ -24,6 +24,8 @@ import { PROJECT_KIND_LABEL } from '@shared/lib/project-status';
 import { CrmIconComponent } from '@shared/ui/crm-icon/crm-icon.component';
 import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
 import { StatusTagComponent, StatusTone } from '@shared/ui/status-tag/status-tag.component';
+import { SheetComponent } from '@shared/ui/sheet/sheet.component';
+import { isTouchDevice } from '@shared/lib/touch';
 
 import { PersonCardStore } from './person-card.store';
 
@@ -49,7 +51,14 @@ const ROLE_IN_PROJECT: Record<string, string> = {
 @Component({
   selector: 'app-person-card',
   standalone: true,
-  imports: [CommonModule, FormsModule, CrmIconComponent, ListStateComponent, StatusTagComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    CrmIconComponent,
+    ListStateComponent,
+    StatusTagComponent,
+    SheetComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './person-card.component.html',
   styleUrl: './person-card.component.scss',
@@ -84,6 +93,20 @@ export class PersonCardComponent {
   public readonly name = computed(() => {
     const c = this.card();
     return c ? c.display_name || c.email || c.user_id : '';
+  });
+
+  /**
+   * На телефоне карточка открывается нижним листом: панель у правого
+   * края занимает там весь экран, но открывается от мизинца, не
+   * прокручивается телом и не закрывается смахиванием.
+   */
+  public readonly touch = isTouchDevice();
+
+  /** Подпись под именем в шапке листа: роль и почта, как на десктопе. */
+  public readonly sheetNote = computed(() => {
+    const c = this.card();
+    if (!c) return '';
+    return c.email ? `${this.role()} · ${c.email}` : this.role();
   });
 
   public readonly initial = computed(() => (this.name().trim().charAt(0) || '·').toUpperCase());

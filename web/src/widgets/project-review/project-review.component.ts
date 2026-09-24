@@ -12,7 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { PublicationApi } from '@entities/publication/api/publication.api';
-import { PLATFORM_LABEL } from '@entities/publication/lib/publication-status';
+import { PLATFORM_LABEL, PLATFORM_SHORT } from '@entities/publication/lib/publication-status';
 import { videoCoverUrl } from '@entities/publication/lib/video-cover';
 import type {
   ChecklistItem,
@@ -22,6 +22,7 @@ import type {
   ReviewMark,
 } from '@entities/publication/model/publication.types';
 import { parseApiError } from '@shared/api/api-error';
+import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
 
 /**
  * Проверка ролика.
@@ -42,10 +43,10 @@ import { parseApiError } from '@shared/api/api-error';
 @Component({
   selector: 'app-project-review',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SotkaAvaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-review.component.html',
-  styleUrls: ['./project-review.component.scss', './project-review.component.touch.scss'],
+  styleUrl: './project-review.component.scss',
 })
 export class ProjectReviewComponent {
   private readonly api = inject(PublicationApi);
@@ -54,6 +55,8 @@ export class ProjectReviewComponent {
   public readonly projectId = input.required<string>();
 
   public readonly platformLabel = PLATFORM_LABEL;
+
+  public readonly platformShort = PLATFORM_SHORT;
 
   public readonly pubs = signal<Publication[]>([]);
 
@@ -107,15 +110,41 @@ export class ProjectReviewComponent {
   }
 
   /**
-   * Очередь на проверку: сданные ролики, по которым нет «принято».
+   * Очередь на проверку: сданные ролики, которых менеджер ещё не
+   * закрыл, — в порядке сдачи, первым самый давний.
    *
-   * Сначала возвращённые — по ним креатор уже переснял, и ждут они
-   * дольше всех, — потом по дате сдачи.
+   * ВОЗВРАЩЁННЫХ В ОЧЕРЕДИ НЕТ, и это не мелочь. Возвращённый ролик
+   * ждёт не менеджера, а креатора: пока тот не переснимет, делать с ним
+   * нечего. А ссылки у него есть и «принято» на нём не стоит, поэтому в
+   * прежнем условии он оставался в очереди — и, как самый давно сданный,
+   * вставал в ней первым. Менеджер нажимал «Вернуть» и видел тот же
+   * ролик снова, а второй, действительно ждущий проверки, был
+   * недостижим до тех пор, пока креатор не пересдаст первый.
+   *
+   * Когда креатор пересдаёт, сервер сам открывает проверку заново
+   * (reopenReview: status → in_review, round + 1, прежние вердикты
+   * стёрты) — и ролик возвращается в очередь этим же условием. Сколько
+   * их лежит возвращёнными, видно в тревогах на том же экране.
    */
   public readonly queue = computed<Publication[]>(() =>
     this.pubs()
-      .filter((p) => p.links.length > 0 && p.review?.status !== 'accepted')
+      .filter(
+        (p) =>
+          p.links.length > 0 &&
+          p.review?.status !== 'accepted' &&
+          p.review?.status !== 'returned',
+      )
       .sort((a, b) => this.submittedAt(a).localeCompare(this.submittedAt(b))),
+  );
+
+  /**
+   * Возвращённые — отдельным счётчиком под очередью.
+   *
+   * Из очереди они ушли, но исчезнуть с экрана не должны: это работа,
+   * которая стоит, и менеджер обязан видеть, сколько её и за кем.
+   */
+  public readonly returned = computed<Publication[]>(() =>
+    this.pubs().filter((p) => p.review?.status === 'returned'),
   );
 
   private submittedAt(pub: Publication): string {
@@ -153,6 +182,9 @@ export class ProjectReviewComponent {
     this.items().every((i) => this.verdicts()[i.id] === true),
   );
 
+  /** Имя автора ролика — им подписан портрет на месте кадра. */
+  public readonly creatorName = computed(() => this.current()?.creator_name ?? '');
+
   /** Обложка ролика — настоящий кадр, если он есть у площадки. */
   public readonly cover = computed(() => {
     const pub = this.current();
@@ -163,8 +195,35 @@ export class ProjectReviewComponent {
     (this.current()?.links ?? []).map((l) => l.platform),
   );
 
+  /**
+   * Порядок площадок для просмотра: YouTube → Reels → TikTok → что
+   * есть.
+   *
+   * Смотреть присланное удобнее там, где ролик открывается страницей с
+   * плеером, а не лентой, которая тут же уносит в следующий: YouTube
+   * лучше всех, Reels следом, TikTok третьим. Раньше плитка вела на
+   * первую ссылку в порядке базы — то есть на случайную площадку.
+   */
+  private readonly watchOrder: readonly Platform[] = ['youtube', 'instagram', 'tiktok', 'vk', 'likee'];
+
   /** Куда ведёт плитка: на сам ролик, а не на пустой плеер. */
-  public readonly watchUrl = computed(() => this.current()?.links[0]?.url ?? null);
+  public readonly watchUrl = computed(() => {
+    const links = this.current()?.links ?? [];
+    for (const p of this.watchOrder) {
+      const hit = links.find((l) => l.platform === p);
+      if (hit) return hit.url;
+    }
+    return links[0]?.url ?? null;
+  });
+
+  /** Где именно откроется — подписываем плитку, чтобы не было сюрприза. */
+  public readonly watchOn = computed(() => {
+    const links = this.current()?.links ?? [];
+    for (const p of this.watchOrder) {
+      if (links.some((l) => l.platform === p)) return this.platformLabel[p];
+    }
+    return '';
+  });
 
   public submittedOn(pub: Publication): string {
     const iso = this.submittedAt(pub);
@@ -172,6 +231,53 @@ export class ProjectReviewComponent {
     return Number.isNaN(d.getTime())
       ? ''
       : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+  }
+
+  // ---- правка ссылки ----
+  //
+  // Менеджер смотрит ссылки здесь, здесь же их и правит. Раньше правка
+  // жила на старом экране выкладок, которого у проектов «креаторы под
+  // ключ» нет вовсе: ролик удаляли с площадки, креатор присылал новый
+  // адрес — и перенести его было некуда.
+
+  /** Ссылки проверяемого ролика, в фиксированном порядке площадок. */
+  public readonly links = computed(() => {
+    const links = this.current()?.links ?? [];
+    return [...links].sort(
+      (a, b) => this.watchOrder.indexOf(a.platform) - this.watchOrder.indexOf(b.platform),
+    );
+  });
+
+  /** Какую площадку правим. null — никакую. */
+  public readonly editing = signal<Platform | null>(null);
+
+  public readonly editUrl = signal('');
+
+  public readonly linkBusy = signal(false);
+
+  public startEdit(link: { platform: Platform; url: string }): void {
+    // Подставляем текущий адрес: чаще правят его, а не вставляют с нуля.
+    this.editUrl.set(link.url);
+    this.editing.set(link.platform);
+  }
+
+  public saveLink(platform: Platform): void {
+    const pub = this.current();
+    const url = this.editUrl().trim();
+    if (!pub || !url || this.linkBusy()) return;
+    this.linkBusy.set(true);
+    this.api.managerEditLink(pub.id, platform, url).subscribe({
+      next: (updated) => {
+        this.linkBusy.set(false);
+        this.editing.set(null);
+        this.pubs.update((list) => list.map((p) => (p.id === updated.id ? updated : p)));
+        this.msg.success('Ссылка заменена.');
+      },
+      error: (e: unknown) => {
+        this.linkBusy.set(false);
+        this.msg.error(parseApiError(e, 'Не удалось заменить ссылку.').message);
+      },
+    });
   }
 
   public decide(decision: Exclude<ReviewDecision, ''>): void {

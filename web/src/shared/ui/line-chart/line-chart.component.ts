@@ -165,7 +165,26 @@ export class LineChartComponent {
   // карточке шириной в четверть экрана дали бы линию в девять пикселей.
   public readonly W = computed(() => (this.compact() ? 220 : 720));
 
-  public readonly PL = computed(() => (this.compact() ? 2 : 54));
+  /**
+   * Слева ровно столько, сколько занимает самая широкая подпись.
+   *
+   * Фиксированных 54 единиц хватало на «250 000» и не хватало на
+   * «5 000 000»: подпись рисуется от оси влево, а у svg здесь
+   * overflow: visible — лишнее не обрезалось, а вылезало из карточки и
+   * ложилось на её рамку. На широком экране это особенно заметно:
+   * viewBox растягивается вместе с кеглем подписи.
+   *
+   * 6.3 — ширина знака моноширинного кегля 10.5 в единицах viewBox,
+   * 10 — просвет между подписью и осью.
+   */
+  public readonly PL = computed(() => {
+    if (this.compact()) return 2;
+    const widest = this.yTicks().reduce(
+      (n, t) => Math.max(n, t.value.toLocaleString('ru-RU').length),
+      0,
+    );
+    return Math.max(54, Math.ceil(widest * 6.3) + 10);
+  });
 
   public readonly PR = computed(() => (this.compact() ? 2 : 10));
 
@@ -404,8 +423,19 @@ export class LineChartComponent {
         // <title> показывает как есть, и это единственная подсказка, на
         // которую можно рассчитывать без своего слоя поверх svg.
         text: parts.join('\n'),
+        // Колонку режем по полю графика с обеих сторон. У ряда из двух
+        // точек шаг равен всей ширине поля, и половина последней
+        // колонки уезжала за край системы координат — а у svg здесь
+        // overflow: visible, поэтому вместе с ней за край уезжала и
+        // страница: на телефоне появлялась горизонтальная прокрутка.
         hx: ordered.length > 1 ? Math.max(this.PL(), cx - w / 2) : this.PL(),
-        hw: w,
+        hw:
+          ordered.length > 1
+            ? Math.max(
+                0,
+                Math.min(this.PL() + this.plotW(), cx + w / 2) - Math.max(this.PL(), cx - w / 2),
+              )
+            : w,
       };
     });
   });

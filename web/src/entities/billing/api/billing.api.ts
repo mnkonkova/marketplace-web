@@ -8,6 +8,7 @@ import {
   ClientOverview,
   BillingTerms,
   BillingTermsInput,
+  TariffRow,
   CreatorEarnings,
   OverviewRange,
   Payment,
@@ -70,6 +71,35 @@ export class BillingApi {
   public managerPeriods(projectId: string): Observable<ListResp<ProjectPeriod>> {
     return this.http.get<ListResp<ProjectPeriod>>(
       `${this.api}/manager/projects/${projectId}/billing/periods`,
+    );
+  }
+
+  /**
+   * Тарифы всех проектов одной таблицей: строка — проект.
+   *
+   * Только проекты с креаторами: у разового заказа и у проекта по
+   * воронке тарифа в этом смысле нет, и пустые строки означали бы, что
+   * про них забыли. Проекты без тарифа идут первыми — их и надо чинить.
+   */
+  public adminTariffRegistry(): Observable<ListResp<TariffRow>> {
+    return this.http.get<ListResp<TariffRow>>(`${this.api}/admin/tariff/projects`);
+  }
+
+  /**
+   * Тариф проекта целиком.
+   *
+   * Лесенка приходит и уходит ЦЕЛИКОМ, а не по строке: ступень удаляют
+   * не реже, чем добавляют, и «обнови присланное» оставило бы удалённую
+   * ступень жить в расчёте.
+   *
+   * Сервер после сохранения сам пересчитывает текущий период.
+   * Подытоженные не трогает: они заморожены вместе со срезом просмотров,
+   * и по ним уже выставлен счёт.
+   */
+  public managerSaveTerms(projectId: string, input: BillingTermsInput): Observable<BillingTerms> {
+    return this.http.put<BillingTerms>(
+      `${this.api}/manager/projects/${projectId}/billing`,
+      input,
     );
   }
 

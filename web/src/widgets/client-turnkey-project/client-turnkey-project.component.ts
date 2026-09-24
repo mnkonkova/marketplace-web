@@ -10,20 +10,19 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import { NzIconModule } from 'ng-zorro-antd/icon';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
-import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { downloadBlob } from '@shared/lib/download-blob';
 import { specialistHandle } from '@shared/lib/specialist-link';
 import { parseApiError } from '@shared/api/api-error';
 import { plural } from '@shared/lib/format';
 import { BillingApi } from '@entities/billing/api/billing.api';
-import { formatMoney } from '@entities/billing/lib/money';
-import { LADDER_STEP } from '@entities/billing/lib/ladder';
+import { formatMoney, groupDigits } from '@entities/billing/lib/money';
+import { LADDER_STEP, shortViews } from '@entities/billing/lib/ladder';
 import {
   isOpenPeriod,
+  periodDay,
   periodRange,
   periodSettled,
   periodTitle,
@@ -52,15 +51,16 @@ import type {
 } from '@entities/publication/model/publication.types';
 import { clientTitle } from '@entities/project/lib/project-title';
 import type { ProjectClientView } from '@entities/project/model/project.types';
-import {
-  CalendarPerson,
-  ProjectCalendarComponent,
-} from '@widgets/project-calendar/project-calendar.component';
-import { ProjectAccountsComponent } from '@widgets/project-accounts/project-accounts.component';
+import type { CalendarPerson } from '@widgets/project-calendar/project-calendar.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
-import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.component';
-import { StepsComponent } from '@shared/ui/steps/steps.component';
-import { TariffLadderComponent } from '@widgets/tariff-ladder/tariff-ladder.component';
+import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
+import type { SeriesPoint } from '@shared/lib/chart-series';
+import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
+import { SotkaTopComponent, SotkaNavItem } from '@widgets/sotka-top/sotka-top.component';
+import { SotkaTabbarComponent, SotkaTab } from '@widgets/sotka-tabbar/sotka-tabbar.component';
+import type { OrderEstimate } from '@entities/order/model/order.types';
+import { OrderApi } from '@entities/order/api/order.api';
+import type { ProjectAccount } from '@entities/publication/model/publication.types';
 
 /**
  * Раздел проекта заказчика. Их ТРИ, а не шесть.
@@ -81,7 +81,10 @@ import { TariffLadderComponent } from '@widgets/tariff-ladder/tariff-ladder.comp
  * проект показывают. Разные задачи у одного и того же экрана — разное
  * членение.
  */
-type ClientTab = 'posts' | 'money' | 'talk';
+type ClientTab = 'summary' | 'videos' | 'calendar' | 'money' | 'access' | 'chat';
+
+/** Белый список разделов: из адреса приезжает что угодно. */
+const TABS: readonly ClientTab[] = ['summary', 'videos', 'calendar', 'money', 'access', 'chat'];
 
 /**
  * Проект «креаторы под ключ» глазами заказчика.
@@ -100,24 +103,22 @@ type ClientTab = 'posts' | 'money' | 'talk';
   imports: [
     CommonModule,
     FormsModule,
-    NzIconModule,
     RouterLink,
-    BackLinkComponent,
-    ProjectCalendarComponent,
-    ProjectAccountsComponent,
     ProjectCommentsComponent,
-    ProjectStatsComponent,
-    StepsComponent,
-    TariffLadderComponent,
+    LineChartComponent,
+    SotkaAvaComponent,
+    SotkaTopComponent,
+    SotkaTabbarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './client-turnkey-project.component.html',
-  styleUrls: [
-    './client-turnkey-project.component.scss',
-    './client-turnkey-project.component.touch.scss',
-  ],
+  styleUrl: './client-turnkey-project.component.scss',
 })
 export class ClientTurnkeyProjectComponent {
+  private readonly route = inject(ActivatedRoute);
+
+  private readonly router = inject(Router);
+
   private readonly pubApi = inject(PublicationApi);
 
   private readonly billingApi = inject(BillingApi);
@@ -142,10 +143,391 @@ export class ClientTurnkeyProjectComponent {
    * переписка стоят дальше, но главное про деньги — счёт за прошлый
    * период — вынесено над вкладками, и до него не надо никуда идти.
    */
-  public readonly tab = signal<ClientTab>('posts');
+  public readonly tab = signal<ClientTab>('summary');
+
+
+  /**
+   * Шесть разделов — ровно как в макете, и это не дробление ради
+   * дробления. За каждым стоит свой вопрос: «как дела» (сводка), «что
+   * сняли» (ролики), «когда выходило» (календарь), «сколько платить»
+   * (деньги), «где наши аккаунты» (доступы) и «спросить человека»
+   * (менеджер). Слитые в один длинный экран, они заставляли прокручивать
+   * мимо пяти чужих ответов до своего.
+   */
+  public readonly tabs = computed<readonly { key: ClientTab; title: string }[]>(() => [
+    { key: 'summary', title: 'Сводка' },
+    { key: 'videos', title: 'Ролики' },
+    { key: 'calendar', title: 'Календарь' },
+    { key: 'money', title: 'Деньги' },
+    { key: 'access', title: 'Доступы и бот' },
+    // Вкладка подписана именем: к менеджеру идут как к человеку, и
+    // «Ирина» видно раньше, чем прочитан заголовок внутри.
+    { key: 'chat', title: this.managerName() || 'Менеджер' },
+  ]);
 
   public setTab(t: ClientTab): void {
     this.tab.set(t);
+  }
+
+  /**
+   * Разделы на телефоне: пять мест нижней полосы.
+   *
+   * «Доступы и бот» в полосу не влезли — это справочник, а не работа, и
+   * на телефоне в него заходят раз в жизни. Проход к ним стоит строкой
+   * в сводке (.only-phone), а не шестой вкладкой шириной в палец.
+   */
+  public readonly phoneTabs = computed<SotkaTab[]>(() => [
+    { key: 'summary', title: 'Сводка', icon: 'chart' },
+    { key: 'videos', title: 'Ролики', icon: 'grid', badge: 0 },
+    { key: 'calendar', title: 'Календарь', icon: 'cal' },
+    { key: 'money', title: 'Деньги', icon: 'wallet', badge: this.prevDue() ? 1 : 0 },
+    // Только имя: полное «Мария Менеджер» в клетку полосы не влезает, а
+    // обрезанное многоточием читается хуже, чем просто имя.
+    { key: 'chat', title: this.managerName().split(' ')[0] || 'Менеджер', icon: 'chat' },
+  ]);
+
+  // ---- шапка кабинета ----
+
+  private readonly orderApi = inject(OrderApi);
+
+  public readonly digits = groupDigits;
+
+  public readonly short = shortViews;
+
+  public decimal(v: number): string {
+    return v.toFixed(1).replace('.', ',');
+  }
+
+  /** Вторая строка шапки: из чего состоит проект. */
+  public readonly subtitleLine = computed(() => {
+    const parts: string[] = [];
+    const crew = this.billing()?.accruals?.length ?? 0;
+    if (crew) parts.push(`${crew} ${plural(crew, 'креатор', 'креатора', 'креаторов')}`);
+    parts.push(`${this.platformCount} площадок`);
+    return parts.join(' · ');
+  });
+
+  public readonly nav = computed<SotkaNavItem[]>(() => [
+    { title: 'Все проекты', link: '/me/projects' },
+    { title: this.title(), link: `/me/projects/${this.project().id}`, current: true },
+  ]);
+
+  /** «Период 2» — коротко, для шапки: даты стоят рядом, в деньгах. */
+  public readonly periodLabelShort = computed(() => {
+    const seq = this.billing()?.period?.seq;
+    return seq ? `Период ${seq}` : '';
+  });
+
+  public readonly periodDayLine = computed(() => {
+    const p = this.billing()?.period;
+    return p ? periodRange(p) : '';
+  });
+
+  /**
+   * Сколько периода пройдено. Границы считает сервер — здесь только
+   * доля между ними: своего правила периода у браузера нет.
+   */
+  public readonly periodPercent = computed<number | null>(() => {
+    const p = this.billing()?.period;
+    if (!p) return null;
+    const a = Date.parse(p.starts_on);
+    const b = Date.parse(p.ends_on);
+    if (!a || !b || b <= a) return null;
+    const now = Date.now();
+    if (now <= a) return 0;
+    if (now >= b) return 100;
+    return Math.round(((now - a) / (b - a)) * 100);
+  });
+
+  /**
+   * Кто ведёт проект.
+   *
+   * Пусто, пока менеджер не назначен: заголовок тогда остаётся общим
+   * («Ваш менеджер»), а не подписывается пустым именем.
+   */
+  public readonly managerName = computed(() => this.project().manager_display_name?.trim() ?? '');
+
+  // ---- сводка ----
+
+  /** Цена ПРОСМОТРА: сервер считает тысячу, делим только для показа. */
+  public readonly cpv = computed(() => {
+    const cpm = this.billing()?.totals?.cost_per_1000;
+    if (!cpm) return '';
+    return `${(cpm / 100 / 1000).toFixed(2).replace('.', ',')} ₽`;
+  });
+
+  /**
+   * Накопленный ряд: сервер отдаёт прирост за день, а на экране стоит
+   * «всего на дату» — их складывает график, а не мы: ряд один и тот же,
+   * просто показан итогом.
+   */
+  public readonly cumulative = computed<SeriesPoint[]>(() => {
+    let sum = 0;
+    return (this.report()?.by_day ?? []).map((d) => {
+      sum += d.views;
+      return { date: d.date, value: sum };
+    });
+  });
+
+  /** Итоги площадок. Поденного разбора по площадкам сервер не отдаёт. */
+  public readonly platformTotals = computed(() =>
+    [...(this.report()?.by_platform ?? [])].sort((a, b) => b.views - a.views),
+  );
+
+  /** Доли отклика в полосе. Считает не сумму, а ширину — это оформление. */
+  public readonly engage = computed(() => {
+    const r = this.report();
+    const likes = r?.likes ?? 0;
+    const comments = r?.comments ?? 0;
+    const shares = r?.shares ?? 0;
+    const all = likes + comments + shares;
+    if (!all) return { likesPct: 0, commentsPct: 0, sharesPct: 0 };
+    return {
+      likesPct: (likes / all) * 100,
+      commentsPct: (comments / all) * 100,
+      sharesPct: (shares / all) * 100,
+    };
+  });
+
+  public readonly topVideos = computed(() =>
+    [...this.videos()].sort((a, b) => b.views - a.views).slice(0, 3),
+  );
+
+  /** Подложка кадра: цвет площадки, которая тянет. Кадра может не быть. */
+  public thumbBg(v: ClientVideo): string {
+    const p = this.coverPlatform(v);
+    return p ? this.tint(p) : 'var(--surface-2)';
+  }
+
+  /** Все пять площадок в фиксированном порядке: пустая — тоже ответ. */
+  public allPlatforms(v: ClientVideo): { platform: Platform; url: string; views: number }[] {
+    const rows = this.platformRows(v);
+    const own = new Set(this.platformsOf(v));
+    return ALL_PLATFORMS.map((platform) => {
+      const row = rows.find((r) => r.platform === platform);
+      return {
+        platform,
+        url: own.has(platform) ? (row?.url ?? '') : '',
+        views: row?.views ?? 0,
+      };
+    });
+  }
+
+  /**
+   * Вовлечённость ролика.
+   *
+   * Сервер её КЛИЕНТУ НЕ ОТДАЁТ: в ленте роликов есть просмотры, лайки и
+   * комментарии, а er_percent приходит только менеджеру. Складывать её
+   * здесь нельзя — без репостов она выйдет заниженной и разойдётся с той
+   * же величиной в отчёте. Поэтому прочерк и пометка: число есть, но не
+   * в этой ручке (см. список недостающих ручек в отчёте о работе).
+   */
+  public videoEr(v: ClientVideo): string {
+    const rows = this.platformRows(v);
+    const single = rows.length === 1 ? rows[0].er_percent : undefined;
+    return single === undefined ? '—' : `${this.decimal(single)}%`;
+  }
+
+  // ---- календарь ----
+
+  public readonly weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+  public readonly pickedDay = signal('');
+
+  public readonly monthTitle = computed(() => {
+    const [y, m] = this.calendarMonth().split('-').map(Number);
+    const names = [
+      'январь',
+      'февраль',
+      'март',
+      'апрель',
+      'май',
+      'июнь',
+      'июль',
+      'август',
+      'сентябрь',
+      'октябрь',
+      'ноябрь',
+      'декабрь',
+    ];
+    return `${names[m - 1] ?? ''} ${y}`;
+  });
+
+  /** Сколько пустых клеток до первого числа: неделя начинается с Пн. */
+  public readonly leadingBlanks = computed(() => {
+    const [y, m] = this.calendarMonth().split('-').map(Number);
+    const first = new Date(y, m - 1, 1).getDay();
+    return Array.from({ length: (first + 6) % 7 }, (_, i) => i);
+  });
+
+  public readonly monthGrid = computed(() => {
+    const month = this.calendarMonth();
+    const [y, m] = month.split('-').map(Number);
+    const total = new Date(y, m, 0).getDate();
+    const byDate = new Map(this.calendarDays().map((d) => [d.date.slice(0, 10), d]));
+    const people = this.calendarPeople();
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+      today.getDate(),
+    ).padStart(2, '0')}`;
+
+    return Array.from({ length: total }, (_, i) => {
+      const num = i + 1;
+      const date = `${month}-${String(num).padStart(2, '0')}`;
+      const day = byDate.get(date);
+      const items = day?.items ?? [];
+      const names = items.map((it) => ({
+        name: creatorLabel(it.creator_name),
+        avatar: people[it.creator_user_id]?.avatar_url,
+      }));
+      return {
+        date,
+        num,
+        published: day?.published ?? 0,
+        planned: day?.planned ?? 0,
+        people: names,
+        future: date > todayKey,
+        today: date === todayKey,
+        hint: names.length
+          ? `${date > todayKey ? 'В плане' : 'Снимали'}: ${names.map((n) => n.name).join(', ')}`
+          : 'Выкладок нет',
+      };
+    });
+  });
+
+  public pickDay(date: string): void {
+    this.pickedDay.set(this.pickedDay() === date ? '' : date);
+  }
+
+  public readonly pickedDayTitle = computed(() => {
+    const d = this.pickedDay();
+    if (!d) return '';
+    return periodDay(d, true);
+  });
+
+  /** Что вышло в выбранный день: ролики ленты, а не строки календаря. */
+  public readonly dayVideos = computed(() => {
+    const d = this.pickedDay();
+    if (!d) return [];
+    return this.videos().filter((v) => (v.published_at ?? '').slice(0, 10) === d);
+  });
+
+  public readonly dayPlanned = computed(() => {
+    const d = this.pickedDay();
+    if (!d) return [];
+    const day = this.calendarDays().find((x) => x.date.slice(0, 10) === d);
+    return (day?.items ?? []).filter((i) => i.status === 'planned');
+  });
+
+  public shiftMonth(delta: number): void {
+    const [y, m] = this.calendarMonth().split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    this.onMonthChange(next);
+    this.pickedDay.set('');
+  }
+
+  // ---- доступы ----
+
+  public readonly accounts = signal<ProjectAccount[]>([]);
+
+  public readonly revealed = signal<Record<string, string>>({});
+
+  public accountShort(platform: string): string {
+    const map: Record<string, string> = {
+      tiktok: 'TT',
+      instagram: 'IG',
+      youtube: 'YT',
+      vk: 'VK',
+      likee: 'LK',
+      other: '···',
+    };
+    return map[platform] ?? '···';
+  }
+
+  /**
+   * Пароль приходит отдельной ручкой, и по ней видно, кто его брал.
+   * Поэтому «показать» — это запрос, а не разворачивание уже полученной
+   * строки: пароля в списке проекта нет вовсе.
+   */
+  public toggleSecret(accountId: string): void {
+    const cur = this.revealed();
+    if (cur[accountId]) {
+      const next = { ...cur };
+      delete next[accountId];
+      this.revealed.set(next);
+      return;
+    }
+    this.pubApi.clientAccountSecret(this.project().id, accountId).subscribe({
+      next: (r) => this.revealed.set({ ...this.revealed(), [accountId]: r.password }),
+      error: (e) => this.msg.error(parseApiError(e, 'Не удалось показать пароль.').message),
+    });
+  }
+
+  // ---- смета на следующий месяц ----
+
+  public readonly smetaCount = signal(0);
+
+  public readonly smetaEstimate = signal<OrderEstimate | null>(null);
+
+  /**
+   * Сколько роликов в месяц по договору.
+   *
+   * Без объёма сервер считает одни оклады — бонус за просмотры считать
+   * не из чего. Число берём из прайса, а не из головы: оно же
+   * подставится при оформлении заказа. Ноль до ответа — тогда смета
+   * приходит окладами и так и подписана.
+   */
+  private readonly monthVideos = signal(0);
+
+  public readonly smetaBusy = signal(false);
+
+  public onSmeta(e: Event): void {
+    const n = Number((e.target as HTMLInputElement).value);
+    this.smetaCount.set(n);
+    this.recalcSmeta(n);
+  }
+
+  private smetaTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Смету считает сервер, и только он. Ползунок двигают быстро, поэтому
+   * запрос уходит после паузы: иначе на каждое деление летит свой, и
+   * ответы приходят не в том порядке, в котором их спрашивали.
+   */
+  private recalcSmeta(n: number): void {
+    if (this.smetaTimer) clearTimeout(this.smetaTimer);
+    if (n < 1) {
+      this.smetaEstimate.set(null);
+      return;
+    }
+    this.smetaBusy.set(true);
+    this.smetaTimer = setTimeout(() => {
+      this.orderApi
+        .draftEstimate({ needed: n, videos_count: this.monthVideos(), creator_ids: [] })
+        .subscribe({
+          next: (e) => {
+            this.smetaEstimate.set(e);
+            this.smetaBusy.set(false);
+          },
+          error: () => {
+            this.smetaEstimate.set(null);
+            this.smetaBusy.set(false);
+          },
+        });
+    }, 300);
+  }
+
+  /**
+   * Условия площадки — ради объёма роликов в месяц. Тянем один раз и
+   * молча: без них смета придёт окладами, и это её честная подпись, а
+   * не сбой.
+   */
+  private loadOrderTerms(): void {
+    this.orderApi.terms().subscribe({
+      next: (r) => this.monthVideos.set(r.terms?.videos_next_months ?? 0),
+      error: () => this.monthVideos.set(0),
+    });
   }
 
   /**
@@ -284,6 +666,24 @@ export class ClientTurnkeyProjectComponent {
   private loadedFor = '';
 
   public constructor() {
+
+    // Раздел, с которого открыли проект, — одноразово через адрес.
+    //
+    // Со списка проектов на телефоне ведут три кнопки: «Сводка»,
+    // «Деньги» и «Открыть проект». Чтобы первые две попадали куда
+    // обещают, раздел приезжает в `?tab=` — страница его читает и
+    // СТИРАЕТ из адреса: дальше ссылка снова про проект целиком, как
+    // и задумано выше. from_page при этом остаётся: merge.
+    const wanted = this.route.snapshot.queryParamMap.get('tab');
+    if (wanted && TABS.includes(wanted as ClientTab)) {
+      this.tab.set(wanted as ClientTab);
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
     // Страница проекта опрашивает воронку раз в 30 секунд и каждый раз
     // кладёт в input НОВЫЙ объект. Без этой проверки эффект срабатывал на
     // каждый опрос: пять запросов в полминуты — и, что хуже, свежий ответ
@@ -294,6 +694,7 @@ export class ClientTurnkeyProjectComponent {
       if (!id || id === this.loadedFor) return;
       this.loadedFor = id;
       this.load(id);
+      this.loadOrderTerms();
     });
   }
 
@@ -747,6 +1148,12 @@ export class ClientTurnkeyProjectComponent {
     this.pubApi.clientPrefs(id).subscribe({
       next: (p) => this.prefs.set(p),
       error: () => this.prefs.set(null),
+    });
+    // Доступы к аккаунтам бренда. Пароля здесь нет — он приходит
+    // отдельной ручкой, по которой видно, кто его брал.
+    this.pubApi.clientAccounts(id).subscribe({
+      next: (r) => this.accounts.set(r.items),
+      error: () => this.accounts.set([]),
     });
     // untracked: месяц читаем как значение, а не как зависимость. Иначе
     // листание календаря перезапускало бы весь эффект — пять запросов
