@@ -41,7 +41,10 @@ import {
 import { parseApiError } from '@shared/api/api-error';
 import { plural } from '@shared/lib/format';
 import type { SeriesPoint } from '@shared/lib/chart-series';
-import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
+import {
+  ChartSeries,
+  LineChartComponent,
+} from '@shared/ui/line-chart/line-chart.component';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
 import { SotkaTopComponent } from '@widgets/sotka-top/sotka-top.component';
 import { SupportFooterComponent } from '@widgets/support-footer/support-footer.component';
@@ -81,6 +84,15 @@ interface DueRow {
 }
 
 /** День ближайших выкладок по всем проектам. */
+
+/** Цвета линий по проектам — палитра рядов кабинета. */
+const SERIES_COLORS = [
+  'var(--s-tt)',
+  'var(--series2)',
+  'var(--s-ig)',
+  'var(--s-yt)',
+  'var(--s-vk)',
+];
 
 interface UpcomingDay {
   date: string;
@@ -328,6 +340,28 @@ export class ProjectsListPage {
   });
 
   /** Где дешевле просмотр: те же проекты, отсортированные по цене. */
+  /**
+   * Линии по проектам для диаграммы на телефоне.
+   *
+   * Один ряд на проект, и только на те, у кого есть хотя бы две точки:
+   * линия из одной точки — это точка, а не рост. Цвета берём из
+   * палитры рядов кабинета, а не из акцента: два проекта одним цветом
+   * не различить, а палитра на то и заведена.
+   */
+  public readonly projectSeries = computed<ChartSeries[]>(() =>
+    this.rows()
+      .filter((r) => r.series.length > 1)
+      .slice(0, SERIES_COLORS.length)
+      .map((r, i) => ({
+        key: r.id,
+        label: r.title,
+        color: SERIES_COLORS[i],
+        points: r.series,
+      })),
+  );
+
+  public readonly hasChart = computed(() => this.projectSeries().length > 0);
+
   public readonly cpvBars = computed(() => {
     const items = (this.overview()?.projects ?? []).filter((p) => p.cost_per_1000);
     const max = Math.max(...items.map((p) => p.cost_per_1000 ?? 0), 1);

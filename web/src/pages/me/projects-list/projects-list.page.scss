@@ -232,9 +232,13 @@ a.prj {
 }
 
 // Числа одной строкой и шеврон — только на телефоне.
+//
+// Телесным шрифтом с табличными цифрами, а не моноширинным: в макете
+// эта строка набрана как обычный текст, и моноширинный при том же
+// кегле выглядит мельче и бледнее.
 .prj .nums {
-  font-family: var(--mono);
   font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
   margin-top: 2px;
 }
 
@@ -286,5 +290,39 @@ a.prj {
 
   .new-prj {
     min-height: touch.$tap;
+  }
+}
+
+.chartcard .ch-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+
+  b {
+    font-size: 14.5px;
+  }
+}
+
+// Первая ВИДИМАЯ строка проекта без верхней линии. Шапка колонок на
+// телефоне спрятана, но остаётся первым ребёнком — и :first-child
+// доставался ей, а не строке.
+.projects .prj:not(.head) {
+  &:first-of-type,
+  .prj.head + & {
+    border-top: 0;
+  }
+}
+
+@media (max-width: bp.$touch) {
+  .projects .prj.head + .prj {
+    border-top: 0;
+  }
+
+  // Строка под палец: в макете у неё 60 px высоты.
+  .projects .prj {
+    min-height: 60px;
+    padding: 10px 4px;
   }
 }
