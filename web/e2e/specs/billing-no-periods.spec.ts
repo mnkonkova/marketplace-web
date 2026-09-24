@@ -1,7 +1,9 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, request as pwRequest, type Page } from '@playwright/test';
 import { AUTH_KEY } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
-import { openClientTab } from '../fixtures/ui';
+import { openClientTab, openManagerTab } from '../fixtures/ui';
+
+const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 
 /**
  * Проект, в котором не вышло ни одного ролика.
@@ -50,26 +52,37 @@ test('у проекта без публикаций период не начал
 }) => {
   await signIn(context, 'manager');
 
-  // Обе ручки ловим за один заход: порознь каждая ведёт себя правильно,
-  // а вместе дают экран с объяснением и ошибкой сразу.
+  // Денежную ручку ловим на странице: отказ «периодов нет» экран обязан
+  // пережить объяснением, а не пустым местом.
   const answers: Record<string, number> = {};
   page.on('response', (res) => {
     const path = new URL(res.url()).pathname;
     if (/^\/api\/v1\/manager\/projects\/[^/]+\/billing$/.test(path))
       answers['billing'] = res.status();
-    if (path.endsWith('/billing/periods')) answers['periods'] = res.status();
   });
 
   await page.goto(`/manager/projects/${box.projectId}`);
-  // Именно вкладка: над ней в предупреждении о предоплате стоит
-  // «Открыть начисления», и поиск по кнопке находил обе.
-  await page.getByRole('tab', { name: 'Начисления' }).click();
+  // Разделов на десктопе больше нет: карточка проекта — одна страница,
+  // и начисления на ней уже нарисованы (см. fixtures/ui.ts).
+  await openManagerTab(page, 'Начисления');
 
   const empty = page.getByText(/Период начнётся с первого вышедшего ролика/);
   await expect(empty, 'вместо чисел — объяснение, почему их нет').toBeVisible({ timeout: 15_000 });
 
   expect(answers['billing'], 'денежная ручка отвечает отказом «периодов нет»').toBe(404);
-  expect(answers['periods'], 'список периодов отвечает пустым списком, а не отказом').toBe(200);
+
+  // Список периодов спрашиваем сами: выпадашку периодов с карточки
+  // убрали, и страница за ним больше не ходит. Правило при этом никуда
+  // не делось — пустой список, а не отказ: «периодов ещё нет» это
+  // состояние проекта, и ломать им чужие экраны нельзя.
+  const api = await pwRequest.newContext({
+    baseURL: API,
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.manager.access_token}` },
+  });
+  const periods = await api.get(`/api/v1/manager/projects/${box.projectId}/billing/periods`);
+  expect(periods.status(), 'список периодов отвечает пустым списком, а не отказом').toBe(200);
+  expect(((await periods.json()).items ?? []).length, 'периодов и правда нет').toBe(0);
+  await api.dispose();
 
   // Отказ по делу — не повод пугать человека: «нечего считать» это
   // состояние проекта, а не поломка.

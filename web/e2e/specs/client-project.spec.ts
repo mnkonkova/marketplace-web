@@ -35,7 +35,7 @@ test.afterAll(() => dropSandbox(box));
 test('клиент видит проект и условия в рублях, а не в копейках', async ({ page }) => {
   await page.goto(`/me/projects/${box.projectId}`);
 
-  await expect(page.getByText(box.title)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(box.title).first()).toBeVisible({ timeout: 15_000 });
   // Условия лежат во вкладке «Деньги»: карточка открывается тем, ради
   // чего заказчик заходит чаще всего, — роликами.
   await openClientTab(page, 'Деньги');
@@ -63,7 +63,7 @@ test('данные проекта запрашиваются по одному �
   });
 
   await page.goto(`/me/projects/${box.projectId}`);
-  await expect(page.getByText(box.title)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(box.title).first()).toBeVisible({ timeout: 15_000 });
   await page.waitForTimeout(1500);
 
   expect(calls.get('videos'), 'лента роликов').toBe(1);

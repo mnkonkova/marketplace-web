@@ -45,6 +45,7 @@
         @for (t of tabs(); track t.key) {
           <button
             type="button"
+            [attr.data-tab]="t.key"
             [attr.aria-current]="tab() === t.key ? 'page' : null"
             (click)="setTab(t.key)"
           >

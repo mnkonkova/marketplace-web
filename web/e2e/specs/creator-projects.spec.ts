@@ -34,7 +34,7 @@ test('креатор видит свой проект и открывает ка
   await page.goto('/me/creator/projects');
   await expect(page.getByRole('heading', { name: 'Мои проекты' })).toBeVisible();
 
-  const card = page.getByText(box.title);
+  const card = page.getByText(box.title).first();
   await expect(card, 'посеянный проект должен быть в списке').toBeVisible();
 
   await page.goto(`/me/creator/projects/${box.projectId}`);

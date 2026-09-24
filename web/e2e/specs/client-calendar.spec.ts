@@ -67,17 +67,20 @@ test('в календаре заказчика отмечены дни выкл�
 
   await page.goto(`/me/projects/${box.projectId}`);
   await openClientTab(page, 'Календарь');
-  const cal = page.locator('app-project-calendar');
+  // Календарь переехал в карточку проекта: сетка живёт прямо во вкладке,
+  // отдельного виджета у заказчика больше нет.
+  const cal = page.locator('.cal');
   await expect(cal).toBeVisible({ timeout: 15_000 });
 
   // Отмеченных дней ровно столько, сколько отдала ручка. «Меньше» —
   // это потерянные даты, «больше» — придуманные, и оба случая на экране
   // выглядят одинаково правдоподобно.
-  await expect(cal.locator('.cell.has')).toHaveCount(days.length);
+  const marked = cal.locator('button.day').filter({ has: page.locator('.dv, .who') });
+  await expect(marked).toHaveCount(days.length);
 
   for (const day of days) {
     const num = String(Number(day.date.slice(8, 10)));
-    const cell = cal.locator('.cell.has').filter({ hasText: new RegExp(`^${num}$`) });
+    const cell = marked.filter({ has: page.locator('.n', { hasText: new RegExp(`^${num}$`) }) });
     await expect(cell, `день ${day.date}`).toHaveCount(1);
   }
 });
@@ -89,19 +92,21 @@ test('день в календаре раскрывается: что вышло
 
   await page.goto(`/me/projects/${box.projectId}`);
   await openClientTab(page, 'Календарь');
-  const cal = page.locator('app-project-calendar');
+  const cal = page.locator('.cal');
   await expect(cal).toBeVisible({ timeout: 15_000 });
 
   const num = String(Number(withVideo!.date.slice(8, 10)));
   await cal
-    .locator('.cell.has')
-    .filter({ hasText: new RegExp(`^${num}$`) })
+    .locator('button.day')
+    .filter({ has: page.locator('.n', { hasText: new RegExp(`^${num}$`) }) })
+    .first()
     .click();
 
-  // Точка без подписи говорит только «что-то есть». Под сеткой — что
-  // именно: сколько вышло и чей это ролик.
-  const picked = cal.locator('.picked');
-  await expect(picked).toBeVisible();
-  await expect(picked).toContainText(`вышло ${withVideo!.published}`);
-  await expect(cal.locator('.picked-items')).toContainText(box.creator.name);
+  // Точка без подписи говорит только «что-то есть». Рядом с сеткой —
+  // что именно: что вышло в этот день и кто снимал. Панель «День»
+  // стоит соседней колонкой, а не под календарём.
+  const day = page.locator('.panel').filter({ hasText: 'кто снимал и что вышло' });
+  await expect(day).toBeVisible();
+  await expect(day.locator('.day-head')).toContainText(new RegExp(`\\b${num}\\b`));
+  await expect(day.locator('.list')).toContainText(box.creator.name);
 });

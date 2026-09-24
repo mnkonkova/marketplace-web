@@ -371,40 +371,51 @@
             <!-- ОЧЕРЕДЬ ШАГОВ. Кнопка только у следующего: между
                  «посчитали» и «отправили деньги» проходит время, и
                  путать их нельзя. У «Подытожить» кнопки нет вовсе —
-                 период запирается сам. -->
-            <div class="pipeline">
-              @for (s of paySteps(); track s.key; let i = $index) {
-                <div
-                  class="pstep"
-                  [class.done]="s.state === 'done'"
-                  [class.cur]="s.state === 'cur'"
-                >
-                  <span class="k">
-                    @if (s.state === 'done') {
-                      ✓ сделано
-                    } @else if (s.state === 'cur') {
-                      следующий шаг
-                    } @else {
-                      после шага {{ i }}
+                 период запирается сам.
+                 
+                 Периода нет — нет и очереди: «Пересчитать» обещало бы
+                 действие, которого не существует, а сервер ответил бы
+                 отказом «периодов нет». Вместо неё объяснение ниже. -->
+            @if (period()) {
+              <div class="pipeline">
+                @for (s of paySteps(); track s.key; let i = $index) {
+                  <div
+                    class="pstep"
+                    [class.done]="s.state === 'done'"
+                    [class.cur]="s.state === 'cur'"
+                  >
+                    <span class="k">
+                      @if (s.state === 'done') {
+                        ✓ сделано
+                      } @else if (s.state === 'cur') {
+                        следующий шаг
+                      } @else {
+                        после шага {{ i }}
+                      }
+                    </span>
+                    <b>{{ s.title }}</b>
+                    <span class="muted step-note">{{ s.note }}</span>
+                    @if (s.action) {
+                      <button
+                        type="button"
+                        class="btn sm dark"
+                        [disabled]="moneyBusy()"
+                        (click)="onPayStep(s.key)"
+                      >
+                        {{ s.action }}
+                      </button>
                     }
-                  </span>
-                  <b>{{ s.title }}</b>
-                  <span class="muted step-note">{{ s.note }}</span>
-                  @if (s.action) {
-                    <button
-                      type="button"
-                      class="btn sm dark"
-                      [disabled]="moneyBusy()"
-                      (click)="onPayStep(s.key)"
-                    >
-                      {{ s.action }}
-                    </button>
-                  }
-                </div>
-              }
-            </div>
+                  </div>
+                }
+              </div>
+            }
 
-            @if (!payRows().length) {
+            @if (!period()) {
+              <p class="muted">
+                Период начнётся с первого вышедшего ролика: пока ничего не опубликовано, отсчитывать
+                не от чего и считать нечего.
+              </p>
+            } @else if (!payRows().length) {
               <p class="muted">Начислений ещё нет: пока не вышел первый ролик, считать нечего.</p>
             } @else {
               <div class="tbl-wrap">
