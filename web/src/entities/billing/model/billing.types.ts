@@ -7,6 +7,17 @@
 // Условия проекта — снимок, а не ссылка на действующий прайс: правка
 // прайса не переписывает историю уже идущего проекта.
 export interface BillingTerms {
+  /**
+   * Фикс ЗА РОЛИК: клиент платит столько за каждую вышедшую выкладку,
+   * креатор столько получает. Этим фикс отличается от ступеней:
+   * ступени про рост просмотров, фикс — про объём работы.
+   *
+   * Занимает место нижней ступени лесенки — там и был фикс за период.
+   * Пусто — фикса за ролик нет, цена берётся из лесенки, как раньше.
+   */
+  fee_per_video?: number | null;
+  creator_fee_per_video?: number | null;
+
   project_id: string;
   // Оклад креатора за месяц.
   salary_per_month: number;
@@ -104,6 +115,13 @@ export interface TariffRow {
 }
 
 export interface BillingTermsInput {
+  /**
+   * Фикс за ролик, в копейках: клиенту и креатору. null — фикса за
+   * ролик нет, цена берётся из лесенки, как раньше.
+   */
+  fee_per_video?: number | null;
+  creator_fee_per_video?: number | null;
+
   salary_per_month: number;
   rate_per_1000_views: number;
   rate_per_1000_views_over: number;

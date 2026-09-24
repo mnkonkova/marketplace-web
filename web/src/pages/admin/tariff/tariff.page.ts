@@ -31,6 +31,14 @@ import { ProjectTariffComponent } from '@widgets/project-tariff/project-tariff.c
  * правкой одной ставки, а не набором тринадцати полей с нуля.
  */
 interface Draft {
+  // Фикс ЗА РОЛИК, а не за период. Клиент платит столько за каждую
+  // вышедшую выкладку, креатор столько получает. Этим фикс отличается
+  // от ступеней: ступени про рост просмотров, фикс — про объём работы,
+  // и месяц с пятью выкладками не должен стоить как месяц с тридцатью.
+  //
+  // Занимает место нижней ступени лесенки — там и был фикс за период.
+  feePerVideo: number | null;
+  creatorFeePerVideo: number | null;
   // Клиентская сторона — что платит заказчик. Рубли, не копейки: в поле
   // ввода человек пишет рубли, в копейки переводим на отправке.
   salary: number;
@@ -259,6 +267,9 @@ export class AdminTariffPage implements OnInit {
     this.saving.set(true);
     this.api
       .adminPublishTerms({
+        fee_per_video: d.feePerVideo === null ? null : fromRubles(d.feePerVideo),
+        creator_fee_per_video:
+          d.creatorFeePerVideo === null ? null : fromRubles(d.creatorFeePerVideo),
         salary_per_month: fromRubles(d.salary),
         videos_first_month: d.videosFirst,
         videos_next_months: d.videosNext,
@@ -305,6 +316,8 @@ export class AdminTariffPage implements OnInit {
 
 function emptyDraft(): Draft {
   return {
+    feePerVideo: null,
+    creatorFeePerVideo: null,
     salary: 0,
     videosFirst: 0,
     videosNext: 0,
@@ -327,8 +340,10 @@ function emptyDraft(): Draft {
 }
 
 function draftFrom(v: TermsVersion): Draft {
-  const opt = (k?: number) => (k === undefined || k === null ? null : toRubles(k));
+  const opt = (k?: number | null) => (k === undefined || k === null ? null : toRubles(k));
   return {
+    feePerVideo: opt(v.fee_per_video),
+    creatorFeePerVideo: opt(v.creator_fee_per_video),
     salary: toRubles(v.salary_per_month),
     videosFirst: v.videos_first_month ?? 0,
     videosNext: v.videos_next_months ?? 0,
