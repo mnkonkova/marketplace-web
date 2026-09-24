@@ -54,7 +54,11 @@ describe('PublicationPlanComponent: правка плана по одной кл
     } as Publication;
   }
 
-  function setup(pubs: Publication[] = [], people: ProjectPerson[] = [person()]) {
+  function setup(
+    pubs: Publication[] = [],
+    people: ProjectPerson[] = [person()],
+    period?: { start: string; end: string },
+  ) {
     TestBed.resetTestingModule();
     const api = jasmine.createSpyObj<PublicationApi>('pubApi', [
       'managerAddPublication',
@@ -84,6 +88,10 @@ describe('PublicationPlanComponent: правка плана по одной кл
     fixture.componentRef.setInput('projectId', 'pr1');
     fixture.componentRef.setInput('creators', people);
     fixture.componentRef.setInput('publications', pubs);
+    if (period) {
+      fixture.componentRef.setInput('periodStart', period.start);
+      fixture.componentRef.setInput('periodEnd', period.end);
+    }
     fixture.detectChanges();
     const cmp = fixture.componentInstance;
     cmp.month.set(MONTH);
@@ -216,6 +224,63 @@ describe('PublicationPlanComponent: правка плана по одной кл
     expect(row.planned).toBe(2);
     expect(row.done).toBe(1);
     expect(row.late).toBe(1);
+  });
+
+  /**
+   * Чем кончается период, видно только здесь.
+   *
+   * Месяц считает календарь, а последнюю выкладку ставит человек — и
+   * она может стоять раньше расчётной границы. Подтверждает конец
+   * периода менеджер в «Где горит», но СМОТРИТ он на план.
+   */
+  describe('метка последней выкладки периода', () => {
+    const period = { start: `${MONTH}-01`, end: `${MONTH}-30` };
+
+    it('последняя выкладка в границах периода помечена', () => {
+      const { cmp } = setup(
+        [pub({ id: 'a', due_date: `${MONTH}-10` }), pub({ id: 'b', due_date: `${MONTH}-24` })],
+        [person()],
+        period,
+      );
+      expect(cmp.lastOfPeriod()).toBe(`${MONTH}-24`);
+      expect(cellOn(cmp, '24').lastOfPeriod).toBeTrue();
+      expect(cellOn(cmp, '10').lastOfPeriod).toBeFalse();
+    });
+
+    /** Последний день периода — это колонка, а не выкладка. */
+    it('расчётная граница помечает свой столбец', () => {
+      const { cmp } = setup([pub({ due_date: `${MONTH}-24` })], [person()], period);
+      expect(cellOn(cmp, '30').periodEnd).toBeTrue();
+      expect(cellOn(cmp, '24').periodEnd).toBeFalse();
+    });
+
+    /** Выкладка следующего периода последней в этом не становится. */
+    it('выкладки за границей периода не считаются', () => {
+      const { cmp } = setup([pub({ id: 'a', due_date: `${MONTH}-24` })], [person()], {
+        start: `${MONTH}-01`,
+        end: `${MONTH}-20`,
+      });
+      expect(cmp.lastOfPeriod()).toBe('');
+    });
+
+    /** Снятая выкладка периода не кончает: её в плане больше нет. */
+    it('отменённые выкладки не считаются', () => {
+      const { cmp } = setup(
+        [
+          pub({ id: 'a', due_date: `${MONTH}-10` }),
+          pub({ id: 'b', due_date: `${MONTH}-24`, status: 'cancelled' }),
+        ],
+        [person()],
+        period,
+      );
+      expect(cmp.lastOfPeriod()).toBe(`${MONTH}-10`);
+    });
+
+    it('без периода метки нет вовсе', () => {
+      const { cmp } = setup([pub({ due_date: `${MONTH}-24` })]);
+      expect(cmp.lastOfPeriod()).toBe('');
+      expect(cellOn(cmp, '24').lastOfPeriod).toBeFalse();
+    });
   });
 });
 

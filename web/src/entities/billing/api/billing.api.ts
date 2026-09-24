@@ -75,6 +75,29 @@ export class BillingApi {
   }
 
   /**
+   * Подтвердить, каким числом кончается период.
+   *
+   * Границу считает автомат — месяц от первой выкладки, — и он остаётся
+   * главным путём. Но подтверждённая дата СИЛЬНЕЕ вычисленной: план
+   * знает человек, а календарь только считает месяцы.
+   *
+   * Без `endsOn` это отметка «проверил»: тревога гаснет, границы не
+   * двигаются. С датой — граница переезжает, и вместе с ней вся цепочка
+   * дальше. Подытоженный период сервер не даст трогать: 409.
+   */
+  public managerConfirmPeriodEnd(
+    projectId: string,
+    period?: number,
+    endsOn?: string,
+  ): Observable<{ period: ProjectPeriod }> {
+    return this.http.post<{ period: ProjectPeriod }>(
+      `${this.api}/manager/projects/${projectId}/billing/confirm_period_end`,
+      endsOn ? { ends_on: endsOn } : {},
+      { params: periodParam(period) },
+    );
+  }
+
+  /**
    * Тарифы всех проектов одной таблицей: строка — проект.
    *
    * Только проекты с креаторами: у разового заказа и у проекта по
@@ -97,10 +120,7 @@ export class BillingApi {
    * и по ним уже выставлен счёт.
    */
   public managerSaveTerms(projectId: string, input: BillingTermsInput): Observable<BillingTerms> {
-    return this.http.put<BillingTerms>(
-      `${this.api}/manager/projects/${projectId}/billing`,
-      input,
-    );
+    return this.http.put<BillingTerms>(`${this.api}/manager/projects/${projectId}/billing`, input);
   }
 
   // Взять числа из действующего прайса. Дальше они живут снимком: правка

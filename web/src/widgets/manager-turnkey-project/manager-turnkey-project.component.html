@@ -74,12 +74,31 @@
                         type="button"
                         class="btn sm"
                         [class.dark]="act.kind === 'primary'"
-                        [disabled]="act.act === 'remind' && reminding()"
+                        [disabled]="
+                          (act.act === 'remind' && reminding()) ||
+                          (act.act === 'period-end' && periodBusy())
+                        "
                         (click)="onAlertAction(act.act)"
                       >
                         {{ act.title }}
                       </button>
                     }
+                  </div>
+                }
+                <!-- Другая дата конца периода. Полем, а не выпадашкой:
+                     менеджер уже держит в голове день последней выкладки,
+                     и ему быстрее его вписать, чем искать в календаре. -->
+                @if (a.key === 'period-end' && periodDateOpen()) {
+                  <div class="acts">
+                    <input type="date" [value]="periodDateDraft" (input)="onPeriodDate($event)" />
+                    <button
+                      type="button"
+                      class="btn sm dark"
+                      [disabled]="periodBusy() || !periodDateDraft"
+                      (click)="confirmPeriodEnd(periodDateDraft)"
+                    >
+                      Сохранить дату
+                    </button>
                   </div>
                 }
               </div>
@@ -95,6 +114,8 @@
           [projectId]="project().id"
           [creators]="crew()"
           [publications]="publications()"
+          [periodStart]="period()?.starts_on ?? ''"
+          [periodEnd]="period()?.ends_on ?? ''"
           (changed)="reload()"
           (review)="setSection('review')"
         />

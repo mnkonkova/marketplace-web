@@ -338,7 +338,6 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
     flex-wrap: wrap;
   }
 
-
   .proj {
     display: flex;
     flex-direction: column;
@@ -2156,6 +2155,17 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
       margin-top: auto;
       padding-top: 4px;
       flex-wrap: wrap;
+
+      // Ввод другой даты конца периода стоит в одном ряду с кнопками и
+      // должен быть с ними одного роста: поле ниже кнопки читается как
+      // чужой элемент, случайно попавший в карточку.
+      input[type='date'] {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 4px 8px;
+        background: var(--surface);
+        font-variant-numeric: tabular-nums;
+      }
     }
   }
 
@@ -2177,6 +2187,14 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
 
       &.wk {
         color: var(--crit);
+      }
+
+      // Конец периода по расчёту: дальше выкладки идут в следующий счёт,
+      // и эту границу менеджер подтверждает в «Где горит».
+      &.pend {
+        color: var(--ink);
+        font-weight: 700;
+        border-right: 2px solid var(--ink);
       }
     }
 
@@ -2237,6 +2255,21 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
       outline: 2px solid var(--ink);
       outline-offset: 0;
     }
+
+    // Последняя выкладка периода — та, по которой период кончается на
+    // деле. Обводкой, а не заливкой: состояние выкладки (вышел, в плане,
+    // просрочен) остаётся видно, а это метка поверх него.
+    &.lastp {
+      box-shadow:
+        0 0 0 1.5px var(--surface),
+        0 0 0 3px var(--ink);
+    }
+  }
+
+  // Колонка конца периода: граница идёт через всю таблицу, а не только
+  // по шапке — иначе её не видно там, где на неё и смотрят.
+  .grid-plan td:has(> .c.pend) {
+    border-right: 2px solid var(--ink);
   }
 
   button.c {

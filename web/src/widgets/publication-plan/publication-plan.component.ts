@@ -32,6 +32,10 @@ interface Cell {
   state: '' | 'p' | 'd' | 'l' | 'r';
   today: boolean;
   weekend: boolean;
+  /** Последний день периода: дальше выкладки идут в следующий счёт. */
+  periodEnd: boolean;
+  /** Последняя выкладка периода — ею период и кончается по работе. */
+  lastOfPeriod: boolean;
   pub?: Publication;
   hint: string;
 }
@@ -92,6 +96,18 @@ export class PublicationPlanComponent {
 
   public readonly publications = input<readonly Publication[]>([]);
 
+  /**
+   * Границы текущего периода, ГГГГ-ММ-ДД. Пусто — периода ещё нет.
+   *
+   * План — единственное место, где видно, ЧЕМ период кончается: месяц
+   * считает календарь, а последнюю выкладку ставит человек. Без этой
+   * метки менеджер подтверждает конец периода, не видя, что в него
+   * попало.
+   */
+  public readonly periodStart = input<string>('');
+
+  public readonly periodEnd = input<string>('');
+
   /** План поменялся — странице надо перечитать выкладки. */
   public readonly changed = output<void>();
 
@@ -138,8 +154,30 @@ export class PublicationPlanComponent {
     return Array.from({ length: total }, (_, i) => {
       const num = i + 1;
       const date = `${this.month()}-${String(num).padStart(2, '0')}`;
-      return { num, date, weekend: WEEKEND.has(new Date(`${date}T00:00:00`).getDay()) };
+      return {
+        num,
+        date,
+        weekend: WEEKEND.has(new Date(`${date}T00:00:00`).getDay()),
+        periodEnd: date === this.periodEnd().slice(0, 10),
+      };
     });
+  });
+
+  /**
+   * Последняя выкладка периода — та, по которой период кончается на
+   * деле. Считаем по плану, а не по календарю: она может стоять раньше
+   * расчётной границы, и тогда менеджер подтверждает конец периода ею.
+   */
+  public readonly lastOfPeriod = computed(() => {
+    const from = this.periodStart().slice(0, 10);
+    const to = this.periodEnd().slice(0, 10);
+    if (!from || !to) return '';
+    const days = this.publications()
+      .filter((p) => p.status !== 'cancelled')
+      .map((p) => p.due_date.slice(0, 10))
+      .filter((d) => d >= from && d <= to)
+      .sort();
+    return days.length ? days[days.length - 1] : '';
   });
 
   public readonly rows = computed<Row[]>(() => {
@@ -159,6 +197,8 @@ export class PublicationPlanComponent {
           state: this.stateOf(pub),
           today: d.date === today,
           weekend: d.weekend,
+          periodEnd: d.periodEnd,
+          lastOfPeriod: !!pub && d.date === this.lastOfPeriod(),
           pub,
           hint: this.hintOf(person.display_name, d.date, pub),
         };
@@ -179,6 +219,14 @@ export class PublicationPlanComponent {
     });
   });
 
+  /** Состояние выкладки словом — для подсказки клетки. */
+  private stateWord(pub: Publication): string {
+    if (pub.status === 'done') return 'вышел';
+    if (pub.status === 'closed_manually') return 'закрыт вручную';
+    if (pub.overdue) return 'просрочен';
+    return pub.links.length ? 'сдан, ждёт проверки' : 'в плане';
+  }
+
   private stateOf(pub?: Publication): Cell['state'] {
     if (!pub) return '';
     if (pub.status === 'done' || pub.status === 'closed_manually') return 'd';
@@ -189,7 +237,9 @@ export class PublicationPlanComponent {
 
   private hintOf(name: string, date: string, pub?: Publication): string {
     const when = `${date.slice(8, 10)}.${date.slice(5, 7)}`;
+    const tail = date === this.lastOfPeriod() ? ' · последняя выкладка периода' : '';
     if (!pub) return `${name}, ${when} — свободно, поставить выкладку`;
+    if (tail) return `${name}, ${when} — ${this.stateWord(pub)}${tail}`;
     if (pub.status === 'done') return `${name}, ${when} — вышел`;
     if (pub.status === 'closed_manually') return `${name}, ${when} — закрыт вручную`;
     if (pub.overdue) return `${name}, ${when} — просрочен`;
@@ -237,8 +287,7 @@ export class PublicationPlanComponent {
    */
   public pickFree(row: Row): void {
     const free =
-      row.cells.find((c) => !c.pub && c.date >= this.today) ??
-      row.cells[row.cells.length - 1];
+      row.cells.find((c) => !c.pub && c.date >= this.today) ?? row.cells[row.cells.length - 1];
     this.pick(row.person, free);
     this.addOn = free.date < this.today ? this.today : free.date;
   }

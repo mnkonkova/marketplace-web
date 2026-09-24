@@ -1,15 +1,22 @@
 <div class="panel-h">
   <h2>План выкладок</h2>
-  <span class="sub">клетка — выкладка; колокольчик — напомнить в бот за день до срока</span>
+  <span class="sub">
+    клетка — выкладка; колокольчик — напомнить в бот за день до срока
+    @if (lastOfPeriod()) {
+      · обведённая — последняя выкладка периода
+    }
+  </span>
 </div>
 
 <div class="plan-nav">
-  <button type="button" class="btn sm" (click)="shiftMonth(-1)" aria-label="Прошлый месяц">←</button>
-  <b>{{ monthTitle() }}</b>
-  <button type="button" class="btn sm" (click)="shiftMonth(1)" aria-label="Следующий месяц">→</button>
-  <button type="button" class="btn sm dark push" (click)="openSchedule()">
-    Проставить пачкой
+  <button type="button" class="btn sm" (click)="shiftMonth(-1)" aria-label="Прошлый месяц">
+    ←
   </button>
+  <b>{{ monthTitle() }}</b>
+  <button type="button" class="btn sm" (click)="shiftMonth(1)" aria-label="Следующий месяц">
+    →
+  </button>
+  <button type="button" class="btn sm dark push" (click)="openSchedule()">Проставить пачкой</button>
 </div>
 
 @if (!creators().length) {
@@ -23,7 +30,13 @@
         <tr>
           <th></th>
           @for (d of days(); track d.date) {
-            <th [class.wk]="d.weekend">{{ d.num }}</th>
+            <th
+              [class.wk]="d.weekend"
+              [class.pend]="d.periodEnd"
+              [attr.title]="d.periodEnd ? 'конец периода по расчёту' : null"
+            >
+              {{ d.num }}
+            </th>
           }
           <th></th>
         </tr>
@@ -54,14 +67,22 @@
                   [class.l]="c.state === 'l'"
                   [class.r]="c.state === 'r'"
                   [class.today]="c.today"
+                  [class.pend]="c.periodEnd"
+                  [class.lastp]="c.lastOfPeriod"
                   [title]="c.hint"
                   [attr.aria-label]="c.hint"
                   (click)="pick(row.person, c)"
                 >
                   @switch (c.state) {
-                    @case ('d') { ✓ }
-                    @case ('l') { ! }
-                    @case ('r') { ? }
+                    @case ('d') {
+                      ✓
+                    }
+                    @case ('l') {
+                      !
+                    }
+                    @case ('r') {
+                      ?
+                    }
                   }
                 </button>
               </td>
@@ -138,7 +159,12 @@
           <!-- Открывает ближайший свободный день, а не первое число
                месяца: первое обычно уже прошло, и сервер отвечал
                «выкладку ставят на сегодня или вперёд». -->
-          <button type="button" class="c add" (click)="pickFree(row)" aria-label="Поставить выкладку">
+          <button
+            type="button"
+            class="c add"
+            (click)="pickFree(row)"
+            aria-label="Поставить выкладку"
+          >
             +
           </button>
         </div>
@@ -170,7 +196,10 @@
         (closed)="close()"
       >
         <div class="edit in-sheet">
-          <ng-container [ngTemplateOutlet]="editTpl" [ngTemplateOutletContext]="{ $implicit: sel }" />
+          <ng-container
+            [ngTemplateOutlet]="editTpl"
+            [ngTemplateOutletContext]="{ $implicit: sel }"
+          />
         </div>
       </app-sheet>
     } @else {
@@ -223,9 +252,7 @@
       <button type="button" class="btn sm" (click)="close()">Закрыть</button>
     </div>
   } @else {
-    <span class="muted grow">
-      По этой выкладке уже сдавали ссылки — дату у неё не двигают.
-    </span>
+    <span class="muted grow"> По этой выкладке уже сдавали ссылки — дату у неё не двигают. </span>
     <div class="sheet-acts">
       <button type="button" class="btn sm dark" (click)="openReview()">Открыть проверку</button>
       <button type="button" class="btn sm" (click)="close()">Закрыть</button>

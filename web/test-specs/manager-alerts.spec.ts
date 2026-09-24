@@ -6,7 +6,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { EMPTY, of } from 'rxjs';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
-import type { Payment } from '@entities/billing/model/billing.types';
+import type { Payment, ProjectPeriod } from '@entities/billing/model/billing.types';
 import { ProjectApi } from '@entities/project/api/project.api';
 import type { ProjectFullView } from '@entities/project/model/project.types';
 import { PublicationApi } from '@entities/publication/api/publication.api';
@@ -51,6 +51,7 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
       accrued?: number;
       views?: number;
       deductions?: number;
+      period?: Partial<ProjectPeriod> | null;
     } = {},
   ) {
     TestBed.resetTestingModule();
@@ -64,7 +65,10 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
     api.managerRemind.and.returnValue(of({ sent: true }) as never);
 
     // Платежи и итоги приходят одной ручкой — так же, как в проде.
-    const billing = jasmine.createSpyObj<BillingApi>('billingApi', ['managerBilling']);
+    const billing = jasmine.createSpyObj<BillingApi>('billingApi', [
+      'managerBilling',
+      'managerConfirmPeriodEnd',
+    ]);
     billing.managerBilling.and.returnValue(
       of({
         totals: {
@@ -73,10 +77,15 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
           deductions: opts.deductions ?? 0,
         },
         payments: opts.payments ?? [],
+        period: opts.period ?? undefined,
       } as never) as never,
     );
+    billing.managerConfirmPeriodEnd.and.returnValue(of({ period: {} } as never) as never);
 
-    const projects = jasmine.createSpyObj<ProjectApi>('projectApi', ['managerAssigned', 'managerListEvents']);
+    const projects = jasmine.createSpyObj<ProjectApi>('projectApi', [
+      'managerAssigned',
+      'managerListEvents',
+    ]);
     projects.managerAssigned.and.returnValue(EMPTY);
     // Журнал под начислениями: событий в этих тестах нет, но ручка
     // дёргается при загрузке проекта.
@@ -106,7 +115,7 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
       title: 'PetFlat · UGC',
     } as ProjectFullView);
     fixture.detectChanges();
-    return { cmp: fixture.componentInstance, api };
+    return { cmp: fixture.componentInstance, api, billing };
   }
 
   it('спокойный день — тревог нет вовсе', () => {
@@ -148,6 +157,88 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
       ],
     });
     expect(cmp.alerts().some((x) => x.key === 'prepay')).toBeFalse();
+  });
+
+  /**
+   * Конец периода подтверждает человек.
+   *
+   * Границу считает автомат — месяц от первой выкладки, — и он остаётся
+   * главным путём. Но последняя выкладка периода может стоять не в тот
+   * день, в который месяц кончается по арифметике, и знает об этом
+   * только тот, кто ставил план.
+   */
+  describe('подтверждение конца периода', () => {
+    const period = (over: Partial<ProjectPeriod> = {}): Partial<ProjectPeriod> => ({
+      id: 'per1',
+      seq: 2,
+      starts_on: '2026-09-01',
+      ends_on: '2026-09-30',
+      status: 'open',
+      ...over,
+    });
+
+    it('период с планом и без подтверждения — спрашиваем', () => {
+      const { cmp } = setup({ pubs: [pub({ due_date: '2026-09-28' })], period: period() });
+      const a = cmp.alerts().find((x) => x.key === 'period-end')!;
+      expect(a).toBeTruthy();
+      // В карточке стоит расчётная граница, а в тексте — день последней
+      // выкладки: именно его чаще всего и подтверждают.
+      expect(a.value).toBe('30.09');
+      expect(a.text).toContain('28.09');
+    });
+
+    it('подтверждённый период больше не спрашиваем', () => {
+      const { cmp } = setup({
+        pubs: [pub({ due_date: '2026-09-28' })],
+        period: period({ ends_on_confirmed_at: '2026-09-20T10:00:00Z' }),
+      });
+      expect(cmp.alerts().some((x) => x.key === 'period-end')).toBeFalse();
+    });
+
+    /** Подытоженный период не трогают: под ним уже стоит счёт. */
+    it('подытоженный период не спрашиваем', () => {
+      const { cmp } = setup({
+        pubs: [pub({ due_date: '2026-09-28' })],
+        period: period({ status: 'locked' }),
+      });
+      expect(cmp.alerts().some((x) => x.key === 'period-end')).toBeFalse();
+    });
+
+    it('период без единой выкладки подтверждать нечем', () => {
+      const { cmp } = setup({ pubs: [], period: period() });
+      expect(cmp.alerts().some((x) => x.key === 'period-end')).toBeFalse();
+    });
+
+    /** Выкладка следующего периода границу этого не двигает. */
+    it('выкладки вне границ периода не считаются', () => {
+      const { cmp } = setup({ pubs: [pub({ due_date: '2026-10-05' })], period: period() });
+      expect(cmp.alerts().some((x) => x.key === 'period-end')).toBeFalse();
+    });
+
+    it('«Подтвердить» уходит без даты — это отметка «проверил»', () => {
+      const { cmp, billing } = setup({
+        pubs: [pub({ due_date: '2026-09-28' })],
+        period: period(),
+      });
+      cmp.onAlertAction('period-end');
+      expect(billing.managerConfirmPeriodEnd).toHaveBeenCalledWith('pr1', 2, undefined);
+    });
+
+    it('«Другая дата» подставляет день последней выкладки', () => {
+      const { cmp } = setup({ pubs: [pub({ due_date: '2026-09-28' })], period: period() });
+      cmp.onAlertAction('period-date');
+      expect(cmp.periodDateOpen()).toBeTrue();
+      expect(cmp.periodDateDraft).toBe('2026-09-28');
+    });
+
+    it('выбранная дата уходит на сервер', () => {
+      const { cmp, billing } = setup({
+        pubs: [pub({ due_date: '2026-09-28' })],
+        period: period(),
+      });
+      cmp.confirmPeriodEnd('2026-09-28');
+      expect(billing.managerConfirmPeriodEnd).toHaveBeenCalledWith('pr1', 2, '2026-09-28');
+    });
   });
 
   it('частично собранные ссылки — отдельная карточка', () => {

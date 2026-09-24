@@ -43,7 +43,18 @@ import { plural } from '@shared/lib/format';
 interface ManagerAlertAction {
   title: string;
   kind: 'primary' | 'quiet';
-  act: 'remind' | 'plan' | 'pay' | 'review';
+  act: 'remind' | 'plan' | 'pay' | 'review' | 'period-end' | 'period-date';
+}
+
+/**
+ * Дата без времени: «2026-09-30».
+ *
+ * Границы периода и сроки выкладок приходят полными отметками времени, и
+ * сравнивать их как строки целиком нельзя: у выкладки в тот же день
+ * время своё, и «due_date <= ends_on» ложно там, где день тот же.
+ */
+function day(iso: string): string {
+  return iso.slice(0, 10);
 }
 
 /** Карточка тревоги: что горит, на сколько и что с этим делать. */
@@ -366,6 +377,75 @@ export class ManagerTurnkeyProjectComponent {
     return { count, oldest };
   });
 
+  /**
+   * Конец периода ждёт подтверждения.
+   *
+   * Границу считает автомат — месяц от первой выкладки, — и он остаётся
+   * главным путём. Но ПОСЛЕДНЮЮ выкладку периода ставит человек, и она
+   * может стоять не в тот день, в который месяц кончается по
+   * арифметике. Поэтому спрашиваем: подтверждённая дата сильнее
+   * вычисленной.
+   *
+   * Спрашиваем, только когда план уже проставлен и период ещё идёт: у
+   * периода без единой выкладки подтверждать нечего, а у подытоженного
+   * поздно — под ним стоит счёт.
+   */
+  public readonly periodEndAsk = computed(() => {
+    const p = this.period();
+    if (!p || p.status !== 'open') return null;
+    if ('ends_on_confirmed_at' in p && p.ends_on_confirmed_at) return null;
+    const from = day(p.starts_on);
+    const to = day(p.ends_on);
+    const inside = this.publications()
+      .filter((x) => x.status !== 'cancelled')
+      .map((x) => day(x.due_date))
+      .filter((d) => d >= from && d <= to)
+      .sort();
+    if (!inside.length) return null;
+    return { seq: p.seq, endsOn: to, last: inside[inside.length - 1] };
+  });
+
+  /** Открыт ли ввод другой даты конца периода. */
+  public readonly periodDateOpen = signal(false);
+
+  public periodDateDraft = '';
+
+  public readonly periodBusy = signal(false);
+
+  /**
+   * Подтвердить конец периода.
+   *
+   * Без даты — отметка «проверил»: тревога гаснет, границы не
+   * двигаются. С датой — граница переезжает, и вместе с ней вся цепочка
+   * дальше, поэтому после ответа перечитываем проект целиком: номера и
+   * границы периодов могли стать другими.
+   */
+  public confirmPeriodEnd(endsOn?: string): void {
+    const ask = this.periodEndAsk();
+    if (!ask || this.periodBusy()) return;
+    this.periodBusy.set(true);
+    this.billingApi.managerConfirmPeriodEnd(this.project().id, ask.seq, endsOn).subscribe({
+      next: () => {
+        this.periodBusy.set(false);
+        this.periodDateOpen.set(false);
+        this.msg.success(
+          endsOn && endsOn !== ask.endsOn
+            ? 'Граница периода переехала. Следующие выкладки пойдут в следующий период.'
+            : 'Конец периода подтверждён.',
+        );
+        this.load(this.project().id);
+      },
+      error: (e) => {
+        this.periodBusy.set(false);
+        this.msg.error(parseApiError(e, 'Не удалось подтвердить конец периода.').message);
+      },
+    });
+  }
+
+  public onPeriodDate(e: Event): void {
+    this.periodDateDraft = (e.target as HTMLInputElement).value;
+  }
+
   public readonly alerts = computed<ManagerAlert[]>(() => {
     const out: ManagerAlert[] = [];
     const t = this.today();
@@ -403,6 +483,30 @@ export class ManagerTurnkeyProjectComponent {
           `Получено ${this.money(this.receivedFromClient())}, начислено ${this.money(this.accruedTotal())} за период. ` +
           'Деньги приходят мимо системы — получение отмечает менеджер.',
         actions: [{ title: 'Открыть начисления', kind: 'primary', act: 'pay' }],
+      });
+    }
+
+    // Подтверждение конца периода. Стоит выше мелких тревог: от этой
+    // даты считается вся цепочка дальше — отсечка, доплата по прайсу и
+    // то, в какой период попадут следующие выкладки.
+    if (this.periodEndAsk()) {
+      const ask = this.periodEndAsk()!;
+      const same = ask.last === ask.endsOn;
+      out.push({
+        key: 'period-end',
+        tone: 'warn',
+        label: `Подтвердите конец периода ${ask.seq}`,
+        value: this.dayLabel(ask.endsOn),
+        valueNote: 'по расчёту',
+        text: same
+          ? 'Последняя выкладка периода стоит ровно на этой дате. Подтвердите — и следующие ' +
+            'выкладки пойдут в следующий период.'
+          : `Последняя выкладка периода стоит ${this.dayLabel(ask.last)}. Период можно закончить ею — ` +
+            'подтверждённая дата сильнее расчётной.',
+        actions: [
+          { title: `Подтвердить ${this.dayLabel(ask.endsOn)}`, kind: 'primary', act: 'period-end' },
+          { title: 'Другая дата', kind: 'quiet', act: 'period-date' },
+        ],
       });
     }
 
@@ -521,6 +625,17 @@ export class ManagerTurnkeyProjectComponent {
   public onAlertAction(act: ManagerAlertAction['act']): void {
     if (act === 'remind') {
       this.remindBurning();
+      return;
+    }
+    if (act === 'period-end') {
+      this.confirmPeriodEnd();
+      return;
+    }
+    if (act === 'period-date') {
+      // Подставляем последнюю выкладку периода: ради неё подтверждение и
+      // существует, и чаще всего именно ею период и кончается.
+      this.periodDateDraft = this.periodEndAsk()?.last ?? '';
+      this.periodDateOpen.set(!this.periodDateOpen());
       return;
     }
     const section = act === 'pay' ? 'pay' : act === 'review' ? 'review' : 'plan';
