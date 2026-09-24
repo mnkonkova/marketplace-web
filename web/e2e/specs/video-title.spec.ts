@@ -164,8 +164,18 @@ test('досылая площадки, название не приходитс�
     });
     const list = await creatorApi.get(`/api/v1/me/creator/projects/${box.projectId}/publications`);
     const open = ((await list.json()).items as any[]).find((p) => p.status === 'planned');
+    // Обязательные пункты чеклиста отмечает сдающий: без них сервер
+    // отвечает 422, и первая сдача просто не состоялась бы.
+    const chk = await creatorApi.get(`/api/v1/me/creator/projects/${box.projectId}/checklist`);
+    const required = ((await chk.json()).items as any[])
+      .filter((i) => i.is_required)
+      .map((i) => i.id);
     await creatorApi.post(`/api/v1/me/creator/publications/${open.id}/links`, {
-      data: { urls: [`https://www.tiktok.com/@nastya/video/${Date.now()}`], title: TITLE },
+      data: {
+        urls: [`https://www.tiktok.com/@nastya/video/${Date.now()}`],
+        title: TITLE,
+        checked_item_ids: required,
+      },
     });
     await creatorApi.dispose();
 

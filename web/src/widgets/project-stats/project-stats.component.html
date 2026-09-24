@@ -10,7 +10,13 @@
       <div class="tile">
         <span>Просмотры, всего</span>
         <b>{{ r.views | number }}</b>
-        <small>+{{ r.growth_24h | number }} за сутки</small>
+        <!-- Прироста нет — значит вчерашнего снимка нет, и «+0 за
+             сутки» соврало бы про остановившийся рост. -->
+        @if (r.growth_24h !== null) {
+          <small>+{{ r.growth_24h | number }} за сутки</small>
+        } @else {
+          <small>прирост за сутки не измерен</small>
+        }
       </div>
       <div class="tile">
         <span>Лайки</span>

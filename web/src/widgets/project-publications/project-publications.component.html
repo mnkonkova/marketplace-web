@@ -402,7 +402,10 @@
                     @let st = linkStat(l.id);
                     <span class="pv">
                       @if (st) {
-                        {{ st.views | number }}<small>+{{ st.growth_24h | number }}</small>
+                        {{ st.views | number }}
+                        @if (st.growth_24h !== null) {
+                          <small>+{{ st.growth_24h | number }}</small>
+                        }
                       } @else {
                         <!-- Ссылка есть, а просмотров по ней ещё не
                              собрали. Ноль здесь означал бы «ролик
@@ -760,7 +763,10 @@
                   </td>
                   <td>{{ row.submitted_at | date: 'd MMM' }}</td>
                   <td>{{ row.views | number }}</td>
-                  <td>+{{ row.growth_24h | number }}</td>
+                  <!-- Прирост за сутки: прочерк, когда вчерашнего снимка
+                       нет. «+0» читалось бы как «ролик встал», а это
+                       другое утверждение — измерения просто нет. -->
+                  <td>{{ row.growth_24h === null ? '—' : '+' + (row.growth_24h | number) }}</td>
                   <!-- ER считается по этой площадке, а не по ролику целиком:
                        без просмотров его нет вовсе, и «0%» здесь было бы
                        выдумкой, а не нулём. -->

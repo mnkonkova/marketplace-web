@@ -564,9 +564,30 @@ DELETE FROM projects WHERE client_user_id IN
     201,
   );
 
+  /**
+   * Обязательные пункты чеклиста — их креатор отмечает, сдавая ролик.
+   *
+   * Сервер отказывает без них (422 checklist_incomplete), и это не
+   * формальность посева: ровно так же ведёт себя интерфейс. Отмечаем
+   * ТОЛЬКО обязательные — необязательные и должны оставаться пустыми,
+   * иначе специи про чеклист проверяли бы состояние, которого сдача не
+   * создаёт.
+   */
+  const requiredChecklist = async (projectID: string): Promise<string[]> => {
+    const list = await call(
+      'get',
+      `/api/v1/me/creator/projects/${projectID}/checklist`,
+      sessions.creator,
+    );
+    return ((list.items ?? []) as { id: string; is_required: boolean }[])
+      .filter((i) => i.is_required)
+      .map((i) => i.id);
+  };
+
   // Креатор сдаёт ролик на все пять площадок — иначе статистике не к
   // чему привязаться: снимки живут на ссылках, а не на выкладке.
   const pubId = batch.items[0].id as string;
+  const checked = await requiredChecklist(project.id);
   await call('post', `/api/v1/me/creator/publications/${pubId}/links`, sessions.creator, {
     urls: [
       'https://www.tiktok.com/@nastya/video/7412093000',
@@ -575,6 +596,7 @@ DELETE FROM projects WHERE client_user_id IN
       'https://vk.com/clip-2394821_45623',
       'https://likee.video/@nastya/video/7412093000',
     ],
+    checked_item_ids: checked,
   });
   seedPublicationStats(pubId);
 
@@ -639,9 +661,11 @@ DELETE FROM projects WHERE client_user_id IN
     201,
   );
   const historyPubs = (historyBatch.items ?? []) as { id: string; due_date: string }[];
+  const historyChecked = await requiredChecklist(historyProjectId);
   for (const [i, pub] of historyPubs.entries()) {
     await call('post', `/api/v1/me/creator/publications/${pub.id}/links`, sessions.creator, {
       urls: historyLinks(String(i + 1).padStart(2, '0')),
+      checked_item_ids: historyChecked,
     });
   }
   // Сдача ссылок ставит датой выхода сегодня — отодвигаем её к плановой

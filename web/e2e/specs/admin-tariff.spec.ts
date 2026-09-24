@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { AUTH_KEY, world } from '../fixtures/world';
 
 /**
@@ -35,6 +35,17 @@ test('разделы админки ведут по страницам, канб
   await expect(page).toHaveURL(/\/admin\/pipelines$/);
 });
 
+/**
+ * Поле «За 1000 просмотров» по счёту: 0 — заказчик, 1 — креатор.
+ *
+ * По подписи, а не по номеру среди всех number-полей: форма прайса
+ * растёт (фикс за ролик, KPI по подписчикам), и номера в ней смещаются
+ * от каждой такой правки.
+ */
+function rateField(dialog: ReturnType<Page['getByRole']>, n: number) {
+  return dialog.locator('label').filter({ hasText: 'За 1000 просмотров' }).nth(n).locator('input');
+}
+
 test('форма новой версии открывается копией действующей', async ({ page }) => {
   // Действующая версия видна карточками ставок.
   await expect(page.locator('.rate').first()).toBeVisible({ timeout: 15_000 });
@@ -44,9 +55,12 @@ test('форма новой версии открывается копией д�
   const dialog = page.getByRole('dialog', { name: 'Новая версия прайса' });
   await expect(dialog).toBeVisible();
 
-  // Оклад и ставка подставлены из прайса, а не оставлены нулями.
-  const salary = dialog.locator('input[type="number"]').first();
-  await expect(salary).not.toHaveValue('0');
+  // Ставка подставлена из прайса, а не оставлена нулём.
+  //
+  // Поле ищем по подписи, а не по номеру: номера сдвигаются от любой
+  // новой строки в форме, и специя падала бы на правке, к которой она
+  // отношения не имеет.
+  await expect(rateField(dialog, 0)).not.toHaveValue('0');
   await expect(dialog.locator('textarea')).not.toHaveValue('');
 });
 
@@ -55,9 +69,10 @@ test('доля креатора больше цены клиента не вып
   const dialog = page.getByRole('dialog', { name: 'Новая версия прайса' });
 
   // Ставка креатора за 1000 просмотров — заведомо выше клиентской.
-  const inputs = dialog.locator('input[type="number"]');
-  await inputs.nth(3).fill('90');
-  await inputs.nth(7).fill('900');
+  // Первое такое поле — клиентское, второе — креаторское: подпись у них
+  // одна, а секции разные.
+  await rateField(dialog, 0).fill('90');
+  await rateField(dialog, 1).fill('900');
 
   const [response] = await Promise.all([
     page.waitForResponse(

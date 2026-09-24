@@ -429,6 +429,26 @@ export async function createSandbox(tag: string, opts: SandboxOptions = {}): Pro
   }
 }
 
+/**
+ * Обязательные пункты чеклиста проекта.
+ *
+ * Сдавая ролик, креатор их отмечает — без них сервер отвечает 422
+ * checklist_incomplete, ровно как и живому человеку в интерфейсе.
+ * Отмечаем ТОЛЬКО обязательные: необязательные и должны оставаться
+ * пустыми, иначе специи про чеклист проверяли бы состояние, которого
+ * сдача не создаёт.
+ */
+async function requiredChecklist(box: Sandbox): Promise<string[]> {
+  const list = await callAs(
+    box.creator,
+    'get',
+    `/api/v1/me/creator/projects/${box.projectId}/checklist`,
+  );
+  return ((list?.items ?? []) as { id: string; is_required: boolean }[])
+    .filter((i) => i.is_required)
+    .map((i) => i.id);
+}
+
 /** Одна выкладка, вышедшая вчера на пять площадок, и цифры по ней. */
 async function fillStats(box: Sandbox): Promise<void> {
   const batch = await callAs(
@@ -443,6 +463,7 @@ async function fillStats(box: Sandbox): Promise<void> {
   await callAs(box.creator, 'post', `/api/v1/me/creator/publications/${pubId}/links`, {
     urls: platformLinks(box.tag),
     title: box.publicationTitle,
+    checked_item_ids: await requiredChecklist(box),
   });
   seedPublicationStats(pubId);
 }
@@ -464,9 +485,11 @@ async function fillHistory(box: Sandbox): Promise<void> {
   const items = (batch.items ?? []) as { id: string }[];
   box.publicationIds = items.map((p) => p.id);
   box.publicationId = items[items.length - 1]?.id ?? '';
+  const checked = await requiredChecklist(box);
   for (const [i, pub] of items.entries()) {
     await callAs(box.creator, 'post', `/api/v1/me/creator/publications/${pub.id}/links`, {
       urls: historyLinks(`${box.tag}${String(i + 1).padStart(2, '0')}`),
+      checked_item_ids: checked,
     });
   }
   // Сдача ссылок ставит датой выхода сегодня — отодвигаем её к плановой,

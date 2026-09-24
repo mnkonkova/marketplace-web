@@ -743,9 +743,21 @@ export class ProjectPublicationsComponent {
     return this.statsByLink().get(linkId);
   }
 
-  /** Прирост выкладки за сутки — сумма по её ссылкам. */
-  public pubGrowth(pub: Publication): number {
-    return (pub.links ?? []).reduce((sum, l) => sum + (this.linkStat(l.id)?.growth_24h ?? 0), 0);
+  /**
+   * Прирост выкладки за сутки — сумма по её ссылкам.
+   *
+   * null, если хоть по одной ссылке вчерашнего снимка нет: сложить
+   * известные с неизвестными и выдать за полное число — то же
+   * занижение, только спрятанное.
+   */
+  public pubGrowth(pub: Publication): number | null {
+    let sum = 0;
+    for (const l of pub.links ?? []) {
+      const g = this.linkStat(l.id)?.growth_24h;
+      if (g === null || g === undefined) return null;
+      sum += g;
+    }
+    return sum;
   }
 
   /** Напомнить одному человеку по всем его открытым выкладкам. */
