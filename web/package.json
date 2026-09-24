@@ -12,7 +12,8 @@
     "format:check": "prettier --check .",
     "format:fields": "node scripts/format-class-fields.mjs",
     "format:modifiers": "node scripts/add-access-modifiers.mjs",
-    "e2e": "PLAYWRIGHT_BROWSERS_PATH=/home/foxxmary/.cache/ms-playwright playwright test --config e2e/playwright.config.ts"
+    "e2e": "PLAYWRIGHT_BROWSERS_PATH=/home/foxxmary/.cache/ms-playwright playwright test --config e2e/playwright.config.ts",
+    "e2e:fast": "E2E_FAST=1 PLAYWRIGHT_BROWSERS_PATH=/home/foxxmary/.cache/ms-playwright playwright test --config e2e/playwright.config.ts"
   },
   "private": true,
   "dependencies": {

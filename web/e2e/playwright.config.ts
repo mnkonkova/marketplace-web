@@ -15,8 +15,28 @@ const here = __dirname;
  * Браузер берём тот, что уже скачан для karma (PLAYWRIGHT_BROWSERS_PATH
  * в npm-скрипте), — второй раз качать хромиум незачем.
  */
+/**
+ * Медленные специи — обходы кнопок.
+ *
+ * `buttons-sweep` и `buttons-destructive` вдвоём занимают минут
+ * двенадцать из четырнадцати: первый обходит каждую кнопку каждой роли,
+ * второй жмёт всё, что меняет мир, и ждёт ответов сервера. Остальные
+ * сто пятнадцать проходят примерно за минуту.
+ *
+ * Поэтому набора два. Быстрый (E2E_FAST=1, `npm run e2e:fast`) — перед
+ * каждым пушем: он ловит ровно то, из-за чего этот раскол и появился, —
+ * разметку кабинета, разошедшуюся со специями. Полный — перед выкаткой
+ * и всегда, когда правились кнопки.
+ *
+ * Делим файлами, а не пометками в названиях: название специи здесь —
+ * документация, и дописывать в него «@slow» значит портить её ради
+ * запускалки.
+ */
+const SLOW_SPECS = ['**/buttons-sweep.spec.ts', '**/buttons-destructive.spec.ts'];
+
 export default defineConfig({
   testDir: join(here, 'specs'),
+  testIgnore: process.env.E2E_FAST ? SLOW_SPECS : [],
   globalSetup: join(here, 'fixtures', 'world.ts'),
   globalTeardown: join(here, 'fixtures', 'teardown.ts'),
   timeout: 30_000,
