@@ -32,6 +32,21 @@
           <h1>Все проекты</h1>
         </div>
         <div class="pf-head-r">
+          <!-- Окно, за которое посчитаны числа. В макете его нет — там
+               одно окно на всю страницу, — но адрес с ?range= мы уже
+               раздаём ссылкой, и без переключателя до него не добраться
+               иначе как правкой строки браузера. -->
+          <div class="segbar" role="group" aria-label="Окно">
+            @for (t of rangeTabs; track t) {
+              <button
+                type="button"
+                [attr.aria-pressed]="range() === t"
+                (click)="setRange(t)"
+              >
+                {{ rangeLabel[t] }}
+              </button>
+            }
+          </div>
           @if (asOf(); as ts) {
             <span class="server">сервер · {{ ts | date: 'd.MM, HH:mm' }}</span>
           }
@@ -44,7 +59,13 @@
       <div class="span-12 pf-hero">
         <div>
           <div class="label">Цена просмотра · CPV</div>
-          <div class="v num">{{ cpv() || '—' }}</div>
+          <div class="v num">
+            @if (cpvValue(); as v) {
+              {{ v }}<small> ₽</small>
+            } @else {
+              —
+            }
+          </div>
           <!-- Цену считаем по факту за всё время проектов, а не за окно:
                сравнивать её с прошлым месяцем сервер не умеет, и рисовать
                здесь стрелку было бы выдумкой. -->
@@ -84,28 +105,11 @@
         </div>
         <div>
           <div class="label">Потрачено</div>
-          <div class="v num">{{ money(spent()) }}</div>
+          <div class="v num">{{ digits(spent() / 100) }}<small> ₽</small></div>
           <div class="pf-sub muted">по факту, без счетов к оплате</div>
         </div>
       </div>
 
-      <!-- ДАШБОРД. На месте каталога креаторов: заказчик приходит сюда
-           с вопросом «что у нас происходит», а не «кого бы нанять».
-           Подбор состава — это воронка заказа, отдельная дорога, и
-           ссылка на неё стоит внизу страницы.
-
-           Окно данных переключается ЗДЕСЬ, в самих данных: второй такой
-           же переключатель в шапке страницы обещал бы другое действие —
-           две одинаковые таблетки в семидесяти пикселях друг от друга
-           человек жмёт наугад. -->
-      <div class="span-12">
-        <app-client-dashboard
-          [data]="overview()"
-          [range]="range()"
-          [clientName]="clientName()"
-          (rangeChange)="setRange($event)"
-        />
-      </div>
 
       <!-- Проекты одной строкой. Пауза — это не ноль: у проекта без
            периода стоит «периода нет», а не «0 просмотров». -->
@@ -116,6 +120,12 @@
             {{ rows().length }} {{ plural(rows().length, 'проект', 'проекта', 'проектов') }} ·
             {{ runningCount() }} {{ plural(runningCount(), 'идёт', 'идут', 'идут') }}
           </span>
+          <!-- Заказ нового проекта — действие этого списка, а не сноска
+               под ним: раньше он был серой ссылкой в самом низу
+               страницы, куда доходят не все. -->
+          <button type="button" class="btn sm" routerLink="/me/orders/new">
+            + Новый проект
+          </button>
         </div>
 
         @if (loading()) {
@@ -373,9 +383,7 @@
         </form>
       </div>
 
-      <div class="span-12 tail">
-        <a routerLink="/me/orders/new" class="muted">Нужен ещё один проект под ключ? →</a>
-      </div>
+
     </div>
   </main>
 

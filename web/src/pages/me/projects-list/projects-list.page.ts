@@ -43,7 +43,6 @@ import { plural } from '@shared/lib/format';
 import type { SeriesPoint } from '@shared/lib/chart-series';
 import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { ClientDashboardComponent } from '@widgets/client-dashboard/client-dashboard.component';
 import { SotkaTopComponent } from '@widgets/sotka-top/sotka-top.component';
 import { SupportFooterComponent } from '@widgets/support-footer/support-footer.component';
 import { withFromPage } from '@shared/nav/from-page';
@@ -132,7 +131,6 @@ const MONTHS_SHORT = [
     FormsModule,
     RouterLink,
     AppHeaderComponent,
-    ClientDashboardComponent,
     LineChartComponent,
     SotkaTopComponent,
     SupportFooterComponent,
@@ -171,6 +169,8 @@ export class ProjectsListPage {
   public readonly ranges = RANGE_TABS;
 
   public readonly rangeLabel = RANGE_LABEL;
+
+  public readonly rangeTabs = RANGE_TABS;
 
   public readonly loading = signal(true);
 
@@ -227,6 +227,19 @@ export class ProjectsListPage {
    * одном месте, и только для показа.
    */
   public readonly cpv = computed(() => this.perView(this.overview()?.cost_per_1000));
+
+  /**
+   * Цена просмотра БЕЗ знака рубля.
+   *
+   * В макете единица набрана мельче самого числа — «0,22» крупно и
+   * « ₽» вполовину. Поэтому шаблону нужно число отдельно, а не готовая
+   * строка: разрезать её в разметке значило бы разбирать обратно то,
+   * что только что склеили.
+   */
+  public readonly cpvValue = computed(() => {
+    const v = this.cpv();
+    return v ? v.replace(' ₽', '') : '';
+  });
 
   public readonly er = computed(() => {
     const v = this.overview()?.window?.er_percent;
