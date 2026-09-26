@@ -990,6 +990,25 @@ export class ClientTurnkeyProjectComponent {
    */
   public readonly hasNumbers = computed(() => (this.report()?.videos ?? 0) > 0);
 
+  /**
+   * Проект только что заведён заявкой: команды нет, дат нет, снимать
+   * ещё некому.
+   *
+   * Отличать это состояние от «работа идёт, первый ролик ещё не вышел»
+   * обязательно. Тексты у них разные не по вежливости, а по смыслу:
+   * тому, кто вчера нажал «Отправить», надо сказать, что заявку
+   * получили и ответят; тому, у кого команда собрана и даты стоят, —
+   * что цифры появятся после первой выкладки. Общая фраза «цифр пока
+   * нет» первому звучит как тишина, в которой он и так просидел
+   * несколько дней.
+   */
+  public readonly justApplied = computed(
+    () =>
+      this.videos().length === 0 &&
+      this.calendarDays().every((d) => !d.items?.length) &&
+      (this.billing()?.accruals?.length ?? 0) === 0,
+  );
+
   /** Период ещё идёт — счёт не окончательный. */
   public readonly preliminary = computed(() => isOpenPeriod(this.billing()?.period));
 
