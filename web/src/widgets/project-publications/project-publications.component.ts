@@ -203,7 +203,9 @@ export class ProjectPublicationsComponent {
   public readonly canInviteNext = computed(() => {
     const o = this.order();
     if (!o) return false;
-    if (o.status !== 'draft' && o.status !== 'inviting') return false;
+    // submitted — заявка из воронки: приглашений ещё не было, и
+    // двинуть очередь руками можно ровно как из черновика.
+    if (o.status !== 'draft' && o.status !== 'submitted' && o.status !== 'inviting') return false;
     return this.orderFreeSlots() > 0 && o.reserve_left > 0;
   });
 

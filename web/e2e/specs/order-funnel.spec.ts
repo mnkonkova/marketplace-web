@@ -119,6 +119,16 @@ async function openPicking(page: import('@playwright/test').Page): Promise<void>
     .click();
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
   await page.locator('.kind.k1').click();
+
+  // Между видом проекта и подбором стоит БРИФ — первый шаг воронки.
+  // Заполнять его до конца не обязательно (заявка с пустым брифом лучше
+  // формы, которую бросили), но название продукта вводим: из него
+  // получается название проекта, и без него в кабинете окажется
+  // безымянный «Новый проект».
+  await expect(page.getByRole('heading', { name: 'О чём снимаем' })).toBeVisible();
+  await page.locator('input[name="product"]').fill('Корм для кошек (e2e)');
+  await page.getByRole('button', { name: 'Дальше — креаторы' }).click();
+
   await expect(page.getByRole('heading', { name: 'Кто будет снимать' })).toBeVisible();
   await expect(page.locator('.ccard').first()).toBeVisible({ timeout: 15_000 });
 }
@@ -138,9 +148,12 @@ test('выбор вида ведёт на подбор, а вторая ветк
   await expect(page.locator('.kind-soon')).toContainText('менеджера');
   await expect(page.getByRole('heading', { name: 'Кто будет снимать' })).toHaveCount(0);
 
-  // А первая ветка ведёт в подбор, и каталог там не пустой: пустой
-  // каталог — это та же дорога в никуда, только длиннее.
+  // А первая ветка ведёт в бриф, и уже оттуда — в подбор, где каталог
+  // не пустой: пустой каталог — это та же дорога в никуда, только
+  // длиннее.
   await page.locator('.kind.k1').click();
+  await expect(page.getByRole('heading', { name: 'О чём снимаем' })).toBeVisible();
+  await page.getByRole('button', { name: 'Дальше — креаторы' }).click();
   await expect(page.getByRole('heading', { name: 'Кто будет снимать' })).toBeVisible();
   await expect(page.locator('.ccard').first()).toBeVisible({ timeout: 15_000 });
 });
@@ -171,7 +184,7 @@ test('смета пересчитывается на каждое изменен
   await expect(total).toHaveText(money(ceiling(await third.json())));
 });
 
-test('лимит месяца уважается, а состав уходит по приоритету', async ({ page }) => {
+test('заявка заводит проект сразу, и отмеченные уходят все', async ({ page }) => {
   const byName = await catalogByName();
   await openPicking(page);
 
@@ -186,26 +199,17 @@ test('лимит месяца уважается, а состав уходит �
   await Promise.all([estimateCall(page), cards.nth(0).click()]);
   await Promise.all([estimateCall(page), cards.nth(1).click()]);
 
-  // В первый месяц доступен один креатор. Второй не пропадает и не
-  // молчит — он уходит в резерв, и подсказка объясняет, почему.
-  const allowed = Number((await page.locator('.zone').first().innerText()).replace(/\D+/g, ''));
-  expect(allowed, 'лимит первого месяца — один креатор').toBe(1);
-  await expect(page.locator('.reserve-zone')).toBeVisible();
-  await expect(page.locator('.reserve-hint')).toContainText('в резерве');
+  // Оба в подборке и оба уйдут в заявку. Лимита «один в первый месяц»
+  // больше нет: заказчик отмечает, кого хочет, а состав утверждает
+  // менеджер после ответов креаторов — резать отметки лимитом значило
+  // бы запрещать хотеть.
   expect(await page.locator('.brow').count(), 'в подборке оба').toBe(2);
-
-  // Приоритет — это порядок строк, а не порядок кликов: поднимаем
-  // второго над первым.
-  await page
-    .locator('.brow.reserve')
-    .getByRole('button', { name: `Выше: ${nameB}` })
-    .click();
-  await expect(page.locator('.brow').first()).toContainText(nameB);
+  await expect(page.locator('.reserve-zone'), 'резерва больше нет').toHaveCount(0);
 
   const consent = page.locator('.consent input');
   if (await consent.isEnabled()) await consent.check();
 
-  // Ориентир читаем, когда он посчитан: «считаем…» — это ещё не число.
+  // Потолок читаем, когда он посчитан: «считаем…» — это ещё не число.
   await expect(page.locator('.btot b')).not.toHaveText('считаем…');
   const draftTotal = (await page.locator('.btot b').innerText()).trim();
 
@@ -220,32 +224,30 @@ test('лимит месяца уважается, а состав уходит �
     expect(created.status(), await created.text()).toBe(201);
 
     const sent = JSON.parse(created.request().postData() ?? '{}');
-    expect(sent.creator_ids, 'состав уходит по приоритету, а не по порядку кликов').toEqual([
-      idB,
-      idA,
-    ]);
-    expect(sent.needed, 'зовём не больше разрешённого на месяц').toBe(1);
+    expect(sent.creator_ids.sort(), 'в заявку уходят оба отмеченных').toEqual([idA, idB].sort());
+    expect(sent.needed, 'сколько отметили — столько и отметили').toBe(2);
+    expect(sent.brief?.product, 'бриф уезжает вместе с заявкой').toBeTruthy();
 
-    orderId = (await created.json()).order.id;
+    const body = await created.json();
+    orderId = body.order.id;
 
-    // Приглашение ушло одному — тому, кто первый по приоритету. Второй
-    // ждёт в резерве: место освободится отказом или молчанием.
-    await expect(page.getByRole('heading', { name: 'Ждём ответы' })).toBeVisible({
+    // ГЛАВНОЕ: проект заведён вместе с заявкой. Раньше он появлялся
+    // только после оплаты, и человек, нажав «Отправить», уходил в
+    // тишину на несколько дней — ни страницы, ни переписки.
+    expect(body.order.project_id, 'заявка завела проект').toBeTruthy();
+
+    await expect(page.getByRole('heading', { name: 'Заявка у нас' })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.locator('.inv').first()).toContainText(nameB);
-    await expect(page.locator('.inv').first()).toContainText('Ждём ответа');
-    await expect(page.locator('.inv').nth(1)).toContainText('В резерве');
+    // Потолок на экране заявки — тот же, что был в корзине.
+    await expect(page.locator('.done-card .sumrow b')).toHaveText(draftTotal);
 
-    // Число, которое человек видел до оформления, — то же, по которому
-    // ему выставят счёт.
-    const api = await clientApi();
-    const est = await api.get(`/api/v1/me/orders/${orderId}/estimate`);
-    expect(est.ok(), await est.text()).toBeTruthy();
-    const body = await est.json();
-    await api.dispose();
-    expect(draftTotal, 'потолок на экране и смета заказа — одно число').toBe(money(ceiling(body)));
-    expect(body.creators, 'в заказе ровно столько людей, сколько разрешил лимит').toBe(1);
+    // И ссылка ведёт в живой проект: он уже в кабинете заказчика.
+    await page.getByRole('button', { name: 'Открыть проект' }).click();
+    await expect(page).toHaveURL(new RegExp(`/me/projects/${body.order.project_id}`), {
+      timeout: 15_000,
+    });
+    await expect(page.locator('.ptabs')).toBeVisible({ timeout: 15_000 });
   } finally {
     if (orderId) await cancelOrder(orderId);
   }
@@ -308,8 +310,10 @@ test('фикс назван фиксом за ролик, и после офор
     expect(byOrder.salaries, 'до оформления и после — одно число').toBe(draft.salaries);
     expect(byOrder.terms?.fee_per_video, 'условия заказа несут фикс за ролик').toBe(feePerVideo);
 
-    // И на экране ожидания ответов цена подписана так же: «за ролик».
-    await expect(page.getByRole('heading', { name: 'Ждём ответы' })).toBeVisible({
+    // Экрана «Ждём ответы» больше нет — очередь приглашений ушла.
+    // Последний шаг воронки говорит то, что обещали человеку: мы
+    // напишем по стоимости и креаторам.
+    await expect(page.getByRole('heading', { name: 'Заявка у нас' })).toBeVisible({
       timeout: 15_000,
     });
   } finally {

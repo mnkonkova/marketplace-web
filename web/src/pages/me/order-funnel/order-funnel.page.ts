@@ -63,7 +63,13 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 /** Подписи шагов — те же, что в макете. */
-const STEP_LABELS = ['Вид проекта', 'Подбор', 'Ответы', 'Добор', 'Оплата', 'Проект'];
+// Четыре шага вместо шести.
+//
+// «Ответы», «Добор» и «Оплата» ушли вместе с очередью приглашений:
+// приглашение уходит всем сразу, состав утверждает менеджер, а платят
+// по счёту, а не в воронке. Оставшиеся четыре — это ровно те решения,
+// которые принимает заказчик.
+const STEP_LABELS = ['Вид проекта', 'Бриф', 'Креаторы', 'Заявка'];
 
 @Component({
   selector: 'app-order-funnel-page',
@@ -88,8 +94,21 @@ export class OrderFunnelPage implements OnInit {
 
   public readonly stepLabels = STEP_LABELS;
 
-  /** Шаг, на котором стоит человек. У созданного заказа его диктует статус. */
+  /** Шаг, на котором стоит человек. */
   public readonly step = signal(0);
+
+  /**
+   * Бриф — первый шаг. Обычный объект, а не сигналы на каждое поле:
+   * его печатают, а не вычисляют, и ngModel с ним работает напрямую.
+   */
+  public brief = { goal: '', product: '', audience: '', tone: '', refs: '' };
+
+  /**
+   * Проект заявки. Приходит в ответе на создание: проект заводится
+   * ВМЕСТЕ с заявкой, и ссылка на него — главное, что человек видит на
+   * последнем шаге. Раньше здесь была тишина на несколько дней.
+   */
+  public readonly projectId = signal('');
 
   // ---- подбор ----
 
@@ -153,20 +172,15 @@ export class OrderFunnelPage implements OnInit {
    * Сколько человек зовём. Не поле ввода: лимит месяца — это потолок, а
    * меньше него клиент и так берёт ровно столько, сколько отметил.
    */
-  public readonly allowed = computed(() => this.limit()?.allowed ?? 1);
-
-  public readonly needed = computed(() => Math.min(this.picked().length, this.allowed()));
-
-  /** Первые needed — их зовут сразу. */
-  public readonly team = computed(() => this.picked().slice(0, this.needed()));
-
   /**
-   * Остальные — резерв. Место освобождается отказом или молчанием, и
-   * тогда приглашение уходит следующему отсюда, уже без участия клиента.
+   * Сколько отметили — столько и отметили.
+   *
+   * Лимит «один креатор в первый месяц» срезал это число, и на нём же
+   * считался потолок цены: отметил двоих — в корзине стояла цена за
+   * одного. Лимита больше нет: заказчик отмечает, кого хочет, а состав
+   * утверждает менеджер после ответов креаторов.
    */
-  public readonly reserve = computed(() => this.picked().slice(this.needed()));
-
-  public readonly overLimit = computed(() => this.reserve().length > 0);
+  public readonly needed = computed(() => this.picked().length);
 
   constructor() {
     // Смета пересчитывается на каждое изменение состава и объёма. Эффект
@@ -420,26 +434,32 @@ export class OrderFunnelPage implements OnInit {
     this.api
       .createOrder({
         start_month: this.month(),
-        needed: this.needed(),
+        // Сколько отметили — столько и отметили: мест больше нет, и
+        // это же число идёт в потолок цены.
+        needed: this.picked().length,
         videos_count: this.videos(),
         creator_ids: this.picked(),
+        brief: this.brief,
       })
       .subscribe({
         next: (res) => {
-          // Приглашения — вторым запросом: заказ создаётся черновиком,
-          // и до этого шага никого ещё не побеспокоили.
-          this.api.invite(res.order.id).subscribe({
-            next: (o) => {
-              this.submitting.set(false);
-              this.applyOrder(o);
-              this.router.navigate(['/me/orders', o.id], { replaceUrl: true });
-            },
-            error: (e) => {
-              this.submitting.set(false);
-              this.applyOrder(res.order);
-              this.msg.error(parseApiError(e, 'Заказ создан, но приглашения не ушли.').message);
-            },
+          // Второго запроса больше нет. Приглашения рассылает сервер —
+          // всем известным креаторам, а не первым по очереди, — и
+          // заказ уже пришёл со своим проектом.
+          this.submitting.set(false);
+          this.order.set(res.order);
+          this.projectId.set(res.order.project_id ?? '');
+          this.step.set(3);
+          this.api.orderEstimate(res.order.id).subscribe({
+            next: (e) => this.orderEstimate.set(e),
+            error: () => this.orderEstimate.set(null),
           });
+          this.router.navigate(['/me/orders', res.order.id], { replaceUrl: true });
+          if (res.busy_creators?.length) {
+            // Занятость — предупреждение, а не отказ: человек отметил
+            // себя занятым на этот месяц, но решать всё равно ему.
+            this.msg.info('Кто-то из отмеченных отметил себя занятым — менеджер уточнит.');
+          }
         },
         error: (e) => {
           this.submitting.set(false);
@@ -468,7 +488,10 @@ export class OrderFunnelPage implements OnInit {
 
   private applyOrder(o: Order): void {
     this.order.set(o);
-    this.step.set(stepOf(o));
+    this.projectId.set(o.project_id ?? '');
+    // Открытая по ссылке заявка показывается последним шагом: дальше
+    // человек живёт в проекте, а не в воронке.
+    this.step.set(3);
     this.api.orderEstimate(o.id).subscribe({
       next: (e) => this.orderEstimate.set(e),
       error: () => this.orderEstimate.set(null),
@@ -595,7 +618,7 @@ export class OrderFunnelPage implements OnInit {
    * «потолка» в условиях нет — им работает верхняя ступень.
    */
   public readonly topStepFee = computed(() => {
-    const steps = this.estimate()?.terms?.steps ?? [];
+    const steps = (this.orderEstimate() ?? this.estimate())?.terms?.steps ?? [];
     return steps.reduce((max, s) => Math.max(max, s.fee), 0);
   });
 
@@ -609,9 +632,13 @@ export class OrderFunnelPage implements OnInit {
    * известен заранее и не зависит от того, залетят ролики или нет.
    */
   public readonly ceiling = computed(() => {
-    const e = this.estimate();
+    // После отправки считаем по смете ЗАКАЗА: прайс мог смениться, а
+    // платят по версии, под которой стоит подпись. До отправки — по
+    // черновой, другой просто нет.
+    const e = this.orderEstimate() ?? this.estimate();
     if (!e) return 0;
-    return e.salaries + this.needed() * this.topStepFee();
+    const creators = this.order() ? e.creators : this.needed();
+    return e.salaries + creators * this.topStepFee();
   });
 
   /** То же для пояснения «цена одна на всех»: там она в середине фразы. */
@@ -647,12 +674,6 @@ export class OrderFunnelPage implements OnInit {
 }
 
 /** Шаг воронки по статусу заказа: заказ и есть источник правды. */
-function stepOf(o: Order): number {
-  if (o.status === 'paid') return 5;
-  if (o.status === 'staffed') return 4;
-  return 2;
-}
-
 function currentMonth(now: Date = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }

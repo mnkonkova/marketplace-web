@@ -254,9 +254,14 @@ test('смета заказа не показывает заказчику кр�
   const settled = watchApi(page);
 
   await page.goto('/me/projects');
-  await page.getByRole('button', { name: /Завести( ещё один)? проект/ }).first().click();
+  await page
+    .getByRole('button', { name: /Завести( ещё один)? проект/ })
+    .first()
+    .click();
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
   await page.locator('.kind.k1').click();
+  // Первый шаг воронки — бриф; каталог креаторов за ним.
+  await page.getByRole('button', { name: 'Дальше — креаторы' }).click();
   await expect(page.locator('.ccard').first()).toBeVisible({ timeout: 15_000 });
 
   // Смета уходит с задержкой после выбора — ждём именно её ответ, иначе

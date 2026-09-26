@@ -7,6 +7,7 @@ import {
   Availability,
   Invitation,
   Order,
+  OrderBrief,
   OrderEstimate,
   OrderLimit,
   OrderTerms,
@@ -32,18 +33,31 @@ export class OrderApi {
     return this.http.get<Order>(`${this.api}/me/orders/${id}`);
   }
 
-  // creatorIds — в порядке приоритета: клиент не выбирает N человек,
-  // а расставляет собранных по очереди.
+  // Заявка «под ключ»: бриф, отмеченные креаторы и объём роликов.
+  //
+  // creator_ids — кого отметили, без порядка: очередь приглашений ушла,
+  // приглашение уходит всем известным креаторам, а отмеченные получают
+  // его с пометкой «вас хотят особенно».
+  //
+  // Ответ несёт project_id: проект заводится ВМЕСТЕ с заявкой, и
+  // заказчику сразу есть куда прийти и где написать.
   public createOrder(payload: {
     start_month: string;
     needed: number;
     videos_count: number;
     creator_ids: string[];
-  }): Observable<{ order: Order; without_reserve: boolean }> {
-    return this.http.post<{ order: Order; without_reserve: boolean }>(
+    brief?: OrderBrief;
+  }): Observable<{ order: Order; busy_creators?: string[] }> {
+    return this.http.post<{ order: Order; busy_creators?: string[] }>(
       `${this.api}/me/orders`,
       payload,
     );
+  }
+
+  // Бриф правят и после отправки: половина заказчиков вспоминает про
+  // референсы уже потом. Текст переписывается целиком.
+  public saveBrief(orderId: string, brief: OrderBrief): Observable<{ brief: OrderBrief }> {
+    return this.http.patch<{ brief: OrderBrief }>(`${this.api}/me/orders/${orderId}/brief`, brief);
   }
 
   public invite(orderId: string): Observable<Order> {

@@ -3,7 +3,17 @@ import type { BillingTerms } from '@entities/billing/model/billing.types';
 // Типы домена «заказ на подбор креаторов под ключ» — DTO из
 // marketplace-api/internal/orders/dto.go.
 
-export type OrderStatus = 'draft' | 'inviting' | 'staffed' | 'paid' | 'cancelled';
+// submitted — заявка отправлена: заказ и проект заведены, менеджер
+// считает. finalized — менеджер утвердил состав, цену и даты; дальше
+// живёт проект, а заказ становится историей сделки.
+export type OrderStatus =
+  | 'draft'
+  | 'submitted'
+  | 'inviting'
+  | 'staffed'
+  | 'finalized'
+  | 'paid'
+  | 'cancelled';
 
 export type CandidateStatus = 'reserve' | 'invited' | 'accepted' | 'declined' | 'expired';
 
@@ -120,6 +130,21 @@ export interface SideStep {
  * читаемого поля цены.
  */
 export type SideTerms = Omit<BillingTerms, 'steps'> & { steps?: SideStep[] };
+
+/**
+ * Бриф заявки: о чём снимаем. Первый шаг воронки «под ключ».
+ *
+ * Необязателен целиком: заявка с пустым брифом лучше формы, которую
+ * бросили на полпути, а дописать его можно и после отправки.
+ */
+export interface OrderBrief {
+  goal: string;
+  product: string;
+  audience: string;
+  tone: string;
+  refs: string;
+  platforms?: string[];
+}
 
 export interface OrderEstimate {
   // Версия правил, по которой названа цена. У созданного заказа — та, с
