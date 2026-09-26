@@ -16,6 +16,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { downloadBlob } from '@shared/lib/download-blob';
 import { specialistHandle } from '@shared/lib/specialist-link';
 import { parseApiError } from '@shared/api/api-error';
+import type { MonthRequest } from '@entities/publication/model/publication.types';
 import { plural } from '@shared/lib/format';
 import { BillingApi } from '@entities/billing/api/billing.api';
 import { formatMoney, groupDigits } from '@entities/billing/lib/money';
@@ -260,13 +261,41 @@ export class ClientTurnkeyProjectComponent {
    * «всего на дату» — их складывает график, а не мы: ряд один и тот же,
    * просто показан итогом.
    */
-  public readonly cumulative = computed<SeriesPoint[]>(() => {
+  /**
+   * Глубина графика. По умолчанию месяц: период проекта меряется
+   * месяцем, и на нём видно, как ролик набирает после выхода.
+   *
+   * Переключатель едет ВМЕСТЕ С ГРАФИКОМ, а не стоит в шапке экрана: в
+   * шапке он читался бы как фильтр всей страницы, а меняет он только
+   * линию.
+   */
+  public readonly chartRange = signal<7 | 30>(30);
+
+  public setChartRange(days: 7 | 30): void {
+    this.chartRange.set(days);
+  }
+
+  /** Весь ряд накопительно. Из него режется окно. */
+  private readonly cumulativeAll = computed<SeriesPoint[]>(() => {
     let sum = 0;
     return (this.report()?.by_day ?? []).map((d) => {
       sum += d.views;
       return { date: d.date, value: sum };
     });
   });
+
+  public readonly cumulative = computed<SeriesPoint[]>(() =>
+    this.cumulativeAll().slice(-this.chartRange()),
+  );
+
+  /**
+   * Чисел меньше, чем на неделю: обе кнопки нарисуют одно и то же.
+   *
+   * Прятать переключатель нельзя — его тогда не найти вовсе; но и
+   * промолчать нельзя: кнопка, от которой ничего не меняется, читается
+   * как сломанная. Поэтому говорим прямо, за сколько дней есть числа.
+   */
+  public readonly chartDays = computed(() => this.cumulativeAll().length);
 
   /** Итоги площадок. Поденного разбора по площадкам сервер не отдаёт. */
   public readonly platformTotals = computed(() =>
@@ -465,19 +494,57 @@ export class ClientTurnkeyProjectComponent {
 
   // ---- смета на следующий месяц ----
 
-  public readonly smetaCount = signal(0);
+  /**
+   * Сколько креаторов в прикидке. Единица, а не ноль: ноль означал бы
+   * «команды нет», и блок молчал до первого движения ползунка — то есть
+   * ровно того вопроса, ради которого его и открывают, не отвечал.
+   */
+  public readonly smetaCount = signal(1);
 
   public readonly smetaEstimate = signal<OrderEstimate | null>(null);
 
   /**
-   * Сколько роликов в месяц по договору.
+   * Сколько роликов в месяц.
    *
-   * Без объёма сервер считает одни оклады — бонус за просмотры считать
-   * не из чего. Число берём из прайса, а не из головы: оно же
-   * подставится при оформлении заказа. Ноль до ответа — тогда смета
-   * приходит окладами и так и подписана.
+   * Число это ВИДНО и его двигают: цена месяца складывается из роликов,
+   * а не из числа людей, и прятать главное слагаемое за умолчанием
+   * прайса значит показывать сумму, которую нельзя объяснить. Начальное
+   * значение — из прайса: оно же подставится при оформлении заказа.
    */
-  private readonly monthVideos = signal(0);
+  public readonly smetaVideos = signal(0);
+
+  public onSmetaVideos(e: Event): void {
+    const n = Number((e.target as HTMLInputElement).value);
+    this.smetaVideos.set(n);
+    this.recalcSmeta(this.smetaCount());
+  }
+
+  /**
+   * Верхняя ступень лесенки — она же потолок за одного креатора.
+   *
+   * Лесенка устроена так, что выше последней ступени цена не растёт:
+   * набрал креатор миллион просмотров или три, период стоит одинаково.
+   * Поэтому отдельного «потолка» в условиях нет — им и работает верхняя
+   * ступень.
+   */
+  public readonly topStepFee = computed(() => {
+    const steps = this.smetaEstimate()?.terms?.steps ?? [];
+    return steps.reduce((max, s) => Math.max(max, s.fee), 0);
+  });
+
+  /**
+   * «Меньше N ₽» — вся цена месяца сверху.
+   *
+   * Складывается из двух известных заранее вещей: фикс за каждый ролик
+   * плюс верхняя ступень за каждого креатора. Это ПОТОЛОК, а не
+   * ожидание: столько выйдет, если у всех всё залетит. Считать среднее
+   * по прошлым проектам здесь нельзя — заказчик читает его как обещание.
+   */
+  public readonly smetaCeiling = computed(() => {
+    const e = this.smetaEstimate();
+    if (!e) return 0;
+    return e.salaries + this.smetaCount() * this.topStepFee();
+  });
 
   public readonly smetaBusy = signal(false);
 
@@ -503,7 +570,7 @@ export class ClientTurnkeyProjectComponent {
     this.smetaBusy.set(true);
     this.smetaTimer = setTimeout(() => {
       this.orderApi
-        .draftEstimate({ needed: n, videos_count: this.monthVideos(), creator_ids: [] })
+        .draftEstimate({ needed: n, videos_count: this.smetaVideos(), creator_ids: [] })
         .subscribe({
           next: (e) => {
             this.smetaEstimate.set(e);
@@ -517,15 +584,65 @@ export class ClientTurnkeyProjectComponent {
     }, 300);
   }
 
+  // ---- заявка на следующий месяц ----
+
+  /**
+   * Открытая заявка проекта.
+   *
+   * Нужна экрану, чтобы вместо кнопки показать «заявка у менеджера»:
+   * иначе человек жмёт её второй раз, не понимая, ушло ли первое, — а
+   * ушло, и у менеджера уже горит плашка.
+   */
+  public readonly monthRequest = signal<MonthRequest | null>(null);
+
+  public readonly askBusy = signal(false);
+
+  public askMonth(): void {
+    if (this.askBusy()) return;
+    this.askBusy.set(true);
+    this.pubApi
+      .clientAskMonth(this.project().id, {
+        creators: this.smetaCount(),
+        videos: this.smetaVideos(),
+        // Потолок — тот, что человек видел на экране. Пересчитывать его
+        // на сервере незачем: разговор пойдёт именно об этой сумме, а
+        // прайс к тому времени может смениться.
+        ceiling: this.smetaCeiling(),
+      })
+      .subscribe({
+        next: (r) => {
+          this.monthRequest.set(r.request);
+          this.askBusy.set(false);
+          this.msg.success('Заявка у менеджера — он напишет по стоимости и составу.');
+        },
+        error: (e) => {
+          this.askBusy.set(false);
+          this.msg.error(parseApiError(e, 'Не удалось отправить заявку.').message);
+        },
+      });
+  }
+
+  private loadMonthRequest(): void {
+    this.pubApi.clientMonthRequest(this.project().id).subscribe({
+      next: (r) => this.monthRequest.set(r.request),
+      error: () => this.monthRequest.set(null),
+    });
+  }
+
   /**
    * Условия площадки — ради объёма роликов в месяц. Тянем один раз и
-   * молча: без них смета придёт окладами, и это её честная подпись, а
-   * не сбой.
+   * молча: без них ползунок роликов встанет на ноль, и это честное
+   * «объём не задан», а не сбой.
    */
   private loadOrderTerms(): void {
     this.orderApi.terms().subscribe({
-      next: (r) => this.monthVideos.set(r.terms?.videos_next_months ?? 0),
-      error: () => this.monthVideos.set(0),
+      next: (r) => {
+        this.smetaVideos.set(r.terms?.videos_next_months ?? 0);
+        // Считаем сразу: человек открыл блок, чтобы увидеть число, а не
+        // чтобы подвигать ползунок и тогда увидеть.
+        this.recalcSmeta(this.smetaCount());
+      },
+      error: () => this.smetaVideos.set(0),
     });
   }
 
@@ -693,6 +810,7 @@ export class ClientTurnkeyProjectComponent {
       this.loadedFor = id;
       this.load(id);
       this.loadOrderTerms();
+      this.loadMonthRequest();
     });
   }
 

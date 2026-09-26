@@ -87,14 +87,6 @@
                 @if (billing()?.totals?.cost_per_1000; as cpm) {
                   <div class="kpi-note muted">тысяча просмотров — {{ money(cpm) }}</div>
                 }
-                @if (tariff(); as t) {
-                  <p class="muted tariff-note">
-                    Так работает договор: первые {{ digits(t.threshold_views) }} просмотров каждого
-                    ролика по {{ money(t.rate_per_1000) }} за тысячу, всё сверх —
-                    {{ money(t.rate_per_1000_over) }}. Чем дальше расходится ролик, тем дешевле
-                    средний просмотр.
-                  </p>
-                }
               </div>
 
               <div class="span-4 panel">
@@ -122,11 +114,6 @@
                     }
                   </div>
                 </div>
-                @if (report()!.er_without_shares) {
-                  <p class="muted tariff-note">
-                    Репосты площадки не отдают — в расчёт они не вошли, настоящий отклик выше.
-                  </p>
-                }
               </div>
 
               <div class="span-4 panel">
@@ -168,7 +155,30 @@
                   yLabel="Всего просмотров на дату"
                   [label]="'Накопленные просмотры проекта: ' + digits(report()!.views)"
                   color="var(--accent)"
-                />
+                >
+                  <div class="range" role="group" aria-label="Глубина графика">
+                    @if (chartDays() < 7) {
+                      <span class="only">
+                        пока за {{ chartDays() }}
+                        {{ plural(chartDays(), 'день', 'дня', 'дней') }}
+                      </span>
+                    }
+                    <button
+                      type="button"
+                      [class.on]="chartRange() === 7"
+                      (click)="setChartRange(7)"
+                    >
+                      7 дней
+                    </button>
+                    <button
+                      type="button"
+                      [class.on]="chartRange() === 30"
+                      (click)="setChartRange(30)"
+                    >
+                      30 дней
+                    </button>
+                  </div>
+                </app-line-chart>
 
                 <div class="plat-grid">
                   @for (p of platformTotals(); track p.platform) {
@@ -317,13 +327,18 @@
                         <div class="acc-cell">
                           @for (l of allPlatforms(v); track l.platform) {
                             @if (l.url) {
+                              <!-- Цифра рядом со значком, а не в
+                                   подсказке: на телефоне наводить нечем,
+                                   а «где зашло» — вопрос, ради которого
+                                   на эту строку и смотрят. -->
                               <a
                                 class="plat"
                                 [href]="l.url"
                                 target="_blank"
                                 rel="noopener"
-                                [title]="platformLabel[l.platform] + ': ' + digits(l.views)"
-                                >{{ platformShort[l.platform] }}</a
+                                [title]="platformLabel[l.platform]"
+                                >{{ platformShort[l.platform]
+                                }}<b class="v">{{ digits(l.views) }}</b></a
                               >
                             } @else {
                               <span class="plat nd" title="Ссылки нет — не измеряем">{{
@@ -570,6 +585,22 @@
                 <h2>Сколько будет стоить следующий месяц</h2>
                 <span class="server">расчёт сервера</span>
               </div>
+              <!-- Двигают ОБА числа: цена месяца складывается из роликов
+                   и людей, и ползунок только по людям отвечал на половину
+                   вопроса. -->
+              <label for="smeta-v" class="muted smeta-l">
+                Роликов за месяц: <b class="num ink">{{ smetaVideos() }}</b>
+              </label>
+              <input
+                id="smeta-v"
+                class="range"
+                type="range"
+                min="0"
+                max="90"
+                step="5"
+                [value]="smetaVideos()"
+                (input)="onSmetaVideos($event)"
+              />
               <label for="smeta" class="muted smeta-l">
                 Креаторов в команде: <b class="num ink">{{ smetaCount() }}</b>
               </label>
@@ -584,33 +615,34 @@
                 (input)="onSmeta($event)"
               />
               @if (smetaEstimate(); as e) {
-                <div class="quote">
-                  <div>
-                    <!-- Фикс считается за ролик: подписать эту сумму
-                         окладами значило бы назвать выключенную механику.
-                         Старый прайс — оклад за период, подпись прежняя. -->
-                    <span class="label">{{ e.terms.fee_per_video ? 'Фикс' : 'Оклады' }}</span>
-                    <b class="num">{{ money(e.salaries) }}</b>
+                <!-- Главное число — ПОТОЛОК, и названо оно потолком.
+                     «Меньше N ₽» — это то, во что месяц точно уложится:
+                     фикс за ролики известен заранее, а сверху каждый
+                     креатор может добрать не больше верхней ступени. -->
+                @if (topStepFee()) {
+                  <div class="ceil">
+                    <span class="label">Меньше</span>
+                    <b class="num">{{ money(smetaCeiling()) }}</b>
                   </div>
-                  <!-- «Потолок» показываем, только когда бонус за
-                       просмотры посчитан. Без состава он неизвестен, и
-                       подписать окладами потолок значит пообещать сумму,
-                       которой счёт не ограничен. -->
-                  @if (e.has_forecast) {
+                }
+                <!-- Разбора здесь нет намеренно: на этот вопрос человек
+                     хочет один ответ — «во сколько обойдётся». Строки
+                     «фикс столько, потолок просмотров столько» он
+                     складывает глазами и всё равно читает нижнюю сумму,
+                     а лишние числа заставляют перепроверять, не забыли
+                     ли чего. Из чего она собрана, объясняют в воронке,
+                     где состав уже виден. -->
+                @if (!topStepFee()) {
+                  <div class="quote">
                     <div>
-                      <span class="label">Потолок</span>
-                      <b class="num">{{ money(e.total) }}</b>
+                      <span class="label">
+                        {{ e.terms.fee_per_video ? 'Фикс за ролики' : 'Оклады' }}
+                      </span>
+                      <b class="num">{{ money(e.salaries) }}</b>
                     </div>
-                  }
-                  <div>
-                    <span class="label">Креаторов</span>
-                    <b class="num">{{ smetaCount() }}</b>
                   </div>
-                </div>
-                @if (!e.has_forecast) {
                   <p class="muted period-note">
-                    Это оклады за месяц. Бонус за просмотры считается, когда известно, кто снимает и
-                    сколько роликов, — в воронке заказа.
+                    Бонус за просмотры считается, когда известно, кто снимает, — в воронке заказа.
                   </p>
                 }
               } @else if (smetaBusy()) {
@@ -618,8 +650,30 @@
               } @else {
                 <p class="muted period-note">Смету посчитает сервер в воронке заказа.</p>
               }
+              <!-- Кнопка, а не только ссылка на каталог: из прикидки
+                   человек шёл писать менеджеру словами, и половина не
+                   доходила вовсе. Нажатие заводит ЗАЯВКУ — у менеджера
+                   загорается плашка, в общий чат уходит сообщение с
+                   числами и потолком, который тут показан. -->
+              @if (monthRequest(); as mr) {
+                <p class="muted period-note asked">
+                  Заявка у менеджера: {{ mr.videos }}
+                  {{ plural(mr.videos, 'ролик', 'ролика', 'роликов') }} и {{ mr.creators }}
+                  {{ plural(mr.creators, 'креатор', 'креатора', 'креаторов') }}, потолок
+                  {{ money(mr.ceiling) }}. Он напишет по стоимости и составу.
+                </p>
+              } @else {
+                <button
+                  type="button"
+                  class="btn primary ask-btn"
+                  [disabled]="askBusy() || !smetaEstimate()"
+                  (click)="askMonth()"
+                >
+                  {{ askBusy() ? 'Отправляем…' : 'Заказать этот месяц' }}
+                </button>
+              }
               <p class="muted period-note">
-                Смету видно до создания заказа.
+                Заявка — это ещё не счёт: менеджер уточнит состав и цену.
                 <a routerLink="/me/orders/new">Открыть каталог креаторов</a>
               </p>
             </div>

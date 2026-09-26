@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page, request as pwRequest } from '@playwright/test';
 import { AUTH_KEY } from '../fixtures/world';
-import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { call, createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
  * Что креатор видит про свой заработок и ближайшую ступень.
@@ -97,6 +97,33 @@ let box: Sandbox;
 
 test.beforeAll(async () => {
   box = await createSandbox('ladder', { shape: 'history' });
+
+  // Тариф задаём САМИ, а не берём с прайса площадки.
+  //
+  // Специя проверяет ПРАВИЛА лесенки заработка, и считаться они должны
+  // от известных чисел. Пока тариф приезжал из прайса, любая новая
+  // версия прайса меняла проверяемое: выпустили лесенку порогов — и
+  // прогноз «сколько даст следующая ступень» честно исчез (у того, кто
+  // взял верхнюю ступень, его нет вовсе), а специя об этом узнала как о
+  // сломанном кабинете.
+  //
+  // Здесь модель прежняя, без лесенки порогов: ступень одинакового
+  // размера, и до неё ровно столько, сколько не хватает до круглого
+  // числа. Пустой `steps` — это и есть «лесенки нет».
+  await call(box, 'manager', 'put', `/api/v1/manager/projects/${box.projectId}/billing`, {
+    salary_per_month: 6_000_000,
+    rate_per_1000_views: 9_000,
+    bonus_views_threshold: 1_000_000,
+    rate_per_1000_views_over: 900,
+    fee_per_video: null,
+    creator_fee_per_video: null,
+    creator_salary_per_month: null,
+    creator_rate_per_1000_views: null,
+    steps: [],
+    guarantee_views: null,
+    subscriber_rate: null,
+    creator_subscriber_rate: null,
+  });
 });
 
 test.afterAll(() => dropSandbox(box));
@@ -281,7 +308,8 @@ test('лесенка растёт ровно на столько ступене�
 test('прибавка и кнопка добора стоят рядом: сумма объясняет, зачем нажимать', async ({ page }) => {
   // Прибавка стояла тихой строкой под мотивирующей фразой, а кнопка —
   // отдельно: экран звал нажать, не сказав зачем. Решает человек СУММОЙ,
-  // поэтому сумма и кнопка обязаны быть одним блоком.
+  // поэтому сумма и кнопка стоят рядом — в одной карточке лесенки, одна
+  // под другой.
   await withForecast(page, (e) => ({
     next_step_forecast: { step_views: LADDER_STEP, views_to_go: 20_000, forecast_payout: 50_000 },
     benchmark: { ...(e.benchmark ?? {}), typical_video_views: 40_000 },
@@ -291,8 +319,23 @@ test('прибавка и кнопка добора стоят рядом: су�
   const lever = ladder.locator('.lever');
   expect(parseGain(await lever.innerText())).toBe(norm(money(50_000)));
   await expect(
-    lever.getByRole('button', { name: /Взять ещё выкладку/ }),
-    'кнопка добора — в том же блоке, что и сумма',
+    ladder.getByRole('button', { name: /Взять ещё выкладку/ }),
+    'кнопка добора — в той же карточке, что и сумма',
+  ).toBeVisible();
+});
+
+test('добрать выкладку можно и тогда, когда прибавки уже не будет', async ({ page }) => {
+  // Кнопка жила ВНУТРИ блока прогноза и исчезала вместе с ним. А
+  // прогноза нет ровно у того, кто взял верхнюю ступень: выше тариф не
+  // растёт, обещать прибавку нечем. То есть работу переставало быть
+  // где брать как раз тому, кто снимает быстрее плана.
+  await withForecast(page, () => null);
+
+  const ladder = await openLadder(page);
+  await expect(ladder.locator('.lever'), 'прогноза нет — и суммы нет').toHaveCount(0);
+  await expect(
+    ladder.getByRole('button', { name: /Взять ещё выкладку/ }),
+    'а взять ещё выкладку по-прежнему можно',
   ).toBeVisible();
 });
 

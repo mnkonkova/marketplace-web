@@ -585,3 +585,29 @@ export interface ReminderPrefs {
 export type ReminderPrefsPatch = Partial<
   Pick<ReminderPrefs, 'due_today' | 'overdue' | 'incomplete' | 'manager_digest' | 'day_before'>
 >;
+
+/**
+ * Заявка заказчика на следующий месяц.
+ *
+ * Прикидка «во сколько обойдётся месяц» сама по себе справочная:
+ * посмотрел и закрыл, а дальше человек шёл писать менеджеру словами.
+ * Кнопка «Заказать» превращает её в заявку — плашку у менеджера и
+ * сообщение в общий чат. Это ещё не заказ: цену и состав финализирует
+ * менеджер, а ceiling хранится снимком — разговор пойдёт о той сумме,
+ * которую человеку показали.
+ */
+export interface MonthRequest {
+  id: string;
+  project_id: string;
+  /** Первое число месяца, о котором просят. */
+  month: string;
+  creators: number;
+  videos: number;
+  /** Потолок в копейках — тот, что стоял на экране. */
+  ceiling: number;
+  created_at: string;
+  handled_at?: string | null;
+  requested_by: string;
+  project_title?: string;
+  client_name?: string;
+}

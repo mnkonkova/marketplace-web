@@ -100,7 +100,11 @@ test('креатор называет ролик, и название видят
     await signIn(context, 'creator');
     await page.goto(`/me/creator/projects/${box.projectId}`);
 
-    await page.getByRole('button', { name: 'Сдать ролик' }).first().click();
+    await page
+      .locator('.posts2')
+      .getByRole('button', { name: 'Сдать', exact: true })
+      .first()
+      .click();
     const modal = page.locator('.modal').filter({ hasText: 'сдать ролик' });
     await expect(modal).toBeVisible({ timeout: 15_000 });
 
@@ -113,6 +117,15 @@ test('креатор называет ролик, и название видят
       .first()
       .fill(`https://www.tiktok.com/@nastya/video/${Date.now()}`);
 
+    // Обязательные пункты чеклиста отмечает сдающий: без них кнопка
+    // гашена, а сервер отвечает 422. Отмечаем ровно обязательные —
+    // остальные и должны остаться пустыми.
+    const required = modal.locator('label.ck').filter({ hasText: 'обязательно' });
+    for (let i = 0; i < (await required.count()); i += 1) {
+      const item = required.nth(i);
+      if (!(await item.evaluate((el) => el.classList.contains('on')))) await item.click();
+    }
+
     const [saved] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/links') && r.request().method() === 'POST'),
       modal.getByRole('button', { name: 'Сдать' }).click(),
@@ -123,7 +136,7 @@ test('креатор называет ролик, и название видят
     // Креатор видит его вместо номера выкладки — в своём разделе
     // выкладок: список кабинета ушёл под вкладку.
     await openCreatorTab(page, 'Мои выкладки');
-    await expect(page.locator('.slotcard').filter({ hasText: TITLE })).toHaveCount(1);
+    await expect(page.locator('.posts2 .row').filter({ hasText: TITLE })).toHaveCount(1);
 
     // И то, ради чего название вообще заводили: менеджер видит его в
     // плане, а заказчик — в ленте роликов. Проверка на стороне креатора
@@ -133,9 +146,15 @@ test('креатор называет ролик, и название видят
       await signIn(asManager, 'manager');
       const mgr = await asManager.newPage();
       await mgr.goto(`/manager/projects/${box.projectId}`);
-      await expect(mgr.locator('.slot').filter({ hasText: TITLE })).toHaveCount(1, {
-        timeout: 15_000,
-      });
+      // У менеджера название стоит в «Ссылках на ролики»: в сетке плана
+      // клетка отвечает за состояние, а не за подпись. Список свёрнут
+      // по людям — разворачиваем своего.
+      const links = mgr.locator('.sec-links');
+      await links
+        .getByRole('button', { name: new RegExp(box.creator.name) })
+        .first()
+        .click();
+      await expect(links.getByText(TITLE)).toHaveCount(1, { timeout: 15_000 });
     } finally {
       await asManager.close();
     }
@@ -184,7 +203,7 @@ test('досылая площадки, название не приходитс�
 
     // Второй заход: поле подставлено, а не пустое.
     await page
-      .getByRole('button', { name: /Дослать ссылки|Сдать ролик/ })
+      .getByRole('button', { name: /^(Сдать|Ссылки)$/ })
       .first()
       .click();
     const modal = page.locator('.modal').filter({ hasText: 'сдать ролик' });

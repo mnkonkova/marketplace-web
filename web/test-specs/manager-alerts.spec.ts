@@ -61,10 +61,18 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
       'managerCreators',
       'managerRemind',
       'managerReport',
+      'managerProjectSettings',
+      // Заявка заказчика на следующий месяц: карточка читает её при
+      // загрузке — из неё собирается плашка в «Где сейчас горит».
+      'managerMonthRequest',
     ]);
     api.managerList.and.returnValue(of({ items: opts.pubs ?? [] }) as never);
     api.managerCreators.and.returnValue(of({ items: [] }) as never);
     api.managerRemind.and.returnValue(of({ sent: true }) as never);
+    // Настройки проекта карточка читает тем же заходом: тумблер
+    // «черновик до выкладки» живёт в составе.
+    api.managerProjectSettings.and.returnValue(of(null) as never);
+    api.managerMonthRequest.and.returnValue(of({ request: null }) as never);
 
     // Платежи и итоги приходят одной ручкой — так же, как в проде.
     const billing = jasmine.createSpyObj<BillingApi>('billingApi', [

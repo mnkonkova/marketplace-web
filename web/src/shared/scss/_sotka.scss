@@ -159,7 +159,15 @@
 // тёмный — там он и должен быть тёмным.
 .sotka,
 :root .crm-shell,
-:root .crm-shell .crm-page {
+:root .crm-shell .crm-page,
+// Экран, который носит ОБА словаря сразу: воронка заказа размечена
+// макетными классами .crm-page, а стоит в кабинете заказчика. Без этой
+// строки светлой оставалась только земля: `.crm-page` подключает тёмные
+// токены дизайн-системы на том же элементе (styles.scss, @include
+// design.tokens), и на равной силе побеждал он — карточки оставались
+// чёрными, а заголовки белыми по светлому.
+:root .sotka.crm-page,
+:root .sotka .crm-page {
   @include sotka-tokens;
 }
 
@@ -2437,7 +2445,14 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
 
   .review {
     display: grid;
-    grid-template-columns: 150px 1fr;
+    // minmax(0, 1fr), а не 1fr: у колонки внутри лежат адреса роликов, а
+    // они не переносятся. Дорожка `1fr` — это `minmax(auto, 1fr)`, то
+    // есть не уже своего содержимого, и правая колонка выезжала за
+    // панель на добрую сотню пикселей — «Заменить» и «да/нет» физически
+    // оказывались поверх соседней колонки с чек-листом и не нажимались
+    // вовсе. Поймал это обход кнопок: три «Заменить» и четыре «да/нет»
+    // подряд отвечали «до кнопки нельзя дотянуться».
+    grid-template-columns: 150px minmax(0, 1fr);
     gap: 16px;
   }
 
@@ -2911,10 +2926,25 @@ body:has(.crm-shell) {
   .sotka,
   :root .crm-shell,
   :root .crm-shell .crm-page,
+  :root .sotka.crm-page,
+  :root .sotka .crm-page,
   body:has(.sotka) .ant-modal,
   body:has(.crm-shell) .ant-modal,
   body:has(.sotka) .ant-drawer,
-  body:has(.crm-shell) .ant-drawer {
+  body:has(.crm-shell) .ant-drawer,
+  body:has(.sotka) .ant-message-notice-content,
+  body:has(.crm-shell) .ant-message-notice-content,
+  body:has(.sotka) .ant-dropdown,
+  body:has(.crm-shell) .ant-dropdown,
+  // Разметка окна словарём .crm-page — та же строка, что и в светлом
+  // наборе выше. Без неё окно оказывалось тёмным СНАРУЖИ и светлым
+  // ВНУТРИ: фон брался у .ant-modal, а --ink оставался чернильным от
+  // светлого набора, и «Проставить даты выкладок» читались тёмным по
+  // тёмному — виден был только белый островок карточки черновика.
+  body:has(.sotka) .ant-modal .crm-page,
+  body:has(.crm-shell) .ant-modal .crm-page,
+  body:has(.sotka) .ant-drawer .crm-page,
+  body:has(.crm-shell) .ant-drawer .crm-page {
     --ground: #101311;
     --surface: #191d1a;
     --surface-2: #1f2420;

@@ -1,6 +1,12 @@
 <app-header />
 
-<main class="crm-page order-funnel">
+<!-- Словарь кабинета (.sotka) поверх макетного (.crm-page).
+     Воронка — вход в кабинет заказчика, и открывается она из «Всех
+     проектов»: тёмная страница посреди светлых читалась как чужая
+     часть продукта. Классы разметки остаются макетные — .sotka
+     объявляет те же имена переменных на светлые значения (см.
+     sotka-tokens), поэтому переверстывать нечего, меняется палитра. -->
+<main class="sotka crm-page order-funnel">
   <div class="stage">
     <div class="steps">
       @for (label of stepLabels; track label; let i = $index; let last = $last) {
@@ -210,7 +216,7 @@
                 @if (busy().has(c.user_id)) {
                 <span class="pr busy-note">занят в этом месяце</span>
                 } @else {
-                <span class="pr">{{ money(terms()?.salary_per_month) }} / мес</span>
+                <span class="pr">{{ priceLabel() }}</span>
                 }
               </span>
             </button>
@@ -232,9 +238,8 @@
             </span>
             <span class="tx">
               <b>Цена одна на всех</b>
-              Это прайс площадки, а не ставка блогера: {{ money(terms()?.salary_per_month) }} за
-              месяц работы плюс бонус за просмотры. Поэтому выбирать можно по людям, а не по
-              ценнику.
+              Это прайс площадки, а не ставка блогера: {{ priceSentence() }} плюс бонус за
+              просмотры. Поэтому выбирать можно по людям, а не по ценнику.
             </span>
           </div>
         </div>
@@ -332,15 +337,24 @@
           </p>
           } }
 
+          <!-- Потолок, а не ориентир: фикс за ролики известен заранее, и
+               выше верхней ступени цена не растёт. Ориентир складывал
+               фикс с прогнозом бонуса по истории подборки — у новых
+               людей её нет, и в корзине стоял голый фикс, то есть сумма,
+               которой счёт не ограничен. -->
           <div class="btot">
-            <span>Ориентир</span>
+            <span>{{ topStepFee() ? 'Меньше' : 'Ориентир' }}</span>
             <b>
-              @if (estimating()) { считаем… } @else { @if (estimate(); as e) { {{ money(e.total) }}
-              } @else { — } }
+              @if (estimating()) { считаем… } @else { @if (estimate(); as e) { @if (topStepFee()) {
+              {{ money(ceiling()) }} } @else { {{ money(e.total) }} } } @else { — } }
             </b>
           </div>
-
-          @if (estimate(); as e) {
+          <!-- Расшифровки под суммой нет намеренно: человек решает по
+               одному числу, а перечисление слагаемых заставляет его
+               складывать их глазами и перепроверять итог. Из чего он
+               собран, сказано в условиях, под которыми он подписывается
+               ниже. -->
+          @if (!topStepFee() && estimate(); as e) {
           <p class="forecast-note">
             @if (e.has_forecast) { В ориентир входит прогноз бонуса — {{ money(e.bonus_forecast) }}
             при {{ views(e.avg_views_per_video) }} просмотрах на ролик. @if (e.without_history > 0)
@@ -425,9 +439,8 @@
         <span class="pr">
           @if (c.status === 'invited' && c.expires_at) { {{ c.expires_at | date: 'd MMM, HH:mm' }}
           <small>ответ до</small>
-          } @else if (c.status === 'accepted') { {{ money(orderEstimate()?.terms?.salary_per_month)
-          }}
-          <small>оклад по прайсу</small>
+          } @else if (c.status === 'accepted') { {{ orderPrice().value }}
+          <small>{{ orderPrice().note }}</small>
           } @else { —
           <small>{{ c.status === 'reserve' ? 'ждёт очереди' : 'место свободно' }}</small>
           }
@@ -569,8 +582,8 @@
             </span>
             <span class="tag green">Взял заявку</span>
             <span class="pr">
-              {{ money(orderEstimate()?.terms?.salary_per_month) }}
-              <small>оклад за месяц</small>
+              {{ orderPrice().value }}
+              <small>{{ orderPrice().note }}</small>
             </span>
           </div>
           } }

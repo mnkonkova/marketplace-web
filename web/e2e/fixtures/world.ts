@@ -432,6 +432,94 @@ async function reuseSessions(
   }
 }
 
+/**
+ * Прайс площадки с фиксом ЗА РОЛИК.
+ *
+ * Действующая версия прайса — общее свойство стенда, и без фикса за
+ * ролик половина денежных проверок уходит в запасную ветку «оклад за
+ * период». Хуже того, она уходит туда СРАЗУ ОБЕИМИ сметами — и до
+ * заказа, и по заказу, — то есть сходится числом при разной механике и
+ * объявляет себя проверенной. Так и жила расхождение между
+ * `Repo.LatestTerms` и `orderFacts`: на живом прайсе с фиксом заказ
+ * стоил вдвое дороже того, что человеку показали.
+ *
+ * Поэтому мир сеет прайс с фиксом — тот, по которому продукт работает.
+ * Идемпотентно: у прайса уже есть фикс — не трогаем. Версии прайса
+ * append-only (под ними стоят согласия клиентов), и выпускать новую на
+ * каждый прогон значило бы копить мусор и заставлять всех соглашаться
+ * заново.
+ */
+async function ensurePricePerVideo(
+  api: Awaited<ReturnType<typeof request.newContext>>,
+  admin: Session,
+): Promise<void> {
+  const headers = { Authorization: `Bearer ${admin.access_token}` };
+  const res = await api.get('/api/v1/admin/terms', { headers });
+  if (!res.ok()) throw new Error(`прайс: ${res.status()} ${await res.text()}`);
+  const items = ((await res.json()).items ?? []) as Record<string, unknown>[];
+  const current = items[0] as Record<string, any> | undefined;
+  const hasSteps = Array.isArray(current?.steps) && current.steps.length > 0;
+  if (current && Number(current.fee_per_video ?? 0) > 0 && hasSteps) return;
+
+  // Числа те же, что у действующей версии, плюс фикс: меняем ОДНО, и
+  // остальные проверки остаются на своих значениях.
+  const body: Record<string, unknown> = {
+    ...(current ?? {}),
+    fee_per_video: 100_000,
+    creator_fee_per_video: 50_000,
+    // Лесенка — вторая половина живой модели, и без неё прикидка «во
+    // сколько обойдётся месяц» не может назвать потолок: у ставки за
+    // тысячу его нет вовсе, а у ступеней верхняя и есть потолок.
+    steps: [
+      { from_views: 500_000, client_fee: 250_000, creator_fee: 150_000 },
+      { from_views: 1_000_000, client_fee: 500_000, creator_fee: 300_000 },
+    ],
+    body:
+      'Условия работы: 1 000 ₽ за вышедший ролик плюс ступени по просмотрам —' +
+      ' 2 500 ₽ на 500 000 и 5 000 ₽ на миллионе за каждого креатора.',
+  };
+  // Свойства самой ВЕРСИИ, а не условий: выпуск заводит новую строку и
+  // присваивает их сам.
+  for (const own of ['id', 'version', 'published_at', 'published_by']) delete body[own];
+  const pub = await api.post('/api/v1/admin/terms', { headers, data: body });
+  if (pub.status() !== 201) {
+    throw new Error(`выпуск прайса: ${pub.status()} ${await pub.text()}`);
+  }
+}
+
+/**
+ * Очередь модерации не должна быть пустой.
+ *
+ * Специи админки открывают карточку человека из очереди — и до сих пор
+ * рассчитывали, что в ней кто-то есть «сам собой». Стоило одобрить
+ * последнего ожидающего руками, как три специи покраснели с «кнопки
+ * „Открыть“ нет», и выглядело это как сломанная админка.
+ *
+ * Поэтому мир держит в очереди своего человека: опубликованный профиль
+ * на модерации, который никто не одобряет. Идемпотентно — если он уже
+ * ждёт, не трогаем.
+ */
+function ensureModerationQueue(): void {
+  // Тот же bcrypt-хеш пароля `E2ePassw0rd!`, что и в seed/users.sql:
+  // считать его на месте нечем — bcrypt в зависимостях фронта нет.
+  const hash = '$2a$10$VLL7gXAlXcbWgcG/qthyKOU0Upz4iMk1.E1L9pQHkngMHaYwVXLFa';
+  psql(`
+INSERT INTO users (email, password_hash, kind, is_approved, is_active, email_verified_at, display_name)
+VALUES ('e2e-pending@example.com', '${hash}', 'specialist', TRUE, TRUE, now(), 'Ждёт модерации')
+ON CONFLICT (email) DO NOTHING;
+
+INSERT INTO specialist_profiles (user_id, display_name, bio, is_published, moderation_status)
+SELECT id, 'Ждёт модерации', 'Профиль для очереди модерации: его не одобряют намеренно.', TRUE, 'pending_review'
+FROM users WHERE email = 'e2e-pending@example.com'
+ON CONFLICT (user_id) DO UPDATE
+SET is_published = TRUE, moderation_status = 'pending_review';
+
+INSERT INTO specialist_categories (user_id, category_code, is_primary)
+SELECT id, 'ugc', TRUE FROM users WHERE email = 'e2e-pending@example.com'
+ON CONFLICT DO NOTHING;
+`);
+}
+
 export default async function globalSetup(): Promise<void> {
   resetRateLimits();
   // Следы прерванных прогонов: их afterAll не отработал.
@@ -463,6 +551,11 @@ export default async function globalSetup(): Promise<void> {
   };
 
   const auth = (s: Session) => ({ Authorization: `Bearer ${s.access_token}` });
+
+  // Прайс — раньше мира: проекты снимают с него числа снимком, и завести
+  // их надо по тому же прайсу, по которому потом считают.
+  await ensurePricePerVideo(api, sessions.admin);
+  ensureModerationQueue();
 
   // Проект прошлого прогона переиспользуем, если он цел.
   //

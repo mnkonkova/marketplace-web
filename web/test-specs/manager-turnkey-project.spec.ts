@@ -62,6 +62,10 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
       'managerList',
       'managerCreators',
       'managerReport',
+      'managerProjectSettings',
+      // Заявка заказчика на следующий месяц: карточка читает её при
+      // загрузке — из неё собирается плашка в «Где сейчас горит».
+      'managerMonthRequest',
     ]);
     api.managerList.and.returnValue(of({ items }) as never);
     api.managerCreators.and.returnValue(
@@ -73,6 +77,10 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
     // Цифры проекта и список периодов карточка тянет при загрузке:
     // без заглушек эффект падает на первом же рендере.
     api.managerReport.and.returnValue(of(null) as never);
+    // Настройки проекта: в карточке ими управляется тумблер «черновик
+    // до выкладки», и читаются они тем же заходом.
+    api.managerProjectSettings.and.returnValue(of(null) as never);
+    api.managerMonthRequest.and.returnValue(of({ request: null }) as never);
 
     const projects = jasmine.createSpyObj<ProjectApi>('projects', [
       'managerAssigned',

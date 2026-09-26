@@ -169,26 +169,32 @@ test('в карточке проекта у админа крошки вмест
   await expect(page).toHaveURL(/\/admin\/projects$/);
 });
 
-test('вкладки проекта остаются на виду при прокрутке', async ({ context, page }) => {
+test('полоса пути остаётся на виду при прокрутке', async ({ context, page }) => {
   await signIn(context, 'admin');
   // Низкое окно намеренно: у посеянного проекта содержимого на пол-экрана,
   // и на обычном окне страница просто не прокручивается настолько, чтобы
-  // вкладки успели уехать, — тест был бы зелёным и без липкости.
+  // шапка успела уехать, — тест был бы зелёным и без липкости.
   await page.setViewportSize({ width: 1280, height: 400 });
   await page.goto(`/manager/projects/${box.projectId}`);
 
-  const tabs = page.locator('.content .crm-page .tabs').first();
-  await expect(tabs).toBeVisible({ timeout: 15_000 });
+  // Дорога назад, а не вкладки: карточка проекта на десктопе — одна
+  // длинная страница, вкладки остались только на телефоне
+  // (app-sotka-tabbar). Уехавшая наверх полоса пути на такой странице
+  // означает, что из проекта некуда выйти, не промотав его целиком.
+  const bar = page.locator('.crm-shell .topbar').first();
+  await expect(bar).toBeVisible({ timeout: 15_000 });
+  await expect(bar.getByRole('link', { name: 'Проекты' })).toBeVisible();
 
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.waitForTimeout(300);
 
-  const rect = await tabs.boundingBox();
-  expect(rect, 'вкладки должны остаться в разметке').not.toBeNull();
-  // Прижаты под полосой крошек (58px), а не уехали за верх экрана: без
-  // липкости они оказались бы на отрицательном y.
-  expect(rect!.y, `вкладки уехали на y=${rect?.y}`).toBeGreaterThanOrEqual(40);
-  expect(rect!.y, `вкладки уехали на y=${rect?.y}`).toBeLessThan(130);
+  const rect = await bar.boundingBox();
+  expect(rect, 'полоса пути должна остаться в разметке').not.toBeNull();
+  // Прижата к верху окна (top: 0), а не уехала за него: без липкости она
+  // оказалась бы на отрицательном y.
+  expect(rect!.y, `полоса пути уехала на y=${rect?.y}`).toBeGreaterThanOrEqual(0);
+  expect(rect!.y, `полоса пути уехала на y=${rect?.y}`).toBeLessThan(40);
+  await expect(bar.getByRole('link', { name: 'Проекты' })).toBeInViewport();
 });
 
 test('удаление проекта спрятано в меню и требует ввести название', async ({ context, page }) => {

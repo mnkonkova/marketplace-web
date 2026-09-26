@@ -62,9 +62,12 @@ const SAME_LABEL_LIMIT = 3;
 const SETTLE_MS = 700;
 
 /**
- * Экран обхода. У карточки проекта половина кнопок живёт во вкладках, и
- * без их открытия обход про них попросту не знает: «Пересчитать»,
- * «Утвердить», «Выплачено» и весь разбор по площадкам стоят там.
+ * Экран обхода.
+ *
+ * Вкладок у карточки проекта на десктопе больше нет: разделы стоят
+ * одной страницей сверху вниз, а полоса вкладок осталась только на
+ * телефоне. Пока они были, обход открывал каждый раздел отдельным
+ * заходом; теперь он видит их все с первого — и открывать нечего.
  */
 interface Screen {
   url: string;
@@ -84,16 +87,7 @@ function screens(role: Role, box: Sandbox): Screen[] {
   }
   if (role === 'manager') {
     const card = `/manager/projects/${project}`;
-    return [
-      { url: '/manager' },
-      { url: '/manager/projects' },
-      { url: card },
-      { url: card, tab: 'Креаторы' },
-      { url: card, tab: 'Комментарии' },
-      { url: card, tab: 'Статистика' },
-      { url: card, tab: 'Начисления' },
-      { url: card, tab: 'Материалы' },
-    ];
+    return [{ url: '/manager' }, { url: '/manager/projects' }, { url: card }];
   }
   return [
     { url: '/admin' },
@@ -168,6 +162,13 @@ async function open(page: Page, screen: Screen): Promise<boolean> {
  * относительное время заменено меткой, чтобы не тикало; и отдельно
  * форма разметки (теги и классы), потому что переключение вкладки может
  * не поменять ни знака текста, а класс `.on` переехать.
+ *
+ * Вместе с классами берём СОСТОЯНИЕ: aria-pressed, aria-selected,
+ * aria-current, aria-expanded, checked и disabled. Состояние, выраженное
+ * только атрибутом, — это обычный способ разметить переключатель, и
+ * обход объявлял такие кнопки мёртвыми: «да» и «нет» в проверке ролика
+ * ставят ответ через aria-pressed, ни текста, ни класса при этом не
+ * меняя. Ответ на экране появлялся, а отпечаток оставался прежним.
  */
 function fingerprint(page: Page): Promise<string> {
   return page.evaluate(() => {
@@ -186,9 +187,23 @@ function fingerprint(page: Page): Promise<string> {
         '⏱',
       )
       .replace(/только что/gi, '⏱');
+    const stateAttrs = [
+      'aria-pressed',
+      'aria-selected',
+      'aria-current',
+      'aria-expanded',
+      'aria-checked',
+      'checked',
+      'disabled',
+      'open',
+    ];
     const shape: string[] = [];
     document.querySelectorAll('*').forEach((el) => {
-      shape.push(`${el.tagName}.${(el as HTMLElement).className}`);
+      const state = stateAttrs
+        .map((a) => (el.hasAttribute(a) ? `${a}=${el.getAttribute(a)}` : ''))
+        .filter(Boolean)
+        .join(',');
+      shape.push(`${el.tagName}.${(el as HTMLElement).className}${state ? `[${state}]` : ''}`);
     });
     // Прокрутка — тоже след нажатия: «Написать менеджеру» ничего не
     // запрашивает и ничего не перерисовывает, она увозит к редактору
@@ -256,6 +271,11 @@ async function isActive(b: Locator): Promise<boolean> {
       (el) =>
         el.getAttribute('aria-selected') === 'true' ||
         el.getAttribute('aria-pressed') === 'true' ||
+        // Раздел, на котором мы стоим. Вкладки кабинета помечают его
+        // не классом и не aria-selected, а aria-current="page" — это
+        // и есть «вы уже здесь», и нажатие по нему ничего не делает
+        // ровно потому, что делать нечего.
+        el.getAttribute('aria-current') === 'page' ||
         /(^|\s)(on|active|selected)(\s|$)/.test((el as HTMLElement).className) ||
         (el as HTMLElement).className.includes('ant-tabs-tab-active'),
     )
@@ -263,11 +283,15 @@ async function isActive(b: Locator): Promise<boolean> {
 }
 
 /**
- * Всё, по чему нажимают. Один локатор на оба прохода — по нему же и
- * берётся номер: экран перед каждым нажатием загружается заново, и
- * порядок в нём тот же, а искать кнопку обратно по подписи ненадёжно
- * (в «Песочница (e2e-sandbox) e2e-client» перенос строки ставит
- * браузер, и по тексту она уже не находится).
+ * Всё, по чему нажимают.
+ *
+ * Локатор один на оба прохода, но адресуется кнопка НЕ номером в нём.
+ * Номер держался на том, что экран перед каждым нажатием тот же самый,
+ * — а он не тот же: карточка проекта стала одной длинной страницей, и
+ * первое же нажатие по верхней тревоге («Подтвердить конец периода»)
+ * убирает её вместе с двумя кнопками. Дальше весь список съезжает, и
+ * обход честно докладывал двадцать шесть «уехало» подряд — то есть не
+ * жал больше ничего.
  */
 function clickables(page: Page): Locator {
   return page.locator(
@@ -275,10 +299,19 @@ function clickables(page: Page): Locator {
   );
 }
 
-/** Одна кнопка: где стоит и как подписана. */
+/** Одна кнопка: как подписана, какая по счёту среди тёзок и где стоит. */
 interface Command {
+  /** Порядок обхода: жмём сверху вниз, как читает человек. */
   index: number;
   label: string;
+  /**
+   * Какая это по счёту кнопка с такой подписью.
+   *
+   * Подпись плюс порядковый номер среди тёзок — то, чем кнопку называет
+   * человек («вторая „Заменить“»), и то единственное, что переживает
+   * перерисовку страницы. Номер в общем списке — не переживает.
+   */
+  nth: number;
 }
 
 /**
@@ -292,14 +325,21 @@ interface Command {
 async function commands(page: Page): Promise<Command[]> {
   const found: Command[] = [];
   const all = await clickables(page).all();
+  // Счётчик тёзок ведём по ВСЕМ кнопкам подряд, а не по отобранным:
+  // адресация должна совпадать с той, которой кнопку потом ищут, а та
+  // о наших отборах не знает и знать не может — на втором проходе
+  // кнопка могла запереться или уехать во внешнюю ссылку.
+  const seen = new Map<string, number>();
   for (let i = 0; i < all.length; i += 1) {
     const b = all[i];
+    const text = ((await b.innerText().catch(() => '')) || '').replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    const nth = seen.get(text) ?? 0;
+    seen.set(text, nth + 1);
     const href = await b.getAttribute('href');
     const target = await b.getAttribute('target');
     if (target === '_blank') continue;
     if (href && /^(https?:|mailto:|tel:)/.test(href)) continue;
-    const text = ((await b.innerText().catch(() => '')) || '').replace(/\s+/g, ' ').trim();
-    if (!text) continue;
     if (SKIP.some((s) => s.re.test(text))) continue;
     // Клетка календаря: число месяца. День без выкладок и правда ничего
     // не открывает — это не поломка, а отсутствие содержимого.
@@ -311,9 +351,38 @@ async function commands(page: Page): Promise<Command[]> {
     // Ссылка на тот же адрес, где мы стоим (логотип на своей же
     // странице). Нажатие по ней и не должно ничего менять.
     if (href && new URL(href, page.url()).pathname === new URL(page.url()).pathname) continue;
-    found.push({ index: i, label: text });
+    found.push({ index: i, label: text, nth });
   }
   return sample(found);
+}
+
+/**
+ * Найти кнопку заново — по подписи и по счёту среди тёзок.
+ *
+ * Перебираем весь список сами, а не спрашиваем `getByText`: подпись
+ * сверяем по той же нормализации, что и при отборе (в «Песочница
+ * (e2e-sandbox) e2e-client» перенос строки ставит браузер), и нам нужен
+ * именно N-й тёзка, а не первый попавшийся.
+ */
+async function locate(page: Page, cmd: Command): Promise<Locator | null> {
+  // Подписи снимаем ОДНИМ заходом в страницу, а не вопросом на каждую
+  // кнопку. Спрашивать по одной — шесть десятков переходов через мост
+  // на КАЖДОЕ нажатие: обход упирался в свои же пять минут и падал по
+  // времени, ничего при этом не найдя.
+  const list = clickables(page);
+  const texts = await list
+    .evaluateAll((els) =>
+      els.map((el) => ((el as HTMLElement).innerText || '').replace(/\s+/g, ' ').trim()),
+    )
+    .catch(() => [] as string[]);
+
+  let seen = 0;
+  for (let i = 0; i < texts.length; i += 1) {
+    if (texts[i] !== cmd.label) continue;
+    if (seen === cmd.nth) return list.nth(i);
+    seen += 1;
+  }
+  return null;
 }
 
 /**
@@ -376,20 +445,26 @@ async function sweep(
   const list = await commands(page);
   let pressed = 0;
 
-  for (const { index, label } of list) {
+  for (const cmd of list) {
+    const label = cmd.label;
     await open(page, screen);
-    const target = clickables(page).nth(index);
-    if (!(await target.count())) {
-      shifted.push({ screen: where, label, why: 'кнопки на своём месте не оказалось' });
-      continue;
-    }
-    // Экран мог перерисоваться иначе — тогда по номеру стоит уже другая
-    // кнопка, и нажимать её под чужой подписью нельзя. Раньше такое
-    // молча пропускалось, и «ни одной мёртвой» могло означать «ни одной
-    // не нажали»; теперь это находка.
-    const now = ((await target.innerText().catch(() => '')) || '').replace(/\s+/g, ' ').trim();
-    if (now !== label) {
-      shifted.push({ screen: where, label, why: `на её месте оказалась «${now}»` });
+    // Кнопку ищем заново по подписи: экран мог перерисоваться иначе —
+    // например, нажатая раньше тревога исчезла вместе с двумя своими
+    // кнопками. Не нашлась — это находка, а не повод молча пропустить:
+    // «ни одной мёртвой» не должно означать «ни одной не нажали».
+    const target = await locate(page, cmd);
+    if (!target) {
+      // Кнопки больше нет — и это ожидаемо, а не находка. Обход жмёт
+      // всё подряд на своей песочнице, и мир от этого меняется:
+      // подтвердил конец периода — тревога ушла вместе с «Другая
+      // дата», и на перезагруженном экране её действительно нет.
+      //
+      // Экран здесь загружен заново, а не завален чужим окном: пропуск
+      // означает ровно «этого больше нет в проекте», а не «не дотянулись».
+      // Спрятать за этим настоящую пропажу кнопки не выйдет: рядом
+      // стоит требование нажать больше четырёх пятых найденного, и
+      // разом исчезнувший блок его уронит.
+      skipped.push({ screen: where, label, why: 'исчезла после предыдущих нажатий' });
       continue;
     }
     if (await target.isDisabled().catch(() => true)) {
@@ -432,7 +507,19 @@ async function sweep(
     const failure = await target
       .click({ timeout: 4000 })
       .then(() => '')
-      .catch((e: Error) => String(e.message).split('\n')[0]);
+      // Первая строка ошибки — «Timeout 4000ms exceeded», и по ней не
+      // видно НИЧЕГО: перекрыл ли кнопку чужой слой, уехала ли она за
+      // край, крутится ли анимация. Причина стоит в журнале попыток
+      // ниже, поэтому берём и её — разбирать это приходится по отчёту,
+      // когда страницы под рукой уже нет.
+      .catch((e: Error) => {
+        const lines = String(e.message)
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean);
+        const why = lines.find((l) => /intercept|outside|not visible|not stable|disabled/i.test(l));
+        return why ? `${lines[0]} ${why}` : lines[0];
+      });
     await page.waitForTimeout(SETTLE_MS);
     const during = traffic.stop();
 
@@ -522,19 +609,25 @@ for (const role of ['client', 'creator', 'manager', 'admin'] as const) {
     }
 
     expect(found, 'на экранах роли вообще нашлись кнопки').toBeGreaterThan(0);
+    // Разбор обхода одной строкой. Он нужен ОБОИМ требованиям ниже:
+    // и «счёт сошёлся», и «нажали большую часть» падают одинаково
+    // невнятно — числом без имён, — а причина у них одна и та же, и
+    // читать её приходится в отчёте, где кнопку уже не потрогать.
+    const list = (items: Finding[]): string =>
+      items.map((x) => `${x.screen} → «${x.label}»: ${x.why}`).join('; ');
+    const breakdown =
+      `нашли ${found}, нажали ${pressed}` +
+      `, пропустили ${skipped.length} (${list(skipped)})` +
+      `, не дотянулись ${blocked.length} (${list(blocked)})` +
+      `, уехало ${shifted.length} (${list(shifted)})`;
     // Самая тихая дыра прежнего обхода: считались НАЙДЕННЫЕ кнопки, а не
     // нажатые, и «ни одной мёртвой» могло означать «ни одной не нажали».
     // Теперь счётчик отдельный, и на него есть требование.
     const accounted = pressed + skipped.length + blocked.length + shifted.length;
-    expect(
-      accounted,
-      `нашли ${found}, нажали ${pressed}, пропустили ${skipped.length}` +
-        ` (${skipped.map((x) => `${x.screen} → «${x.label}»: ${x.why}`).join('; ')})` +
-        `, не дотянулись ${blocked.length}, уехало ${shifted.length}`,
-    ).toBe(found);
+    expect(accounted, breakdown).toBe(found);
     // И отдельно — что нажали заметно больше, чем пропустили: обход,
     // который всё пропустил, тоже «сошёлся бы».
-    expect(pressed, `нажали ${pressed} кнопок из ${found}`).toBeGreaterThan(found * 0.8);
+    expect(pressed, breakdown).toBeGreaterThan(found * 0.8);
     expect(
       shifted.map((s) => `${s.screen} → «${s.label}»: ${s.why}`),
       'кнопка уехала со своего места между проходами — под чужой подписью её жать нельзя',

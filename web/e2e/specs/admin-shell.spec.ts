@@ -135,6 +135,11 @@ test.describe('поиск по CRM', () => {
 
   test('стрелки и Enter доводят до проекта, не трогая мышь', async ({ page }) => {
     await page.keyboard.press('Control+k');
+    // Дожидаемся окна ПЕРЕД набором: поле фокусируется после отрисовки, и
+    // буквы, набранные раньше, уходят в страницу под ним. Запрос тогда
+    // остаётся пустым, находок нет, и падение выглядит как «поиск не
+    // работает» — хотя не сработал набор.
+    await expect(page.getByRole('dialog', { name: 'Поиск по CRM' })).toBeVisible();
     await page.keyboard.type('PetFlat');
     await expect(page.locator('.hits button').first()).toBeVisible({ timeout: 10_000 });
 

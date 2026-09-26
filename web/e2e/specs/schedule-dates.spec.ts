@@ -69,10 +69,17 @@ test.beforeAll(async () => {
 test.afterAll(() => dropSandbox(box));
 
 test('выбранные в календаре дни создают выкладки', async ({ page }) => {
-  const plan = page.locator('.slot');
+  // Занятая клетка плана: пустая тоже `.c` — она кнопка «поставить
+  // выкладку», — поэтому считаем только те, у которых есть состояние.
+  // Берём таблицу десктопа: телефонная лента рядом в разметке, и без
+  // этой рамки каждая выкладка считалась бы дважды.
+  const plan = page.locator(
+    '.tbl-wrap .grid-plan .c.p, .tbl-wrap .grid-plan .c.d, .tbl-wrap .grid-plan .c.r, .tbl-wrap .grid-plan .c.l',
+  );
+  await expect(page.locator('.tbl-wrap .grid-plan')).toBeVisible({ timeout: 15_000 });
   const before = await plan.count();
 
-  await page.getByRole('button', { name: 'Проставить даты' }).click();
+  await page.getByRole('button', { name: 'Проставить пачкой' }).click();
   const d = dialog(page);
   await expect(d).toBeVisible({ timeout: 15_000 });
 
@@ -107,7 +114,7 @@ test('выбранные в календаре дни создают выкла�
 });
 
 test('без выбранного креатора создать нельзя', async ({ page }) => {
-  await page.getByRole('button', { name: 'Проставить даты' }).click();
+  await page.getByRole('button', { name: 'Проставить пачкой' }).click();
   const d = dialog(page);
   await expect(d).toBeVisible({ timeout: 15_000 });
 

@@ -106,7 +106,7 @@ test('своя выкладка добавляется, и после этого
 
     // Список выкладок — в своём разделе кабинета.
     await openCreatorTab(page, 'Мои выкладки');
-    const slots = page.locator('.slotcard');
+    const slots = page.locator('.posts2 .row');
     await expect(slots.first()).toBeVisible({ timeout: 15_000 });
     const before = await slots.count();
 
@@ -114,7 +114,7 @@ test('своя выкладка добавляется, и после этого
     // ради которых ролик и добирают («осталось 100 тыс. просмотров»,
     // «≈ +4 950 ₽»).
     await openCreatorTab(page, 'Общая');
-    const add = page.getByRole('button', { name: 'Добавить ролик' }).first();
+    const add = page.getByRole('button', { name: 'Взять ещё выкладку' }).first();
     await expect(add, 'период идёт — добрать сверх плана можно').toBeVisible();
     await add.click();
 
@@ -151,7 +151,7 @@ test('своя выкладка добавляется, и после этого
     // А теперь то, что ломалось заодно. Окно открывается второй раз, и
     // календарь в нём по-прежнему есть.
     await openCreatorTab(page, 'Общая');
-    await page.getByRole('button', { name: 'Добавить ролик' }).first().click();
+    await page.getByRole('button', { name: 'Взять ещё выкладку' }).first().click();
     await expect(modal.locator('nz-date-picker input')).toBeVisible();
     await modal.getByRole('button', { name: 'Отмена' }).click();
 
@@ -165,7 +165,7 @@ test('своя выкладка добавляется, и после этого
     }
 
     // И окно сдачи открывается.
-    const submit = page.getByRole('button', { name: /Сдать ролик|Дослать ссылки/ }).first();
+    const submit = page.locator('.posts2').getByRole('button', { name: /^(Сдать|Ссылки)$/ }).first();
     await submit.click();
     await expect(page.locator('.modal').filter({ hasText: 'сдать ролик' })).toBeVisible();
 

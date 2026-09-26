@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { AUTH_KEY, STATS } from '../fixtures/world';
+import { openClientTab } from '../fixtures/ui';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
@@ -48,31 +49,35 @@ test.beforeEach(async ({ context, page }) => {
   await page.goto(`/me/projects/${box.projectId}`);
 });
 
-test('ролик показывает ссылку и просмотры по каждой площадке', async ({ page }) => {
-  const card = page.locator('article').filter({ hasText: 'Открыть и проверить' }).first();
-  await expect(card, 'у вышедшего ролика есть что открыть').toBeVisible({ timeout: 15_000 });
+/** Строка ролика в ленте заказчика. */
+const videoRow = (page: Page) => page.locator('table.cards tbody tr').first();
 
-  const opens = card.locator('.opens .go');
-  await expect(opens, 'площадок пять — и ни одна не пропущена').toHaveCount(5);
+test('ролик показывает ссылку и просмотры по каждой площадке', async ({ page }) => {
+  await openClientTab(page, 'Ролики');
+  const row = videoRow(page);
+  await expect(row, 'вышедший ролик стоит в ленте').toBeVisible({ timeout: 15_000 });
+
+  const plats = row.locator('.plat');
+  await expect(plats, 'площадок пять — и ни одна не пропущена').toHaveCount(5);
 
   // Цифры площадок — те же, что собраны: сумма по ролику из них и
   // складывается, и расхождение здесь означает, что заказчик и менеджер
-  // смотрят на разные числа.
-  const tiktok = opens.filter({ hasText: 'TikTok' });
-  await expect(tiktok.locator('.gv')).toContainText(grouped(STATS.today.tiktok));
+  // смотрят на разные числа. Число стоит рядом со значком, а не в
+  // подсказке: на телефоне наводить нечем.
+  const tiktok = plats.filter({ hasText: 'TT' });
+  await expect(tiktok.locator('.v')).toHaveText(grouped(STATS.today.tiktok));
   await expect(tiktok).toHaveAttribute('href', /tiktok\.com/);
-
-  // Число внутри кнопки, а не только рядом: именно оно отвечает на
-  // «сколько там», не заставляя открывать площадку.
-  await expect(tiktok.locator('.gv')).toBeVisible();
 });
 
-test('полностью вышедший ролик помечен зелёным', async ({ page }) => {
-  const badge = page.locator('.tag').filter({ hasText: 'из 5 площадок' }).first();
-  await expect(badge).toBeVisible({ timeout: 15_000 });
-  await expect(badge).toContainText('5 из 5');
-  // Зелёный — только когда вышли все пять. Класс проверяем прямо: он и
-  // есть то самое обещание «ролик закрыт».
-  await expect(badge).toHaveClass(/green/);
-  await expect(badge).not.toHaveClass(/amber/);
+test('у полностью вышедшего ролика нет ни одной несданной площадки', async ({ page }) => {
+  await openClientTab(page, 'Ролики');
+  const row = videoRow(page);
+  await expect(row).toBeVisible({ timeout: 15_000 });
+
+  // «Вышел везде» — это отсутствие пустых значков, а не отдельная
+  // плашка: пустая площадка нарисована пунктиром и молчит про
+  // просмотры, и спутать её со сданной нельзя.
+  await expect(row.locator('.plat')).toHaveCount(5);
+  await expect(row.locator('.plat.nd'), 'все пять сданы').toHaveCount(0);
+  await expect(row.locator('.plat[href]'), 'и каждая ведёт на ролик').toHaveCount(5);
 });

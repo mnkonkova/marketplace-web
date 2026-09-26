@@ -47,6 +47,9 @@ describe('ClientTurnkeyProjectComponent: загрузка данных', () => {
       // Доступы к аккаунтам бренда: блок живёт внизу страницы проекта и
       // спрашивает свою ручку при открытии.
       'clientAccounts',
+      // Заявка на следующий месяц: карточка спрашивает её при открытии,
+      // чтобы вместо кнопки показать «заявка у менеджера».
+      'clientMonthRequest',
     ]);
     pubApi.clientVideos.and.returnValue(of({ items: [] }));
     // Содержимое ответов тесту безразлично: он считает вызовы, а не
@@ -57,6 +60,7 @@ describe('ClientTurnkeyProjectComponent: загрузка данных', () => {
     pubApi.clientAccounts.and.returnValue(
       of({ items: [], secrets_enabled: false } as never) as never,
     );
+    pubApi.clientMonthRequest.and.returnValue(of({ request: null } as never) as never);
     billingApi = jasmine.createSpyObj<BillingApi>('billingApi', ['clientBilling']);
     billingApi.clientBilling.and.returnValue(of({} as never) as never);
 
@@ -142,8 +146,10 @@ describe('ClientTurnkeyProjectComponent: ссылки на ролики', () => 
       'clientReport',
       'clientPrefs',
       'clientCalendar',
+      'clientMonthRequest',
     ]);
     pubApi.clientVideos.and.returnValue(of({ items: [] }));
+    pubApi.clientMonthRequest.and.returnValue(of({ request: null } as never) as never);
     pubApi.clientReport.and.returnValue(of({ videos_table: rows } as never) as never);
     pubApi.clientPrefs.and.returnValue(of({} as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days: [] } as never) as never);
@@ -223,8 +229,10 @@ describe('ClientTurnkeyProjectComponent: месяц календаря', () => {
       'clientReport',
       'clientPrefs',
       'clientCalendar',
+      'clientMonthRequest',
     ]);
     pubApi.clientVideos.and.returnValue(of({ items: [] }));
+    pubApi.clientMonthRequest.and.returnValue(of({ request: null } as never) as never);
     pubApi.clientReport.and.returnValue(of({} as never) as never);
     pubApi.clientPrefs.and.returnValue(of({} as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days, months } as never) as never);
@@ -363,8 +371,10 @@ describe('ClientTurnkeyProjectComponent: счёт за прошлый перио
       'clientReport',
       'clientPrefs',
       'clientCalendar',
+      'clientMonthRequest',
     ]);
     pubApi.clientVideos.and.returnValue(of({ items: [] }));
+    pubApi.clientMonthRequest.and.returnValue(of({ request: null } as never) as never);
     pubApi.clientReport.and.returnValue(of({} as never) as never);
     pubApi.clientPrefs.and.returnValue(of({} as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days: [], months: [] } as never) as never);
@@ -498,8 +508,10 @@ describe('ClientTurnkeyProjectComponent: команда периода', () => {
       'clientReport',
       'clientPrefs',
       'clientCalendar',
+      'clientMonthRequest',
     ]);
     pubApi.clientVideos.and.returnValue(of({ items: videos }));
+    pubApi.clientMonthRequest.and.returnValue(of({ request: null } as never) as never);
     pubApi.clientReport.and.returnValue(of({ videos_table: [] } as never) as never);
     pubApi.clientPrefs.and.returnValue(of(null as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days: [], months: [] } as never) as never);
@@ -658,8 +670,10 @@ describe('ClientTurnkeyProjectComponent: обложки роликов', () => {
       'clientReport',
       'clientPrefs',
       'clientCalendar',
+      'clientMonthRequest',
     ]);
     pubApi.clientVideos.and.returnValue(of({ items: videos }));
+    pubApi.clientMonthRequest.and.returnValue(of({ request: null } as never) as never);
     pubApi.clientReport.and.returnValue(of({ videos_table: [] } as never) as never);
     pubApi.clientPrefs.and.returnValue(of(null as never) as never);
     pubApi.clientCalendar.and.returnValue(of({ days: [], months: [] } as never) as never);
@@ -759,6 +773,7 @@ describe('ClientTurnkeyProjectComponent: экран для показа', () => 
       'clientReport',
       'clientPrefs',
       'clientCalendar',
+      'clientMonthRequest',
     ]);
     pubApi.clientVideos.and.returnValue(
       of({
@@ -778,6 +793,7 @@ describe('ClientTurnkeyProjectComponent: экран для показа', () => 
         ],
       }),
     );
+    pubApi.clientMonthRequest.and.returnValue(of({ request: null } as never) as never);
     pubApi.clientReport.and.returnValue(
       of({
         views: 3_000_000,

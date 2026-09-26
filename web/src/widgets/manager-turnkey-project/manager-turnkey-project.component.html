@@ -125,6 +125,31 @@
              весь проект, и это один и тот же разговор. Держать их в
              разных местах значит править одно, не видя другого. -->
         <app-project-autoping [projectId]="project().id" />
+
+        <!-- Этап черновика — настройка ПРОЕКТА, а не свойство отдельной
+             выкладки: у всех выкладок он один. Стоит рядом с автопингом,
+             потому что меняет ровно то, по какому сроку бот пингует. -->
+        @if (settings(); as st) {
+          <div class="switchrow">
+            <span class="tx">
+              <b>Этап согласования черновика</b>
+              <span>
+                Включено — у выкладки два срока: сдать черновик и выложить, и бот пингует по
+                первому. Выключите — у новых выкладок останется только дата выкладки; уже
+                проставленные сроки не стираются.
+              </span>
+            </span>
+            <button
+              type="button"
+              class="sw"
+              [class.on]="st.draft_required"
+              [disabled]="settingsBusy()"
+              (click)="toggleDraftStage()"
+              [attr.aria-pressed]="st.draft_required"
+              aria-label="Этап согласования черновика"
+            ></button>
+          </div>
+        }
       </div>
 
       <!-- ССЫЛКИ. Отдельно от проверки: проверка показывает ОДИН ролик,
@@ -349,6 +374,73 @@
               </p>
             }
           </div>
+
+          <!-- Очередь приглашений. Стоит НАД составом, потому что
+               объясняет его: состав — это результат очереди, а не
+               отдельный список. Заказа может не быть вовсе (проект
+               завели руками) — тогда блока просто нет. -->
+          @if (order(); as o) {
+            <div class="span-12 panel ranks">
+              <div class="panel-h">
+                <h2>Состав и приглашения</h2>
+                <span class="sub">
+                  клиент прислал приоритет: отказался или промолчал трое суток — зовём следующего
+                </span>
+                @if (canInviteNext()) {
+                  <button
+                    type="button"
+                    class="btn sm push"
+                    [disabled]="orderBusy()"
+                    (click)="inviteNext()"
+                  >
+                    Пригласить следующего
+                  </button>
+                }
+              </div>
+
+              @if (orderFreeSlots() > 0) {
+                <p class="muted ranks-note">
+                  Свободных мест: {{ orderFreeSlots() }} из {{ o.needed }}.
+                  @if (o.reserve_left === 0) {
+                    Резерв кончился — звать некого, состав добирается из каталога.
+                  }
+                </p>
+              }
+
+              <div class="list">
+                @for (c of queue(); track c.creator_user_id) {
+                  <div class="row rnk" [class]="candidateTone(c.status)">
+                    <span class="n">{{ c.priority }}</span>
+                    <app-sotka-ava [name]="c.creator_name || 'Креатор'" [size]="28" />
+                    <div class="grow">
+                      <div class="t">{{ c.creator_name || 'Креатор' }}</div>
+                      <div class="muted small">
+                        @switch (c.status) {
+                          @case ('invited') {
+                            ответ до {{ c.expires_at | date: 'd MMM, HH:mm' }} — приглашение живёт
+                            трое суток
+                          }
+                          @case ('accepted') {
+                            взял заявку {{ c.responded_at | date: 'd MMM' }}, в проекте
+                          }
+                          @case ('declined') {
+                            отказался {{ c.responded_at | date: 'd MMM' }} — место ушло следующему
+                          }
+                          @case ('expired') {
+                            не ответил за трое суток — место ушло следующему
+                          }
+                          @default {
+                            ждёт очереди: позовём, когда освободится место
+                          }
+                        }
+                      </div>
+                    </div>
+                    <span class="tag">{{ candidateLabel[c.status] }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
 
           <div class="span-12 panel">
             <div class="panel-h">

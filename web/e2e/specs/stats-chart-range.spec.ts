@@ -73,11 +73,16 @@ async function collectedDays(): Promise<number> {
 }
 
 /** Точек на линии — по одной на день окна. */
+/**
+ * Сколько точек нарисовано на линии.
+ *
+ * Подпись графика у менеджера и у заказчика разная — «Просмотры
+ * нарастающим итогом» и «Накопленные просмотры проекта: N», — поэтому
+ * ищем ломаную по самому графику, а не по его имени: проверяется ряд, а
+ * не заголовок.
+ */
 async function pointsOn(stats: Locator): Promise<number> {
-  const points =
-    (await stats
-      .locator('svg[aria-label="Просмотры нарастающим итогом"] polyline')
-      .getAttribute('points')) ?? '';
+  const points = (await stats.locator('svg polyline.line').first().getAttribute('points')) ?? '';
   return points.trim().split(/\s+/).filter(Boolean).length;
 }
 
@@ -87,8 +92,8 @@ async function pointsOn(stats: Locator): Promise<number> {
  * Ряд короче тридцати дней специально: «30 дней» показывает всё
  * собранное, «7 дней» — последнюю неделю, и разница видна числом точек.
  */
-async function checksRangeSwitch(page: Page, all: number): Promise<void> {
-  const stats = page.locator('app-project-stats');
+async function checksRangeSwitch(page: Page, all: number, root = 'app-project-stats'): Promise<void> {
+  const stats = page.locator(root);
   await expect(stats).toBeVisible({ timeout: 15_000 });
 
   const week = stats.getByRole('button', { name: '7 дней' });
@@ -124,7 +129,9 @@ test('заказчик переключает глубину графика на
   await signIn(context, 'client');
   await page.goto(`/me/projects/${box.projectId}`);
   await openClientTab(page, 'Статистика');
-  await checksRangeSwitch(page, all);
+  // У заказчика график живёт прямо в карточке проекта, своим блоком:
+  // отдельного виджета статистики на этом экране нет.
+  await checksRangeSwitch(page, all, '.panel:has(app-line-chart)');
 });
 
 test('админ в чужом проекте видит тот же переключатель', async ({ context, page }) => {

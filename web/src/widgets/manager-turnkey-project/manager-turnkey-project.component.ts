@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
@@ -32,11 +32,16 @@ import type {
   Payment,
 } from '@entities/billing/model/billing.types';
 import { PublicationApi } from '@entities/publication/api/publication.api';
+import type { MonthRequest } from '@entities/publication/model/publication.types';
 import type {
   ProjectPerson,
+  ProjectSettings,
   Publication,
   PublicationReport,
 } from '@entities/publication/model/publication.types';
+import { OrderApi } from '@entities/order/api/order.api';
+import { CANDIDATE_STATUS_LABEL, candidateTone, freeSlots } from '@entities/order/lib/order-status';
+import type { Order, OrderCandidate } from '@entities/order/model/order.types';
 import { ProjectApi } from '@entities/project/api/project.api';
 import type {
   ProjectEvent,
@@ -50,7 +55,7 @@ import { plural } from '@shared/lib/format';
 interface ManagerAlertAction {
   title: string;
   kind: 'primary' | 'quiet';
-  act: 'remind' | 'plan' | 'pay' | 'review' | 'period-end' | 'period-date';
+  act: 'remind' | 'plan' | 'pay' | 'review' | 'period-end' | 'period-date' | 'month-request';
 }
 
 /**
@@ -130,7 +135,6 @@ import { isTouchDevice } from '@shared/lib/touch';
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink,
     ProjectCommentsComponent,
     ProjectAccountsComponent,
     ProjectChecklistComponent,
@@ -152,6 +156,8 @@ export class ManagerTurnkeyProjectComponent {
   private readonly api = inject(PublicationApi);
 
   private readonly projectApi = inject(ProjectApi);
+
+  private readonly orderApi = inject(OrderApi);
 
   private readonly billingApi = inject(BillingApi);
 
@@ -181,8 +187,119 @@ export class ManagerTurnkeyProjectComponent {
    */
   public readonly chrome = input(true);
 
+  /**
+   * Заявка заказчика на следующий месяц.
+   *
+   * Заказчик нажал «Заказать» под прикидкой цены в своём кабинете. Это
+   * просьба, а не заказ: цену и состав финализирует менеджер. Плашка
+   * гаснет, когда он отметит, что связался.
+   */
+  public readonly monthRequest = signal<MonthRequest | null>(null);
+
+  public readonly monthBusy = signal(false);
+
+  /** Отметить заявку разобранной: связались и завели заказ (или отказали). */
+  public handleMonthRequest(): void {
+    if (this.monthBusy()) return;
+    this.monthBusy.set(true);
+    this.api.managerHandleMonthRequest(this.project().id).subscribe({
+      next: () => {
+        this.monthBusy.set(false);
+        this.monthRequest.set(null);
+        this.msg.success('Заявка отмечена разобранной.');
+      },
+      error: (e) => {
+        this.monthBusy.set(false);
+        this.msg.error(parseApiError(e, 'Не удалось отметить заявку.').message);
+      },
+    });
+  }
+
   /** Состав проекта: он же счётчик на вкладке «Креаторы». */
   public readonly crew = signal<ProjectPerson[]>([]);
+
+  /**
+   * Заказ, из которого собрался состав.
+   *
+   * Состав — результат очереди, а не отдельный список: заказчик прислал
+   * ПРИОРИТЕТ, приглашения уходили сверху вниз по одному на свободное
+   * место, и человек в проекте потому, что до него дошла очередь. Без
+   * этой карточки менеджер видит в составе четвёртого по приоритету и
+   * не понимает, почему не первого, — а «кто точно согласен» приходится
+   * спрашивать в переписке.
+   *
+   * Пусто — проект завели руками, заказа не было. Это нормальное
+   * состояние, а не сбой: блока просто не будет.
+   */
+  public readonly order = signal<Order | null>(null);
+
+  public readonly orderBusy = signal(false);
+
+  /**
+   * Очередь по приоритету.
+   *
+   * Сортируем сами, хотя сервер и отдаёт ORDER BY priority: порядок строк
+   * здесь — это порядок приглашений, и если он однажды приедет другим,
+   * экран должен остаться правым, а не молча показать «позвали не того».
+   */
+  public readonly queue = computed<OrderCandidate[]>(() =>
+    [...(this.order()?.candidates ?? [])].sort((a, b) => a.priority - b.priority),
+  );
+
+  public readonly orderFreeSlots = computed(() => {
+    const o = this.order();
+    return o ? freeSlots(o) : 0;
+  });
+
+  /**
+   * Звать следующего можно, только когда есть КУДА и есть КОГО.
+   *
+   * Обычно очередь двигается сама: отказ и сгоревшее приглашение сразу
+   * отдают место следующему. Кнопка нужна там, где двигать было нечего —
+   * например, заказ остался черновиком и приглашения не ушли вовсе.
+   * Кнопка, которая с этого момента может только получить 409, хуже
+   * отсутствующей.
+   */
+  public readonly canInviteNext = computed(() => {
+    const o = this.order();
+    if (!o) return false;
+    if (o.status !== 'draft' && o.status !== 'inviting') return false;
+    return this.orderFreeSlots() > 0 && o.reserve_left > 0;
+  });
+
+  public readonly candidateLabel = CANDIDATE_STATUS_LABEL;
+
+  public candidateTone(status: OrderCandidate['status']): string {
+    return candidateTone(status);
+  }
+
+  public inviteNext(): void {
+    const o = this.order();
+    if (!o || this.orderBusy()) return;
+    this.orderBusy.set(true);
+    this.orderApi.managerInvite(o.id).subscribe({
+      next: (updated) => {
+        this.orderBusy.set(false);
+        this.order.set(updated);
+        this.msg.success('Приглашение ушло следующему по приоритету');
+      },
+      error: (e) => {
+        this.orderBusy.set(false);
+        const err = parseApiError(e, 'Не удалось позвать следующего.');
+        // Место могли занять, пока страница висела открытой. Показываем
+        // причину и перечитываем заказ — иначе человек будет жать снова.
+        if (err.code === 'no_free_slot') this.loadOrder(this.project().id);
+        this.msg.error(err.message);
+      },
+    });
+  }
+
+  private loadOrder(id: string): void {
+    this.orderApi.managerProjectOrder(id).subscribe({
+      next: (o) => this.order.set(o),
+      error: () => this.order.set(null),
+    });
+  }
 
   public readonly publications = signal<Publication[]>([]);
 
@@ -486,6 +603,25 @@ export class ManagerTurnkeyProjectComponent {
       });
     }
 
+    // Заявка заказчика на следующий месяц. Стоит рядом с деньгами и
+    // выше мелких тревог: человек ЖДЁТ ответа, и молчание здесь стоит
+    // дороже любой недосданной ссылки — он просто уйдёт к другим.
+    const monthAsk = this.monthRequest();
+    if (monthAsk) {
+      const mr = monthAsk;
+      out.push({
+        key: 'month-request',
+        tone: 'warn',
+        label: 'Заказчик просит следующий месяц',
+        value: this.money(mr.ceiling),
+        valueNote: 'потолок, который он видел',
+        text:
+          `Роликов: ${mr.videos}, креаторов: ${mr.creators}. ` +
+          'Это просьба, а не заказ: цену и состав финализируете вы.',
+        actions: [{ title: 'Связались, разобрал', kind: 'primary', act: 'month-request' }],
+      });
+    }
+
     if (this.prepaymentRisk()) {
       const missing = Math.max(0, this.accruedTotal() - this.receivedFromClient());
       out.push({
@@ -640,6 +776,10 @@ export class ManagerTurnkeyProjectComponent {
   public onAlertAction(act: ManagerAlertAction['act']): void {
     if (act === 'remind') {
       this.remindBurning();
+      return;
+    }
+    if (act === 'month-request') {
+      this.handleMonthRequest();
       return;
     }
     if (act === 'period-end') {
@@ -1124,6 +1264,40 @@ export class ManagerTurnkeyProjectComponent {
    */
   public readonly report = signal<PublicationReport | null>(null);
 
+  /**
+   * Этап согласования черновика — настройка ПРОЕКТА, а не выкладки: у
+   * всех выкладок он один.
+   *
+   * Включено — у выкладки два срока: сдать черновик и выложить, и бот
+   * пингует по первому. Выключение не стирает уже проставленные сроки:
+   * по ним креатор уже сдаёт, и отменять договорённость задним числом
+   * нельзя — новые выкладки просто заводятся с одним сроком.
+   */
+  public readonly settings = signal<ProjectSettings | null>(null);
+
+  public readonly settingsBusy = signal(false);
+
+  public toggleDraftStage(): void {
+    const cur = this.settings();
+    if (!cur || this.settingsBusy()) return;
+    const next: ProjectSettings = { ...cur, draft_required: !cur.draft_required };
+    // Оптимистично: тумблер отзывается сразу, а на отказе возвращается —
+    // иначе между нажатием и ответом он выглядит сломанным.
+    this.settings.set(next);
+    this.settingsBusy.set(true);
+    this.api.managerSaveProjectSettings(this.project().id, next).subscribe({
+      next: (saved) => {
+        this.settings.set(saved);
+        this.settingsBusy.set(false);
+      },
+      error: (e) => {
+        this.settings.set(cur);
+        this.settingsBusy.set(false);
+        this.msg.error(parseApiError(e, 'Не удалось сохранить настройку.').message);
+      },
+    });
+  }
+
   /** Журнал действий по проекту: кто что сделал и когда. */
   public readonly journal = signal<ProjectEvent[]>([]);
 
@@ -1203,6 +1377,11 @@ export class ManagerTurnkeyProjectComponent {
   }
 
   private load(id: string): void {
+    this.loadOrder(id);
+    this.api.managerMonthRequest(id).subscribe({
+      next: (r) => this.monthRequest.set(r.request),
+      error: () => this.monthRequest.set(null),
+    });
     this.api.managerCreators(id).subscribe({
       next: (r) => this.crew.set(r.items),
       error: () => this.crew.set([]),
@@ -1220,6 +1399,10 @@ export class ManagerTurnkeyProjectComponent {
     this.projectApi.managerListEvents(id).subscribe({
       next: (r) => this.journal.set(r.items.slice(-12).reverse()),
       error: () => this.journal.set([]),
+    });
+    this.api.managerProjectSettings(id).subscribe({
+      next: (r) => this.settings.set(r),
+      error: () => this.settings.set(null),
     });
     this.api.managerReport(id).subscribe({
       next: (r) => this.report.set(r),

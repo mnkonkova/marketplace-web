@@ -69,6 +69,25 @@ function money(kopecks: number): string {
   return kop === 0 ? `${head}${nbsp}₽` : `${head},${String(kop).padStart(2, '0')}${nbsp}₽`;
 }
 
+/**
+ * Что показывает корзина: потолок месяца.
+ *
+ * Фикс за ролики известен заранее, а сверху каждый, кого зовём, может
+ * добрать не больше верхней ступени — выше неё цена периода не растёт.
+ * Прежний «ориентир» (фикс плюс прогноз бонуса по истории подборки) на
+ * этот вопрос не отвечал: у новых людей истории нет, и в корзине стоял
+ * голый фикс, то есть сумма, которой счёт не ограничен.
+ */
+function ceiling(e: {
+  salaries: number;
+  creators: number;
+  total: number;
+  terms?: { steps?: { fee: number }[] };
+}): number {
+  const top = (e.terms?.steps ?? []).reduce((max, s) => Math.max(max, s.fee), 0);
+  return top ? e.salaries + e.creators * top : e.total;
+}
+
 /** Имя из каталога → user_id: в запросе к серверу лежат id, на экране имена. */
 async function catalogByName(): Promise<Map<string, string>> {
   const api = await pwRequest.newContext({ baseURL: API });
@@ -94,7 +113,10 @@ const estimateCall = (page: import('@playwright/test').Page) =>
 
 /** Дойти от кабинета до шага подбора с загруженным каталогом. */
 async function openPicking(page: import('@playwright/test').Page): Promise<void> {
-  await page.getByRole('button', { name: /Новый проект/ }).first().click();
+  await page
+    .getByRole('button', { name: /Завести( ещё один)? проект/ })
+    .first()
+    .click();
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
   await page.locator('.kind.k1').click();
   await expect(page.getByRole('heading', { name: 'Кто будет снимать' })).toBeVisible();
@@ -102,7 +124,10 @@ async function openPicking(page: import('@playwright/test').Page): Promise<void>
 }
 
 test('выбор вида ведёт на подбор, а вторая ветка — не в никуда', async ({ page }) => {
-  await page.getByRole('button', { name: /Новый проект/ }).first().click();
+  await page
+    .getByRole('button', { name: /Завести( ещё один)? проект/ })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/me\/orders\/new/);
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
 
@@ -128,7 +153,7 @@ test('смета пересчитывается на каждое изменен
   const [first] = await Promise.all([estimateCall(page), cards.nth(0).click()]);
   const firstBody = JSON.parse(first.request().postData() ?? '{}');
   expect(firstBody.creator_ids).toHaveLength(1);
-  await expect(total).toHaveText(money((await first.json()).total));
+  await expect(total).toHaveText(money(ceiling(await first.json())));
 
   // Второй человек — новый состав и новый запрос. Стухшая смета выглядит
   // ровно как рабочая, поэтому смотрим и на запрос, и на число.
@@ -138,12 +163,12 @@ test('смета пересчитывается на каждое изменен
   expect(secondBody.creator_ids[0], 'состав дополняется, а не переписывается').toBe(
     firstBody.creator_ids[0],
   );
-  await expect(total).toHaveText(money((await second.json()).total));
+  await expect(total).toHaveText(money(ceiling(await second.json())));
 
   // И на удаление тоже: убрать человека — такое же изменение состава.
   const [third] = await Promise.all([estimateCall(page), cards.nth(1).click()]);
   expect(JSON.parse(third.request().postData() ?? '{}').creator_ids).toHaveLength(1);
-  await expect(total).toHaveText(money((await third.json()).total));
+  await expect(total).toHaveText(money(ceiling(await third.json())));
 });
 
 test('лимит месяца уважается, а состав уходит по приоритету', async ({ page }) => {
@@ -219,8 +244,74 @@ test('лимит месяца уважается, а состав уходит �
     expect(est.ok(), await est.text()).toBeTruthy();
     const body = await est.json();
     await api.dispose();
-    expect(draftTotal, 'ориентир на экране и смета заказа — одно число').toBe(money(body.total));
+    expect(draftTotal, 'потолок на экране и смета заказа — одно число').toBe(money(ceiling(body)));
     expect(body.creators, 'в заказе ровно столько людей, сколько разрешил лимит').toBe(1);
+  } finally {
+    if (orderId) await cancelOrder(orderId);
+  }
+});
+
+test('фикс назван фиксом за ролик, и после оформления сумма та же', async ({ page }) => {
+  // Прайс площадки сеет мир (ensurePricePerVideo): фикс 1 000 ₽ за
+  // вышедший ролик. Проверяем ровно то, что расходилось молча.
+  const api = await clientApi();
+  const priceRes = await api.get('/api/v1/me/orders/terms');
+  expect(priceRes.ok(), await priceRes.text()).toBeTruthy();
+  const price = await priceRes.json();
+  await api.dispose();
+  const feePerVideo = Number(price.terms?.fee_per_video ?? 0);
+  expect(feePerVideo, 'у действующего прайса есть фикс за ролик').toBeGreaterThan(0);
+
+  await openPicking(page);
+
+  // Ценник у человека в каталоге — это ОБЪЯСНЕНИЕ, за что берут деньги.
+  // «60 000 ₽ / мес» над карточкой при фиксе за ролик называет другую
+  // механику: человек читает её как «плачу за людей» и ждёт другого
+  // счёта. Число при этом везде считалось верное — расходилась подпись.
+  const card = page.locator('.ccard:not([disabled])').first();
+  await expect(card.locator('.pr')).toContainText('/ ролик');
+  await expect(card.locator('.pr')).not.toContainText('/ мес');
+  await expect(page.locator('.catalog-note')).toContainText('за вышедший ролик');
+
+  const [first] = await Promise.all([estimateCall(page), card.click()]);
+  const draft = await first.json();
+
+  // И число: ролики × фикс, а не люди × оклад.
+  expect(draft.salaries, 'фикс считается за ролик').toBe(draft.videos * feePerVideo);
+  await expect(page.locator('.btot b')).toHaveText(money(ceiling(draft)));
+
+  const consent = page.locator('.consent input');
+  if (await consent.isEnabled()) await consent.check();
+  await expect(page.locator('.btot b')).not.toHaveText('считаем…');
+
+  let orderId = '';
+  try {
+    const [created] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().endsWith('/me/orders') && r.request().method() === 'POST',
+      ),
+      page.locator('.send').click(),
+    ]);
+    expect(created.status(), await created.text()).toBe(201);
+    orderId = (await created.json()).order.id;
+
+    // Смета по заказу считается ДРУГИМ запросом условий, и пока он не
+    // читал фикс за ролик, тот же заказ стоил вдвое дороже: тридцать
+    // роликов по 1 000 ₽ превращались в оклад 60 000 ₽ за месяц. Обе
+    // ветки при этом честно считали — расходились условия.
+    const c = await clientApi();
+    const res = await c.get(`/api/v1/me/orders/${orderId}/estimate`);
+    expect(res.ok(), await res.text()).toBeTruthy();
+    const byOrder = await res.json();
+    await c.dispose();
+
+    expect(byOrder.salaries, 'до оформления и после — одно число').toBe(draft.salaries);
+    expect(byOrder.terms?.fee_per_video, 'условия заказа несут фикс за ролик').toBe(feePerVideo);
+
+    // И на экране ожидания ответов цена подписана так же: «за ролик».
+    await expect(page.getByRole('heading', { name: 'Ждём ответы' })).toBeVisible({
+      timeout: 15_000,
+    });
   } finally {
     if (orderId) await cancelOrder(orderId);
   }

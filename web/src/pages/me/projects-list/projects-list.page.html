@@ -38,17 +38,13 @@
                иначе как правкой строки браузера. -->
           <div class="segbar" role="group" aria-label="Окно">
             @for (t of rangeTabs; track t) {
-              <button
-                type="button"
-                [attr.aria-pressed]="range() === t"
-                (click)="setRange(t)"
-              >
-                {{ rangeLabel[t] }}
-              </button>
+            <button type="button" [attr.aria-pressed]="range() === t" (click)="setRange(t)">
+              {{ rangeLabel[t] }}
+            </button>
             }
           </div>
           @if (asOf(); as ts) {
-            <span class="server">сервер · {{ ts | date: 'd.MM, HH:mm' }}</span>
+          <span class="server">сервер · {{ ts | date: 'd.MM, HH:mm' }}</span>
           }
         </div>
       </div>
@@ -60,11 +56,8 @@
         <div>
           <div class="label"><span class="no-phone">Цена просмотра · </span>CPV</div>
           <div class="v num">
-            @if (cpvValue(); as v) {
-              {{ v }}<small> ₽</small>
-            } @else {
-              —
-            }
+            @if (cpvValue(); as v) { {{ v }}<small> ₽</small>
+            } @else { — }
           </div>
           <!-- Цену считаем по факту за всё время проектов, а не за окно:
                сравнивать её с прошлым месяцем сервер не умеет, и рисовать
@@ -74,20 +67,17 @@
         <div>
           <div class="label"><span class="no-phone">Вовлечённость · </span>ER</div>
           <div class="v num">
-            @if (er()) {
-              {{ er() }}<small>%</small>
-            } @else {
-              —
-            }
+            @if (er()) { {{ er() }}<small>%</small>
+            } @else { — }
           </div>
           <div class="pf-sub">
             @if (erDelta() !== null && erDelta() !== 0) {
-              <span [class]="erDelta()! > 0 ? 'up-good' : 'down-bad'">
-                {{ erDelta()! > 0 ? '↑' : '↓' }} {{ absDecimal(erDelta()!) }} п.
-              </span>
-              <span class="muted">к {{ prevLabel() }}</span>
+            <span [class]="erDelta()! > 0 ? 'up-good' : 'down-bad'">
+              {{ erDelta()! > 0 ? '↑' : '↓' }} {{ absDecimal(erDelta()!) }} п.
+            </span>
+            <span class="muted">к {{ prevLabel() }}</span>
             } @else {
-              <span class="muted">за {{ rangeLabel[range()].toLowerCase() }}</span>
+            <span class="muted">за {{ rangeLabel[range()].toLowerCase() }}</span>
             }
           </div>
         </div>
@@ -95,23 +85,22 @@
           <div class="label">Просмотры</div>
           <div class="v num views-v">{{ digits(viewsTotal()) }}</div>
           <div class="pf-sub muted">
-            {{ runningCount() }}
-            {{ plural(runningCount(), 'проект идёт', 'проекта идут', 'проектов идут') }}
-            @if (videosTotal()) {
-              <span class="no-phone">
-                · {{ videosTotal() }}
-                {{ plural(videosTotal(), 'ролик', 'ролика', 'роликов') }}
-              </span>
+            {{ runningCount() }} {{ plural(runningCount(), 'проект идёт', 'проекта идут', 'проектов
+            идут') }} @if (videosTotal()) {
+            <span class="no-phone">
+              · {{ videosTotal() }} {{ plural(videosTotal(), 'ролик', 'ролика', 'роликов') }}
+            </span>
             }
           </div>
         </div>
         <div>
           <div class="label">Потрачено</div>
           <div class="v num">{{ digits(spent() / 100) }}<small> ₽</small></div>
-          <div class="pf-sub muted">по факту<span class="no-phone">, без счетов к оплате</span></div>
+          <div class="pf-sub muted">
+            по факту<span class="no-phone">, без счетов к оплате</span>
+          </div>
         </div>
       </div>
-
 
       <!-- Проекты одной строкой. Пауза — это не ноль: у проекта без
            периода стоит «периода нет», а не «0 просмотров». -->
@@ -119,98 +108,119 @@
            же рост читается по спарклайну в каждой строке проекта, а
            здесь строки свёрнуты и сравнить проекты глазом больше негде. -->
       @if (hasChart()) {
-        <div class="span-12 panel chartcard only-phone">
-          <div class="ch-h">
-            <b>Как растут просмотры</b>
-            @if (asOf(); as ts) {
-              <span class="server">сервер</span>
-            }
-          </div>
-          <app-line-chart
-            [series]="projectSeries()"
-            [height]="190"
-            yLabel="всего просмотров на дату"
-          />
+      <div class="span-12 panel chartcard only-phone">
+        <div class="ch-h">
+          <b>Как растут просмотры</b>
+          @if (asOf(); as ts) {
+          <span class="server">сервер</span>
+          }
         </div>
+        <app-line-chart
+          [series]="projectSeries()"
+          [height]="190"
+          yLabel="всего просмотров на дату"
+        />
+      </div>
       }
 
       <div class="span-12 sec-h only-phone">Проекты</div>
+
+      <!-- На телефоне кнопка стоит НАД списком и во всю ширину.
+           Под списком до неё нужно было промотать все проекты, а
+           заводят новый чаще, чем дочитывают старые; в шапке панели она
+           попала бы в один ряд с заголовком и сжалась до неудобной. -->
+      <button
+        type="button"
+        class="span-12 btn primary new-cta only-phone new-prj"
+        routerLink="/me/orders/new"
+      >
+        {{ rows().length ? 'Завести ещё один проект' : 'Завести проект' }}
+      </button>
 
       <div class="span-8 panel">
         <div class="panel-h">
           <h2 class="no-phone">Проекты</h2>
           <!-- Заказ нового проекта — действие этого списка, а не сноска
                под ним: раньше он был серой ссылкой в самом низу
-               страницы, куда доходят не все. -->
-          <button type="button" class="btn sm no-phone" routerLink="/me/orders/new">
-            + Новый проект
+               страницы, куда доходят не все.
+               Акцентом, а не серой кнопкой: это единственное действие
+               экрана, ради которого сюда возвращаются, — всё остальное
+               здесь читают. И подпись по состоянию: «завести проект»
+               человеку без проектов и «ещё один» тому, у кого они уже
+               есть, — вторая фраза объясняет, что список не заменится. -->
+          <button type="button" class="btn primary new-cta no-phone" routerLink="/me/orders/new">
+            {{ rows().length ? 'Завести ещё один проект' : 'Завести проект' }}
           </button>
         </div>
 
         @if (loading()) {
-          <p class="muted">Загружаем проекты…</p>
+        <p class="muted">Загружаем проекты…</p>
         } @else if (!rows().length) {
-          <p class="muted">Проектов пока нет.</p>
+        <!-- Пустой список — то самое место, где действие и нужно:
+               человек пришёл заводить работу, а не читать, что её нет. -->
+        <p class="muted">Проектов пока нет.</p>
+        <button type="button" class="btn primary new-cta empty-cta" routerLink="/me/orders/new">
+          Завести проект
+        </button>
         } @else {
-          <div class="projects">
-            <div class="prj head label">
-              <span>Проект</span>
-              <span>Просмотры по дням</span>
-              <span>CPV</span>
-              <span>ER</span>
-              <span>Потрачено</span>
-              <span></span>
-            </div>
-            @for (p of rows(); track p.id) {
-              <!-- Строка целиком — ссылка, как в макете: на телефоне по
+        <div class="projects">
+          <div class="prj head label">
+            <span>Проект</span>
+            <span>Просмотры по дням</span>
+            <span>CPV</span>
+            <span>ER</span>
+            <span>Потрачено</span>
+            <span></span>
+          </div>
+          @for (p of rows(); track p.id) {
+          <!-- Строка целиком — ссылка, как в макете: на телефоне по
                    ней попадают пальцем, а не в кнопку в её углу. Поэтому
                    «Открыть» здесь не кнопка, а подпись: настоящая кнопка
                    внутри ссылки — это ссылка в ссылке. -->
-              <a class="prj" [routerLink]="['/me/projects', p.id]" [queryParams]="fromHere()">
-                <div>
-                  <div class="nm">
-                    {{ p.title }}
-                    <span class="pill" [class]="'pill ' + p.tone">{{ p.state }}</span>
-                  </div>
-                  <div class="ms no-phone">{{ p.meta }}</div>
-                  <!-- На телефоне числа идут одной строкой под названием:
+          <a class="prj" [routerLink]="['/me/projects', p.id]" [queryParams]="fromHere()">
+            <div>
+              <div class="nm">
+                {{ p.title }}
+                <span class="pill" [class]="'pill ' + p.tone">{{ p.state }}</span>
+              </div>
+              <div class="ms no-phone">{{ p.meta }}</div>
+              <!-- На телефоне числа идут одной строкой под названием:
                        столбик с подписями делал из строки карточку в пол-экрана. -->
-                  <div class="ms nums only-phone num">
-                    {{ p.viewsLabel || '—' }} · CPV {{ p.cpv }} · ER {{ p.er }}
-                  </div>
-                  @if (p.progress !== null && p.progress > 0) {
-                    <div class="prog"><i [style.width.%]="p.progress"></i></div>
-                  }
-                  @if (p.next) {
-                    <div class="ms next no-phone">
-                      Следующая выкладка: <span class="ink">{{ p.next }}</span>
-                    </div>
-                  }
-                </div>
+              <div class="ms nums only-phone num">
+                {{ p.viewsLabel || '—' }} · CPV {{ p.cpv }} · ER {{ p.er }}
+              </div>
+              @if (p.progress !== null && p.progress > 0) {
+              <div class="prog"><i [style.width.%]="p.progress"></i></div>
+              } @if (p.next) {
+              <div class="ms next no-phone">
+                Следующая выкладка: <span class="ink">{{ p.next }}</span>
+              </div>
+              }
+            </div>
 
-                <div class="spark no-phone">
-                  @if (p.series.length > 1) {
-                    <app-line-chart
-                      [points]="p.series"
-                      [compact]="true"
-                      [height]="30"
-                      color="var(--accent)"
-                    />
-                    <div class="mv acc">{{ p.viewsLabel }}</div>
-                  } @else if (p.turnkey) {
-                    <span class="st st-nd">периода нет</span>
-                  }
-                </div>
-                <div class="mv no-phone" data-label="CPV">{{ p.cpv }}</div>
-                <div class="mv no-phone" data-label="ER">{{ p.er }}</div>
-                <div class="mv no-phone" data-label="Потрачено">{{ p.spent }}</div>
-                <div class="prj-go">
-                  <span class="btn sm dark no-phone">Открыть</span>
-                  <span class="chev only-phone" aria-hidden="true">›</span>
-                </div>
-              </a>
-            }
-          </div>
+            <div class="spark no-phone">
+              @if (p.series.length > 1) {
+              <app-line-chart
+                [points]="p.series"
+                [compact]="true"
+                [height]="30"
+                color="var(--accent)"
+              />
+              <div class="mv acc">{{ p.viewsLabel }}</div>
+              } @else if (p.turnkey) {
+              <span class="st st-nd">периода нет</span>
+              }
+            </div>
+            <div class="mv no-phone" data-label="CPV">{{ p.cpv }}</div>
+            <div class="mv no-phone" data-label="ER">{{ p.er }}</div>
+            <div class="mv no-phone" data-label="Потрачено">{{ p.spent }}</div>
+            <div class="prj-go">
+              <span class="btn sm dark no-phone">Открыть</span>
+              <span class="chev only-phone" aria-hidden="true">›</span>
+            </div>
+          </a>
+          }
+        </div>
         }
       </div>
 
@@ -221,22 +231,20 @@
             <span class="amt num">{{ money(dueTotal()) }}</span>
           </div>
           @if (!due().length) {
-            <p class="muted">Неоплаченных счетов нет.</p>
+          <p class="muted">Неоплаченных счетов нет.</p>
           } @else {
-            <div class="list">
-              @for (d of due(); track d.projectId + d.kind + d.amount) {
-                <div class="row">
-                  <span class="pill" [class]="'pill ' + d.tone">{{
-                    d.paid ? 'оплачен' : d.kind
-                  }}</span>
-                  <div class="grow">
-                    <div class="t" [class.muted]="d.paid">{{ d.project }}</div>
-                    <div class="muted small">{{ d.note }}</div>
-                  </div>
-                  <b class="mono" [class.faint]="d.paid">{{ digits(d.amount / 100) }}</b>
-                </div>
-              }
+          <div class="list">
+            @for (d of due(); track d.projectId + d.kind + d.amount) {
+            <div class="row">
+              <span class="pill" [class]="'pill ' + d.tone">{{ d.paid ? 'оплачен' : d.kind }}</span>
+              <div class="grow">
+                <div class="t" [class.muted]="d.paid">{{ d.project }}</div>
+                <div class="muted small">{{ d.note }}</div>
+              </div>
+              <b class="mono" [class.faint]="d.paid">{{ digits(d.amount / 100) }}</b>
             </div>
+            }
+          </div>
           }
         </div>
 
@@ -246,22 +254,21 @@
             <span class="sub">CPV по проектам</span>
           </div>
           @if (!cpvBars().length) {
-            <p class="muted">Сравнивать пока нечего: просмотров нет ни у одного проекта.</p>
+          <p class="muted">Сравнивать пока нечего: просмотров нет ни у одного проекта.</p>
           } @else {
-            <div class="cpvbars num">
-              @for (b of cpvBars(); track b.title) {
-                <div class="cpvbar" [class.best]="b.best">
-                  <span>
-                    {{ b.title }}
-                    @if (b.paused) {
-                      <span class="faint">· пауза</span>
-                    }
-                  </span>
-                  <div class="track"><i [style.width.%]="b.width"></i></div>
-                  <span class="mono">{{ b.value }}</span>
-                </div>
-              }
+          <div class="cpvbars num">
+            @for (b of cpvBars(); track b.title) {
+            <div class="cpvbar" [class.best]="b.best">
+              <span>
+                {{ b.title }} @if (b.paused) {
+                <span class="faint">· пауза</span>
+                }
+              </span>
+              <div class="track"><i [style.width.%]="b.width"></i></div>
+              <span class="mono">{{ b.value }}</span>
             </div>
+            }
+          </div>
           }
         </div>
       </div>
@@ -272,42 +279,40 @@
           <span class="sub">{{ rangeLabel[range()].toLowerCase() }}</span>
         </div>
         @if (!topRows().length) {
-          <p class="muted">Роликов за это окно ещё не было.</p>
+        <p class="muted">Роликов за это окно ещё не было.</p>
         } @else {
-          <div class="list">
-            @for (v of topRows(); track v.id) {
-              <div class="row">
-                <span class="rank">{{ v.rank }}</span>
-                <div class="grow">
-                  <div class="t">{{ v.title }}</div>
-                  <div class="muted small">
-                    @if (v.creator) {
-                      <span>{{ v.creator }}</span>
-                    }
-                    @if (v.creator && v.project) {
-                      <span>&nbsp;·&nbsp;</span>
-                    }
-                    @if (v.project) {
-                      <span class="pill neu">{{ v.project }}</span>
-                    }
-                  </div>
-                </div>
-                <div class="acc-cell">
-                  @for (l of v.links; track l.platform) {
-                    <a class="plat" [href]="l.url" target="_blank" rel="noopener">
-                      {{ platShort[l.platform] }}
-                    </a>
-                  }
-                </div>
-                <div class="vnum">
-                  <div class="mono strong">{{ digits(v.views) }}</div>
-                  @if (v.er) {
-                    <div class="muted small">ER {{ v.er }}%{{ v.erStar ? '*' : '' }}</div>
-                  }
-                </div>
+        <div class="list">
+          @for (v of topRows(); track v.id) {
+          <div class="row">
+            <span class="rank">{{ v.rank }}</span>
+            <div class="grow">
+              <div class="t">{{ v.title }}</div>
+              <div class="muted small">
+                @if (v.creator) {
+                <span>{{ v.creator }}</span>
+                } @if (v.creator && v.project) {
+                <span>&nbsp;·&nbsp;</span>
+                } @if (v.project) {
+                <span class="pill neu">{{ v.project }}</span>
+                }
               </div>
-            }
+            </div>
+            <div class="acc-cell">
+              @for (l of v.links; track l.platform) {
+              <a class="plat" [href]="l.url" target="_blank" rel="noopener">
+                {{ platShort[l.platform] }}
+              </a>
+              }
+            </div>
+            <div class="vnum">
+              <div class="mono strong">{{ digits(v.views) }}</div>
+              @if (v.er) {
+              <div class="muted small">ER {{ v.er }}%{{ v.erStar ? '*' : '' }}</div>
+              }
+            </div>
           </div>
+          }
+        </div>
         }
       </div>
 
@@ -317,33 +322,33 @@
         <div class="panel-h">
           <h2 class="no-phone">Ближайшие выкладки</h2>
           @if (upcoming().length) {
-            <span class="sub">
-              {{ upcomingSpan() }} · {{ upcomingCount() }}
-              {{ plural(upcomingCount(), 'ролик', 'ролика', 'роликов') }}
-            </span>
+          <span class="sub">
+            {{ upcomingSpan() }} · {{ upcomingCount() }} {{ plural(upcomingCount(), 'ролик',
+            'ролика', 'роликов') }}
+          </span>
           }
         </div>
         @if (!upcoming().length) {
-          <p class="muted">На ближайшие дни выкладок не запланировано.</p>
+        <p class="muted">На ближайшие дни выкладок не запланировано.</p>
         } @else {
-          <div class="list">
-            @for (d of upcoming(); track d.date) {
-              <div class="row row-top">
-                <div class="date" [class.next]="d.first">
-                  <b>{{ d.day }}</b>
-                  <span>{{ d.weekday }} · {{ d.month }}</span>
-                </div>
-                <div class="grow who-col">
-                  @for (i of d.items; track i.name + i.project) {
-                    <div class="who-line">
-                      <span class="strong">{{ i.name }}</span>
-                      <span class="muted">· {{ i.project }}</span>
-                    </div>
-                  }
-                </div>
+        <div class="list">
+          @for (d of upcoming(); track d.date) {
+          <div class="row row-top">
+            <div class="date" [class.next]="d.first">
+              <b>{{ d.day }}</b>
+              <span>{{ d.weekday }} · {{ d.month }}</span>
+            </div>
+            <div class="grow who-col">
+              @for (i of d.items; track i.name + i.project) {
+              <div class="who-line">
+                <span class="strong">{{ i.name }}</span>
+                <span class="muted">· {{ i.project }}</span>
               </div>
-            }
+              }
+            </div>
           </div>
+          }
+        </div>
         }
       </div>
 
@@ -351,24 +356,15 @@
            без него он заведёт второй такой же и будет ждать ответы по
            обоим. -->
       @for (o of activeOrders(); track o.id) {
-        <div class="span-12 plaque">
-          <span class="pill acc">заказ в работе</span>
-          <div class="grow">
-            <b>Заявка на команду</b>
-            <span class="muted">· {{ orderStatusLabel(o) }}</span>
-          </div>
-          <button type="button" class="btn dark" (click)="openOrder(o.id)">
-            Продолжить заказ
-          </button>
+      <div class="span-12 plaque">
+        <span class="pill acc">заказ в работе</span>
+        <div class="grow">
+          <b>Заявка на команду</b>
+          <span class="muted">· {{ orderStatusLabel(o) }}</span>
         </div>
+        <button type="button" class="btn dark" (click)="openOrder(o.id)">Продолжить заказ</button>
+      </div>
       }
-
-      <!-- На телефоне заказ нового проекта — кнопка во всю ширину под
-           списком, как в макете: в шапке панели она попадала бы в один
-           ряд с заголовком и сжималась до неудобного размера. -->
-      <button type="button" class="span-12 btn dark only-phone new-prj" routerLink="/me/orders/new">
-        + Новый проект
-      </button>
 
       <!-- Контакты заказчика. Менеджер пишет в телеграм, звонит по
            телефону и подписывает счета именем — без этих трёх полей он
@@ -382,31 +378,45 @@
         <form class="cts" (submit)="$event.preventDefault(); saveContacts()">
           <label class="ct">
             <span class="label">Как к вам обращаться</span>
-            <input class="inp" [(ngModel)]="contactForm.display_name" name="display_name"
-                   maxlength="120" placeholder="Имя или название компании" />
+            <input
+              class="inp"
+              [(ngModel)]="contactForm.display_name"
+              name="display_name"
+              maxlength="120"
+              placeholder="Имя или название компании"
+            />
           </label>
           <label class="ct">
             <span class="label">Телеграм</span>
-            <input class="inp" [(ngModel)]="contactForm.telegram" name="telegram"
-                   maxlength="64" placeholder="@username" />
+            <input
+              class="inp"
+              [(ngModel)]="contactForm.telegram"
+              name="telegram"
+              maxlength="64"
+              placeholder="@username"
+            />
           </label>
           <label class="ct">
             <span class="label">Телефон</span>
-            <input class="inp" [(ngModel)]="contactForm.phone" name="phone" type="tel"
-                   maxlength="32" placeholder="+7 900 000-00-00" />
+            <input
+              class="inp"
+              [(ngModel)]="contactForm.phone"
+              name="phone"
+              type="tel"
+              maxlength="32"
+              placeholder="+7 900 000-00-00"
+            />
           </label>
           <div class="ct-act">
             <button type="submit" class="btn dark" [disabled]="contactsBusy()">
               {{ contactsBusy() ? 'Сохраняем…' : 'Сохранить' }}
             </button>
             @if (contactsSaved()) {
-              <span class="muted small">Сохранено</span>
+            <span class="muted small">Сохранено</span>
             }
           </div>
         </form>
       </div>
-
-
     </div>
   </main>
 

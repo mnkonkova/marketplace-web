@@ -77,6 +77,10 @@ export interface OrderTerms {
   click_bonus_rate?: number;
   click_bonus_threshold: number;
   click_bonus_rate_over?: number;
+  // Фикс за ВЫШЕДШИЙ РОЛИК. Пусто — версия старая, фикс платится
+  // окладом за период. На этом экране человек нажимает «согласен», и
+  // цена здесь обязана быть той, по которой ему выставят счёт.
+  fee_per_video?: number | null;
 }
 
 // Смета — из marketpclce/internal/billing/estimate.go. Живёт рядом с
@@ -93,10 +97,34 @@ export interface CreatorForecast {
   based_on_videos: number;
 }
 
+/**
+ * Ступень ГЛАЗАМИ ОДНОЙ СТОРОНЫ: порог и цена на нём.
+ *
+ * Это не TariffStep из billing: у того две цены сразу — клиента и
+ * креатора, — а сюда сервер отдаёт уже сведённые к стороне смотрящего
+ * (internal/billing/client_view.go, SideStep), и поле называется `fee`.
+ * Пока здесь стоял TariffStep, код читал `client_fee`, получал
+ * undefined и молча считал потолок нулём — ступеней как будто не было
+ * вовсе.
+ */
+export interface SideStep {
+  from_views: number;
+  fee: number;
+}
+
+/**
+ * Тариф стороны: те же поля прайса, но лесенка СВОЯ.
+ *
+ * Omit обязателен: у BillingTerms поле `steps` своего типа (две цены в
+ * строке), и пересечение типов дало бы ступень, у которой нет ни одного
+ * читаемого поля цены.
+ */
+export type SideTerms = Omit<BillingTerms, 'steps'> & { steps?: SideStep[] };
+
 export interface OrderEstimate {
   // Версия правил, по которой названа цена. У созданного заказа — та, с
   // которой согласился клиент, а не действующая сегодня.
-  terms: BillingTerms;
+  terms: SideTerms;
   creators: number;
   videos: number;
   // Оклады — единственная точно известная часть.

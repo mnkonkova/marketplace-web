@@ -21,6 +21,7 @@ import {
   LinkSuggestion,
   Material,
   MaterialInput,
+  MonthRequest,
   NotificationPrefs,
   NotificationPrefsPatch,
   Platform,
@@ -163,6 +164,38 @@ export class PublicationApi {
   // сюда не попадают — ни здесь, ни в вёрстке их быть не должно.
   public clientMaterials(projectId: string): Observable<ListResp<Material>> {
     return this.http.get<ListResp<Material>>(`${this.api}/me/projects/${projectId}/materials`);
+  }
+
+  // Заявка на следующий месяц: кнопка под прикидкой цены. Открытая
+  // заявка одна на проект — повторное нажатие уточняет её, а не заводит
+  // вторую, иначе у менеджера копится стопка одинаковых плашек.
+  public clientMonthRequest(projectId: string): Observable<{ request: MonthRequest | null }> {
+    return this.http.get<{ request: MonthRequest | null }>(
+      `${this.api}/me/projects/${projectId}/month-request`,
+    );
+  }
+
+  public clientAskMonth(
+    projectId: string,
+    body: { creators: number; videos: number; ceiling: number; month?: string },
+  ): Observable<{ request: MonthRequest }> {
+    return this.http.post<{ request: MonthRequest }>(
+      `${this.api}/me/projects/${projectId}/month-request`,
+      body,
+    );
+  }
+
+  public managerMonthRequest(projectId: string): Observable<{ request: MonthRequest | null }> {
+    return this.http.get<{ request: MonthRequest | null }>(
+      `${this.api}/manager/projects/${projectId}/month-request`,
+    );
+  }
+
+  public managerHandleMonthRequest(projectId: string): Observable<void> {
+    return this.http.post<void>(
+      `${this.api}/manager/projects/${projectId}/month-request/handled`,
+      {},
+    );
   }
 
   // month — ГГГГ-ММ; без него бэк берёт текущий.

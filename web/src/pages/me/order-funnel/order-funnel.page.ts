@@ -556,6 +556,72 @@ export class OrderFunnelPage implements OnInit {
     return formatMoney(kopecks);
   }
 
+  /**
+   * Цена прайса одной строкой: «1 000 ₽ / ролик» или «60 000 ₽ / мес».
+   *
+   * Единица измерения здесь — не оформление, а сама механика: пока фикс
+   * платился за период, «/ мес» было правдой; с фиксом за ролик та же
+   * подпись обещает месяц работы за тысячу рублей. Число при этом
+   * приходит верное — расходится объяснение, за что берут деньги.
+   */
+  public readonly priceLabel = computed(() => {
+    const t = this.terms();
+    const perVideo = t?.fee_per_video ?? 0;
+    if (perVideo > 0) return `${formatMoney(perVideo)} / ролик`;
+    return `${formatMoney(t?.salary_per_month)} / мес`;
+  });
+
+  /**
+   * Цена по УСЛОВИЯМ ЗАКАЗА — для экранов после оформления.
+   *
+   * Здесь числа берутся уже не из действующего прайса, а из версии,
+   * записанной в заказ: прайс мог поменяться, пока креаторы отвечали, а
+   * платит человек по той, под которой подписался.
+   */
+  public readonly orderPrice = computed(() => {
+    const t = this.orderEstimate()?.terms;
+    const perVideo = t?.fee_per_video ?? 0;
+    if (perVideo > 0) {
+      return { value: formatMoney(perVideo), note: 'за ролик по прайсу' };
+    }
+    return { value: formatMoney(t?.salary_per_month), note: 'оклад по прайсу' };
+  });
+
+  /**
+   * Верхняя ступень лесенки — потолок за одного креатора.
+   *
+   * Выше последней ступени цена периода не растёт: залетел ролик на
+   * миллион или на три, платит заказчик одинаково. Поэтому отдельного
+   * «потолка» в условиях нет — им работает верхняя ступень.
+   */
+  public readonly topStepFee = computed(() => {
+    const steps = this.estimate()?.terms?.steps ?? [];
+    return steps.reduce((max, s) => Math.max(max, s.fee), 0);
+  });
+
+  /**
+   * «Меньше N ₽» — цена месяца сверху: фикс за ролики плюс верхняя
+   * ступень за каждого, кого зовём.
+   *
+   * Ориентир этого не отвечал: он складывал фикс с ПРОГНОЗОМ бонуса по
+   * истории подборки, а у новых людей истории нет — и человек видел
+   * ровно фикс, то есть сумму, которой счёт не ограничен. Потолок
+   * известен заранее и не зависит от того, залетят ролики или нет.
+   */
+  public readonly ceiling = computed(() => {
+    const e = this.estimate();
+    if (!e) return 0;
+    return e.salaries + this.needed() * this.topStepFee();
+  });
+
+  /** То же для пояснения «цена одна на всех»: там она в середине фразы. */
+  public readonly priceSentence = computed(() => {
+    const t = this.terms();
+    const perVideo = t?.fee_per_video ?? 0;
+    if (perVideo > 0) return `${formatMoney(perVideo)} за вышедший ролик`;
+    return `${formatMoney(t?.salary_per_month)} за месяц работы`;
+  });
+
   public views(n: number): string {
     return groupDigits(n);
   }

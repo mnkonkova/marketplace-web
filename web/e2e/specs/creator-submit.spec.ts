@@ -68,7 +68,10 @@ test('окно сдачи открывается поверх страницы',
     );
     await page.goto(`/me/creator/projects/${box.projectId}`);
 
-    const submit = page.getByRole('button', { name: 'Сдать ролик' }).first();
+    const submit = page
+      .locator('.posts2')
+      .getByRole('button', { name: 'Сдать', exact: true })
+      .first();
     await expect(submit, 'у открытой выкладки есть чем сдать').toBeVisible({ timeout: 15_000 });
     await submit.click();
 

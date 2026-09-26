@@ -67,6 +67,50 @@
   display: inline-flex;
 }
 
+// ── очередь приглашений ────────────────────────────────────
+// Номер слева — это ПРИОРИТЕТ, присланный заказчиком, а не порядковый
+// счётчик строк: по нему уходят приглашения, и читать его надо раньше
+// имени. Тон строки — состояние, а не украшение: зелёная уже в проекте,
+// серая ещё ждёт очереди, приглушённая отказалась.
+.ranks-note {
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+
+.ranks .push {
+  margin-left: auto;
+}
+
+.rnk {
+  .n {
+    flex: 0 0 auto;
+    width: 20px;
+    font-weight: 700;
+    font-size: 12.5px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  &.ok .n {
+    color: var(--ok);
+  }
+
+  &.wait .n {
+    color: var(--warn);
+  }
+
+  // Отказавшегося не прячем — он и есть объяснение, почему место ушло
+  // следующему, — но и внимания он больше не требует.
+  &.no {
+    opacity: 0.62;
+  }
+
+  .tag {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+}
+
 .small {
   font-size: 12px;
 }
@@ -204,5 +248,37 @@
   .cs-bar {
     min-height: 44px;
     align-items: flex-end;
+  }
+}
+
+// Строка-переключатель. Такая же, как в автопинге рядом: там она живёт в
+// своём компоненте и до соседа не достаёт, а переключатель этапа
+// черновика стоит в том же блоке и обязан выглядеть так же — иначе
+// читается как другой элемент.
+.switchrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+
+  .tx {
+    flex: 1;
+    min-width: 200px;
+    font-size: 13.5px;
+  }
+
+  .tx b {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 14px;
+  }
+
+  .tx span {
+    color: var(--muted);
+    font-size: 12.5px;
   }
 }

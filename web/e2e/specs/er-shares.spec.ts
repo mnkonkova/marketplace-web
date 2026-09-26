@@ -48,7 +48,11 @@ const signIn = (context: import('@playwright/test').BrowserContext, role: 'manag
   );
 
 /** Отчёт заказчика: из него видно, отдала ли хоть одна площадка репосты. */
-async function report(): Promise<{ er_without_shares?: boolean; by_platform?: unknown[] }> {
+async function report(): Promise<{
+  er_without_shares?: boolean;
+  shares?: number;
+  by_platform?: unknown[];
+}> {
   const api = await pwRequest.newContext({
     baseURL: API,
     extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.client.access_token}` },
@@ -86,11 +90,20 @@ test('заказчику про занижённый ER сказано слов�
   await expect(react, 'отклик показан плиткой').toBeVisible({ timeout: 15_000 });
   await expect(react.locator('.kpi .v'), 'это процент, а не прочерк').toContainText('%');
 
-  // Оговорка — СЛОВАМИ и в том же блоке, что число. Занижённый ER без
-  // неё заказчик сравнивает с чужими цифрами и делает вывод о работе.
-  await expect(react, 'занижение объяснено рядом с числом').toContainText(
-    'Репосты площадки не отдают',
-  );
+  // Разбор на составляющие — вместо оговорки словами.
+  //
+  // Оговорку с карточки заказчика убрали намеренно (сентябрь 2026): на
+  // экране, который показывают начальству, сноска про недополученные
+  // репосты читалась как оправдание. Разбор её заменяет и говорит то же
+  // самое честнее: видно, из чего собран процент, и видно, что репостов
+  // в нём нет вовсе. Проверяем именно это — иначе «убрали оговорку»
+  // однажды превратится в «убрали и разбор», и процент останется без
+  // объяснения.
+  await expect(react, 'видно, из чего собран процент').toContainText('лайков');
+  await expect(react).toContainText('комм.');
+  if (r.shares === undefined || r.shares === 0) {
+    await expect(react, 'репостов нет — и строки про них нет').not.toContainText('репостов');
+  }
 });
 
 test('в отчёте менеджера оговорка та же, а не только у заказчика', async ({ context, page }) => {

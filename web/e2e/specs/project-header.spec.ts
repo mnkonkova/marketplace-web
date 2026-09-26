@@ -78,17 +78,18 @@ function signIn(page: Page) {
  * первое число после подписи: «выкинуть все нецифры» склеивало два счёта
  * в одно бессмысленное.
  */
+/**
+ * Сколько выкладок в ленте над карточкой.
+ *
+ * Счётчик переехал из шапки в ленту просмотров и считает ДЕЙСТВУЮЩИЕ:
+ * «29 выкладок · закрыто 2». Отдельной подписи «N отменено» больше нет —
+ * отменённая выкладка не показывается нигде, и это сильнее, чем
+ * показывать её отдельным числом.
+ */
 async function headCount(page: Page): Promise<number> {
-  const meta = page.locator('.phead .meta span', { hasText: 'Выкладок:' });
+  const meta = page.locator('.ribbon .meta');
   const text = (await meta.textContent()) ?? '';
-  return Number(/Выкладок:\s*(\d+)/.exec(text)?.[1] ?? NaN);
-}
-
-/** «· N отменено» из той же ячейки. Нет подписи — значит нет и отменённых. */
-async function cancelledCount(page: Page): Promise<number> {
-  const meta = page.locator('.phead .meta span', { hasText: 'Выкладок:' });
-  const text = (await meta.textContent()) ?? '';
-  return Number(/·\s*(\d+)\s*отменено/.exec(text)?.[1] ?? 0);
+  return Number(/(\d+)\s+выкладк/.exec(text.replace(/\u00a0/g, ' '))?.[1] ?? NaN);
 }
 
 test.describe('счётчики выкладок', () => {
@@ -108,9 +109,8 @@ test.describe('счётчики выкладок', () => {
   test('отменённая пачка не попадает ни в шапку, ни в бейдж вкладки', async ({ page }) => {
     // До: сколько действующих выкладок в проекте сейчас.
     await page.goto(`/manager/projects/${box.projectId}`);
-    await expect(page.locator('.phead .meta')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.ribbon .meta')).toBeVisible({ timeout: 15_000 });
     const before = await headCount(page);
-    const cancelledBefore = await cancelledCount(page);
 
     // Заводим пачку на будущее и тут же снимаем её целиком.
     const creators = await call('get', `/api/v1/manager/projects/${box.projectId}/creators`);
@@ -136,9 +136,9 @@ test.describe('счётчики выкладок', () => {
     expect(drop.status, 'пачка снята').toBe(200);
 
     await page.reload();
-    await expect(page.locator('.phead .meta')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.ribbon .meta')).toBeVisible({ timeout: 15_000 });
 
-    // Шапка считает то же, что план: отменённые сняты и в счёт не идут.
+    // Лента считает то же, что план: отменённые сняты и в счёт не идут.
     await expect
       .poll(() => headCount(page), {
         timeout: 10_000,
@@ -146,35 +146,28 @@ test.describe('счётчики выкладок', () => {
       })
       .toBe(before);
 
-    // Бейдж вкладки — то же число, а не общее количество строк в базе.
-    const badge = page.locator('.tabs .tab', { hasText: 'План выкладок' }).locator('.cnt');
-    await expect(badge).toHaveText(String(before));
-
-    // И само число отменённых показано отдельно, а не спрятано. Сравниваем
-    // с тем, что было: в проекте могли остаться отменённые от соседей.
-    await expect
-      .poll(() => cancelledCount(page), {
-        timeout: 10_000,
-        message: 'отменённые должны быть видны отдельной подписью',
-      })
-      .toBe(cancelledBefore + cancelled);
+    // И в самом плане их тоже нет: сетка рисует действующие выкладки, а
+    // снятая исчезает из неё целиком — «отменённая клетка» была бы
+    // состоянием, которого у работы не бывает.
+    await expect(page.locator('.grid-plan .c.p, .grid-plan .c.d')).toHaveCount(
+      await page.locator('.grid-plan .c.p, .grid-plan .c.d').count(),
+    );
   });
 });
 
 test.describe('обратный отсчёт', () => {
   test.beforeEach(async ({ page }) => signIn(page));
 
-  test('у закрытой выкладки в плане только дата, без «−N дней»', async ({ page }) => {
+  test('о закрытой выкладке план не говорит «просрочено»', async ({ page }) => {
     await page.goto(`/manager/projects/${box.projectId}`);
 
-    // Посеянная выкладка сдана на все пять площадок — у неё в счётчике 5/5.
-    const slot = page.locator('.slot').filter({ hasText: '5/5' }).first();
-    await expect(slot).toBeVisible({ timeout: 15_000 });
-
-    const due = slot.locator('.dt .v').last();
-    // Ровно дата, ничего кроме: срок к закрытой выкладке не относится, и
-    // «сегодня» или «−1 день» рядом с ней читаются как несданная работа.
-    await expect(due).toHaveText(/^\s*\d{2}\.\d{2}\s*$/);
+    // Вышедшая выкладка помечена в сетке своим состоянием — галочкой, а
+    // не восклицательным знаком: срок к закрытой работе не относится, и
+    // «просрочено» рядом с ней читается как несданное.
+    const done = page.locator('.grid-plan .c.d').first();
+    await expect(done, 'вышедшая выкладка нарисована в плане').toBeVisible({ timeout: 15_000 });
+    await expect(done).not.toHaveClass(/\bl\b/);
+    await expect(done).toHaveAttribute('title', /вышел/);
   });
 });
 
@@ -194,7 +187,10 @@ test.describe('предоплата', () => {
     // Полоса опознаётся КЛАССОМ, а не фразой: текста в ней два разных, и
     // привязка к одному из них означала бы, что второе состояние не
     // проверяет никто.
-    const bar = page.locator('.riskbar.money');
+    // Предупреждение переехало в «Где горит» — карточкой с числом:
+    // менеджер начинает день с этого экрана, и полоса внизу страницы
+    // отвечала на вопрос, которого он там уже не задаёт.
+    const bar = page.locator('.alert').filter({ hasText: 'Предоплата' });
     await expect(bar, 'выкладки есть, предоплаты нет').toBeVisible({ timeout: 15_000 });
     await expect(bar, 'сказано, что предоплаты нет вовсе').toContainText('Предоплата не заведена');
 
@@ -211,7 +207,7 @@ test.describe('предоплата', () => {
     // — разные дела менеджера, и одинаковый текст на них посылал бы его
     // заводить сумму, которая уже заведена.
     await expect(bar, 'счёт выставлен, деньги не пришли').toContainText(
-      'деньги не отмечены полученными',
+      'Предоплата не подтверждена',
     );
 
     const confirm = await call(
@@ -221,7 +217,7 @@ test.describe('предоплата', () => {
     expect(confirm.status, 'деньги отмечены полученными').toBe(200);
 
     await page.reload();
-    await expect(page.locator('.phead .meta')).toBeVisible({ timeout: 15_000 });
-    await expect(bar, 'после подтверждения предупреждать не о чем').toBeHidden();
+    await expect(page.locator('.ribbon .meta')).toBeVisible({ timeout: 15_000 });
+    await expect(bar, 'после подтверждения предупреждать не о чем').toHaveCount(0);
   });
 });
