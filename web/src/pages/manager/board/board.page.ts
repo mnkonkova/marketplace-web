@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,21 +19,18 @@ import {
   transferArrayItem,
 } from '@angular/cdk/drag-drop';
 import { CdkScrollable } from '@angular/cdk/scrolling';
-import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { ProjectApi } from '@entities/project/api/project.api';
 import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
-import { CreateProjectDialogComponent } from '@features/create-project/create-project.dialog';
 import { ProjectManagerView, StepOwner } from '@entities/project/model/project.types';
 import { PipelineFull } from '@entities/pipeline/model/pipeline.types';
-import { PROJECT_STATUS_COLOR, PROJECT_STATUS_LABEL } from '@shared/lib/project-status';
-import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.component';
+import { buildBoardColumns, currentStepId } from '@entities/project/lib/board-columns';
+import { PROJECT_STATUS_LABEL, PROJECT_STATUS_TONE } from '@shared/lib/project-status';
+import { parseApiError } from '@shared/api/api-error';
+import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
+import { StatusTagComponent, StatusTone } from '@shared/ui/status-tag/status-tag.component';
 import { BoardListViewComponent } from '@widgets/board-list-view/board-list-view.component';
 import { StageMoveSheetComponent } from '@widgets/stage-move-sheet/stage-move-sheet.component';
 
@@ -35,6 +40,13 @@ import { withFromPage } from '@shared/nav/from-page';
 // Локальный alias — затягиваем конкретный pipeline-тип.
 type BoardForPipeline = GenericBoard<PipelineFull>;
 
+/**
+ * Канбан проектов менеджера.
+ *
+ * Был отдельной страницей на `/manager/board`; теперь это вид раздела
+ * «Проекты» — свой заголовок и своя кнопка «Создать проект» ему больше не
+ * нужны, их даёт раздел.
+ */
 @Component({
   selector: 'app-manager-board',
   standalone: true,
@@ -45,12 +57,9 @@ type BoardForPipeline = GenericBoard<PipelineFull>;
     CdkDropList,
     CdkDrag,
     CdkScrollable,
-    NzSpinModule,
-    NzTagModule,
-    NzEmptyModule,
     NzSelectModule,
-    NzButtonModule,
-    ManagerLayoutComponent,
+    ListStateComponent,
+    StatusTagComponent,
     BoardListViewComponent,
     StageMoveSheetComponent,
   ],
@@ -58,7 +67,7 @@ type BoardForPipeline = GenericBoard<PipelineFull>;
   templateUrl: './board.page.html',
   styleUrl: './board.page.scss',
 })
-export class ManagerBoardPage implements OnInit {
+export class ManagerBoardComponent implements OnInit {
   protected readonly projectApi = inject(ProjectApi);
 
   protected readonly pipelineApi = inject(PipelineApi);
@@ -67,9 +76,14 @@ export class ManagerBoardPage implements OnInit {
 
   protected readonly msg = inject(NzMessageService);
 
-  protected readonly modal = inject(NzModalService);
-
   public readonly loading = signal(true);
+
+  /**
+   * Ошибка сборки доски — отдельно от «проектов нет». Раньше упавший
+   * запрос гасил спиннер и оставлял пустой экран, неотличимый от честного
+   * «в работе ничего».
+   */
+  public readonly error = signal<string | null>(null);
 
   public readonly boards = signal<BoardForPipeline[]>([]);
 
@@ -89,16 +103,11 @@ export class ManagerBoardPage implements OnInit {
 
   public readonly moveTargetCurrentStepId = computed<string>(() => {
     const p = this.moveTarget();
-    if (!p) return '';
     const cb = this.currentBoard();
-    if (!cb) return '';
-    // current_step_title — текстовое поле проекта; находим step по name внутри pipeline.
-    for (const st of cb.pipeline.stages) {
-      for (const sp of st.steps ?? []) {
-        if (sp.name === p.current_step_title) return sp.id;
-      }
-    }
-    return '';
+    if (!p || !cb) return '';
+    // Шаг проекта — копия шага воронки со своим id, поэтому ищем по
+    // позиции, а не по идентификатору (см. lib/board-columns).
+    return currentStepId(cb.columns, p);
   });
 
   constructor() {
@@ -118,23 +127,29 @@ export class ManagerBoardPage implements OnInit {
     return PROJECT_STATUS_LABEL[s];
   }
 
-  public statusColor(s: ProjectManagerView['display_status']): string {
-    return PROJECT_STATUS_COLOR[s];
+  public statusTone(s: ProjectManagerView['display_status']): StatusTone {
+    return PROJECT_STATUS_TONE[s];
   }
 
   public ownerIcon(o: StepOwner): string {
     switch (o) {
-      case 'client': return '👤';
-      case 'team':   return '👥';
-      case 'system': return '🤖';
+      case 'client':
+        return '👤';
+      case 'team':
+        return '👥';
+      case 'system':
+        return '🤖';
     }
   }
 
   public ownerLabel(o: StepOwner): string {
     switch (o) {
-      case 'client': return 'клиент';
-      case 'team':   return 'команда';
-      case 'system': return 'авто (n8n)';
+      case 'client':
+        return 'клиент';
+      case 'team':
+        return 'команда';
+      case 'system':
+        return 'авто (n8n)';
     }
   }
 
@@ -180,9 +195,7 @@ export class ManagerBoardPage implements OnInit {
       return c;
     });
     this.boards.set(
-      prevBoards.map((b) =>
-        b.pipeline.id === cb.pipeline.id ? { ...b, columns: newColumns } : b,
-      ),
+      prevBoards.map((b) => (b.pipeline.id === cb.pipeline.id ? { ...b, columns: newColumns } : b)),
     );
 
     this.moveStep(target.id, stepId, target.updated_at).subscribe({
@@ -282,16 +295,21 @@ export class ManagerBoardPage implements OnInit {
     this.selectedPipelineId.set(v);
   }
 
-  protected fetch(): void {
+  public fetch(): void {
     this.loading.set(true);
+    this.error.set(null);
     this.loadProjects().subscribe({
       next: (r) => {
         const byPipeline = new Map<string, ProjectManagerView[]>();
         for (const p of r.items) {
-          if (!byPipeline.has(p.pipeline_id)) {
-            byPipeline.set(p.pipeline_id, []);
+          // У общего проекта воронки нет, и поля тоже: раскладывать его
+          // по этапам нечем, а раньше он собирался в доску с пустым id.
+          const pipelineId = p.pipeline_id;
+          if (!pipelineId) continue;
+          if (!byPipeline.has(pipelineId)) {
+            byPipeline.set(pipelineId, []);
           }
-          byPipeline.get(p.pipeline_id)!.push(p);
+          byPipeline.get(pipelineId)!.push(p);
         }
 
         if (byPipeline.size === 0) {
@@ -303,55 +321,25 @@ export class ManagerBoardPage implements OnInit {
         const pipelineIds = Array.from(byPipeline.keys());
         forkJoin(pipelineIds.map((id) => this.pipelineApi.getFull(id))).subscribe({
           next: (pipelines) => {
-            const boards: BoardForPipeline[] = pipelines.map((pl) => {
-              const projects = byPipeline.get(pl.id) ?? [];
-              const cols: BoardColumn[] = [];
-              const stagesSorted = pl.stages
-                .slice()
-                .sort((a, b) => a.sort_order - b.sort_order);
-              for (const st of stagesSorted) {
-                const stepsSorted = (st.steps ?? [])
-                  .slice()
-                  .sort((a, b) => a.sort_order - b.sort_order);
-                for (const sp of stepsSorted) {
-                  cols.push({
-                    step_id: sp.id,
-                    step_name: sp.name,
-                    step_owner: sp.owner,
-                    stage_name: st.name,
-                    stage_order: st.sort_order,
-                    step_order: sp.sort_order,
-                    items: projects.filter((p) => p.current_step_title === sp.name),
-                  });
-                }
-              }
-              return { pipeline: pl, columns: cols };
-            });
+            const boards: BoardForPipeline[] = pipelines.map((pl) => ({
+              pipeline: pl,
+              columns: buildBoardColumns(pl, byPipeline.get(pl.id) ?? []),
+            }));
             this.boards.set(boards);
             if (!boards.some((b) => b.pipeline.id === this.selectedPipelineId())) {
               this.selectedPipelineId.set(boards[0]?.pipeline.id ?? '');
             }
             this.loading.set(false);
           },
-          error: () => this.loading.set(false),
+          error: (e) => this.fail(e),
         });
       },
-      error: () => this.loading.set(false),
+      error: (e) => this.fail(e),
     });
   }
 
-  public openCreate(): void {
-    const ref = this.modal.create({
-      nzTitle: 'Создать проект',
-      nzContent: CreateProjectDialogComponent,
-      nzFooter: null,
-      nzWidth: 520,
-      nzData: { mode: 'manager' },
-    });
-    ref.afterClose.subscribe((created) => {
-      if (created) {
-        // refresh не нужен — диалог уже перебрасывает на /manager/projects/{id}
-      }
-    });
+  private fail(e: unknown): void {
+    this.loading.set(false);
+    this.error.set(parseApiError(e, 'Не удалось собрать канбан.').message);
   }
 }

@@ -1,0 +1,91 @@
+<!-- Тот же кабинет, что и проект: список и проект — один разговор, и
+     переход между ними не должен менять ни фон, ни шапку. Раньше
+     список жил на тёмной витрине, а проект — в светлом кабинете, и
+     переход читался как уход на другой сайт. -->
+<!-- Шапка сайта над кабинетом: из кабинета ходят на витрину, в свой
+     профиль и в поиск, а на телефоне это единственное меню, где всё
+     это лежит. Полоса кабинета ниже отвечает на другой вопрос — где я
+     и в какой роли. -->
+<app-header />
+
+<div class="sotka">
+  <app-sotka-top
+    title="Мои проекты"
+    [subtitle]="subtitle()"
+    [nav]="nav()"
+    [showWho]="false"
+  />
+
+  <main>
+    <div class="role">
+      <div class="span-12 pf-head">
+        <div>
+          <div class="label">Кабинет креатора</div>
+          <h1>Мои проекты</h1>
+        </div>
+        @if (totalOverdue(); as late) {
+          <div class="pf-head-r">
+            <span class="pill crit">просрочено {{ late }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="span-12 panel">
+        <div class="panel-h">
+          <h2>Проекты</h2>
+          <span class="sub">
+            счётчики только по вашим выкладкам — чужие вы не видите нигде
+          </span>
+        </div>
+
+        @if (loading()) {
+          <p class="muted">Загружаем проекты…</p>
+        } @else if (!ordered().length) {
+          <p class="muted">
+            Вас пока не добавили ни в один проект. Как добавят — материалы, чеклист и даты выкладок
+            откроются здесь.
+          </p>
+        } @else {
+          <div class="projects">
+            <div class="prj head label">
+              <span>Проект</span>
+              <span>Сдано по плану</span>
+              <span>Ближайший срок</span>
+              <span></span>
+            </div>
+            @for (p of ordered(); track p.project_id) {
+              <a class="prj" [routerLink]="['/me/creator/projects', p.project_id]">
+                <div>
+                  <div class="nm">
+                    {{ p.title }}
+                    <span class="pill" [class]="'pill ' + stateTone(p)">{{ stateLabel(p) }}</span>
+                  </div>
+                  <div class="ms">В проекте с {{ p.added_at | date: 'd MMM y' }}</div>
+                </div>
+
+                <div class="mv" data-label="Сдано по плану">
+                  @if (p.publications_total) {
+                    {{ closed(p) }} из {{ p.publications_total }}
+                  } @else {
+                    <span class="st st-nd">плана ещё нет</span>
+                  }
+                </div>
+
+                <div data-label="Ближайший срок">
+                  @if (p.next_due_date) {
+                    <div class="mv">{{ p.next_due_date | date: 'd MMM' }}</div>
+                  }
+                  <div class="ms" [class.crit-ink]="p.publications_overdue > 0">
+                    {{ dueLine(p) }}
+                  </div>
+                </div>
+
+                <div><span class="go">Мои выкладки →</span></div>
+              </a>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </main>
+</div>

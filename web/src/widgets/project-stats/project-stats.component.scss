@@ -1,0 +1,208 @@
+:host {
+  display: block;
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.note {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+h3 {
+  margin: 18px 0 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: var(--r-card, 16px);
+  background: var(--bg-elevated, #111316);
+
+  span {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  b {
+    font-size: 22px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  small {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+}
+
+.chart {
+  // Сетка, оси, линия и подписи — внутри общего app-line-chart. Здесь
+  // остаётся только то, что вокруг него.
+  margin-top: 16px;
+
+  // Переключатель глубины: проецируется в шапку графика, к подписи
+  // периода, — он меняет только график и рядом с ним же и должен стоять.
+  .range {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .only {
+      color: var(--text-dim, #6b7280);
+      font-size: 11.5px;
+    }
+
+    button {
+      padding: 4px 11px;
+      border: 1px solid var(--border-strong, #2c313a);
+      border-radius: 999px;
+      background: var(--bg-elevated, #111316);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    button.on {
+      border-color: var(--cta, #f0553c);
+      color: var(--text);
+    }
+  }
+}
+
+.legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+
+  // Латунь, а не бирюза: этой линией показан РОСТ просмотров, а латунь
+  // в палитре и значит «выросло». Бирюзовый акцент остался от прежней
+  // темы и ничего не сообщал — им были выкрашены и линия, и полосы
+  // площадок, и кнопки.
+  .dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    margin-right: 6px;
+    border-radius: 3px;
+    background: var(--brass);
+  }
+
+  .muted {
+    color: var(--text-dim);
+  }
+}
+
+.byplat,
+.bycrew {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 13px;
+  }
+
+  .name {
+    width: 84px;
+    flex: 0 0 auto;
+    color: var(--text-muted);
+  }
+
+  .bar {
+    display: block;
+    overflow: hidden;
+    height: 6px;
+    flex: 1;
+    border-radius: 999px;
+    background: var(--bg-elevated, #111316);
+  }
+
+  // Цвет площадки, а не один общий: разбор ПО ПЛОЩАДКАМ, крашенный
+  // одной краской, заставляет читать подписи, чтобы понять, где чья
+  // полоса. Площадку узнают по цвету раньше, чем прочтут имя. Задаёт
+  // его разметка инлайном, из PLATFORM_COLOR.
+  .bar i {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--brass);
+  }
+
+  b {
+    min-width: 68px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 22px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: 6px;
+  background: var(--bg-elevated, #111316);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+// Свой класс, а не второй .byplat: разбор по людям и разбор по
+// площадкам — два разных списка на одном экране, и общий класс делает
+// их неразличимыми для всякого, кто ищет «строки площадок».
+//
+// Разбор по людям: имя длиннее кода площадки, и колонка под него шире.
+// Полоса — доля человека в просмотрах проекта, цвет один: сравниваются
+// люди между собой, а не каналы, и разноцветить их незачем.
+.bycrew {
+  li {
+    gap: 8px;
+  }
+
+  .name {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    width: 190px;
+    color: var(--text);
+
+    small {
+      font-size: 11px;
+      line-height: 1.25;
+    }
+  }
+
+  .bar i {
+    background: var(--brass);
+  }
+}

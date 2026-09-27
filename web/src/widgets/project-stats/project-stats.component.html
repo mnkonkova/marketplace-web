@@ -1,0 +1,147 @@
+@if (denied()) {
+  <p class="empty">Показ статистики по этому проекту выключен — цифры скрыты менеджером.</p>
+} @else if (collapsed()) {
+  <p class="empty">Проект закрыт — подробная статистика по роликам больше не хранится.</p>
+} @else if (report()) {
+  @let r = report()!;
+
+  @if (showKpis()) {
+    <div class="tiles">
+      <div class="tile">
+        <span>Просмотры, всего</span>
+        <b>{{ r.views | number }}</b>
+        <!-- Прироста нет — значит вчерашнего снимка нет, и «+0 за
+             сутки» соврало бы про остановившийся рост. -->
+        @if (r.growth_24h !== null) {
+          <small>+{{ r.growth_24h | number }} за сутки</small>
+        } @else {
+          <small>прирост за сутки не измерен</small>
+        }
+      </div>
+      <div class="tile">
+        <span>Лайки</span>
+        <b>{{ r.likes | number }}</b>
+      </div>
+      <div class="tile">
+        <span>Комментарии</span>
+        <b>{{ r.comments | number }}</b>
+      </div>
+      <div class="tile">
+        <span>ER средний</span>
+        <b>
+          <app-er-value [percent]="r.er_percent" [withoutShares]="!!r.er_without_shares" />
+        </b>
+        <small
+          >по {{ r.videos | number }} {{ plural(r.videos, 'ролику', 'роликам', 'роликам') }}</small
+        >
+      </div>
+    </div>
+  }
+
+  @if (hasChart()) {
+    <div class="chart">
+      <!-- График рисует общий app-line-chart: ломаная по точкам, без
+           сглаживания, с подписями осей и значением по наведению. Такой
+           же стоит в сводке заказчика — второй своей копии здесь нет.
+           Переключатель глубины проецируется в его шапку: он меняет
+           только график, и в шапке экрана читался бы как фильтр всей
+           страницы. -->
+      <!-- Латунь, а не бирюза: линия показывает РОСТ просмотров, а латунь
+           в палитре и значит «выросло». Бирюзовый акцент остался от
+           прежней темы — им были выкрашены разом и линия, и полосы
+           площадок, и кнопки, то есть цвет не сообщал ничего. -->
+      <app-line-chart
+        [points]="chartPoints()"
+        color="var(--brass)"
+        label="Просмотры нарастающим итогом"
+        yLabel="всего просмотров на дату"
+      >
+        <div class="range" role="group" aria-label="Глубина графика">
+          @if (shortSeries()) {
+            <!-- Числа есть не за весь выбранный период: без этой подписи
+                 обе кнопки рисуют одно и то же, и переключатель читается
+                 как сломанный. -->
+            <span class="only"
+              >пока за {{ seriesDays() }} {{ plural(seriesDays(), 'день', 'дня', 'дней') }}</span
+            >
+          }
+          <button type="button" [class.on]="range() === 7" (click)="setRange(7)">7 дней</button>
+          <button type="button" [class.on]="range() === 30" (click)="setRange(30)">30 дней</button>
+        </div>
+      </app-line-chart>
+      <!-- Ряд накопительный: точка дня — это «всего просмотров на эту
+           дату», а не прирост за сутки. Прирост стоит отдельно, в плитке
+           «Просмотры, всего». -->
+      <div class="legend">
+        <span><i class="dot"></i> Просмотры нарастающим итогом</span>
+        @if (lastPoint(); as last) {
+          <span class="muted"> на {{ last.date | date: 'd MMM' }}: {{ last.views | number }} </span>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Дата сбора бывает пустой: у проекта, по которому сборщик ещё ни
+       разу не проходил, её просто нет. Строка «Последний сбор — .» — не
+       мелкая неопрятность: прочерк с точкой на месте даты читается как
+       сломанная страница, а не как «сбора ещё не было». Разные вещи —
+       разные предложения. -->
+  @if (r.as_of) {
+    <p class="note">
+      Счётчики снимаются раз в сутки. Последний сбор — {{ r.as_of | date: 'd MMM, HH:mm' }}.
+    </p>
+  } @else {
+    <p class="note">
+      Счётчики снимаются раз в сутки. Первый сбор по этому проекту ещё не проходил — цифры появятся
+      после него.
+    </p>
+  }
+
+  @if (showCreators() && r.by_creator.length) {
+    <h3>Кто сколько набрал</h3>
+    <!-- По людям, а не по площадкам: «какая площадка тянет» — про
+         каналы, а звать в следующий месяц менеджер решает по человеку.
+         Доля считается сервером и приходит готовой: делить на фронте
+         значило бы получить на двух экранах два разных процента. -->
+    <ul class="bycrew">
+      @for (row of r.by_creator; track row.creator_user_id) {
+        <li>
+          <app-sotka-ava [name]="row.creator_name || 'Без имени'" [size]="22" />
+          <span class="name">
+            {{ row.creator_name || 'Без имени' }}
+            <small class="muted">
+              {{ row.videos | number }}
+              {{ plural(row.videos, 'ролик', 'ролика', 'роликов') }} · в среднем
+              {{ row.avg_views | number }}
+            </small>
+          </span>
+          <span class="bar">
+            <i [style.width.%]="row.share_percent"></i>
+          </span>
+          <b>{{ row.views | number }}</b>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (showPlatforms() && r.by_platform.length) {
+    <h3>Какая площадка тянет</h3>
+    <ul class="byplat">
+      @for (row of r.by_platform; track row.platform) {
+        <li>
+          <span class="badge">{{ platformShort[row.platform] }}</span>
+          <span class="name">{{ platformLabel[row.platform] }}</span>
+          <span class="bar">
+            <i
+              [style.width.%]="r.views ? (row.views / r.views) * 100 : 0"
+              [style.background]="platformColor[row.platform]"
+            ></i>
+          </span>
+          <b>{{ row.views | number }}</b>
+        </li>
+      }
+    </ul>
+  }
+} @else {
+  <p class="empty">Цифр пока нет — они появятся после первой выкладки.</p>
+}

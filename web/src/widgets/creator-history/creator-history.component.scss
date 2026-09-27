@@ -1,0 +1,177 @@
+// История периодов. Общая часть (.card, .sub, h2) — в
+// shared/scss/_crm.scss под .crm-page, который носит страница.
+//
+// Префикс ph- по той же причине, что hl- в соседнем виджете: глобальный
+// словарь .crm-page матчит всё, что лежит внутри страницы, и короткое
+// `.plist` там уже занято колонкой ссылок с своим display и отступами.
+// Своё имя — своё поведение.
+
+:host {
+  display: block;
+}
+
+.hist {
+  margin-bottom: 16px;
+
+  .hhead {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  // Итог за проект — второе по величине число на карточке: главное
+  // (заработок текущего периода) стоит выше, в денежном блоке.
+  .allsum {
+    text-align: right;
+
+    i {
+      display: block;
+      color: var(--muted-2, #74827e);
+      font-size: 11px;
+      font-style: normal;
+    }
+
+    b {
+      display: block;
+      color: var(--brass);
+      font-family: var(--font-head);
+      font-size: 22px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin: 2px 0;
+    }
+  }
+
+  .ph-rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      padding: 13px 0;
+      border-bottom: 1px solid var(--line, #1c2422);
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:first-child {
+        padding-top: 0;
+      }
+    }
+  }
+
+  .top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    .pt {
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .sum {
+      font-family: var(--font-head);
+      font-size: 19px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+  }
+
+  // Состав денег за период — та же главная строка, что и в карточке
+  // текущего: из чего сложилось, спрашивают чаще, чем итог. Нижним
+  // ярусом подписи она была нечитаемой.
+  .parts {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 5px;
+    color: var(--muted, #7e8d88);
+    font-size: 12.5px;
+
+    .cut {
+      color: var(--red, #e0604e);
+    }
+  }
+
+  .views {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 9px;
+
+    .v {
+      font-family: var(--font-head);
+      font-size: 13px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+
+    .vid {
+      flex: 1 1 auto;
+      text-align: right;
+      color: var(--muted-2, #74827e);
+      font-size: 11.5px;
+    }
+  }
+
+  // Полоска просмотров периода относительно лучшего: рост видно, не
+  // читая чисел, — и спад тоже.
+  .track {
+    display: block;
+    overflow: hidden;
+    width: 120px;
+    height: 5px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: var(--line, #1c2422);
+
+    // Латунь: полоска меряет просмотры — то, что выросло. Коралловый
+    // конец градиента читался как «нажми», а нажимать тут нечего.
+    i {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: var(--brass);
+    }
+  }
+
+  .delta {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    font-family: var(--font-head);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--muted-2, #74827e);
+
+    i {
+      font-style: normal;
+      font-size: 11px;
+      opacity: 0.8;
+    }
+
+    // Направление, а не приговор: латунь — выросло, лёд — упало.
+    // Красный отсюда убран — он значит «сломалось», а упавшие просмотры
+    // периода не поломка. Насколько это плохо, говорит само число.
+    &.up {
+      color: var(--brass);
+    }
+
+    &.down {
+      color: var(--ice);
+    }
+  }
+}

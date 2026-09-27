@@ -1,0 +1,29 @@
+<app-page-head
+  title="Чеклисты креаторов"
+  subtitle="Из чего собирается чеклист выкладки. Подключают шаблон в самом проекте, во вкладке «Материалы» — там же живут и правки."
+/>
+
+<div class="crm-page">
+  <app-list-state
+    [loading]="loading()"
+    [error]="error()"
+    [empty]="items().length === 0"
+    emptyText="Библиотека пуста. Пока в ней нет чеклистов, креатор сдаёт ссылки без проверок."
+    (retry)="fetch()"
+  >
+    <div class="tpls">
+      @for (t of items(); track t.id) {
+      <article class="card tight tpl">
+        <div class="hd">
+          <h3>{{ t.name }}</h3>
+          <span class="tag green">v{{ t.version }} · действует</span>
+        </div>
+        @if (t.description) {
+        <p class="sub">{{ t.description }}</p>
+        }
+        <span class="cnt">{{ t.items_count }} {{ itemsWord(t.items_count) }}</span>
+      </article>
+      }
+    </div>
+  </app-list-state>
+</div>

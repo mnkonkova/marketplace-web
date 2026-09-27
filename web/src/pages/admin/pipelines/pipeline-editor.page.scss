@@ -22,7 +22,7 @@
     padding: 4px 8px;
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: var(--r-field);
     color: var(--text);
     font-size: 32px;
     font-weight: 700;
@@ -60,7 +60,7 @@
 .legend {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 16px 20px;
   margin-bottom: 24px;
 
@@ -101,7 +101,7 @@
 .stage {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 16px;
 }
 
@@ -200,7 +200,7 @@
     padding: 12px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--r-field);
     border-top: 1px solid var(--border);
 
     ::ng-deep nz-input-number,
@@ -239,7 +239,7 @@
 
 .cdk-drag-preview {
   background: var(--surface);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
 }
 

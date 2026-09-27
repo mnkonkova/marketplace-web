@@ -1,0 +1,352 @@
+@use 'breakpoints' as bp;
+
+// Проект глазами заказчика. Словарь кабинета — общий (.sotka); здесь
+// только то, чего в макете не было отдельным классом.
+
+:host {
+  display: block;
+}
+
+.legend-note {
+  font-size: 11px;
+}
+
+.no-stats {
+  margin: 0;
+  max-width: 70ch;
+}
+
+.kpi-note,
+.tariff-note {
+  font-size: 12.5px;
+  margin: 6px 0 0;
+  max-width: 60ch;
+}
+
+.money-btn {
+  margin-top: 10px;
+}
+
+// Полоса отклика и кружки легенды: цвет несёт смысл, поэтому он задан
+// классом, а не инлайном в разметке.
+.acc-bg {
+  background: var(--accent);
+}
+
+.warn-bg {
+  background: var(--warn);
+}
+
+.ok-bg {
+  background: var(--ok);
+}
+
+// Итоги площадок под графиком. Поденного разбора по площадкам сервер не
+// отдаёт, и пять линий здесь были бы выдумкой — стоят настоящие итоги.
+.plat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.plat-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  .t {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 14px;
+  }
+}
+
+.plat-sub {
+  font-size: 11.5px;
+}
+
+// Кадр ролика. Настоящего кадра у внешнего ролика может не быть вовсе —
+// он лежит на чужой площадке. Тогда на месте кадра стоит знак площадки:
+// пустой прямоугольник читается как «картинка не загрузилась», то есть
+// как поломка, а знак говорит то, что есть.
+.thumb {
+  width: 70px;
+  align-items: center;
+  justify-content: center;
+
+  .thumb-plat {
+    position: relative;
+    z-index: 1;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: center;
+    padding: 0 4px;
+  }
+
+  // Треугольника «играть» у подложки без кадра нет: плеера мы не
+  // обещаем — ролик открывается на площадке.
+  &::after {
+    content: none;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &.sm {
+    width: 38px;
+    border-radius: 5px;
+  }
+
+  &.xs {
+    width: 34px;
+    border-radius: 5px;
+  }
+}
+
+.vcard-body {
+  min-width: 0;
+}
+
+.vcard-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 4px;
+  min-width: 0;
+
+  // Длинное имя жмётся многоточием, а не выталкивает дату из карточки:
+  // в ленте на телефоне «Анастасия Креатор» и «15.09» налезали друг на
+  // друга.
+  .who-name {
+    font-weight: 500;
+    font-size: 12.5px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dot-date {
+    flex: none;
+  }
+}
+
+.dot-date {
+  font-size: 12px;
+}
+
+.vcard-num {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+td.cov {
+  width: 44px;
+}
+
+.vt {
+  font-weight: 500;
+}
+
+// Календарь
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.day-note {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.row.row-top {
+  align-items: flex-start;
+}
+
+.who-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.day-plats {
+  margin-top: 4px;
+}
+
+.small {
+  font-size: 12px;
+}
+
+// Деньги
+.due-h {
+  font-size: 19px;
+  margin: 8px 0 4px;
+}
+
+.due-note {
+  margin-top: 6px;
+}
+
+.due-r {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.period-note {
+  font-size: 12.5px;
+  margin: 10px 0 0;
+}
+
+.smeta-l {
+  font-size: 13px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+// Второй ползунок — под первым, а не впритык к нему.
+input + .smeta-l {
+  margin-top: 12px;
+}
+
+// Потолок месяца: главное число блока, и читается оно первым.
+// «Меньше» перед суммой — часть числа, а не подпись к нему: сумма без
+// этого слова читается как счёт, который выставят.
+.ceil {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 14px 0 10px;
+
+  .label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .num {
+    font-family: var(--display);
+    font-size: 26px;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+}
+
+.ask-btn {
+  margin-top: 14px;
+  width: 100%;
+  justify-content: center;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+// Отправленная заявка — состояние, а не сноска: человек должен видеть,
+// что его просьба дошла, иначе нажмёт ещё раз.
+.asked {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.ink {
+  color: var(--ink);
+}
+
+.acc-login {
+  overflow-wrap: anywhere;
+}
+
+// Переписка — общий компонент приложения. Внутри кабинета он встаёт на
+// светлую землю: токены дизайн-системы переопределены псевдонимами в
+// .sotka, поэтому своих правок ему здесь не нужно.
+.chat-panel app-project-comments {
+  display: block;
+}
+
+.tail {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 12.5px;
+}
+
+// Проход в «Доступы и бот» с телефона: вкладки такой в нижней полосе
+// нет — там пять мест, и справочник в них не попал.
+.access-jump {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+
+  // Раскладку задаём только на телефоне. Стили компонента дописываются
+  // в <head> позже глобальных, а специфичность у них равная — значит
+  // безусловный display: flex пересилил бы `.sotka .only-phone
+  // { display: none }`, и телефонный переход в «Доступы» встал бы
+  // панелью в сводке на широком экране, где тот же раздел уже вкладкой.
+  @media (max-width: bp.$touch) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .chev {
+    color: var(--faint);
+    font-size: 22px;
+    line-height: 1;
+  }
+}
+
+// Глубина графика: переключатель стоит В ШАПКЕ САМОГО ГРАФИКА, а не
+// экрана — он меняет одну линию, и в шапке страницы читался бы как
+// фильтр всего. Светлый словарь кабинета, поэтому цвета свои, а не
+// как в тёмной CRM.
+.range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .only {
+    color: var(--faint);
+    font-size: 11.5px;
+  }
+
+  button {
+    padding: 4px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  button.on {
+    border-color: var(--accent);
+    color: var(--ink);
+  }
+}

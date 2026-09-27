@@ -1,51 +1,60 @@
-<app-admin-layout>
-  <header class="head">
-    <h1>Продакшены</h1>
-    <button nz-button nzType="primary" (click)="openCreate(createTpl)">+ Создать</button>
-  </header>
+<app-page-head
+  title="Продакшены"
+  subtitle="Студии, к которым привязаны специалисты. Выключенный продакшен остаётся в старых профилях, но выбрать его в новых нельзя."
+>
+  <button head-action nz-button nzType="primary" nzSize="small" (click)="openCreate(createTpl)">
+    Создать продакшен
+  </button>
+</app-page-head>
 
-  <nz-table [nzData]="items()" nzSize="middle">
+@if (hiddenCount()) {
+<label class="off-toggle" nz-checkbox [(ngModel)]="includeOff" (ngModelChange)="onToggleOff()">
+  Показывать выключенные ({{ hiddenCount() }})
+</label>
+}
+
+<app-list-state
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="visible().length === 0"
+  emptyText="Действующих продакшенов нет — специалисту нечего выбрать, кроме фриланса."
+  (retry)="fetch()"
+>
+  <nz-table [nzData]="visible()" nzSize="middle">
     <thead>
       <tr>
         <th>Название</th>
         <th>Описание</th>
         <th>Статус</th>
-        <th></th>
+        <th class="r"></th>
       </tr>
     </thead>
     <tbody>
-      @for (p of items(); track p.id) {
-        <tr>
-          <td data-label="Название">{{ p.name }}</td>
-          <td data-label="Описание">{{ p.description }}</td>
-          <td data-label="Статус">
-            @if (p.is_active) {
-              <nz-tag nzColor="green">Активен</nz-tag>
-            } @else {
-              <nz-tag>Деактивирован</nz-tag>
-            }
-          </td>
-          <td>
-            @if (p.is_active) {
-              <button
-                nz-button
-                nzDanger
-                nzSize="small"
-                nz-popconfirm
-                nzPopconfirmTitle="Деактивировать?"
-                (nzOnConfirm)="deactivate(p)"
-              >
-                Деактивировать
-              </button>
-            } @else {
-              <button nz-button nzSize="small" (click)="activate(p)">Активировать</button>
-            }
-          </td>
-        </tr>
+      @for (p of visible(); track p.id) {
+      <tr>
+        <td data-label="Название">
+          <b>{{ p.name }}</b>
+        </td>
+        <td data-label="Описание">{{ p.description || '—' }}</td>
+        <td data-label="Статус">
+          @if (p.is_active) {
+          <app-status-tag tone="ok">Активен</app-status-tag>
+          } @else {
+          <app-status-tag tone="neutral">Выключен</app-status-tag>
+          }
+        </td>
+        <td data-label="" class="r">
+          <app-row-menu
+            [items]="menuFor(p)"
+            [label]="'Действия: ' + p.name"
+            (pick)="onPick(p, $event)"
+          />
+        </td>
+      </tr>
       }
     </tbody>
   </nz-table>
-</app-admin-layout>
+</app-list-state>
 
 <ng-template #createTpl>
   <label>Название</label>

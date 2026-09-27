@@ -74,3 +74,32 @@
     font-size: 12px;
   }
 }
+
+/* Вход в список проектов с выкладками. Отдельная панель, а не ссылка
+   в карточке назначения: списки разные — состав проекта и назначение
+   по воронке это две несвязанные вещи. */
+.pub-hint {
+  margin: 0 0 12px;
+  max-width: 72ch;
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+
+.pub-link {
+  display: inline-block;
+  color: var(--text-muted);
+  font-size: 13px;
+
+  &:hover {
+    color: var(--accent);
+  }
+
+  &.big {
+    padding: 9px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-btn, 11px);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-size: 14px;
+  }
+}

@@ -1,0 +1,116 @@
+@let f = filters();
+
+<app-page-head
+  title="Мои проекты"
+  subtitle="Всё, что закреплено за вами. Фильтры остаются в адресе — ссылкой на выборку можно поделиться. Канбан показывает только проекты с воронкой: у проекта с креаторами её нет, и найти его можно только в списке."
+>
+  <app-view-switch head-action [view]="f.view" (pick)="setView($event)" />
+</app-page-head>
+
+@if (f.view === 'board') {
+<app-manager-board />
+} @else {
+<div class="crm-page">
+  <!-- Тот же набор, что у админа, и тем же кодом. Фильтра по менеджеру
+       здесь нет: ручка и так отдаёт только свои проекты, и выпадашка
+       «Все менеджеры» обещала бы чужие. -->
+  <section class="filters">
+    <input
+      nz-input
+      type="text"
+      placeholder="Поиск по названию проекта или клиенту"
+      [(ngModel)]="q"
+      (ngModelChange)="onSearch()"
+      class="search-input"
+      data-test="projects-search"
+    />
+    <nz-select
+      [ngModel]="f.kind"
+      (ngModelChange)="setKind($event)"
+      style="min-width: 150px"
+      data-test="projects-kind"
+    >
+      @for (o of kindOptions; track o.value) {
+      <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+      }
+    </nz-select>
+    <nz-select
+      [ngModel]="f.status"
+      (ngModelChange)="setStatus($event)"
+      style="min-width: 150px"
+      data-test="projects-status"
+    >
+      @for (o of statusOptions; track o.value) {
+      <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+      }
+    </nz-select>
+    <nz-select
+      [ngModel]="f.sort"
+      (ngModelChange)="setSort($event)"
+      style="min-width: 200px"
+      data-test="projects-sort"
+    >
+      @for (o of sortOptions; track o.value) {
+      <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+      }
+    </nz-select>
+    <label
+      nz-checkbox
+      [ngModel]="f.includeTest"
+      (ngModelChange)="setIncludeTest($event)"
+      data-test="projects-include-test"
+      >Показывать тестовые</label
+    >
+  </section>
+
+  <p class="counter">
+    Найдено: <strong data-test="projects-total">{{ visible().length }}</strong>
+    @if (visible().length !== items().length) {
+    <span class="of">из {{ items().length }}</span>
+    }
+  </p>
+
+  <app-list-state
+    [loading]="loading()"
+    [error]="error()"
+    [empty]="items().length === 0"
+    emptyText="За вами пока ничего не закреплено. Возьмите проект в разделе «Входящие»."
+    (retry)="fetch()"
+  >
+    <div class="twrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Проект</th>
+            <th>Клиент</th>
+            <th>Вид</th>
+            <th>Где сейчас</th>
+            <th>Статус</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of visible(); track p.id) {
+          <tr class="row" (click)="open(p)" tabindex="0" (keydown.enter)="open(p)">
+            <td>
+              <b>{{ p.title }}</b>
+            </td>
+            <td>{{ p.client?.display_name || p.client_display_name || '—' }}</td>
+            <td>{{ kindLabel[p.kind] }}</td>
+            <td>{{ where(p) }}</td>
+            <td>
+              <app-status-tag [tone]="statusTone(p.display_status)">
+                {{ statusLabel[p.display_status] }}
+              </app-status-tag>
+            </td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="5" class="empty">Под текущие фильтры ничего не попало.</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </app-list-state>
+</div>
+}

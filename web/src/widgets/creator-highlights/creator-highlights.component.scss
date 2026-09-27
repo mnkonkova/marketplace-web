@@ -1,0 +1,274 @@
+// Достижения креатора. Общая часть (.card, .sub, h2/h3) — в
+// shared/scss/_crm.scss под .crm-page, который носит страница; здесь
+// только то, чего нет больше нигде.
+//
+// ПРО ПРЕФИКС hl-. Стили компонента изолированы наружу, но НЕ внутрь:
+// правила из глобального _crm.scss матчат всё, что лежит внутри
+// .crm-page, и мои тоже. Там уже заняты короткие имена — `.plat` это
+// значок площадки 30×26 с display:grid, `.plist` — колонка ссылок в
+// боковой панели, `.lbl` — подпись поля. Блок площадок назывался
+// `.plat`, получал от них жёсткие 30×26, схлопывался в значок, а
+// содержимое продолжало рисоваться — поверх списка выкладок ниже.
+//
+// Поэтому всё, чего нет в общем словаре, носит здесь префикс. Не
+// «сброшу лишние свойства»: словарь пополняют другие люди, и следующее
+// совпадение так же придёт молча. Держит это спека
+// creator-cabinet.layout.spec.ts — она меряет блок линейкой в настоящем
+// хроме, внутри .crm-page, как на самой странице.
+
+:host {
+  display: block;
+}
+
+.hl {
+  margin-bottom: 16px;
+
+  .hhead {
+    margin-bottom: 14px;
+  }
+
+  // Рекорды плитками: каждая — одно число и одна подпись. Плитка, а не
+  // строка, потому что число здесь главное, а текст при нём.
+  .records {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .rec {
+    border: 1px solid var(--line-2, #2a3532);
+    border-radius: 14px;
+    padding: 14px 15px;
+    background: var(--bg-elevated, #0e1413);
+
+    .hl-lbl {
+      margin: 0 0 6px;
+      color: var(--muted, #7e8d88);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    // Рекорд — это просмотры, то есть то, что ВЫРОСЛО: латунь.
+    // Моноширинный убран: «2 млн» он растягивал провалами между
+    // знаками, а столбца, ради которого его держали, здесь нет вовсе —
+    // плитки стоят рядом, а не друг под другом.
+    .n {
+      display: block;
+      color: var(--brass);
+      font-family: var(--font-head);
+      font-size: 30px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .t {
+      margin: 7px 0 0;
+      font-size: 13.5px;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .m {
+      margin: 4px 0 0;
+      color: var(--muted, #7e8d88);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .sub2 {
+      color: var(--muted-2, #74827e);
+      font-size: 11.5px;
+    }
+  }
+
+  // Лучший ролик периода выделен рамкой, а не заливкой: это рекорд, а не
+  // тревога, и кричать он не должен. Рамка ЛАТУННАЯ, а не коралловая:
+  // коралл в этой системе значит «здесь действие», и рекорд в его цвете
+  // выглядел кнопкой. Латунь значит «выросло» — ровно то, что это и есть.
+  .best {
+    border-color: rgb(240 179 87 / 45%);
+  }
+
+  .crown {
+    margin: 8px 0 0;
+    color: var(--brass);
+    font-size: 12px;
+  }
+
+  // Рост и падение — двумя цветами смысла, и падение показывается ровно
+  // так же заметно, как рост: кабинет, который умеет показывать только
+  // хорошее, перестают открывать.
+  //
+  // Латунь и лёд здесь означают НАПРАВЛЕНИЕ, а не оценку: приговор несёт
+  // само число («−1,2 млн»), а не его цвет. Красный отсюда убран — он
+  // значит «сломалось», а упавшие просмотры не поломка.
+  .trend {
+    &.up .n {
+      color: var(--brass);
+    }
+
+    &.down .n {
+      color: var(--ice);
+    }
+  }
+
+  // Кнопка разворота разбора. Существует только на телефоне: там
+  // площадки и ролики периода свёрнуты, и развернуть их надо чем-то.
+  // На десктопе разбор стоит открытым — прячем кнопку здесь, показываем
+  // в тач-слое.
+  .foldrow {
+    display: none;
+  }
+
+  .hl-plats {
+    margin-bottom: 18px;
+
+    h3 {
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+  }
+
+  .hl-rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--line, #1c2422);
+      flex-wrap: wrap;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .nm {
+      width: 86px;
+      flex: 0 0 auto;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .pv {
+      font-family: var(--font-head);
+      font-size: 14px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      min-width: 74px;
+      text-align: right;
+    }
+
+    .cnt {
+      flex: 1 1 140px;
+      text-align: right;
+      color: var(--muted-2, #74827e);
+      font-size: 11.5px;
+    }
+  }
+
+  // Полоска доли — чтобы разницу было видно, не читая чисел.
+  .track {
+    display: block;
+    overflow: hidden;
+    width: 110px;
+    height: 4px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: var(--line, #1c2422);
+
+    // Латунь, а не коралл: полоска меряет просмотры — то, что выросло.
+    // Коралл на ней читался как «нажми сюда».
+    i {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: var(--brass);
+    }
+  }
+
+  .rest {
+    margin-bottom: 14px;
+
+    h3 {
+      margin-bottom: 6px;
+    }
+  }
+
+  .vids {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--line, #1c2422);
+      flex-wrap: wrap;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .t {
+      flex: 1;
+      min-width: 140px;
+      font-size: 13px;
+    }
+
+    .n {
+      color: var(--text);
+      font-family: var(--font-head);
+      font-size: 14px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+
+    .share {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      color: var(--muted-2, #74827e);
+      font-size: 11.5px;
+    }
+
+    // «Ещё растёт» стоит у названия: это про ролик, а не про весь список.
+    .growing {
+      margin-left: 6px;
+      color: var(--muted-2, #74827e);
+      font-size: 11px;
+      font-style: normal;
+    }
+  }
+
+  .hint {
+    margin: 6px 0 0;
+    color: var(--muted-2, #74827e);
+    font-size: 12px;
+  }
+
+  .rank {
+    margin: 0;
+    color: var(--blue, #4a90d9);
+    font-size: 12.5px;
+  }
+
+  .none {
+    margin: 0;
+  }
+}

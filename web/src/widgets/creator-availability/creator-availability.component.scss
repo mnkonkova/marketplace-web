@@ -1,0 +1,130 @@
+:host {
+  display: block;
+}
+
+// Панель повторяет карточки боковой колонки страницы выкладок: виджет
+// вынесен из неё, а не нарисован заново.
+.panel {
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.section-title {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.note {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.avl-months {
+  // Свой класс, а не .months: в словаре кабинета (.sotka) «.months» —
+  // это три месячных календарика сеткой, и список занятости, попав под
+  // него, раскладывался в три узких колонки, из которых переключатель
+  // «Занят · Свободен» вылезал наружу.
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  li:last-child {
+    border-bottom: none;
+  }
+
+  .name {
+    flex: 1;
+    min-width: 0;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  // Неотмеченный месяц — не «свободен» и не «занят», а неизвестность.
+  // Поэтому название тише: строка ещё не заполнена.
+  li.unset .name {
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  // Третье состояние словами. Два первых читаются по самому
+  // переключателю, а «ни одного нажатого» без подписи выглядит как
+  // несохранённый выбор.
+  .state {
+    flex: none;
+    color: var(--text-dim);
+    font-size: 11.5px;
+    // В две строки подпись ломала высоту строки месяца и разъезжалась с
+    // соседними: «не отмечен» — это два слова, и переносить их незачем.
+    white-space: nowrap;
+  }
+
+  // СЕГМЕНТ-КОНТРОЛ вместо пары текстовых ссылок высотой в строчку.
+  // Занятость — единственное место, где креатор сообщает, берёт ли он
+  // работу, а цель была двадцать пикселей: мимо неё промахиваются и
+  // мышью. Теперь это одна цельная деталь с целью под палец, и сразу
+  // видно, что выбор из двух, а не две независимые ссылки.
+  .month-actions {
+    display: inline-flex;
+    flex: none;
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+  }
+}
+
+// Строка «Ещё 3 месяца» и длинная середина пояснения живут только на
+// телефоне: там список свёрнут до ближайших месяцев, а абзац укорочен.
+// На десктопе карточка помещается целиком — показываем всё как было.
+.foldrow {
+  display: none;
+}
+
+.linkish {
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  // Разделитель между сегментами — у второго, иначе он рисуется и
+  // по внешнему краю.
+  & + .linkish {
+    border-left: 1px solid var(--border-strong);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  // Нажатый = текущее состояние. Недоступен намеренно: нажимать то, что
+  // и так стоит, незачем, — но выглядеть это обязано как выбранный
+  // сегмент, а не как «сюда нельзя».
+  &:disabled {
+    background: var(--surface-hover);
+    color: var(--text);
+    cursor: default;
+  }
+}

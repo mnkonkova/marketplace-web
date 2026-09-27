@@ -1,0 +1,267 @@
+<div class="panel-h">
+  <h2>План выкладок</h2>
+  <span class="sub">
+    клетка — выкладка; колокольчик — напомнить в бот за день до срока
+    @if (lastOfPeriod()) {
+      · обведённая — последняя выкладка периода
+    }
+  </span>
+</div>
+
+<div class="plan-nav">
+  <button type="button" class="btn sm" (click)="shiftMonth(-1)" aria-label="Прошлый месяц">
+    ←
+  </button>
+  <b>{{ monthTitle() }}</b>
+  <button type="button" class="btn sm" (click)="shiftMonth(1)" aria-label="Следующий месяц">
+    →
+  </button>
+  <button type="button" class="btn sm dark push" (click)="openSchedule()">Проставить пачкой</button>
+</div>
+
+@if (!creators().length) {
+  <p class="muted">В проекте пока нет креаторов — сначала соберите состав.</p>
+} @else {
+  <!-- СЕТКА. На телефоне её нет: двадцать один столбец в 390 px не
+       помещается ни при каком кегле — там тот же план лентой по дням. -->
+  <div class="tbl-wrap no-phone">
+    <table class="grid-plan">
+      <thead>
+        <tr>
+          <th></th>
+          @for (d of days(); track d.date) {
+            <th
+              [class.wk]="d.weekend"
+              [class.pend]="d.periodEnd"
+              [attr.title]="d.periodEnd ? 'конец периода по расчёту' : null"
+            >
+              {{ d.num }}
+            </th>
+          }
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.person.user_id) {
+          <tr>
+            <td class="name">
+              <span class="crlink">
+                <app-sotka-ava [name]="row.person.display_name" [size]="24" />
+                <span class="nm">
+                  <span>{{ row.person.display_name }}</span>
+                  <!-- «Сколько он обычно даёт» — медиана, а не среднее:
+                       один залетевший ролик поднимает среднее вдвое. -->
+                  @if (medianLabel(row)) {
+                    <small class="muted">{{ medianLabel(row) }}</small>
+                  }
+                </span>
+              </span>
+            </td>
+            @for (c of row.cells; track c.date) {
+              <td>
+                <button
+                  type="button"
+                  class="c"
+                  [class.d]="c.state === 'd'"
+                  [class.p]="c.state === 'p'"
+                  [class.l]="c.state === 'l'"
+                  [class.r]="c.state === 'r'"
+                  [class.today]="c.today"
+                  [class.pend]="c.periodEnd"
+                  [class.lastp]="c.lastOfPeriod"
+                  [title]="c.hint"
+                  [attr.aria-label]="c.hint"
+                  (click)="pick(row.person, c)"
+                >
+                  @switch (c.state) {
+                    @case ('d') {
+                      ✓
+                    }
+                    @case ('l') {
+                      !
+                    }
+                    @case ('r') {
+                      ?
+                    }
+                  }
+                </button>
+              </td>
+            }
+            <td>
+              <!-- Колокольчик — не пинг: он говорит, писать ли этому
+                   человеку КАЖДЫЙ раз накануне срока. Разовое «напомни
+                   сейчас» живёт в тревогах и в ленте на телефоне. -->
+              <button
+                type="button"
+                class="bell"
+                [attr.aria-pressed]="bellOn(row)"
+                [class.on]="bellOn(row)"
+                (click)="toggleBell(row)"
+                title="Напоминать в бот за день до срока"
+              >
+                {{ bellOn(row) ? 'напомнить ✓' : 'напомнить' }}
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ЛЕНТА ПО ДНЯМ — тач-версия той же сетки. -->
+  <div class="only-phone plan-feed">
+    @for (row of rows(); track row.person.user_id) {
+      <div class="feed-row">
+        <div class="feed-who">
+          <app-sotka-ava [name]="row.person.display_name" [size]="42" />
+          <div class="grow">
+            <div class="t">{{ row.person.display_name }}</div>
+            <div class="muted small">
+              {{ row.done }} из {{ row.planned }} сдано
+              @if (row.late) {
+                · <span class="crit-text">просрочено {{ row.late }}</span>
+              }
+              @if (medianLabel(row)) {
+                <br />{{ medianLabel(row) }}
+              }
+            </div>
+          </div>
+          <button
+            type="button"
+            class="bell"
+            [attr.aria-pressed]="bellOn(row)"
+            [class.on]="bellOn(row)"
+            (click)="toggleBell(row)"
+            title="Напоминать в бот за день до срока"
+          >
+            {{ bellOn(row) ? '✓ напомню' : 'напомнить' }}
+          </button>
+          <button type="button" class="btn sm" (click)="remind(row)">Пинг</button>
+        </div>
+        <div class="feed-days">
+          @for (c of row.cells; track c.date) {
+            @if (c.state) {
+              <button
+                type="button"
+                class="c"
+                [class.d]="c.state === 'd'"
+                [class.p]="c.state === 'p'"
+                [class.l]="c.state === 'l'"
+                [class.r]="c.state === 'r'"
+                [class.today]="c.today"
+                [title]="c.hint"
+                (click)="pick(row.person, c)"
+              >
+                {{ c.day }}
+              </button>
+            }
+          }
+          <!-- Открывает ближайший свободный день, а не первое число
+               месяца: первое обычно уже прошло, и сервер отвечал
+               «выкладку ставят на сегодня или вперёд». -->
+          <button
+            type="button"
+            class="c add"
+            (click)="pickFree(row)"
+            aria-label="Поставить выкладку"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="muted legend-row">
+    <span><span class="c d">✓</span> вышел</span>
+    <span><span class="c p"></span> в плане</span>
+    <span><span class="c r">?</span> на проверке</span>
+    <span><span class="c l">!</span> просрочен</span>
+  </div>
+
+  <!-- Правка клетки. Тем же приёмом, что правка ссылки у креаторов:
+       строка открывается под таблицей, а не модалкой поверх плана —
+       чтобы видеть соседние дни, пока выбираешь новый. -->
+  @if (picked(); as sel) {
+    <!-- На тач-экране правка клетки открывается нижним листом из общей
+         библиотеки (app-sheet): он прокручивается, закрывается
+         смахиванием и нажатием по фону. На десктопе та же правка
+         остаётся строкой под таблицей — чтобы видеть соседние дни, пока
+         выбираешь новый. -->
+    @if (touch) {
+      <app-sheet
+        [open]="true"
+        [title]="sel.creator.display_name + ' · ' + human(sel.cell.date)"
+        note="Правка плана видна креатору сразу и уходит в бот."
+        (closed)="close()"
+      >
+        <div class="edit in-sheet">
+          <ng-container
+            [ngTemplateOutlet]="editTpl"
+            [ngTemplateOutletContext]="{ $implicit: sel }"
+          />
+        </div>
+      </app-sheet>
+    } @else {
+      <div class="edit">
+        <b>{{ sel.creator.display_name }} · {{ human(sel.cell.date) }}</b>
+        <ng-container [ngTemplateOutlet]="editTpl" [ngTemplateOutletContext]="{ $implicit: sel }" />
+        <span class="faint edit-note">Правка плана видна креатору сразу и уходит в бот.</span>
+      </div>
+    }
+  }
+}
+
+<!-- Что можно сделать с клеткой. Один шаблон на лист и на строку:
+     две копии разошлись бы на первой же правке. -->
+<ng-template #editTpl let-sel>
+  @if (!sel.cell.pub) {
+    @if (sel.cell.date < today) {
+      <span class="muted grow">Этот день уже прошёл — ставим на сегодня или вперёд.</span>
+    }
+    <label class="move">
+      Дата
+      <input type="date" [(ngModel)]="addOn" [min]="today" />
+    </label>
+    <div class="sheet-acts">
+      <button type="button" class="btn sm dark" [disabled]="busy()" (click)="add()">
+        Поставить выкладку
+      </button>
+      <button type="button" class="btn sm" (click)="close()">Закрыть</button>
+    </div>
+  } @else if (sel.cell.pub.status === 'planned' && !sel.cell.pub.links.length) {
+    <label class="move">
+      Перенести на
+      <input type="date" [(ngModel)]="moveTo" [min]="today" />
+    </label>
+    @if (sel.cell.pub.pending_date_request; as req) {
+      <span class="muted req-note">
+        Креатор просит перенести на {{ human(req.requested_date) }}
+        @if (req.reason) {
+          — «{{ req.reason }}»
+        }
+      </span>
+    }
+    <div class="sheet-acts">
+      <button type="button" class="btn sm dark" [disabled]="busy()" (click)="move()">
+        Перенести
+      </button>
+      <!-- Разовый пинг по этой выкладке. Колокольчик в строке — про
+           «каждый раз накануне», а здесь менеджер дёргает по одной,
+           глядя на конкретный день. -->
+      <button type="button" class="btn sm" [disabled]="busy()" (click)="remindPicked()">
+        Напомнить
+      </button>
+      <button type="button" class="btn sm" [disabled]="busy()" (click)="cancel()">
+        Снять с плана
+      </button>
+      <button type="button" class="btn sm" (click)="close()">Закрыть</button>
+    </div>
+  } @else {
+    <span class="muted grow"> По этой выкладке уже сдавали ссылки — дату у неё не двигают. </span>
+    <div class="sheet-acts">
+      <button type="button" class="btn sm dark" (click)="openReview()">Открыть проверку</button>
+      <button type="button" class="btn sm" (click)="close()">Закрыть</button>
+    </div>
+  }
+</ng-template>

@@ -1,0 +1,140 @@
+<!-- Витринной шапки здесь нет намеренно: «Главная / Производство /
+     Продвижение» — навигация покупателя, а персонал ею не пользуется, зато
+     она уносила первый экран и приносила второй «Выйти». Дорога обратно
+     на витрину осталась — кнопкой в подвале сайдбара. -->
+<div class="crm-shell" [class.nav-open]="navOpen()">
+  @if (navOpen()) {
+    <button type="button" class="backdrop" aria-label="Закрыть меню" (click)="closeNav()"></button>
+  }
+
+  <!-- inert на уехавшей шторке: без него табом уходишь в невидимое меню и
+       фокус пропадает с экрана — со стороны это выглядит как «Tab не
+       работает». -->
+  <aside id="crm-side" class="side" aria-label="Разделы CRM" [attr.inert]="navHidden() ? '' : null">
+    <a class="logo" [routerLink]="homeLink()">
+      <span class="mark" aria-hidden="true">W</span>
+      <span class="wordmark">WAYPRMARKET</span>
+      <span class="crm" aria-hidden="true">CRM</span>
+    </a>
+
+    <!-- Поиск стоит сразу под логотипом: до конкретного проекта или
+         человека отсюда два нажатия, а через раздел и фильтры — пять. -->
+    <button type="button" class="qs" (click)="openSearch($event)">
+      <app-crm-icon name="search" />
+      <span class="lbl">Поиск по CRM</span>
+      <kbd aria-hidden="true">⌘K</kbd>
+    </button>
+
+    <nav class="groups" aria-label="Разделы">
+      @for (g of groups(); track g.title) {
+        <p class="grp">{{ g.title }}</p>
+        @for (item of g.items; track item.link) {
+          <a
+            class="nav"
+            [class.on]="isActive(item)"
+            [attr.aria-current]="isActive(item) ? 'page' : null"
+            [routerLink]="item.link"
+          >
+            <app-crm-icon [name]="item.icon" />
+            <span class="lbl">{{ item.label }}</span>
+            @if (badgeOf(item); as n) {
+              <!-- Коралловый бейдж — только очередь на вас. Остальные цифры
+                   приглушены: они говорят «сколько тут всего», а не «идите
+                   разбирать». -->
+              <span class="badge">{{ n }}</span>
+            } @else if (countOf(item) !== null) {
+              <span class="n">{{ countOf(item) }}</span>
+            }
+          </a>
+        }
+      }
+    </nav>
+
+    <!-- Подвал. «Выйти» здесь один на весь экран, и рядом с именем понятно,
+         из чего именно выходишь. «На сайт» — не выход, а переход, и стоит
+         он таким же пунктом, как разделы: это тоже «куда пойти». -->
+    <div class="side-foot">
+      <div class="whoami">
+        <span class="av" aria-hidden="true">{{ userInitial() }}</span>
+        <span class="who">
+          <b [title]="userName()">{{ userName() || brandName() }}</b>
+          <small>{{ roleNote() }}</small>
+        </span>
+      </div>
+      <a class="nav" routerLink="/">
+        <app-crm-icon name="back" />
+        <span class="lbl">На сайт</span>
+      </a>
+      <button type="button" class="nav" (click)="logout()">
+        <app-crm-icon name="exit" />
+        <span class="lbl">Выйти</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button
+        type="button"
+        class="burger"
+        [attr.aria-label]="navOpen() ? 'Закрыть разделы' : 'Разделы'"
+        [attr.aria-expanded]="navOpen()"
+        aria-controls="crm-side"
+        (click)="toggleNav()"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          @if (navOpen()) {
+            <path d="M6 6l12 12M18 6L6 18" />
+          } @else {
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          }
+        </svg>
+      </button>
+
+      <nav class="crumbs" aria-label="Путь">
+        @for (c of crumbs(); track $index; let last = $last) {
+          @if (last) {
+            <b aria-current="page">{{ c.label }}</b>
+          } @else {
+            @if (c.link) {
+              <a [routerLink]="c.link">{{ c.label }}</a>
+            } @else {
+              <span>{{ c.label }}</span>
+            }
+            <span class="sep" aria-hidden="true">/</span>
+          }
+        }
+      </nav>
+
+      <!-- Контекстные действия страницы: меню «⋯» у названия и всё, что
+           относится к открытой карточке, а не к разделу. -->
+      @if (actions(); as tpl) {
+        <div class="topbar-acts">
+          <ng-container [ngTemplateOutlet]="tpl" />
+        </div>
+      }
+    </header>
+
+    @if (viewingAsManager()) {
+      <p class="as-admin-note">
+        Вы смотрите как <strong>администратор</strong> — действия здесь запишутся от вашего имени, а
+        не от менеджера проекта.
+      </p>
+    }
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<!-- Поиск живёт снаружи раскладки: он перекрывает всё и не должен
+     считаться частью колонки, поверх которой открылся. -->
+<app-crm-search />

@@ -42,26 +42,43 @@
     <div class="header-actions">
       @if (isLoggedIn()) {
         @if (showManagerCabinet()) {
-          <a routerLink="/manager/board" class="link" [class.is-active]="activeNav() === 'manager'">
+          <a routerLink="/manager" class="link" [class.is-active]="activeNav() === 'manager'">
             Менеджер
           </a>
         }
         @if (showAdminCabinet()) {
-          <a routerLink="/admin/projects" class="link" [class.is-active]="activeNav() === 'admin'">
+          <a routerLink="/admin" class="link" [class.is-active]="activeNav() === 'admin'">
             Админ
+          </a>
+        }
+        <!-- Свои проекты креатор открывает каждый день, а кабинет —
+             портфолио и ставки — правит редко. Поэтому частое стоит
+             первым, а не прячется внутри редкого. -->
+        @if (showCreatorProjects()) {
+          <a
+            routerLink="/me/creator/projects"
+            class="link"
+            [class.is-active]="activeNav() === 'creator-projects'"
+          >
+            Мои проекты
           </a>
         }
         <a [routerLink]="cabinetLink()" class="link" [class.is-active]="activeNav() === 'cabinet'">
           Кабинет
         </a>
         <!--
-          Выход живёт в шапке, а не в кабинете: там он стоял отдельной
-          красной кнопкой под контентом и перетягивал внимание на самое
-          редкое действие. В шапке его и ищут.
+          Выход живёт в шапке — и только в шапке. Второго входа в него в
+          кабинете нет намеренно: два места для одного действия человек
+          обходит по очереди, проверяя, то ли это.
+
+          Со словом, а не одной стрелкой: значок без подписи читался как
+          «поделиться» и «войти» одинаково часто, и найти по нему выход
+          можно было только наведением. Рамка отделяет его от ссылок
+          рядом — это не раздел, это уход со страницы.
         -->
         <button
           type="button"
-          class="link logout-link"
+          class="logout-link"
           (click)="logout()"
           title="Выйти из аккаунта"
           aria-label="Выйти из аккаунта"
@@ -75,6 +92,7 @@
               stroke-linejoin="round"
             />
           </svg>
+          <span class="logout-label">Выйти</span>
         </button>
       } @else {
         <button type="button" class="link" (click)="openAuth()">Войти</button>
@@ -128,7 +146,7 @@
       @if (isLoggedIn()) {
         @if (showManagerCabinet()) {
           <a
-            routerLink="/manager/board"
+            routerLink="/manager"
             class="mobile-nav-item"
             [class.is-active]="activeNav() === 'manager'"
             (click)="closeMenu()"
@@ -138,12 +156,22 @@
         }
         @if (showAdminCabinet()) {
           <a
-            routerLink="/admin/projects"
+            routerLink="/admin"
             class="mobile-nav-item"
             [class.is-active]="activeNav() === 'admin'"
             (click)="closeMenu()"
           >
             Админ
+          </a>
+        }
+        @if (showCreatorProjects()) {
+          <a
+            routerLink="/me/creator/projects"
+            class="mobile-nav-item"
+            [class.is-active]="activeNav() === 'creator-projects'"
+            (click)="closeMenu()"
+          >
+            Мои проекты
           </a>
         }
         <a

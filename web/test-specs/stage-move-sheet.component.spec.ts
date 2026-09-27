@@ -1,10 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 
-import { PipelineFull, PipelineStageFull, PipelineStep } from '@entities/pipeline/model/pipeline.types';
+import {
+  PipelineFull,
+  PipelineStageFull,
+  PipelineStep,
+} from '@entities/pipeline/model/pipeline.types';
 
 import { StageMoveSheetComponent } from '@widgets/stage-move-sheet/stage-move-sheet.component';
 
-function step(id: string, name: string, sort: number, owner: PipelineStep['owner'] = 'team'): PipelineStep {
+function step(
+  id: string,
+  name: string,
+  sort: number,
+  owner: PipelineStep['owner'] = 'team',
+): PipelineStep {
   return {
     id,
     stage_id: 's',
@@ -53,10 +62,13 @@ describe('StageMoveSheetComponent', () => {
 
     it('flatten шагов с группировкой по stages, is_first_in_stage у первого шага каждой стадии', () => {
       const fixture = TestBed.createComponent(StageMoveSheetComponent);
-      fixture.componentRef.setInput('pipeline', makePipeline([
-        stage('s1', 'Stage 1', 0, [step('a', 'A', 0), step('b', 'B', 1)]),
-        stage('s2', 'Stage 2', 1, [step('c', 'C', 0)]),
-      ]));
+      fixture.componentRef.setInput(
+        'pipeline',
+        makePipeline([
+          stage('s1', 'Stage 1', 0, [step('a', 'A', 0), step('b', 'B', 1)]),
+          stage('s2', 'Stage 2', 1, [step('c', 'C', 0)]),
+        ]),
+      );
       fixture.detectChanges();
 
       const rows = fixture.componentInstance.rows();
@@ -69,10 +81,13 @@ describe('StageMoveSheetComponent', () => {
       const fixture = TestBed.createComponent(StageMoveSheetComponent);
       // Stage B sort=0, Stage A sort=1 — порядок в output должен быть B, A.
       // Шаги внутри тоже: первый по sort_order, потом следующий.
-      fixture.componentRef.setInput('pipeline', makePipeline([
-        stage('sA', 'A', 1, [step('a2', 'A2', 1), step('a1', 'A1', 0)]),
-        stage('sB', 'B', 0, [step('b1', 'B1', 0)]),
-      ]));
+      fixture.componentRef.setInput(
+        'pipeline',
+        makePipeline([
+          stage('sA', 'A', 1, [step('a2', 'A2', 1), step('a1', 'A1', 0)]),
+          stage('sB', 'B', 0, [step('b1', 'B1', 0)]),
+        ]),
+      );
       fixture.detectChanges();
 
       const rows = fixture.componentInstance.rows();
@@ -81,9 +96,10 @@ describe('StageMoveSheetComponent', () => {
 
     it('currentStepId помечает соответствующий ряд is_current=true', () => {
       const fixture = TestBed.createComponent(StageMoveSheetComponent);
-      fixture.componentRef.setInput('pipeline', makePipeline([
-        stage('s1', 'S1', 0, [step('a', 'A', 0), step('b', 'B', 1)]),
-      ]));
+      fixture.componentRef.setInput(
+        'pipeline',
+        makePipeline([stage('s1', 'S1', 0, [step('a', 'A', 0), step('b', 'B', 1)])]),
+      );
       fixture.componentRef.setInput('currentStepId', 'b');
       fixture.detectChanges();
 
@@ -99,8 +115,13 @@ describe('StageMoveSheetComponent', () => {
       const c = fixture.componentInstance;
       const spy = spyOn(c.selectStep, 'emit');
       c.onTap({
-        stage_name: 'S', stage_order: 0, step_id: 'a', step_name: 'A',
-        step_owner: 'team', is_first_in_stage: true, is_current: true,
+        stage_name: 'S',
+        stage_order: 0,
+        step_id: 'a',
+        step_name: 'A',
+        step_owner: 'team',
+        is_first_in_stage: true,
+        is_current: true,
       });
       expect(spy).not.toHaveBeenCalled();
     });
@@ -110,26 +131,30 @@ describe('StageMoveSheetComponent', () => {
       const c = fixture.componentInstance;
       const spy = spyOn(c.selectStep, 'emit');
       c.onTap({
-        stage_name: 'S', stage_order: 0, step_id: 'a', step_name: 'A',
-        step_owner: 'team', is_first_in_stage: true, is_current: false,
+        stage_name: 'S',
+        stage_order: 0,
+        step_id: 'a',
+        step_name: 'A',
+        step_owner: 'team',
+        is_first_in_stage: true,
+        is_current: false,
       });
       expect(spy).toHaveBeenCalledWith('a');
     });
 
-    it('onClose / onOpenProject / onChangeFunnel — эмитят соответствующие events', () => {
+    // Смены воронки в шторке больше нет: воронку теперь ставят внутри
+    // проекта, а не подменяют целиком из канбана.
+    it('onClose / onOpenProject — эмитят соответствующие events', () => {
       const fixture = TestBed.createComponent(StageMoveSheetComponent);
       const c = fixture.componentInstance;
       const closeSpy = spyOn(c.close, 'emit');
       const openProjectSpy = spyOn(c.openProject, 'emit');
-      const changeFunnelSpy = spyOn(c.changeFunnel, 'emit');
 
       c.onClose();
       c.onOpenProject();
-      c.onChangeFunnel();
 
       expect(closeSpy).toHaveBeenCalled();
       expect(openProjectSpy).toHaveBeenCalled();
-      expect(changeFunnelSpy).toHaveBeenCalled();
     });
   });
 

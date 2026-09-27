@@ -1,0 +1,328 @@
+@use 'breakpoints' as bp;
+
+// Кабинет менеджера. Словарь — общий (.sotka); здесь только то, чего в
+// макете не было отдельным классом.
+
+:host {
+  display: block;
+}
+
+.alerts-h {
+  margin-bottom: 10px;
+
+  h2 {
+    font-size: 17px;
+  }
+}
+
+.alert .sum-note {
+  font-size: 13px;
+  font-family: var(--body);
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.alert-text {
+  font-size: 12.5px;
+}
+
+.section-h {
+  margin: 16px 0 6px;
+}
+
+.table-note {
+  font-size: 12px;
+  margin: 10px 0 0;
+}
+
+// Пустая площадка у креатора — красным: ролик идёт на все пять, и та,
+// где человека нет, просмотров не приносит.
+.plat.missing {
+  color: var(--crit);
+  border-color: var(--crit);
+}
+
+.deal-second {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.margin {
+  font-size: 22px;
+}
+
+.deal-btn {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.roster-note {
+  font-size: 11.5px;
+  margin: 10px 0 0;
+}
+
+.roster-btn {
+  margin-top: 8px;
+  display: inline-flex;
+}
+
+// ── очередь приглашений ────────────────────────────────────
+// Номер слева — это ПРИОРИТЕТ, присланный заказчиком, а не порядковый
+// счётчик строк: по нему уходят приглашения, и читать его надо раньше
+// имени. Тон строки — состояние, а не украшение: зелёная уже в проекте,
+// серая ещё ждёт очереди, приглушённая отказалась.
+.ranks-note {
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+
+.ranks .push {
+  margin-left: auto;
+}
+
+.rnk {
+  .n {
+    flex: 0 0 auto;
+    width: 20px;
+    font-weight: 700;
+    font-size: 12.5px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  &.ok .n {
+    color: var(--ok);
+  }
+
+  &.wait .n {
+    color: var(--warn);
+  }
+
+  // Отказавшегося не прячем — он и есть объяснение, почему место ушло
+  // следующему, — но и внимания он больше не требует.
+  &.no {
+    opacity: 0.62;
+  }
+
+  .tag {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+}
+
+.small {
+  font-size: 12px;
+}
+
+// Деньги: очередь шагов, таблица, плашка расчёта, журнал.
+.pstep .step-note {
+  font-size: 12px;
+}
+
+.deduct .small {
+  display: block;
+  font-size: 11px;
+}
+
+.settle {
+  margin-top: 14px;
+}
+
+.period-note {
+  font-size: 12.5px;
+  margin: 10px 0 0;
+}
+
+// Колонки раздела не тянутся друг под друга: проверка ролика рядом с
+// длинным чек-листом растягивалась пустым белым полем на два экрана.
+.subgrid {
+  align-items: start;
+}
+
+// Разбор роликов одного креатора: медиана, крайние и столбики по
+// выпускам. Раскрывается прямо под строкой — сравнивать человека надо,
+// не теряя из виду остальных.
+.crew-stats > td {
+  padding: 4px 14px 16px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.02));
+}
+
+.cs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 28px;
+  margin-bottom: 12px;
+
+  // Кнопка у правого края, а не вплотную к числу: рядом с числом она
+  // читается как его часть.
+  > .btn {
+    margin-left: auto;
+  }
+}
+
+// Один измеренный ролик: подпись — целое предложение, и обрезать её
+// многоточием нечем. Ширину ограничивает только строка.
+.cs-head.one .small {
+  max-width: none;
+  white-space: normal;
+}
+
+.cs-num {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+
+  b {
+    font-size: 17px;
+  }
+
+  .small {
+    overflow: hidden;
+    max-width: 30ch;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// Столбики: высота от лучшего ролика этого же человека. Сравнивать надо
+// со своим потолком, а не с чужим — иначе у слабого креатора весь ряд
+// прижат к нулю и разбора не видно вовсе.
+.cs-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 64px;
+  padding: 0;
+}
+
+.cs-bar {
+  display: flex;
+  align-items: flex-end;
+  flex: 1 1 6px;
+  min-width: 6px;
+  max-width: 28px;
+  height: 100%;
+
+  i {
+    display: block;
+    width: 100%;
+    border-radius: 3px 3px 0 0;
+    background: var(--accent-soft, #dfe3ff);
+  }
+
+  &.best i {
+    background: var(--accent);
+  }
+
+  &.worst i {
+    background: var(--crit-soft, #f8e0da);
+  }
+
+  &:hover i {
+    filter: brightness(0.94);
+  }
+}
+
+.cs-note {
+  margin: 8px 0 0;
+}
+
+@media (max-width: bp.$touch) {
+  .crew-stats > td {
+    padding: 8px 0 14px;
+  }
+
+  .cs-head {
+    gap: 10px 18px;
+  }
+
+  // На телефоне столбики выше: ряд в 64 пикселя на узком экране
+  // превращается в полоску, по которой ничего не сравнить.
+  .cs-bars {
+    height: 80px;
+  }
+
+  .cs-bar {
+    min-height: 44px;
+    align-items: flex-end;
+  }
+}
+
+// Строка-переключатель. Такая же, как в автопинге рядом: там она живёт в
+// своём компоненте и до соседа не достаёт, а переключатель этапа
+// черновика стоит в том же блоке и обязан выглядеть так же — иначе
+// читается как другой элемент.
+.switchrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+
+  .tx {
+    flex: 1;
+    min-width: 200px;
+    font-size: 13.5px;
+  }
+
+  .tx b {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 14px;
+  }
+
+  .tx span {
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+}
+
+// Стоимость проекта и СПВ по ней. Своя пара правил, а не общий .quote:
+// тот — сетка из трёх плиток под разбор суммы, а здесь одно число и
+// подпись, откуда оно взялось.
+.cost-in {
+  width: 140px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  text-align: right;
+}
+
+.cpv {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+
+  .big {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    margin: 2px 0;
+  }
+}
+
+// Аккаунты внутри блока состава: отделяем линией, но не рамкой — это
+// продолжение того же разговора, а не соседняя карточка.
+.acc-inline {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+// Приложенная работа в отклике: ссылок бывает несколько (файл и
+// ролики из портфолио), и списком в столбик они занимали бы пол-строки.
+.resp-work {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 2px;
+}

@@ -6,6 +6,13 @@ export interface TokenPair {
 export interface AuthSession {
   access_token: string;
   refresh_token: string;
+  // Свой user_id. Нужен интерфейсу, чтобы отличить «Вы» от собеседника —
+  // например в переписке по проекту. Приезжает из /me вместе с флагами
+  // CRM, поэтому у старой сохранённой сессии его может не быть.
+  user_id?: string;
+  // Имя для подписи в интерфейсе. Админская оболочка показывает, под кем
+  // работаешь: там нет витринной шапки, и «кто я» больше неоткуда узнать.
+  display_name?: string;
   kind?: string;
   is_manager?: boolean;
   is_admin?: boolean;

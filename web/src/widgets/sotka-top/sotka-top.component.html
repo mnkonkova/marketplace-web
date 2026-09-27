@@ -1,0 +1,41 @@
+<header class="top">
+  <div class="top-in">
+    @if (title()) {
+      <div class="proj">
+        <b>{{ title() }}</b>
+        @if (subtitle()) {
+          <span class="muted" style="font-size: 12px">{{ subtitle() }}</span>
+        }
+      </div>
+    }
+
+    @if (periodLabel()) {
+      <div class="period">
+        <div>
+          <div class="label" style="font-size: 10px">{{ periodLabel() }}</div>
+          @if (periodDay()) {
+            <span class="num" style="font-size: 12px">{{ periodDay() }}</span>
+          }
+        </div>
+        @if (barWidth() !== null) {
+          <div class="period-bar"><i [style.width.%]="barWidth()"></i></div>
+        }
+      </div>
+    }
+
+    @if (showWho()) {
+      <div class="who-box">
+        <span class="who-name">{{ userName() }}</span>
+        <button type="button" class="btn logout" (click)="logout()">Выйти</button>
+      </div>
+    }
+  </div>
+</header>
+
+@if (nav().length) {
+  <nav class="subnav" aria-label="Разделы">
+    @for (n of nav(); track n.link) {
+      <a [routerLink]="n.link" [attr.aria-current]="n.current ? 'page' : null">{{ n.title }}</a>
+    }
+  </nav>
+}

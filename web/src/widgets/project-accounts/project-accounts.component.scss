@@ -1,0 +1,178 @@
+// Доступы к аккаунтам бренда. Плотный список, а не карточки: строк
+// обычно пять, и каждая — набор коротких полей, которые читают глазами
+// и копируют по одному.
+.acc-block {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--line, #2c313a);
+  border-radius: 14px;
+  background: var(--card, #14161a);
+}
+
+.acc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+}
+
+.note {
+  margin: 6px 0 0;
+  color: var(--muted, #98a1ad);
+  font-size: 12.5px;
+  max-width: 64ch;
+
+  // Предупреждение про выключенные пароли — не украшение: без него
+  // «поле пароля куда-то делось» выглядит как поломка.
+  &.warn {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgb(250 173 20 / 12%);
+    color: #e0a03c;
+  }
+}
+
+.acc-row {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-2, #23272e);
+
+  &:first-of-type {
+    border-top: 0;
+  }
+
+  &.is-form {
+    border-top: 1px dashed var(--line-2, #23272e);
+  }
+}
+
+.acc-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  .ttl {
+    font-size: 14.5px;
+  }
+
+  .plat {
+    color: var(--muted-2, #7a828d);
+    font-size: 12px;
+  }
+
+  .lnk {
+    color: var(--link, #6ea8fe);
+    font-size: 12.5px;
+    overflow-wrap: anywhere;
+  }
+}
+
+.acc-creds {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.fld {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+
+  .k {
+    color: var(--muted-2, #7a828d);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .v {
+    color: var(--text, #e9edf2);
+
+    &.mono {
+      font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+    }
+
+    &.none {
+      color: var(--muted-2, #7a828d);
+      font-style: normal;
+    }
+  }
+}
+
+.acc-note {
+  margin: 8px 0 0;
+  color: var(--muted, #98a1ad);
+  font-size: 12.5px;
+  max-width: 64ch;
+}
+
+.acc-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.acc-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px 14px;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--bg-elevated, #191c21);
+
+  .f {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--muted, #98a1ad);
+
+    &.wide {
+      grid-column: span 2;
+
+      @media (max-width: 720px) {
+        grid-column: auto;
+      }
+    }
+
+    input,
+    select {
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--line, #2c313a);
+      border-radius: 8px;
+      background: var(--card, #14161a);
+      color: var(--text, #e9edf2);
+      font: inherit;
+      font-size: 13.5px;
+    }
+
+    input:disabled {
+      opacity: 0.5;
+    }
+  }
+}
+
+.acc-form-ft {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  .hint {
+    color: var(--muted-2, #7a828d);
+    font-size: 12px;
+  }
+}

@@ -1,0 +1,296 @@
+<section class="dash">
+  <!-- Окно данных — НЕ навигация, и выглядеть оно обязано иначе.
+       Раньше в семидесяти пикселях друг от друга стояли две одинаковые
+       таблетки: одна меняла экран, вторая — числа на нём. Одинаковая
+       форма обещает одинаковое последствие, и человек жал наугад.
+       Разделы кабинета теперь подчёркнутые вкладки (см. страницу),
+       окно — подписанный переключатель внутри самих данных. -->
+  <header class="top">
+    <p class="when">
+      {{ caption() }}
+      @if (collectedAt()) {
+        · счётчики сняты {{ collectedAt() | date: 'd MMMM, HH:mm' }}
+      } @else {
+        · первый сбор ещё не прошёл
+      }
+    </p>
+
+    <div class="seg-wrap">
+      <span class="seg-label" id="dash-window">Окно</span>
+      <div class="seg" role="tablist" aria-labelledby="dash-window">
+        @for (t of tabs; track t) {
+          <button
+            type="button"
+            role="tab"
+            [class.on]="t === range()"
+            [attr.aria-selected]="t === range()"
+            (click)="pick(t)"
+          >
+            {{ rangeLabel[t] }}
+          </button>
+        }
+      </div>
+    </div>
+  </header>
+
+  <!-- ОТВЕТ. Две половины одной мысли, а не два блока: продаёт их
+       отношение — объём растёт, цена тысячи падает, — и порознь ни одно
+       из этих чисел не аргумент. Поэтому они в одной рамке и одного
+       кегля, а не «герой и плитка четвёртой в ряду». -->
+  <div class="answer">
+    <div class="half views">
+      <p class="eyebrow">Просмотры {{ rangeOf() }}</p>
+
+      @if (views()) {
+        <p class="big brass" [appCountUp]="views()">0</p>
+        <!-- Просмотр против показа: на этом различии стоит вся
+             аргументация, и сказать о нём надо там, где стоит само
+             число, а не сноской внизу. -->
+        <p class="say">
+          Столько раз ролик <b>досмотрели в ленте</b>. Это просмотры, а не показы: показ — когда
+          баннер попал на экран, просмотр — когда человек остановил палец.
+        </p>
+        <!-- Насечки — общая шкала продукта: одна = 100 000 просмотров, и
+             единица эта одна у заказчика, креатора и менеджера. -->
+        <app-steps [views]="views()" [step]="ladderStep" size="md" />
+        <p class="scale">{{ steps() }} · одна насечка = 100 000 просмотров</p>
+      } @else {
+        <!-- Ноль просмотров и «ещё не мерили» — разные утверждения, и
+             прочерк не различал их никак. Здесь ни прочерка, ни ноля:
+             след числа и срок, когда оно появится. -->
+        <app-nodata
+          when="Появятся с первым вышедшим роликом — до выкладки смотреть нечего."
+          [ghostWidth]="240"
+          [ghostHeight]="48"
+        />
+      }
+
+      <!-- Отклик ОДНОЙ строкой, а не четырьмя плитками.
+           Взаимодействия, комментарии и ER — не четыре показателя, а
+           один разложенный: ER считается из тех же действий, что стоят
+           слева от него. Четыре равные плитки объявляли их равными и
+           независимыми, и три из четырёх стояли с прочерком.
+           Звёздочка раскрыта словами прямо здесь: сноска под экраном
+           про занижённое число — это не оговорка, а прятки. -->
+      @if (window(); as w) {
+        @if (w.engagement || w.comments) {
+          <div class="react">
+            <p class="eyebrow">И это были живые люди</p>
+            <div class="react-row">
+              <span class="r">
+                <b class="num">{{ w.engagement | number }}</b>
+                <i>действий всего</i>
+              </span>
+              <span class="r">
+                <b class="num">{{ w.comments | number }}</b>
+                <i>комментариев</i>
+              </span>
+              @if (w.er_percent != null) {
+                <span class="r">
+                  <b class="num">{{ erText() }}</b>
+                  <i>от просмотров</i>
+                </span>
+              }
+            </div>
+            <!-- Оговорки про репосты здесь нет намеренно: «площадки их
+                 не отдают, настоящий отклик выше» — это разговор про
+                 устройство счётчиков, а не про результат месяца, и в
+                 сводке он отбирал место у самих чисел. Там, где по ER
+                 действительно сравнивают ролики между собой, признак
+                 остался звёздочкой с подсказкой. -->
+            <p class="say small">Вовлечённость считаем от просмотров.</p>
+          </div>
+        }
+      }
+
+      <!-- Один день окна, в который выстрелило сильнее всего.
+           Стоял подписью под графиком — то есть в конце страницы, куда
+           доезжают не все, и рядом с линией, которая показывает ДРУГУЮ
+           величину (накопление, а не прирост). Здесь он отвечает на
+           «как набралось» одним числом и в том же экране, где стоит
+           итог. -->
+      @if (bestDay(); as best) {
+        <p class="best">
+          <span class="bk">Лучший день окна</span>
+          <b>{{ best.date | date: 'd MMMM' }}</b>
+          <i class="bv">+{{ best.value | number }}</i>
+        </p>
+      }
+    </div>
+
+    <div class="half price">
+      <p class="eyebrow">Тысяча просмотров обошлась в</p>
+
+      @if (costPer1000(); as cpm) {
+        <p class="big ice">
+          {{ costHead() }}<i class="unit">{{ costUnit() }}</i>
+        </p>
+        <p class="say">
+          И чем дальше расходится ролик, тем меньше становится это число — так устроен договор, а не
+          так «повезло».
+        </p>
+      } @else {
+        <app-nodata
+          when="Посчитаем с первыми просмотрами: пока делить не на что."
+          [ghostWidth]="180"
+          [ghostHeight]="48"
+        />
+      }
+
+      <!-- ЛЕСЕНКА. Раньше на экране стоял результат формулы и не стояла
+           сама формула — а весь аргумент «чем больше, тем дешевле»
+           живёт именно в ней. Ставки, пороги и суммы приходят с сервера
+           посчитанными: в браузере тариф не считаем никогда, иначе на
+           двух экранах будут два разных счёта.
+
+           Порог — на КАЖДЫЙ ролик, а не на проект: у пяти роликов по
+           400 000 сверхпорогового объёма нет вовсе, и подпись обязана
+           это говорить. -->
+      @if (tariff(); as t) {
+        <app-tariff-ladder [tariff]="t" [costPer1000]="costPer1000()">
+          <ng-container fixed-note
+            >съёмка, монтаж, выкладка на {{ platformsTotal }} площадок</ng-container
+          >
+        </app-tariff-ladder>
+      }
+    </div>
+  </div>
+
+  <!-- ДОКАЗАТЕЛЬСТВА. Ролик можно открыть и сверить числа на самой
+       площадке — этого не умеет ни один рекламный отчёт, и говорить об
+       этом надо прямо. -->
+  @if (topVideos().length || hasShares()) {
+    <div class="proofs" [class.one]="!topVideos().length || !hasShares()">
+      @if (topVideos().length) {
+        <section class="card clips">
+          <header class="chead">
+            <div>
+              <h3>{{ clipsTitle() }}</h3>
+              <p class="say small">
+                Откройте ссылку — числа там же, их можно сверить. Ни один рекламный отчёт так не
+                открывается.
+              </p>
+            </div>
+          </header>
+
+          <div class="viral">
+            @for (v of topVideos(); track v.publication_id) {
+              <article class="clip">
+                <!-- Обложки у ролика нет и взяться ей неоткуда: он лежит
+                   на чужой площадке, а мы храним ссылку, счётчики и
+                   дату. Поэтому кадр 9:16 занят ЗНАКОМ ПЛОЩАДКИ, а не
+                   серой заглушкой: заглушка читается как несработавшая
+                   загрузка, то есть как поломка. -->
+                <span class="cover" [style.background]="tint(v.platform)" aria-hidden="true">
+                  <span class="pl" [style.color]="platformColor[platformOf(v)]">
+                    {{ platformLabel[platformOf(v)] }}
+                  </span>
+                  <span class="cfoot">
+                    <span class="cdate">{{ v.published_at | date: 'd MMM y' }}</span>
+                    <b class="cn">{{ v.views | number }}</b>
+                  </span>
+                </span>
+
+                <span class="body">
+                  <span class="ttl">{{
+                    v.title || 'Ролик от ' + (v.published_at | date: 'd MMMM')
+                  }}</span>
+                  <!-- Кто снял и насколько зашло. Просмотры говорят, что
+                     ролик разошёлся; ER — что его досмотрели и обсудили,
+                     а имя — к кому идти повторять. Без этих двух строк
+                     список «что выстрелило» упирается в тупик. -->
+                  <span class="by">
+                    @if (v.creator_display_name) {
+                      <span class="who">{{ v.creator_display_name }}</span>
+                    }
+                    @if (v.er_percent !== undefined) {
+                      <span class="er" [title]="erHint(v)">
+                        ER {{ v.er_percent | number: '1.0-1' }}%{{ v.er_without_shares ? '*' : '' }}
+                      </span>
+                    }
+                  </span>
+                  <!-- Цель 44px и число внутри: значок в 26 пикселей не
+                     обещал ничего и промахивался пальцем. -->
+                  <a class="go" [href]="v.url" target="_blank" rel="noopener">
+                    <i class="dot" [style.background]="platformColor[platformOf(v)]"></i>
+                    <span class="gl">{{ platformLabel[platformOf(v)] }}</span>
+                    <b class="gv">{{ v.views | number }}</b>
+                    <span class="arr" aria-hidden="true">↗</span>
+                  </a>
+                </span>
+              </article>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Площадки РАНЖИРОВАНЫ и полосы пропорциональны: пять одинаковых
+           карточек при разнице в сорок раз рисовали TikTok и Likee
+           одного размера, то есть скрывали ровно то, ради чего разбор и
+           смотрят. -->
+      @if (hasShares()) {
+        <section class="card ranks">
+          <header class="chead">
+            <div>
+              <h3>Откуда пришли просмотры</h3>
+              <p class="say small">Ролик один и тот же. Разница — только площадка.</p>
+            </div>
+          </header>
+          <ul class="rank">
+            @for (s of shares(); track s.platform) {
+              <li [class.zero]="!s.views">
+                <i class="dot" [style.background]="platformColor[s.platform]"></i>
+                <span class="nm">{{ platformLabel[s.platform] }}</span>
+                <span class="track">
+                  <b [style.width.%]="s.width" [style.background]="platformColor[s.platform]"></b>
+                </span>
+                @if (s.views) {
+                  <b class="val">{{ s.views | number }}</b>
+                } @else {
+                  <span class="val none">пока ничего</span>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    </div>
+  }
+
+  <!-- Как это набиралось. Стоит ПОСЛЕ ответа, а не первым экраном:
+       график отвечает на «как рос», а страницу открывают ради «сколько и
+       почём». Держим его здесь, а не только в карточке проекта, потому
+       что он единственный на весь кабинет складывает площадки и проекты
+       в один ряд: в карточке проекта линия всегда про один проект. -->
+  @if (hasChart()) {
+    <section class="card chartcard">
+      <button type="button" class="foldrow" (click)="toggleChartFold()">
+        {{ chartFolded() ? 'Как набирались просмотры — график' : 'Свернуть график' }}
+      </button>
+      <div class="chart" [class.mfold]="chartFolded()">
+        <h3>Как набирались просмотры</h3>
+        <app-line-chart
+          [series]="chartSeries()"
+          [height]="190"
+          label="Просмотры нарастающим итогом, по площадкам и всего"
+          yLabel="всего просмотров на дату"
+        />
+        <p class="say small">
+          Линия — сколько просмотров набрано с начала окна, а не сколько прибавилось за день: правый
+          её конец и есть число сверху. Наведите на график, чтобы увидеть все площадки за конкретный
+          день.
+        </p>
+      </div>
+    </section>
+  } @else {
+    <!-- Пустой график объясняем словами. Молча спрятанная секция читается
+         как поломка: «просмотры есть, а графика нет». -->
+    <section class="card chartcard">
+      <h3>Как набирались просмотры</h3>
+      <p class="say small">
+        Рисовать пока нечего: поденной статистики по площадкам ещё нет. Она появляется на следующий
+        день после первой выкладки — тогда здесь встанет линия.
+      </p>
+    </section>
+  }
+</section>

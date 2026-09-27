@@ -1,0 +1,71 @@
+// Тач-слой оболочки CRM.
+//
+// Шторка разделов уже уезжает влево на узком экране (≤1000px) — это
+// сделано в основном листе. Здесь только то, что нужно именно пальцу:
+// высота пунктов, ширина шторки и полоса пути, которая на 390px не
+// помещается целиком ни при каком кегле.
+
+@use 'touch' as touch;
+
+@include touch.phone {
+  .side {
+    // 272px на 390px не оставляли подложке ничего, кроме полоски:
+    // закрыть шторку нажатием мимо неё становилось прицельным делом.
+    width: min(300px, 84vw);
+    padding: 14px 10px 12px;
+  }
+
+  .logo {
+    padding: 4px 6px 14px;
+  }
+
+  .qs,
+  .nav {
+    min-height: touch.$tap;
+  }
+
+  .grp {
+    margin: 14px 8px 5px;
+  }
+
+  .whoami {
+    padding: 4px 8px 9px;
+  }
+
+  .topbar {
+    gap: 10px;
+    padding: 0 touch.$pad;
+  }
+
+  .burger {
+    width: touch.$tap;
+    height: touch.$tap;
+  }
+
+  // Путь листается пальцем, а не обрезается. Обрезанный он показывает
+  // начало («Проекты / …») и прячет конец — то есть ровно то место, где
+  // человек находится.
+  .crumbs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    font-size: 13px;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    b {
+      overflow: visible;
+      flex: 0 0 auto;
+    }
+  }
+
+  .as-admin-note {
+    padding: 7px touch.$pad;
+    font-size: 12px;
+  }
+
+  .content {
+    padding: 16px touch.$pad 70px;
+  }
+}

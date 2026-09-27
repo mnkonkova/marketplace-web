@@ -1,0 +1,152 @@
+// Реестр проектов. Строка — это и есть проход в проект, поэтому она
+// цельная ссылка, а не карточка с кнопкой внутри.
+//
+// Числа в строке те же, что в карточке проекта: просмотры, цена тысячи и
+// состояние периода. Процентов воронки и бейджа «Впереди» здесь нет —
+// проценты меряли шаги согласования, а у проекта с креаторами их нет
+// вовсе, и «100 %» стояло у проекта без единого вышедшего ролика.
+
+:host {
+  display: block;
+}
+
+.registry {
+  margin: 26px 0 20px;
+}
+
+.rhead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+
+  h2 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+}
+
+// Пометка про приблизительные числа — пунктиром и спокойным тоном: это
+// «перепроверь», а не «сломалось».
+.approx {
+  padding: 1px 9px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.prow {
+  display: grid;
+  gap: 8px 22px;
+  align-items: center;
+  grid-template-columns: minmax(200px, 1fr) auto auto 100px;
+  padding: 16px 4px;
+  border-top: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.15s;
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+
+  .pt {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .pt b {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .pt i {
+    color: var(--text-dim);
+    font-size: 12.5px;
+    font-style: normal;
+  }
+
+  .pn {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    text-align: right;
+  }
+
+  .pn .k {
+    color: var(--text-faint);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .pn b {
+    font-family: var(--font-head);
+    font-size: 19px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  // Лёд на цене тысячи: она ПАДАЕТ по мере роста, и это хорошо. Читать
+  // лёд как «плохо» здесь нельзя.
+  .pn b.ice {
+    color: var(--ice);
+  }
+
+  .pempty {
+    grid-column: 2 / 4;
+  }
+
+  // Состояние — точкой и словом. Зелёная у идущего, ледяная у сданного,
+  // серая у того, что ещё готовится: три разных состояния, и путать их
+  // нельзя.
+  .pst {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+  }
+
+  .pst::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-faint);
+  }
+
+  .pst.run::before {
+    background: var(--ok);
+  }
+
+  .pst.done::before {
+    background: var(--ice);
+  }
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+
+@media (max-width: 900px) {
+  .prow {
+    grid-template-columns: 1fr auto;
+  }
+
+  .prow .pempty {
+    grid-column: auto;
+  }
+}

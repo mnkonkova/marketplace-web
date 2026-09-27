@@ -1,56 +1,69 @@
-<app-admin-layout>
-  <header class="head">
-    <h1>Воронки</h1>
-    <button nz-button nzType="primary" (click)="openCreate(createTpl)">+ Создать</button>
-  </header>
+<app-page-head
+  title="Воронки продакшна"
+  subtitle="Шаблон шагов проекта. Проект снимает воронку копией на старте — правка здесь идущих проектов не трогает."
+>
+  <button head-action nz-button nzType="primary" nzSize="small" (click)="openCreate(createTpl)">
+    Создать воронку
+  </button>
+</app-page-head>
 
-  <nz-table [nzData]="items()" nzSize="middle">
+@if (hiddenCount()) {
+<label class="off-toggle" nz-checkbox [(ngModel)]="includeOff" (ngModelChange)="onToggleOff()">
+  Показывать выключенные ({{ hiddenCount() }})
+</label>
+}
+
+<app-list-state
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="visible().length === 0"
+  emptyText="Действующих воронок нет. Пока их нет, проект продакшна создать не из чего."
+  (retry)="fetch()"
+>
+  <nz-table [nzData]="visible()" nzSize="middle">
     <thead>
       <tr>
         <th>Название</th>
         <th>Версия</th>
-        <th>Правки</th>
+        <th>Лимит правок</th>
         <th>Статус</th>
-        <th></th>
+        <th class="r"></th>
       </tr>
     </thead>
     <tbody>
-      @for (p of items(); track p.id) {
-        <tr (click)="open(p)" style="cursor: pointer">
-          <td data-label="Название">{{ p.name }}</td>
-          <td data-label="Версия">v{{ p.version }}</td>
-          <td data-label="Правки">{{ p.revisions_included }}</td>
-          <td data-label="Статус">
-            @if (p.is_active) {
-              <nz-tag nzColor="green">Активна</nz-tag>
-            } @else {
-              <nz-tag>Деактивирована</nz-tag>
-            }
-            @if (p.is_default) {
-              <nz-tag nzColor="gold">★ Default</nz-tag>
-            }
-          </td>
-          <td (click)="$event.stopPropagation()">
-            <button nz-button nzSize="small" (click)="open(p)">Открыть</button>
-            @if (!p.is_default && p.is_active) {
-              <button
-                nz-button
-                nzSize="small"
-                nzType="dashed"
-                style="margin-left: 6px"
-                [nzLoading]="busyId() === p.id"
-                [disabled]="!!busyId()"
-                (click)="makeDefault(p)"
-              >
-                Сделать default
-              </button>
-            }
-          </td>
-        </tr>
+      @for (p of visible(); track p.id) {
+      <!-- Строка целиком — ссылка на редактор: попадать в одну кнопку
+             «Открыть» в последней колонке мышью неудобно, а на тач-экране
+             почти невозможно. -->
+      <tr class="row" (click)="open(p)" tabindex="0" (keydown.enter)="open(p)">
+        <td data-label="Название">
+          <b>{{ p.name }}</b>
+        </td>
+        <td data-label="Версия" class="num">{{ versionLabel(p) }}</td>
+        <!-- «Правки» — это не правки воронки, а сколько правок включено в
+               проект по ней. Колонку читали наоборот. -->
+        <td data-label="Лимит правок" class="num">{{ p.revisions_included }}</td>
+        <td data-label="Статус">
+          @if (p.is_active) {
+          <app-status-tag tone="ok">Активна</app-status-tag>
+          } @else {
+          <app-status-tag tone="neutral">Выключена</app-status-tag>
+          } @if (p.is_default) {
+          <app-status-tag tone="neutral">по умолчанию</app-status-tag>
+          }
+        </td>
+        <td data-label="" class="r">
+          <app-row-menu
+            [items]="menuFor(p)"
+            [label]="'Действия: ' + p.name"
+            (pick)="onPick(p, $event)"
+          />
+        </td>
+      </tr>
       }
     </tbody>
   </nz-table>
-</app-admin-layout>
+</app-list-state>
 
 <ng-template #createTpl>
   <label>Название</label>

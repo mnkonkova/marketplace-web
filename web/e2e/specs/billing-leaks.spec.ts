@@ -1,0 +1,287 @@
+import { test, expect, type Page, request as pwRequest } from '@playwright/test';
+import { AUTH_KEY } from '../fixtures/world';
+import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { openCabinetTab } from '../fixtures/ui';
+
+/**
+ * Проекты — свои: и обычный, и с прошлым.
+ *
+ * Спека читает ОТВЕТЫ, а не разметку, и состав ответа зависит от того,
+ * что в проекте лежит. На общем посеянном проекте любая соседняя специя
+ * меняла этот состав, и «лишнего поля не нашлось» могло значить «в
+ * ответе вообще нечего смотреть».
+ */
+let box: Sandbox;
+let history: Sandbox;
+
+test.beforeAll(async () => {
+  box = await createSandbox('leaks');
+  history = await createSandbox('leakshist', { shape: 'history' });
+});
+
+test.afterAll(() => {
+  dropSandbox(box);
+  dropSandbox(history);
+});
+
+/**
+ * Что уезжает в браузер вместе с деньгами.
+ *
+ * Самая тихая поломка из всех, которые тут проверяются: лишнее поле в
+ * ответе не видно ни на экране, ни в отчёте о падении — интерфейс его и
+ * не рисовал никогда. Маржа площадки, выплата креатору и цепочка
+ * периодов доезжают до заказчика в открытом виде, и узнать об этом можно
+ * только из вкладки «Сеть», в которую никто не смотрит. Поэтому смотрим
+ * сюда мы: специя читает ОТВЕТЫ, а не разметку.
+ *
+ * Именно поэтому проверка живёт в браузере, а не в сквозных тестах API:
+ * серверный тест сторожит ручку, которую знает, а страница может позвать
+ * любую — и заодно ту, про которую никто не помнит, что она отдаёт.
+ *
+ * Чего здесь НЕ запрещено: `creator_user_id` и `creator_name` в ответе
+ * заказчику. Он платит за «Команду периода» и вправе видеть, кто в ней
+ * был. Тайна — не имя, а вторая сторона сделки: сколько из его денег
+ * получит человек и сколько оставит себе площадка.
+ */
+const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
+
+const signIn = (
+  context: import('@playwright/test').BrowserContext,
+  role: 'manager' | 'creator' | 'client' | 'admin',
+) =>
+  context.addInitScript(
+    ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
+    [AUTH_KEY, box.sessions[role]] as const,
+  );
+
+interface Captured {
+  /** Путь без хоста и без query: он и попадает в текст падения. */
+  path: string;
+  body: unknown;
+}
+
+/**
+ * Копить разобранные ответы API, пока страница работает.
+ *
+ * Тело читаем отложенно: обработчик `response` синхронный, а `json()` —
+ * нет, и без общего ожидания половина ответов осталась бы неразобранной.
+ * Ждём в два захода: разбор первой пачки успевает породить вторую.
+ */
+function watchApi(page: Page) {
+  const captured: Captured[] = [];
+  const pending: Promise<unknown>[] = [];
+  page.on('response', (res) => {
+    const url = new URL(res.url());
+    if (!url.pathname.startsWith('/api/v1/')) return;
+    pending.push(
+      res.json().then(
+        (body) => captured.push({ path: url.pathname, body }),
+        // Не JSON или тело уже недоступно: смотреть в таком ответе нечего.
+        () => undefined,
+      ),
+    );
+  });
+  return async function settled(): Promise<Captured[]> {
+    await Promise.all([...pending]);
+    await Promise.all([...pending]);
+    return captured;
+  };
+}
+
+/** Все ключи ответа, как бы глубоко они ни лежали. */
+function keysOf(value: unknown, into = new Set<string>()): Set<string> {
+  if (Array.isArray(value)) {
+    for (const item of value) keysOf(item, into);
+    return into;
+  }
+  if (value && typeof value === 'object') {
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      into.add(key);
+      keysOf(nested, into);
+    }
+  }
+  return into;
+}
+
+/** «margin в /api/v1/me/projects/…/billing» — по одной строке на находку. */
+function leaks(captured: Captured[], forbidden: readonly string[]): string[] {
+  const found: string[] = [];
+  for (const item of captured) {
+    const keys = keysOf(item.body);
+    for (const key of forbidden) if (keys.has(key)) found.push(`${key} в ${item.path}`);
+  }
+  return found;
+}
+
+/**
+ * Креаторская сторона сделки. Заказчик платит по своим ставкам, и
+ * сколько из этих денег доходит до человека — не его дело: на этой
+ * разнице живёт площадка.
+ */
+const OTHER_SIDE = [
+  'payouts',
+  'margin',
+  'payout_salary',
+  'payout_deduction',
+  'payout_views_bonus',
+  'payout_click_bonus',
+  'payout_total',
+  'creator_salary_per_month',
+  'creator_rate_per_1000_views',
+  'creator_rate_per_1000_views_over',
+] as const;
+
+/** Перенос ступени по креаторской стороне и внутренняя цепочка периодов. */
+const CLIENT_FORBIDDEN = [
+  ...OTHER_SIDE,
+  'carry_in_creator',
+  'carry_out_creator',
+  'prev_period_id',
+] as const;
+
+test('заказчику не приезжают ни выплаты креаторам, ни маржа, ни цепочка периодов', async ({
+  context,
+  page,
+}) => {
+  await signIn(context, 'client');
+  const settled = watchApi(page);
+
+  // Карточка проекта и список: деньги показывают обе, а запрашивает их
+  // одна — но лишнее поле всё равно ищем в обоих заходах, иначе оно
+  // переедет вместе с первой же новой плашкой.
+  await page.goto(`/me/projects/${box.projectId}`);
+  await expect(page.getByText(box.title).first()).toBeVisible({ timeout: 15_000 });
+  await page.goto('/me/projects');
+  // Кабинет открывается дашбордом — реестр проектов теперь соседняя
+  // вкладка. Нам нужен именно он: лишнее поле переезжает вместе с
+  // плашкой, а плашки со счётом живут в реестре.
+  await openCabinetTab(page, 'Проекты');
+  // Ждём СТРОКУ РЕЕСТРА, а не наш проект: песочница помечена тестовой, а
+  // реестр тестовые проекты заказчику не показывает — и правильно
+  // делает. Проверяем, что экран доехал и запросы с него ушли; что
+  // именно в них лежит, спрашиваем ниже у ответов, а не у разметки.
+  await expect(page.locator('.prj').first(), 'реестр проектов нарисован').toBeVisible({
+    timeout: 15_000,
+  });
+
+  const captured = await settled();
+  const billing = captured.filter((c) => /^\/api\/v1\/me\/projects\/[^/]+\/billing$/.test(c.path));
+  expect(billing.length, 'страница обязана спросить деньги проекта').toBeGreaterThan(0);
+
+  expect(leaks(captured, CLIENT_FORBIDDEN), 'заказчику отдали чужую сторону сделки').toEqual([]);
+
+  // Идентификатор периода запрещаем точечно, а не по всему ответу:
+  // у начислений свои id, и они нужны экрану. Внутренняя цепочка
+  // переносов — наша механика, и снаружи её быть не должно.
+  for (const answer of billing) {
+    const period = (answer.body as { period?: Record<string, unknown> }).period;
+    expect(period, 'в ответе про деньги должен быть период').toBeTruthy();
+    expect(Object.keys(period!), 'идентификатор периода у заказчика').not.toContain('id');
+  }
+});
+
+test('креатор в своём кабинете не видит ни клиентских сумм, ни чужих людей', async ({
+  context,
+  page,
+}) => {
+  const api = await pwRequest.newContext({
+    baseURL: API,
+    extraHTTPHeaders: { Authorization: `Bearer ${box.sessions.creator.access_token}` },
+  });
+  const meId = (await (await api.get('/api/v1/me')).json()).user_id as string;
+  await api.dispose();
+
+  await signIn(context, 'creator');
+  const settled = watchApi(page);
+
+  await page.goto(`/me/creator/projects/${history.projectId}`);
+  // Ждём сам блок, а не заголовок в нём: заголовок — вопрос подачи, и
+  // специя про утечки не должна падать от того, что его переписали.
+  // Деньги периода живут прямо в карточке проекта: отдельного виджета
+  // лесенки у креатора больше нет.
+  await expect(page.locator('.earn')).toBeVisible({ timeout: 15_000 });
+
+  const captured = await settled();
+  const earnings = captured.filter((c) => c.path.endsWith('/earnings'));
+  expect(earnings.length, 'кабинет обязан спросить заработок').toBeGreaterThan(0);
+
+  // Клиентская сторона для креатора — такая же коммерческая тайна, как
+  // его выплата для заказчика: по ней видно, сколько на нём заработали.
+  expect(
+    leaks(captured, [...OTHER_SIDE, 'carry_in_client', 'carry_out_client', 'prev_period_id']),
+    'креатору отдали клиентскую сторону сделки',
+  ).toEqual([]);
+
+  // Чужих людей в кабинете нет вовсе: ни в начислениях, ни в ориентире.
+  // Ориентир по проекту приходит обезличенным числом — как только рядом
+  // с ним появится чей-то идентификатор, это уже не агрегат.
+  const strangers: string[] = [];
+  const walk = (value: unknown, path: string): void => {
+    if (Array.isArray(value)) {
+      value.forEach((item, i) => walk(item, `${path}[${i}]`));
+      return;
+    }
+    if (!value || typeof value !== 'object') return;
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      if (key === 'creator_user_id' && nested !== meId) strangers.push(`${path}.${key}`);
+      walk(nested, `${path}.${key}`);
+    }
+  };
+  for (const answer of captured) walk(answer.body, answer.path);
+  expect(strangers, 'в кабинете креатора нашёлся чужой идентификатор').toEqual([]);
+});
+
+test('список проектов специалиста — список, а не выгрузка карточек', async ({ context, page }) => {
+  await signIn(context, 'creator');
+  const settled = watchApi(page);
+
+  await page.goto('/me/creator/projects');
+  await expect(page.getByRole('heading', { name: 'Мои проекты' })).toBeVisible({ timeout: 15_000 });
+
+  const captured = await settled();
+  const list = captured.filter((c) => c.path === '/api/v1/me/creator/projects');
+  expect(list.length, 'страница обязана спросить список').toBeGreaterThan(0);
+
+  // Заметки менеджера — его рабочая запись по проекту, и в списке она не
+  // нужна никому: бриф креатор читает в карточке, куда его кладут
+  // осознанно. Лишнее поле в списке замечают не раньше, чем в него
+  // положат что-нибудь не для чужих глаз.
+  expect(leaks(list, ['notes']), 'в списке проектов специалиста нашлись заметки').toEqual([]);
+});
+
+test('смета заказа не показывает заказчику креаторские ставки', async ({ context, page }) => {
+  await signIn(context, 'client');
+  const settled = watchApi(page);
+
+  await page.goto('/me/projects');
+  await page
+    .getByRole('button', { name: /Завести( ещё один)? проект/ })
+    .first()
+    .click();
+  await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
+  await page.locator('.kind.k1').click();
+  // Первый шаг воронки — бриф; каталог креаторов за ним. Название
+  // обязательно: из него получается имя проекта.
+  await page.locator('input[name="product"]').fill('Смета без ставок (e2e)');
+  await page.getByRole('button', { name: 'Дальше — креаторы' }).click();
+  await expect(page.locator('.ccard').first()).toBeVisible({ timeout: 15_000 });
+
+  // Смета уходит с задержкой после выбора — ждём именно её ответ, иначе
+  // проверять было бы нечего и специя зеленела бы впустую.
+  const [estimate] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().endsWith('/me/orders/estimate') && r.request().method() === 'POST',
+    ),
+    page.locator('.ccard:not([disabled])').first().click(),
+  ]);
+  expect(estimate.ok(), 'смета должна посчитаться').toBeTruthy();
+
+  const captured = await settled();
+  const quotes = captured.filter((c) => c.path.endsWith('/me/orders/estimate'));
+  expect(quotes.length, 'страница обязана спросить смету').toBeGreaterThan(0);
+
+  // В смете лежит версия правил целиком — тот самый объект, у которого
+  // есть обе стороны. Заказчику называют его цену; во сколько заказ
+  // обойдётся площадке, в предложении клиенту делать нечего.
+  expect(leaks(quotes, OTHER_SIDE), 'в смете нашлась креаторская сторона тарифа').toEqual([]);
+});

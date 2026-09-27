@@ -1,0 +1,142 @@
+:host {
+  display: block;
+}
+
+// Шапка: подпись оси Y слева, период и переключатели справа. Одной
+// строкой, потому что вместе они отвечают на один вопрос — «что и за
+// какой срок тут нарисовано».
+.lchead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+  color: var(--text-dim, #6b7280);
+  font-size: 11.5px;
+
+  .span {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+svg {
+  // height: auto — высота берётся из viewBox. Фиксированная вместе с
+  // width: 100% оставляла бы поля по бокам на узком экране.
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+// Сжатый вид: высоту задаёт место вызова. Она приходит инлайновым
+// стилем с хоста (см. компонент) — ИМЕННО в пикселях, а не процентом.
+//
+// Процент высоты считается от родителя, а у карточки площадки высота
+// своя, по содержимому: процент от неопределённой высоты — это auto, то
+// есть ноль. Коробка графика схлопывалась, а сама ломаная при
+// overflow: visible продолжала рисоваться и вылезала из-под рамки
+// карточки вторым, сломанным рядом. Поэтому здесь коробка жёсткая, а
+// всё, что в неё не влезло, режется.
+:host(.compact) {
+  display: block;
+  overflow: hidden;
+}
+
+:host(.compact) svg {
+  height: 100%;
+  overflow: hidden;
+}
+
+// Легенда многорядного графика. Стоит НАД полем, а не под ним: линии
+// читают сверху вниз, и словарь к ним нужен до того, как на них
+// посмотрели, а не после.
+.lclegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  color: var(--text-dim, #6b7280);
+  font-size: 11.5px;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  // Общая линия выделена и в легенде: она итог, а не шестая площадка.
+  li.lead {
+    color: var(--text, #e8eaed);
+    font-weight: 600;
+  }
+
+  i {
+    width: 10px;
+    height: 3px;
+    border-radius: 2px;
+    flex: 0 0 auto;
+  }
+
+  li.lead i {
+    height: 4px;
+    width: 14px;
+  }
+}
+
+// Ломаная, а не сглаженная кривая: сглаживание показывает между двумя
+// замерами значения, которых не было.
+//
+// Толщина приходит атрибутом из компонента: она зависит от того, одна
+// линия на графике или разбор с общей поверх, — и решать это в двух
+// местах сразу значило бы держать два набора правил про одно.
+.line {
+  fill: none;
+  stroke: var(--accent, #2fbd8f);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+// Мягкая заливка до оси: линия читается как объём, а не как случайная
+// ломаная в пустом поле. Слабая намеренно — сетка под ней должна
+// оставаться видимой.
+.area {
+  fill: rgb(47 189 143 / 10%);
+  stroke: none;
+}
+
+.dot {
+  fill: var(--accent, #2fbd8f);
+  stroke: var(--bg, #0e1013);
+  stroke-width: 1;
+}
+
+.grid {
+  stroke: var(--border, #1c2422);
+  stroke-width: 1;
+}
+
+.axis {
+  stroke: var(--border-strong, #2a3532);
+  stroke-width: 1;
+}
+
+.tick {
+  fill: var(--text-dim, #6b7280);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+}
+
+// Колонка под наведение. Невидима, но кликабельна: у прозрачной заливки
+// события мыши остаются, у fill: none — нет.
+.hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.hit:hover {
+  fill: rgb(255 255 255 / 4%);
+}

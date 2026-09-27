@@ -1,0 +1,870 @@
+@if (blocks().publications && shows('plan')) {
+  <!-- План перенесён из макета ~/tmp/crm_project_manager (1).html: группы
+       по креаторам, строка-выкладка раскрывается в пять площадок. -->
+  <section class="pub-block crm-page">
+    <div class="pub-head">
+      <div class="pub-head-tx">
+        <h2>План выкладок</h2>
+        <p class="sub">
+          Один ролик = одна выкладка на все пять площадок. Строка закрывается, когда собраны все
+          пять ссылок — нажмите на неё, чтобы увидеть, каких не хватает.
+          <!-- «Закрыто N из N» читалось как «проект окончен». Проект
+               живёт дальше — закрываются периоды, а план это план
+               периода. При нуле выкладок формулировка меняется целиком:
+               «0 из 0 закрыто» на пустом плане не сообщает ничего. -->
+          @if (livePubs()) {
+            По плану периода закрыто {{ closedPubs() }} из {{ livePubs() }} · собрано
+            {{ collected().done }} из {{ collected().total }}
+            {{ plural(collected().total, 'ссылки', 'ссылок', 'ссылок') }}.
+          } @else {
+            Дат в плане пока нет — проставьте их, и выкладки появятся здесь.
+          }
+          @if (cancelledCount()) {
+            Скрыто отменённых: {{ cancelledCount() }} — они сняты с плана и ничего не ждут.
+          }
+        </p>
+      </div>
+      <div class="acts">
+        <button class="btn primary sm" type="button" (click)="openSchedule()">
+          Проставить даты
+        </button>
+      </div>
+    </div>
+
+    <!-- Телефонная лента плана и переключатель к сетке. На десктопе оба
+         скрыты: там сетка стоит всегда и переключать нечего. -->
+    @if (gridDays().length) {
+      <div class="plan-switch">
+        <button
+          type="button"
+          [class.on]="planView() === 'feed'"
+          (click)="setPlanView('feed')"
+          [attr.aria-pressed]="planView() === 'feed'"
+        >
+          Лента
+        </button>
+        <button
+          type="button"
+          [class.on]="planView() === 'grid'"
+          (click)="setPlanView('grid')"
+          [attr.aria-pressed]="planView() === 'grid'"
+        >
+          Сетка
+        </button>
+      </div>
+
+      <div class="plan-feed" [class.hidden]="planView() !== 'feed'">
+        @for (g of planFeed(); track g.key) {
+          <p class="feed-h" [class.late]="g.overdue">{{ g.title }}</p>
+          @for (p of g.rows; track p.id) {
+            <div class="feed-row">
+              @if (creatorOf(p); as c) {
+                <span class="av sm" [class]="'av sm ' + c.avatar">{{ c.initial }}</span>
+                <span class="nm">
+                  <b>{{ c.display_name }}</b>
+                  <span>{{ feedNote(p) }}</span>
+                </span>
+              } @else {
+                <span class="nm"
+                  ><b>Выкладка {{ pubNo(p.id) }}</b
+                  ><span>{{ feedNote(p) }}</span></span
+                >
+              }
+              @if (p.overdue || p.status === 'partial') {
+                <button
+                  type="button"
+                  class="btn quiet sm"
+                  [disabled]="pubBusy() === p.id"
+                  (click)="remind(p)"
+                >
+                  Пинг
+                </button>
+              } @else if (p.status === 'done') {
+                <span class="tag green">вышел</span>
+              }
+            </div>
+          }
+        }
+      </div>
+    }
+
+    <!-- Сетка плана: строки — креаторы, столбцы — дни.
+         Список ниже отвечает на «что сдавать следующим», сетка — на «как
+         разложен месяц»: дыру в расписании и три выкладки подряд у
+         одного человека видно только так. -->
+    @if (gridDays().length) {
+      <div class="plan-grid-wrap" [class.hidden]="planView() !== 'grid'">
+        <table class="plan-grid">
+          <thead>
+            <tr>
+              <th class="who"></th>
+              @for (d of gridDays(); track d) {
+                <th
+                  class="day"
+                  [class.weekend]="isWeekend(d)"
+                  [class.today]="isToday(d)"
+                  [attr.title]="dayLabel(d)"
+                >
+                  {{ d.slice(8, 10) }}
+                </th>
+              }
+              <th class="act"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of gridRows(); track row.user_id) {
+              <tr>
+                <td class="who">
+                  <span class="av sm" [class]="'av sm ' + row.avatar">{{ row.initial }}</span>
+                  <b>{{ row.display_name }}</b>
+                </td>
+                @for (c of row.cells; track c.day) {
+                  <td class="day" [class.weekend]="isWeekend(c.day)">
+                    <span
+                      class="cell"
+                      [class.done]="c.state === 'done'"
+                      [class.late]="c.state === 'late'"
+                      [class.partial]="c.state === 'partial'"
+                      [class.planned]="c.state === 'planned'"
+                      [class.today]="isToday(c.day)"
+                      [attr.title]="c.title || null"
+                      >{{ c.mark }}</span
+                    >
+                  </td>
+                }
+                <td class="act">
+                  @if (row.burning) {
+                    <button type="button" class="btn quiet sm" (click)="remindCreator(row.user_id)">
+                      Напомнить
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p class="plan-legend">
+          <span class="cell done">✓</span> вышел <span class="cell partial">½</span> вышел не везде
+          <span class="cell late">!</span> просрочен <span class="cell planned"></span> в плане
+        </p>
+      </div>
+    }
+
+    <!-- Этап черновика — переключатель проекта, а не свойство отдельной
+         выкладки: у всех выкладок он один. -->
+    @if (settings(); as st) {
+      <div class="switchrow">
+        <span class="tx">
+          <b>Этап согласования черновика</b>
+          <span>
+            Включено — у выкладки два срока: сдать черновик и выложить, и бот пингует по первому.
+            Выключите — у новых выкладок останется только дата выкладки; уже проставленные сроки не
+            стираются.
+          </span>
+        </span>
+        <button
+          type="button"
+          class="sw"
+          [class.on]="st.draft_required"
+          [disabled]="settingsBusy()"
+          (click)="toggleDraftStage()"
+          [attr.aria-pressed]="st.draft_required"
+          aria-label="Этап согласования черновика"
+        ></button>
+      </div>
+    }
+
+    @if (burning().length) {
+      <div class="riskbar">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path
+              d="M12 8v5m0 3.2v.1M10.3 3.9L2.7 17.2A1.9 1.9 0 004.4 20h15.2a1.9 1.9 0 001.7-2.8L13.7 3.9a1.9 1.9 0 00-3.4 0z"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        <span class="tx">
+          <b>Горят выкладки: {{ burning().length }}</b> —
+          {{
+            plural(
+              burning().length,
+              'просрочена или вышла не на всех площадках',
+              'просрочены или вышли не на всех площадках',
+              'просрочены или вышли не на всех площадках'
+            )
+          }}. Бот уже писал этим креаторам утром; кнопка шлёт напоминание сейчас, повторное за сутки
+          бэк отклонит.
+        </span>
+        <button class="btn ghost sm" type="button" (click)="remindBurning()">Напомнить всем</button>
+      </div>
+    }
+
+    @for (g of slotGroups(); track g.user_id) {
+      <div class="slotgrp">
+        <div class="hd">
+          <span class="av" [class]="'av ' + g.avatar">{{ g.initial }}</span>
+          <span class="who">
+            <span class="nm">{{ g.display_name }}</span>
+            <span class="st"
+              >{{ g.total }} {{ plural(g.total, 'выкладка', 'выкладки', 'выкладок') }}</span
+            >
+          </span>
+          <span class="sp"></span>
+          <span
+            class="tag"
+            [class.red]="g.bad > 0"
+            [class.green]="!g.bad && g.total > 0 && g.full === g.total"
+          >
+            @if (g.total) {
+              {{ g.full }} из {{ g.total }} по плану
+            } @else {
+              дат пока нет
+            }
+          </span>
+          <button class="btn quiet sm" type="button" (click)="remindCreator(g.user_id)">
+            Напомнить
+          </button>
+        </div>
+
+        <!-- Подписи колонок — ОДИН раз, шапкой реестра.
+             Раньше «черновик» и «выложить» стояли над датой в каждой
+             строке: тринадцать строк по два ярлыка, и каждая строка
+             из-за них была в две строки высотой. Реестр из тринадцати
+             выкладок занимал экран с лишним там, где хватает половины. -->
+        @if (g.rows.length) {
+          <div class="slot-head" [class.no-draft]="!hasDrafts()" aria-hidden="true">
+            <span>#</span>
+            <span>Название</span>
+            @if (hasDrafts()) {
+              <span>Черновик</span>
+            }
+            <span>Выложить</span>
+            <span>Площадки</span>
+            <span>Состояние</span>
+            <span class="r">Просмотры</span>
+            <span></span>
+          </div>
+        }
+
+        @for (pub of g.rows; track pub.id) {
+          @let tone = slotTone(pub);
+          <div
+            class="slot"
+            [class.late]="tone === 'late'"
+            [class.soon]="tone === 'soon'"
+            [class.done]="tone === 'done'"
+            [class.open]="isSlotOpen(pub.id)"
+          >
+            <div
+              class="top"
+              [class.no-draft]="!hasDrafts()"
+              role="button"
+              tabindex="0"
+              (click)="toggleSlot(pub.id)"
+              (keydown.enter)="toggleSlot(pub.id)"
+              (keydown.space)="$event.preventDefault(); toggleSlot(pub.id)"
+            >
+              <span class="n">{{ index(pub) }}</span>
+
+              <!-- Название ролика. Ячейку рисуем всегда, даже пустой:
+                   строки стоят в одной сетке, и пропуск у части из них
+                   сдвинул бы все колонки соседей. -->
+              <!-- Названия может не быть: его вписывает креатор, когда
+                   сдаёт ролик. Прочерк на этом месте читался как «поле
+                   сломано»; словами честнее — название не потеряли, его
+                   ещё не давали. -->
+              <span class="vtitle" [title]="pub.title || ''">
+                @if (pub.title) {
+                  {{ pub.title }}
+                } @else {
+                  <span class="noname">без названия</span>
+                }
+              </span>
+
+              @if (hasDrafts()) {
+                <span class="dt">
+                  <span class="cap">черновик</span>
+                  @if (pub.draft_due_date; as dd) {
+                    @let dtone = dateTone(dd, !pubOpen(pub));
+                    <span
+                      class="v"
+                      [class.late]="dtone === 'late'"
+                      [class.soon]="dtone === 'soon'"
+                      [class.off]="dtone === 'off'"
+                    >
+                      {{ dd | date: 'dd.MM' }}
+                      @if (showCountdown(pub)) {
+                        <small> · {{ pubDue(dd) }}</small>
+                      }
+                    </span>
+                  } @else if (selfAdded(pub)) {
+                    <!-- Выкладку креатор добавил себе сам, сверх плана.
+                         Срок черновика — это договорённость о поручённой
+                         работе, и у добавки её нет. Прочерк на этом месте
+                         читался бы как «забыли проставить». -->
+                    <span class="v off">не нужен</span>
+                  } @else {
+                    <!-- Срок черновика не проставлен. Не «нет срока», а
+                         «его ещё не назначили» — след вместо прочерка. -->
+                    <app-nodata [inline]="true" [ghostWidth]="44" [ghostHeight]="13" />
+                  }
+                </span>
+              }
+
+              @let ptone = dateTone(pub.due_date, !pubOpen(pub));
+              <span class="dt">
+                <span class="cap">выложить</span>
+                <!-- Дата остаётся, обратный отсчёт гаснет: у закрытой
+                     выкладки «−1 день» читается как просрочка, хотя все
+                     пять ссылок сданы. -->
+                <span
+                  class="v"
+                  [class.late]="ptone === 'late'"
+                  [class.soon]="ptone === 'soon'"
+                  [class.off]="ptone === 'off'"
+                >
+                  {{ pub.due_date | date: 'dd.MM' }}
+                  @if (showCountdown(pub)) {
+                    <small> · {{ pubDue(pub.due_date) }}</small>
+                  }
+                </span>
+              </span>
+
+              <!-- Та же лесенка, что у креатора и заказчика, только
+                   единица другая и конечная: насечка = площадка со
+                   ссылкой, всего их пять. Пять чипов с буквами занимали
+                   вдвое больше места и читались как кнопки; какой
+                   площадки не хватает, говорит подсказка и раскрытая
+                   строка ниже. -->
+              <span class="plats" [title]="platsTitle(pub)">
+                <app-steps
+                  [filled]="pub.links.length"
+                  [total]="platforms.length"
+                  [withNext]="false"
+                  size="sm"
+                />
+                <span class="platcount" [class.full]="pub.links.length === platforms.length">
+                  {{ pub.links.length }}/{{ platforms.length }}
+                </span>
+              </span>
+
+              <!-- Состояние — метка с точкой, а не заливная плашка.
+                   Тринадцать зелёных плашек подряд заливали реестр
+                   цветом, в котором одна коралловая терялась: заливка
+                   меряет площадь, а состояний тут поровну по одному на
+                   строку. Точка меряет ровно себя. -->
+              @let badge = pubBadge(pub);
+              @let tt = tagTone(pub);
+              <span
+                class="mark"
+                [class.ok]="tt === 'green'"
+                [class.warn]="tt === 'amber'"
+                [class.bad]="tt === 'red'"
+              >
+                {{ badge.label }}
+              </span>
+
+              <span class="views">
+                @if (pub.views) {
+                  <b class="grew">{{ pub.views | number }}</b>
+                  @if (pubGrowth(pub)) {
+                    <small>+{{ pubGrowth(pub) | number }}</small>
+                  }
+                } @else {
+                  <!-- Не ноль: ноль означал бы «ролик вышел, и его никто
+                       не посмотрел». Здесь просмотров ещё не собрали —
+                       числа нет, и прочерк на его месте читался как ноль. -->
+                  <app-nodata [inline]="true" [ghostWidth]="64" [ghostHeight]="14" />
+                }
+              </span>
+
+              <svg class="chev" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M6 9l6 6 6-6"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+
+            <div class="det">
+              @for (pl of platforms; track pl) {
+                <div class="prow">
+                  <span class="pn">{{ platformLabel[pl] }}</span>
+                  @if (linkOf(pub, pl); as l) {
+                    <a class="pu" [href]="l.url" target="_blank" rel="noopener">{{ l.url }}</a>
+                    @let st = linkStat(l.id);
+                    <span class="pv">
+                      @if (st) {
+                        {{ st.views | number }}
+                        @if (st.growth_24h !== null) {
+                          <small>+{{ st.growth_24h | number }}</small>
+                        }
+                      } @else {
+                        <!-- Ссылка есть, а просмотров по ней ещё не
+                             собрали. Ноль здесь означал бы «ролик
+                             выложен, и его никто не посмотрел», а
+                             прочерк читался как этот же ноль. -->
+                        <app-nodata [inline]="true" [ghostWidth]="58" [ghostHeight]="13" />
+                      }
+                    </span>
+                  } @else {
+                    <span class="pu empty">ссылки нет</span>
+                    <!-- Ссылки нет — считать нечего: числа не существует,
+                         а не «оно равно нулю». -->
+                    <span class="pv"
+                      ><app-nodata [inline]="true" [ghostWidth]="58" [ghostHeight]="13"
+                    /></span>
+                    @if (pubOpen(pub)) {
+                      <button
+                        class="btn quiet sm"
+                        type="button"
+                        [disabled]="pubBusy() === pub.id"
+                        (click)="remind(pub)"
+                      >
+                        Напомнить
+                      </button>
+                    }
+                  }
+                </div>
+              }
+
+              @if (pub.close_reason) {
+                <p class="pub-reason">Закрыта вручную: {{ pub.close_reason }}</p>
+              }
+
+              @if (pub.pending_date_request; as dr) {
+                <div class="date-req">
+                  <span>
+                    Просит перенос на <b>{{ dr.requested_date | date: 'd MMM' }}</b
+                    >: {{ dr.reason }}
+                  </span>
+                  <span class="date-req-actions">
+                    <button
+                      class="btn quiet sm"
+                      type="button"
+                      [disabled]="pubBusy() === pub.id"
+                      (click)="decideDate(pub, true)"
+                    >
+                      Согласовать
+                    </button>
+                    <button
+                      class="btn quiet sm"
+                      type="button"
+                      [disabled]="pubBusy() === pub.id"
+                      (click)="decideDate(pub, false)"
+                    >
+                      Отклонить
+                    </button>
+                  </span>
+                </div>
+              }
+
+              @if (pubOpen(pub)) {
+                <div class="slot-actions">
+                  <button
+                    class="btn quiet sm"
+                    type="button"
+                    [disabled]="pubBusy() === pub.id"
+                    (click)="remind(pub)"
+                  >
+                    Напомнить сейчас
+                  </button>
+                  <button class="btn quiet sm" type="button" (click)="openClose(pub)">
+                    Закрыть вручную
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+        } @empty {
+          <p class="empty">У этого креатора выкладок пока нет.</p>
+        }
+      </div>
+    } @empty {
+      <p class="empty">Выкладок нет. Проставьте даты пачкой — по одной такие проекты не заводят.</p>
+    }
+  </section>
+}
+
+@if (blocks().roster && shows('crew')) {
+  <!-- Состав в виде макета: карточка на человека, тегами — сколько сдано,
+       сколько собрано ссылок, что горит и сколько просмотров принёс. -->
+  <section class="pub-block crm-page roster">
+    <!-- Очередь приглашений. Стоит НАД составом, потому что объясняет
+         его: состав — это результат очереди, а не отдельный список. -->
+    @if (order(); as o) {
+      <div class="card ranks">
+        <div class="ranks-head">
+          <div>
+            <h2>Состав и приглашения</h2>
+            <p class="sub">
+              Клиент прислал <b>приоритет</b>, а не список. Приглашения уходят по порядку: отказался
+              или промолчал трое суток — зовём следующего, вас не спрашивая.
+            </p>
+          </div>
+          @if (canInviteNext()) {
+            <button
+              class="btn quiet sm"
+              type="button"
+              [disabled]="orderBusy()"
+              (click)="inviteNext()"
+            >
+              Пригласить следующего
+            </button>
+          }
+        </div>
+
+        @if (orderFreeSlots() > 0) {
+          <!-- Значок обязателен: цвет предупреждения теперь коралловый —
+               тот же, что у кнопок, — и одним цветом эту строку от
+               ссылки-действия больше не отличить. -->
+          <p class="ranks-note">
+            <span class="ic" aria-hidden="true">!</span> Свободных мест: {{ orderFreeSlots() }} из
+            {{ o.needed }}.
+            @if (o.reserve_left === 0) {
+              Резерв кончился — звать некого, состав добирается из каталога.
+            }
+          </p>
+        }
+
+        <div class="ranks-list">
+          @for (c of queue(); track c.creator_user_id) {
+            <div class="rnk" [class]="candidateTone(c.status)">
+              <span class="n">{{ c.priority }}</span>
+              <span class="av sm" [class]="avatar(c.creator_user_id)">
+                {{ initial(c.creator_name) }}
+              </span>
+              <span class="nm">
+                <b>{{ c.creator_name || 'Креатор' }}</b>
+                <span>
+                  @switch (c.status) {
+                    @case ('invited') {
+                      ответ до {{ c.expires_at | date: 'd MMM, HH:mm' }} — приглашение живёт трое
+                      суток
+                    }
+                    @case ('accepted') {
+                      взял заявку {{ c.responded_at | date: 'd MMM' }}, в проекте
+                    }
+                    @case ('declined') {
+                      отказался {{ c.responded_at | date: 'd MMM' }} — место ушло следующему
+                    }
+                    @case ('expired') {
+                      не ответил за трое суток — место ушло следующему
+                    }
+                    @default {
+                      ждёт очереди: позовём, когда освободится место
+                    }
+                  }
+                </span>
+              </span>
+              <span
+                class="tag"
+                [class.green]="c.status === 'accepted'"
+                [class.amber]="c.status === 'invited'"
+                [class.red]="c.status === 'declined' || c.status === 'expired'"
+              >
+                {{ candidateLabel[c.status] }}
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <h3 class="pub-sub">Состав проекта</h3>
+
+    <!-- Состав таблицей, как в макете: человек, его аккаунты по пяти
+         площадкам, сколько роликов и просмотров принёс, что со сроками.
+         Карточками это занимало экран на троих, а менеджер сравнивает
+         людей между собой — значит, строками и в одних колонках.
+
+         Чипы здесь — АККАУНТЫ, а не сданные ссылки: у них своя
+         обводка и подпись «аккаунт», чтобы не путались с чипами
+         площадок в плане выкладок, которые значат ровно обратное. -->
+    <div class="crew-wrap">
+      <table class="crew-table">
+        <thead>
+          <tr>
+            <th>Креатор</th>
+            <th>Аккаунты</th>
+            <th class="r">Роликов</th>
+            <th class="r">Просмотры</th>
+            <th>Статус</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of creators(); track c.user_id) {
+            <tr>
+              <td class="who">
+                <a
+                  class="av sm"
+                  [class]="'av sm ' + c.avatar"
+                  [routerLink]="c.profile"
+                  target="_blank"
+                  rel="noopener"
+                  [attr.aria-label]="'Профиль: ' + c.display_name"
+                  >{{ c.initial }}</a
+                >
+                <span class="nm">
+                  <a [routerLink]="c.profile" target="_blank" rel="noopener">
+                    <b>{{ c.display_name }}</b>
+                  </a>
+                  <span class="since">в проекте с {{ c.added_at | date: 'd MMM' }}</span>
+                </span>
+              </td>
+              <td class="accs">
+                @for (a of c.links; track a.platform) {
+                  @if (a.url) {
+                    <a
+                      class="accchip"
+                      [href]="a.url"
+                      target="_blank"
+                      rel="noopener"
+                      [attr.title]="'Аккаунт ' + a.label + ': ' + a.handle"
+                      >{{ a.short }}</a
+                    >
+                  } @else {
+                    <span
+                      class="accchip empty"
+                      [attr.title]="'Аккаунт ' + a.label + ' не заполнен в профиле'"
+                      >{{ a.short }}</span
+                    >
+                  }
+                }
+              </td>
+              <td class="r nums" data-label="Роликов">{{ c.closed }} / {{ c.videos }}</td>
+              <td class="r nums" data-label="Просмотры">
+                @if (c.views) {
+                  {{ c.views | number }}
+                } @else {
+                  <span class="dim">—</span>
+                }
+              </td>
+              <td>
+                @if (c.burning) {
+                  <span class="tag red">{{ c.burning }} горит</span>
+                } @else {
+                  <span class="tag green">в графике</span>
+                }
+              </td>
+              <td class="acts">
+                <button class="btn quiet sm" type="button" (click)="remindCreator(c.user_id)">
+                  Напомнить
+                </button>
+                <button class="btn quiet sm" type="button" (click)="removeCreator(c.user_id)">
+                  Убрать
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (!creators().length) {
+      <p class="empty">
+        В составе никого. Добавьте креатора — ему сразу откроются материалы и чеклист.
+      </p>
+    }
+
+    <button class="btn dash wide" type="button" (click)="openAddCreator()">
+      Добавить креатора из каталога
+    </button>
+
+    <p class="pub-note">
+      Аккаунты подтягиваются из профиля специалиста: здесь видно, чей это профиль, а не сданы ли
+      ссылки на ролики — за это отвечает план выкладок. Удаление мягкое: сданные выкладки и цифры в
+      отчёте останутся.
+    </p>
+  </section>
+}
+
+@if (blocks().stats && shows('stats')) {
+  <section class="pub-block">
+    <div class="pub-head">
+      <h2>Статистика</h2>
+      <div class="pub-actions">
+        <!-- Переключатель 7/30 переехал внутрь самого графика: он меняет
+             только его и обязан ехать вместе с ним, а не дорисовываться
+             на каждом экране заново. -->
+        @if (blocks().csvExport) {
+          <button nz-button nzSize="small" [nzLoading]="csvBusy()" (click)="downloadCsv()">
+            Выгрузить CSV
+          </button>
+        }
+      </div>
+    </div>
+
+    <app-project-stats [report]="report()" />
+
+    @if (report(); as r) {
+      @if (r.by_creator.length) {
+        <h3 class="pub-sub">Сравнение креаторов</h3>
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Креатор</th>
+              <th>Роликов</th>
+              <th>Просмотры</th>
+              <th>Ср. на ролик</th>
+              <th>Доля</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of r.by_creator; track row.creator_user_id) {
+              <tr>
+                <td>{{ creatorName(row.creator_name) }}</td>
+                <td>{{ row.videos }}</td>
+                <td>{{ row.views | number }}</td>
+                <td>{{ row.avg_views | number: '1.0-0' }}</td>
+                <td>{{ row.share_percent | number: '1.0-1' }}%</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+      @if (r.videos_table.length) {
+        <h3 class="pub-sub">По роликам</h3>
+        <div class="tbl-scroll">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Ролик</th>
+                <th>Креатор</th>
+                <th>Площадка</th>
+                <th>Выложен</th>
+                <th>Просмотры</th>
+                <th>За сутки</th>
+                <th>ER</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Строка — это ссылка одного ролика на одной площадке.
+                   Раньше в колонке «Ролик» стояло слово «ссылка» пять раз
+                   подряд: отличить строки друг от друга было нечем. Теперь
+                   номер выкладки — тот же, что в плане, — а ссылка висит
+                   на названии площадки. -->
+              @for (row of r.videos_table; track row.link_id) {
+                <tr>
+                  <td>Выкладка {{ pubNo(row.publication_id) }}</td>
+                  <td>{{ creatorName(row.creator_name) }}</td>
+                  <td>
+                    <a [href]="row.url" target="_blank" rel="noopener">{{
+                      platformLabel[row.platform]
+                    }}</a>
+                  </td>
+                  <td>{{ row.submitted_at | date: 'd MMM' }}</td>
+                  <td>{{ row.views | number }}</td>
+                  <!-- Прирост за сутки: прочерк, когда вчерашнего снимка
+                       нет. «+0» читалось бы как «ролик встал», а это
+                       другое утверждение — измерения просто нет. -->
+                  <td>{{ row.growth_24h === null ? '—' : '+' + (row.growth_24h | number) }}</td>
+                  <!-- ER считается по этой площадке, а не по ролику целиком:
+                       без просмотров его нет вовсе, и «0%» здесь было бы
+                       выдумкой, а не нулём. -->
+                  <td>
+                    <app-er-value
+                      [percent]="row.er_percent"
+                      [withoutShares]="!!row.er_without_shares"
+                    />
+                  </td>
+                  <!-- Править ссылку может только менеджер. Сдаёт её
+                       креатор, и ошибается в ней он же: чужой ролик,
+                       адрес профиля вместо видео. До сих пор чинилось
+                       перепиской — «пришли правильную, я перезалью». -->
+                  <td class="linkfix">
+                    <button type="button" class="btn quiet sm" (click)="openLinkEdit(row)">
+                      Исправить
+                    </button>
+                  </td>
+                </tr>
+                @if (linkEditFor()?.link_id === row.link_id) {
+                  <tr class="linkfix-row">
+                    <td colspan="8">
+                      <form class="linkfix-form" (ngSubmit)="saveLinkEdit()">
+                        <input
+                          [(ngModel)]="linkEditUrl"
+                          name="linkfix"
+                          type="url"
+                          inputmode="url"
+                          [placeholder]="'Ссылка на ' + platformLabel[row.platform]"
+                        />
+                        <button type="submit" class="btn primary sm" [disabled]="linkBusy()">
+                          Сохранить
+                        </button>
+                        <button type="button" class="btn quiet sm" (click)="cancelLinkEdit()">
+                          Отмена
+                        </button>
+                        <button
+                          type="button"
+                          class="btn quiet sm danger"
+                          [disabled]="linkBusy()"
+                          (click)="removeLink()"
+                        >
+                          Снять ссылку
+                        </button>
+                        <span class="hint">
+                          Другой ролик — его прежние замеры удалятся: две записи в одной линии
+                          графика это не история. Снять ссылку — выкладка снова станет неполной.
+                        </span>
+                      </form>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </section>
+}
+
+@if (blocks().checklist && shows('mat')) {
+  <app-project-checklist [projectId]="projectID()" />
+}
+@if (blocks().autoping && shows('crew')) {
+  <app-project-autoping [projectId]="projectID()" />
+}
+
+@if (closeFor(); as pub) {
+  <div class="ovl" (click)="cancelClose()">
+    <div
+      class="modal"
+      role="dialog"
+      aria-label="Закрыть выкладку"
+      (click)="$event.stopPropagation()"
+    >
+      <h2>Закрыть выкладку {{ index(pub) }} вручную</h2>
+      <p>
+        Исключение из правила «закрыто на пяти ссылках»: собрано {{ pub.links.length }} из 5.
+        Причина обязательна — её видно в карточке выкладки.
+      </p>
+      <textarea
+        nz-input
+        rows="3"
+        [(ngModel)]="closeReason"
+        placeholder="Почему закрываем неполной"
+      ></textarea>
+      <div class="modal-actions">
+        <button nz-button (click)="cancelClose()">Отмена</button>
+        <button
+          nz-button
+          nzType="primary"
+          [nzLoading]="pubBusy() === pub.id"
+          (click)="confirmClose()"
+        >
+          Закрыть выкладку
+        </button>
+      </div>
+    </div>
+  </div>
+}

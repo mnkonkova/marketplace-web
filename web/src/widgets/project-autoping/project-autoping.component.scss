@@ -1,0 +1,89 @@
+@use 'breakpoints' as bp;
+
+:host {
+  display: block;
+}
+
+.ping-block {
+  margin: 20px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--border-strong, #2c313a);
+  border-radius: var(--r-card, 16px);
+  background: var(--surface);
+
+  h2 {
+    margin: 0;
+    font-size: 17px;
+  }
+}
+
+.note {
+  margin: 6px 0 14px;
+  max-width: 72ch;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.switchrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-hover);
+
+  & + .switchrow {
+    margin-top: 10px;
+  }
+
+  .tx {
+    flex: 1;
+    min-width: 200px;
+    font-size: 13.5px;
+  }
+
+  .tx b {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 14px;
+  }
+
+  .tx span {
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+}
+
+// На телефоне тумблер уезжал под текст: строка складывалась в четыре
+// строчки описания и переключатель шириной в палец справа от них, и
+// попасть в него можно было только с края экрана. Кладём подпись и
+// тумблер друг под друга, а сам переключатель — крупнее: это
+// единственная цель в строке.
+@media (max-width: bp.$touch) {
+  .ping-block {
+    margin: 14px 0 0;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .switchrow {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding: 12px;
+
+    .tx {
+      flex: 1 0 100%;
+      min-width: 0;
+    }
+
+    // Цель под палец: 44 по высоте, и сам тумблер прижат к левому краю,
+    // а не к дальнему — большой палец до правого края не достаёт.
+    nz-switch,
+    .ant-switch {
+      min-height: 28px;
+      transform: scale(1.15);
+      transform-origin: left center;
+    }
+  }
+}

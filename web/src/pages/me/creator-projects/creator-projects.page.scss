@@ -1,0 +1,80 @@
+@use 'breakpoints' as bp;
+
+// Разметка — словарём кабинета (shared/scss/_sotka.scss): это тот же
+// кабинет, что и страница проекта. Здесь только то, чего в словаре нет.
+:host {
+  display: block;
+}
+
+// Пять колонок вместо шести: графика просмотров у креатора в списке нет
+// — сервер отдаёт по проекту только счётчики выкладок.
+//
+// Только на широком экране: ниже 900 словарь раскладывает строку в две
+// колонки карточкой, и своя сетка поверх него уводила страницу за край.
+@media (min-width: 901px) {
+  .projects .prj {
+    grid-template-columns: minmax(220px, 2.4fr) 1fr 1.1fr auto;
+  }
+}
+
+// Строка — ссылка целиком: попадать в мелкую подпись внизу неудобно, а
+// нажимаемой выглядит вся строка.
+a.prj {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--surface-2);
+
+    .go {
+      color: var(--accent);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: -2px;
+    border-radius: 8px;
+  }
+}
+
+.go {
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ms.next {
+  margin-top: 2px;
+}
+
+.crit-ink {
+  color: var(--crit);
+}
+
+// На телефоне строка разворачивается в столбик: шапки колонок там нет
+// (словарь её прячет), и «2 из 29» рядом с названием осталось бы числом
+// без вопроса. Подпись берём из того же data-label, что стоит в ячейке.
+@media (max-width: bp.$touch) {
+  .projects .prj {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .projects .prj > [data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .go {
+    display: inline-block;
+    min-height: 40px;
+    line-height: 40px;
+  }
+}

@@ -1,0 +1,48 @@
+@if (open()) {
+  <div class="scrim" (click)="close()"></div>
+  <div class="pal" role="dialog" aria-modal="true" aria-label="Поиск по CRM">
+    <div class="pal-hd">
+      <app-crm-icon name="search" />
+      <input
+        #field
+        class="inp"
+        type="text"
+        autocomplete="off"
+        placeholder="Проект, человек или клиент"
+        [value]="q()"
+        (input)="onInput($any($event.target).value)"
+        aria-label="Что искать"
+      />
+      <kbd>esc</kbd>
+    </div>
+
+    <div class="pal-bd">
+      @if (loading()) {
+        <p class="note">Ищем…</p>
+      } @else if (empty()) {
+        <p class="note">Ничего не нашлось. Проверьте написание.</p>
+      } @else if (hits().length) {
+        <ul class="hits" role="listbox">
+          @for (h of hits(); track h.kind + h.id; let i = $index) {
+            <li>
+              <button
+                type="button"
+                role="option"
+                [attr.aria-selected]="cursor() === i"
+                [class.on]="cursor() === i"
+                (mouseenter)="cursor.set(i)"
+                (click)="go(h)"
+              >
+                <app-crm-icon [name]="h.kind === 'project' ? 'folder' : 'user'" />
+                <span class="t">{{ h.title }}</span>
+                <small>{{ h.note }}</small>
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="note">Начните печатать — от двух символов.</p>
+      }
+    </div>
+  </div>
+}

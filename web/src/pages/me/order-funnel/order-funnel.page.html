@@ -1,0 +1,456 @@
+<app-header />
+
+<!-- Словарь кабинета (.sotka) поверх макетного (.crm-page).
+     Воронка — вход в кабинет заказчика, и открывается она из «Всех
+     проектов»: тёмная страница посреди светлых читалась как чужая
+     часть продукта. Классы разметки остаются макетные — .sotka
+     объявляет те же имена переменных на светлые значения (см.
+     sotka-tokens), поэтому переверстывать нечего, меняется палитра. -->
+<main class="sotka crm-page order-funnel">
+  <div class="stage">
+    <div class="steps">
+      @for (label of stepLabels; track label; let i = $index; let last = $last) {
+      <span class="s" [class.done]="i < step()" [class.cur]="i === step()">
+        <span class="n">
+          @if (i < step()) {
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M5 12.5l4.5 4.5L19 7"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          } @else { {{ i + 1 }} }
+        </span>
+        <span class="lab">{{ label }}</span>
+      </span>
+      @if (!last) {
+      <span class="bar" [class.done]="i < step()"></span>
+      } }
+    </div>
+
+    <!-- 0 · что делаем -->
+    @if (step() === 0) {
+    <section>
+      <h1>Что делаем?</h1>
+      <p class="sub lead">
+        Два разных пути. Дальше интерфейс будет отличаться — выберите по тому, кто снимает.
+      </p>
+      <div class="kinds">
+        <button class="kind k1" type="button" (click)="chooseCreators()">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7" />
+              <path
+                d="M3 20a6 6 0 0112 0M16.5 6.5a3 3 0 010 5.5M19 4.5a6 6 0 010 9.4M17 20a5.5 5.5 0 00-2-4.3"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+              />
+            </svg>
+          </span>
+          <b>Креаторы</b>
+          <!-- «Просмотры», а не «охват»: мы считаем именно просмотры, и на
+               различии «показ против просмотра» стоит вся аргументация.
+               Назвать одно другим — обещать то, чего мы не собираем. -->
+          <p>Блогеры снимают у себя и выкладывают на своих аккаунтах. Вы платите за просмотры.</p>
+          <ul>
+            <li>вы выбираете людей из каталога</li>
+            <li>каждый ролик идёт во все площадки</li>
+            <li>статистика просмотров в кабинете</li>
+          </ul>
+        </button>
+        <button class="kind k2" type="button" (click)="chooseProduction()">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M4 6h11a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1z"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+              <path
+                d="M16 10l5-3v10l-5-3"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+          <b>Видео под ключ</b>
+          <p>Снимаем и монтируем мы, ролик остаётся вам. Вы платите за продакшен.</p>
+          <ul>
+            <li>бриф → КП → смета → оплата</li>
+            <li>черновик и одна правка</li>
+            <li>исходники и финал вам на диск</li>
+          </ul>
+        </button>
+      </div>
+
+      @if (productionAsked()) {
+      <div class="notice info kind-soon">
+        <span class="ic">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7" />
+            <path
+              d="M12 11v5m0-8.2v.1"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </span>
+        <span class="tx">
+          <b>Этот путь пока оформляется через менеджера</b>
+          Экран продакшена ещё не готов, и заводить заявку вслепую нечестно: у продакшена другой
+          бриф и другая смета. Напишите менеджеру в чат проекта или на почту — он соберёт бриф и
+          вернётся с КП.
+        </span>
+      </div>
+      }
+    </section>
+    }
+
+    <!-- 1 · кто будет снимать -->
+    <!-- 1 · бриф -->
+    @if (step() === 1) {
+    <section>
+      <h1>О чём снимаем</h1>
+      <p class="sub lead">
+        Это первое, что прочитает менеджер и потом креаторы. Ничего обязательного здесь нет: заявка
+        с пустым брифом лучше формы, которую бросили на полпути, — дописать можно и после отправки.
+      </p>
+
+      <div class="card brief">
+        <!-- Название — единственное обязательное поле: из него
+             получается имя проекта в кабинете, и без него там окажется
+             безымянный «Новый проект», которых через месяц будет три.
+             Остальное можно дописать потом — и об этом сказано прямо,
+             иначе форму бросают на третьем поле. -->
+        <label class="param">
+          <span class="lbl">Название проекта</span>
+          <input
+            class="inp"
+            placeholder="Например: беспроводные наушники, весенний запуск"
+            [ngModel]="brief.product"
+            (ngModelChange)="brief.product = $event"
+            name="product"
+          />
+          <span class="hint">Так проект будет называться в вашем кабинете.</span>
+        </label>
+        <label class="param">
+          <span class="lbl">Зачем снимаем <i class="opt">необязательно</i></span>
+          <input
+            class="inp"
+            placeholder="Продажи, узнаваемость, прогрев к запуску"
+            [ngModel]="brief.goal"
+            (ngModelChange)="brief.goal = $event"
+            name="goal"
+          />
+        </label>
+        <label class="param">
+          <span class="lbl">Кому <i class="opt">необязательно</i></span>
+          <input
+            class="inp"
+            placeholder="Покупатели 25–40, города-миллионники"
+            [ngModel]="brief.audience"
+            (ngModelChange)="brief.audience = $event"
+            name="audience"
+          />
+        </label>
+        <label class="param">
+          <span class="lbl">Каким тоном <i class="opt">необязательно</i></span>
+          <input
+            class="inp"
+            placeholder="По-простому, без рекламного тона"
+            [ngModel]="brief.tone"
+            (ngModelChange)="brief.tone = $event"
+            name="tone"
+          />
+        </label>
+        <label class="param wide">
+          <span class="lbl">На что равняться <i class="opt">необязательно</i></span>
+          <textarea
+            class="inp"
+            rows="3"
+            placeholder="Ссылки на ролики, которые нравятся"
+            [ngModel]="brief.refs"
+            (ngModelChange)="brief.refs = $event"
+            name="refs"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="stage-acts">
+        <button
+          class="btn primary"
+          type="button"
+          [disabled]="!brief.product.trim()"
+          (click)="step.set(2)"
+        >
+          Дальше — креаторы
+        </button>
+      </div>
+    </section>
+    }
+
+    <!-- 2 · креаторы -->
+    @if (step() === 2) {
+    <section>
+      <h1>Кто будет снимать</h1>
+      <p class="sub lead">
+        Отметьте, кого хотите особенно. Приглашение уйдёт всем нашим креаторам, а отмеченные получат
+        его с пометкой «вас хотят особенно» — брать заявку они решают сами.
+      </p>
+
+      <div class="params card tight">
+        <label class="param">
+          <span class="lbl">Месяц старта</span>
+          <select
+            class="inp"
+            [ngModel]="month()"
+            (ngModelChange)="changeMonth($event)"
+            name="month"
+          >
+            @for (m of months; track m) {
+            <option [value]="m">{{ monthName(m) }}</option>
+            }
+          </select>
+        </label>
+        <label class="param">
+          <span class="lbl">Роликов за месяц</span>
+          <input
+            class="inp"
+            type="number"
+            min="1"
+            [ngModel]="videos()"
+            (ngModelChange)="setVideos($event)"
+            name="videos"
+          />
+        </label>
+        <!-- Лимита «один креатор в первый месяц» больше нет: он был
+             обещанием клиенту, а отмечать он теперь может кого хочет —
+             состав всё равно утверждает менеджер. -->
+        <p class="param-note">
+          Отметьте, кого хотите особенно: приглашение уйдёт всем нашим креаторам, а состав соберёт
+          менеджер из тех, кто откликнется. Можно и никого не отмечать.
+        </p>
+      </div>
+
+      <div class="pick-grid">
+        <div>
+          <div class="filters">
+            <input
+              class="inp"
+              placeholder="UGC, зоотовары, beauty…"
+              [ngModel]="query()"
+              (ngModelChange)="query.set($event)"
+              (keyup.enter)="applyFilters()"
+              name="q"
+            />
+            <select
+              class="inp cat"
+              [ngModel]="category()"
+              (ngModelChange)="category.set($event); applyFilters()"
+              name="cat"
+            >
+              <option value="">Все категории</option>
+              <option value="blogger">Блогер</option>
+              <option value="ugc">UGC</option>
+            </select>
+          </div>
+
+          @if (catalogLoading()) {
+          <p class="loading">Загружаем каталог…</p>
+          } @else if (catalog().length === 0) {
+          <p class="loading">По этим словам никого нет — попробуйте другой запрос.</p>
+          } @else {
+          <div class="cards">
+            @for (c of catalog(); track c.user_id) {
+            <button
+              class="ccard"
+              type="button"
+              [class.on]="isPicked(c.user_id)"
+              [class.busy]="busy().has(c.user_id)"
+              [attr.aria-pressed]="isPicked(c.user_id)"
+              [disabled]="busy().has(c.user_id)"
+              (click)="toggle(c.user_id)"
+            >
+              <span class="cover">
+                @if (c.preview_thumb_url || c.avatar_url) {
+                <img [src]="c.preview_thumb_url || c.avatar_url" alt="" />
+                } @else { {{ initial(c.display_name) }} }
+                <span class="check">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M5 12.5l4.5 4.5L19 7"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </span>
+              <span class="meta">
+                <b>{{ c.display_name }}</b>
+                <span class="rl">{{ role(c) }}</span>
+                @if (busy().has(c.user_id)) {
+                <span class="pr busy-note">занят в этом месяце</span>
+                } @else {
+                <span class="pr">{{ priceLabel() }}</span>
+                }
+              </span>
+            </button>
+            }
+          </div>
+          }
+
+          <div class="notice info catalog-note">
+            <span class="ic">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7" />
+                <path
+                  d="M12 11v5m0-8.2v.1"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </span>
+            <span class="tx">
+              <b>Цена одна на всех</b>
+              Это прайс площадки, а не ставка блогера: {{ priceSentence() }} плюс бонус за
+              просмотры. Поэтому выбирать можно по людям, а не по ценнику.
+            </span>
+          </div>
+        </div>
+
+        <aside class="basket">
+          <h2>Кого отметили</h2>
+          <p class="sub basket-sub">
+            Порядка здесь нет: приглашение уходит всем сразу. Отметка значит «хочу особенно этого» —
+            так и будет написано в его приглашении.
+          </p>
+
+          <!-- Счётчик — для телефона: там подборка свёрнута в липкую
+               полосу, и «сколько я отметил» иначе не видно вовсе. -->
+          <p class="picked-count">
+            @if (picked().length === 0) { Никого не отметили — состав предложит менеджер } @else {
+            Отмечено: {{ picked().length }} }
+          </p>
+
+          @if (picked().length === 0) {
+          <p class="empty">
+            Пока никого — отметьте слева. Можно и не отмечать: тогда состав предложит менеджер.
+          </p>
+          } @else { @for (id of picked(); track id) {
+          <div class="brow">
+            <span class="av" [class]="avatarClass(id)">{{ initial(name(id)) }}</span>
+            <span class="nm">{{ name(id) }}</span>
+            <button
+              class="x"
+              type="button"
+              [attr.aria-label]="'Убрать: ' + name(id)"
+              (click)="toggle(id)"
+            >
+              ✕
+            </button>
+          </div>
+          } }
+
+          <!-- Потолок, а не ориентир: фикс за ролики известен заранее, и
+               выше верхней ступени цена не растёт. Ориентир складывал
+               фикс с прогнозом бонуса по истории подборки — у новых
+               людей её нет, и в корзине стоял голый фикс, то есть сумма,
+               которой счёт не ограничен. -->
+          <div class="btot">
+            <span>{{ topStepFee() ? 'Меньше' : 'Ориентир' }}</span>
+            <b>
+              @if (estimating()) { считаем… } @else { @if (estimate(); as e) { @if (topStepFee()) {
+              {{ money(ceiling()) }} } @else { {{ money(e.total) }} } } @else { — } }
+            </b>
+          </div>
+          <!-- Расшифровки под суммой нет намеренно: человек решает по
+               одному числу, а перечисление слагаемых заставляет его
+               складывать их глазами и перепроверять итог. Из чего он
+               собран, сказано в условиях, под которыми он подписывается
+               ниже. -->
+          @if (!topStepFee() && estimate(); as e) {
+          <p class="forecast-note">
+            @if (e.has_forecast) { В ориентир входит прогноз бонуса — {{ money(e.bonus_forecast) }}
+            при {{ views(e.avg_views_per_video) }} просмотрах на ролик. @if (e.without_history > 0)
+            { Он посчитан без {{ e.without_history }} из {{ e.forecast.length }}: у них ещё нет
+            сданных роликов. } } @else { Только оклады: истории просмотров нет ни у кого из {{
+            e.forecast.length }} — бонус не ноль, а пока неизвестен. }
+          </p>
+          } @if (terms(); as t) {
+          <label class="consent">
+            <input type="checkbox" [(ngModel)]="agreed" [disabled]="consented()" name="agreed" />
+            <span class="consent-full">
+              Принимаю условия работы, версия {{ t.version }}. Заказ навсегда останется на этой
+              версии — новый прайс его не переписывает.
+            </span>
+            <!-- На телефоне то же согласие одной строкой: полный текст
+                 занимает треть липкой полосы и отжимает кнопку за край.
+                 Прочитать его целиком по-прежнему можно в «Прочитать
+                 условия». -->
+            <span class="consent-short">Принимаю условия, версия {{ t.version }}</span>
+          </label>
+          <details class="terms-body">
+            <summary>Прочитать условия</summary>
+            <p>{{ t.body }}</p>
+          </details>
+          }
+
+          <button
+            class="btn primary send"
+            type="button"
+            [disabled]="!canSubmit()"
+            (click)="submit()"
+          >
+            {{ submitting() ? 'Отправляем…' : 'Отправить заявку' }}
+          </button>
+        </aside>
+      </div>
+    </section>
+    }
+
+    <!-- 3 · заявка отправлена -->
+    @if (step() === 3) {
+    <section>
+      <h1>Заявка у нас</h1>
+      <p class="sub lead">
+        Мы напишем по стоимости и креаторам. Приглашение уже ушло — креаторы отвечают сами, и состав
+        менеджер соберёт из тех, кто откликнулся.
+      </p>
+
+      <div class="card done-card">
+        @if (orderEstimate(); as e) {
+        <div class="sums">
+          <div class="sumrow total">
+            <span>{{ topStepFee() ? 'Меньше' : 'Ориентир' }}</span>
+            <b>{{ topStepFee() ? money(ceiling()) : money(e.total) }}</b>
+          </div>
+        </div>
+        }
+        <p class="muted">
+          Цена станет точной, когда менеджер утвердит состав и объём: он же поставит даты выкладок.
+        </p>
+        <!-- Ссылка в проект — главное на этом экране. Проект уже
+             существует: заказчику есть куда прийти и где написать, пока
+             менеджер считает. Раньше здесь была тишина на несколько
+             дней. -->
+        @if (projectId()) {
+        <button class="btn primary" type="button" (click)="openProject()">Открыть проект</button>
+        <p class="muted">
+          В проекте уже работает переписка — вопрос можно задать прямо сейчас, даже пока менеджер не
+          взял его на себя.
+        </p>
+        }
+      </div>
+    </section>
+    }
+  </div>
+</main>

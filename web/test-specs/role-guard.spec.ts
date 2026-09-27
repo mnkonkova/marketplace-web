@@ -64,4 +64,67 @@ describe('requireRole', () => {
     expect(await run('specialist', 'admin')).toBeFalse();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
   });
+
+  /**
+   * Роли не исключают друг друга.
+   *
+   * Менеджер бывает и креатором: он ведёт чужие проекты и сам снимает в
+   * своих. Проверка по одной derived-строке роли разворачивала такого
+   * человека с СОБСТВЕННОГО кабинета выкладок — «менеджер» перекрывал
+   * «специалиста», и /me/creator/projects отвечал редиректом на главную.
+   */
+  it('менеджер-креатор попадает и в CRM, и в свой кабинет выкладок', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        access_token: 'a',
+        refresh_token: 'r',
+        kind: 'specialist',
+        is_manager: true,
+        is_approved: true,
+      }),
+    );
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [HttpClientTestingModule, RouterTestingModule] });
+    auth = TestBed.inject(AuthSessionStore);
+    router = TestBed.inject(Router);
+    spyOn(router, 'navigateByUrl').and.resolveTo(true);
+
+    expect(await run('specialist', 'admin')).toBeTrue();
+    expect(await run('manager', 'admin')).toBeTrue();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  /** kind = 'both' — это и клиент, и специалист, а не «клиент». */
+  it('клиент-специалист проходит в оба кабинета', async () => {
+    auth.save({ access_token: 'a', refresh_token: 'r' }, 'both');
+    expect(await run('specialist', 'admin')).toBeTrue();
+    expect(await run('client')).toBeTrue();
+  });
+
+  /**
+   * Неподтверждённый менеджер в CRM не ходит — но его кабинет
+   * специалиста к подтверждению отношения не имеет: подтверждают
+   * менеджерство, а не человека.
+   */
+  it('неподтверждённое менеджерство не запирает кабинет специалиста', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        access_token: 'a',
+        refresh_token: 'r',
+        kind: 'specialist',
+        is_manager: true,
+        is_approved: false,
+      }),
+    );
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [HttpClientTestingModule, RouterTestingModule] });
+    auth = TestBed.inject(AuthSessionStore);
+    router = TestBed.inject(Router);
+    spyOn(router, 'navigateByUrl').and.resolveTo(true);
+
+    expect(await run('specialist', 'admin')).toBeTrue();
+    expect(await run('manager', 'admin')).toBeFalse();
+  });
 });

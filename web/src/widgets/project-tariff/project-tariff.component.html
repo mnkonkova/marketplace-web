@@ -1,0 +1,205 @@
+<div class="panel-h">
+  <h2>Тариф проекта</h2>
+  <span class="sub">своя таблица, не общий прайс</span>
+</div>
+
+@if (loading()) {
+  <p class="muted">Загружаем…</p>
+} @else {
+  <p class="muted tr-note">Правка действует с текущего периода; подытоженные не меняются.</p>
+
+  <!-- ФИКС ЗА РОЛИК. Цена одной вышедшей выкладки, а не месяца: месяц
+       с пятью роликами не должен стоить как месяц с тридцатью.
+       Отдельной парой полей и одинаково в обеих моделях — раньше он
+       прятался в нулевой ступени лесенки и в окладе, то есть одно и то
+       же число жило в двух местах, и правка одного не доезжала до
+       другого. -->
+  <div class="tr-fix">
+    <label>
+      <span class="lbl">Фикс за ролик, ₽ заказчику</span>
+      <input class="inp num" type="number" min="0" [(ngModel)]="fixClient" />
+    </label>
+    <label>
+      <span class="lbl">Из них креатору, ₽</span>
+      <input
+        class="inp num"
+        type="number"
+        min="0"
+        placeholder="как заказчику"
+        [(ngModel)]="fixCreator"
+      />
+    </label>
+  </div>
+
+  <!-- Два правила счёта, и смешивать их в одном периоде нельзя:
+       непустая лесенка на сервере отменяет ставку за тысячу. -->
+  <div class="tr-mode">
+    <span class="lbl">Дальше считаем</span>
+    <div class="segbar" aria-label="Как считать сверх фикса">
+      <button type="button" [attr.aria-selected]="mode() === 'steps'" (click)="setMode('steps')">
+        ступенями
+      </button>
+      <button type="button" [attr.aria-selected]="mode() === 'rate'" (click)="setMode('rate')">
+        за тысячу просмотров
+      </button>
+    </div>
+  </div>
+
+  @if (mode() === 'rate') {
+    <div class="tr-fix">
+      <label>
+        <span class="lbl">За 1000 просмотров, ₽ заказчику</span>
+        <input class="inp num" type="number" min="0" [(ngModel)]="rateClient" />
+        <span class="hint">
+          Линейно, без порогов объёма за период: понятнее на старте, когда объём ещё не известен.
+        </span>
+      </label>
+      <label>
+        <span class="lbl">Из них креатору, ₽</span>
+        <input
+          class="inp num"
+          type="number"
+          min="0"
+          placeholder="как заказчику"
+          [(ngModel)]="rateCreator"
+        />
+      </label>
+    </div>
+  } @else {
+    <p class="muted tr-note">
+      Строка — порог объёма за период и цена периода на нём. Набрали за период столько-то — период
+      стоит столько-то. Ниже нижнего порога платится фикс за вышедшие ролики.
+    </p>
+
+    <div class="tbl-wrap">
+      <table class="tr-tbl">
+        <thead>
+          <tr>
+            <th>от просмотров</th>
+            <th>клиенту, ₽</th>
+            <th>креатору, ₽</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of sorted(); track row.i) {
+            <tr>
+              <td data-label="от просмотров">
+                <input
+                  class="inp num"
+                  type="number"
+                  min="0"
+                  step="10000"
+                  [ngModel]="row.r.fromViews"
+                  (ngModelChange)="setCell(row.i, 'fromViews', $event)"
+                  aria-label="Порог просмотров"
+                />
+              </td>
+              <td data-label="клиенту">
+                <input
+                  class="inp num"
+                  type="number"
+                  min="0"
+                  [ngModel]="row.r.clientFee"
+                  (ngModelChange)="setCell(row.i, 'clientFee', $event)"
+                  aria-label="Цена периода заказчику, рублей"
+                />
+              </td>
+              <td data-label="креатору">
+                <!-- Пусто — «столько же, сколько платит заказчик»: до
+                   заполнения стороны совпадают и маржи у площадки нет. -->
+                <input
+                  class="inp num"
+                  type="number"
+                  min="0"
+                  placeholder="как клиенту"
+                  [ngModel]="row.r.creatorFee"
+                  (ngModelChange)="setCell(row.i, 'creatorFee', $event)"
+                  aria-label="Оклад креатору на ступени, рублей"
+                />
+              </td>
+              <td class="r">
+                <button
+                  type="button"
+                  class="btn sm"
+                  (click)="removeRow(row.i)"
+                  [attr.aria-label]="'Убрать ступень от ' + row.r.fromViews"
+                >
+                  ×
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="muted">
+                Порогов нет — период стоит ровно столько, сколько роликов вышло. Добавьте первый,
+                чтобы цена росла и за объём просмотров.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tr-acts">
+      <button type="button" class="btn sm" (click)="addRow()">+ ступень</button>
+    </div>
+  }
+
+  <details class="tr-extra" [open]="extraOpen()">
+    <summary (click)="extraOpen.set(!extraOpen())">Дополнительно</summary>
+
+    <div class="tr-grid">
+      <label>
+        <span class="lbl">Гарантия, просмотров за период</span>
+        <input class="inp num" type="number" min="0" [(ngModel)]="guaranteeViews" />
+        <span class="hint">
+          Недобрали — период всё равно оплачивается, а недостающие просмотры уходят в долг и гасятся
+          из следующего.
+        </span>
+      </label>
+
+      <label>
+        <span class="lbl">Виральный хвост: порог на ролик</span>
+        <input class="inp num" type="number" min="0" [(ngModel)]="tailThreshold" />
+        <span class="hint">Сумма по всем площадкам одного ролика. Пусто — хвост не считаем.</span>
+      </label>
+
+      <label>
+        <span class="lbl">Ставка за 1000 сверх порога, ₽</span>
+        <input class="inp num" type="number" min="0" [(ngModel)]="tailRate" />
+        <span class="hint">Ниже основной намеренно: так виральный ролик не съедает бюджет.</span>
+      </label>
+
+      <label>
+        <span class="lbl">Подписчик: платит заказчик, ₽</span>
+        <input class="inp num" type="number" min="0" [(ngModel)]="subscriberRate" />
+        <span class="hint">Число подписчиков вписывает менеджер — сборщика по ним нет.</span>
+      </label>
+
+      <label>
+        <span class="lbl">Подписчик: получает креатор, ₽</span>
+        <input class="inp num" type="number" min="0" [(ngModel)]="creatorSubscriberRate" />
+        <span class="hint">Пусто — столько же, сколько платит заказчик.</span>
+      </label>
+    </div>
+  </details>
+
+  @if (problem(); as p) {
+    <p class="tr-bad">{{ p }}</p>
+  }
+
+  <!-- «Заполнить из прайса» стоит рядом с «Сохранить», а не под
+       таблицей: это действие над ВСЕМ тарифом — оно перепишет и фикс, и
+       модель, — и к списку ступеней отношения не имеет. Под таблицей
+       оно читалось как «добавить ещё строк». -->
+  <div class="tr-foot">
+    <button type="button" class="btn primary" [disabled]="busy() || !!problem()" (click)="save()">
+      Сохранить тариф
+    </button>
+    <button type="button" class="btn sm" [disabled]="busy()" (click)="fromPrice()">
+      Заполнить из прайса
+    </button>
+    <span class="muted small">Считает сервер — в браузере ничего не складывается.</span>
+  </div>
+}

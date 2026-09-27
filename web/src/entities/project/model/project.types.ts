@@ -1,13 +1,7 @@
 // Типы соответствуют DTO из marketplace-api/internal/projects/dto.go.
 // Поля, отсутствующие в JSON (omitempty в Go), здесь optional.
 
-export type ProjectStatus =
-  | 'draft'
-  | 'active'
-  | 'on_hold'
-  | 'done'
-  | 'cancelled'
-  | 'dispute';
+export type ProjectStatus = 'draft' | 'active' | 'on_hold' | 'done' | 'cancelled' | 'dispute';
 
 export type StepStatus =
   | 'pending'
@@ -29,6 +23,20 @@ export type StageDisplayStatus = 'not_started' | 'active' | 'completed';
 
 export type StepOwner = 'client' | 'team' | 'system';
 
+// Вид проекта. До него фронт отличал проект с креаторами от воронки по
+// наличию выкладок — то есть догадкой: пустой месяц у нового проекта
+// выглядел так же, как проект, где выкладок не бывает вовсе.
+//
+// brand_turnkey — тот же план выкладок, но ролики выходят с аккаунтов
+// самого бренда: людей в проекте нет, поэтому нет ни состава креаторов,
+// ни проверки ролика, ни начислений. Сумму проекта вместо начислений
+// называет менеджер одним числом.
+export type ProjectKind = 'creators_turnkey' | 'brand_turnkey' | 'production_turnkey' | 'general';
+
+// Порядок админского списка. По умолчанию — самые давно обновлённые
+// сверху: список открывают, чтобы увидеть, что не двигалось.
+export type AdminProjectsSort = 'updated_asc' | 'updated_desc' | 'created_asc' | 'created_desc';
+
 export interface ProjectBase {
   id: string;
   lead_id?: string;
@@ -36,7 +44,14 @@ export interface ProjectBase {
   client_user_id: string;
   specialist_user_id?: string;
   assigned_to_user_id?: string;
-  pipeline_id: string;
+  // Воронки нет у общего проекта, и поле в ответе тогда отсутствует:
+  // нулевой uuid раньше врал, что она есть. Логика «воронка есть» должна
+  // смотреть на kind, а не на наличие id.
+  pipeline_id?: string;
+  kind: ProjectKind;
+  // Проект заведён для проверки стенда. Админский список такие прячет,
+  // пока не попросят показать.
+  is_test: boolean;
   title: string;
   source: string;
   status: ProjectStatus;
@@ -94,6 +109,10 @@ export interface ProjectClientView extends ProjectBase {
   current_step_status?: StepStatus;
   revisions_total: number;
   specialist_display_name?: string;
+  // Имя менеджера проекта. Вкладка переписки в кабинете подписана
+  // именем человека («Ирина, ваш менеджер»), а не «поддержкой», и брать
+  // это имя больше неоткуда. Пусто = менеджер ещё не назначен.
+  manager_display_name?: string;
   // Основная категория исполнителя (e.g., «Видеооператор», «Дизайнер»).
   // Используется как опознавательный знак карточки когда у клиента
   // несколько проектов.
@@ -105,8 +124,16 @@ export interface ProjectManagerView extends ProjectBase {
   client_display_name?: string;
   client?: PartyContact;
   specialist?: PartyContact;
+  // Имя ответственного менеджера. Пусто = проект никем не взят.
+  manager_display_name?: string;
   display_status: ProjectDisplayStatus;
   progress: number;
+  // Прогресс числом, а не только процентом: «3 из 5 выкладок» читается
+  // с одного взгляда, а 60% требуют знать, из чего они.
+  progress_done?: number;
+  progress_total?: number;
+  // В чём измерен: publications у креаторов, steps у продакшна.
+  progress_unit?: 'publications' | 'steps';
   current_stage_id?: string;
   current_stage_name?: string;
   current_stage_order: number;
@@ -136,17 +163,53 @@ export interface PartyContact {
   telegram?: string;
 }
 
+// Ветка переписки. Их три, и делит их право читать: клиентская (клиент ↔
+// менеджер), креаторская (у каждого креатора своя) и внутренняя, которую
+// видит только персонал.
+export type CommentThread = 'client' | 'creator' | 'internal';
+
+export type CommentBodyFormat = 'plain' | 'html' | 'tiptap_json';
+
 export interface ProjectComment {
   id: string;
   project_id: string;
   author_id: string;
   author_name?: string;
+  // Тело в формате body_format. Для html здесь уже очищенная сервером
+  // разметка: чистка происходит на записи, читателю отдаётся готовое.
   body: string;
-  body_format: 'plain' | 'html' | 'tiptap_json';
+  // То же без тегов. Для превью и заголовков брать надо его.
+  body_text?: string;
+  body_format: CommentBodyFormat;
+  // Ветка. Старые записи приходят без него — тогда её определяет
+  // is_internal, см. threadOf().
+  thread?: CommentThread;
+  // Заполнен только у creator: чья это ветка.
+  thread_user_id?: string;
+  // Кого реально упомянули. Постороннего сервер молча выбрасывает, так
+  // что здесь — те, до кого уведомление дошло.
+  mentions?: string[];
   is_internal: boolean;
   created_at: string;
   updated_at: string;
   deleted_at?: string;
+}
+
+// Участник ветки — он же множество, по которому сервер проверяет
+// упоминания на записи.
+export interface CommentParticipant {
+  user_id: string;
+  display_name: string;
+  role: 'client' | 'creator' | 'specialist' | 'manager' | 'admin';
+}
+
+// Тело запроса на отправку. thread и creator_id заполняет только
+// менеджер: у клиента и креатора ветка одна и определяется ручкой.
+export interface CommentInput {
+  body: string;
+  body_format?: CommentBodyFormat;
+  thread?: CommentThread;
+  creator_id?: string;
 }
 
 export interface ProjectEvent {

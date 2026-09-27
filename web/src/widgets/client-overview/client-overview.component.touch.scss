@@ -1,0 +1,40 @@
+// Тач-слой реестра проектов в кабинете заказчика.
+//
+// На десктопе строка — четыре колонки, выровненные по правому краю. На
+// 390 пикселях правого края нет: четыре значения переносятся вразнобой,
+// и непонятно, какое к чему. Поэтому сетка: название во всю ширину, под
+// ним числа, состояние отдельной строкой.
+
+@use 'touch' as touch;
+
+@include touch.phone {
+  .registry {
+    margin-top: 20px;
+  }
+
+  // Строка целиком — цель нажатия, и она не должна быть ниже пальца.
+  .prow {
+    gap: 10px 16px;
+    grid-template-columns: 1fr auto;
+    min-height: touch.$tap;
+    padding: 14px 2px;
+
+    .pt {
+      grid-column: 1 / -1;
+    }
+
+    .pn {
+      align-items: flex-start;
+      text-align: left;
+    }
+
+    .pn:last-of-type {
+      align-items: flex-end;
+      text-align: right;
+    }
+
+    .pst {
+      grid-column: 1 / -1;
+    }
+  }
+}

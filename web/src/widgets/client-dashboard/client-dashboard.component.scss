@@ -1,0 +1,582 @@
+// Дашборд заказчика. Цвета площадок приходят из PLATFORM_COLOR инлайном:
+// площадку узнают по цвету раньше, чем прочтут название. Всё остальное —
+// токены дизайн-системы.
+//
+// Два цвета смысла работают здесь буквально: латунь на просмотрах
+// («выросло»), лёд на цене тысячи («упало»). Коралл на этом экране не
+// встречается вовсе — он значит «действие», а действий здесь нет.
+
+:host {
+  display: block;
+}
+
+.dash {
+  margin: 0 0 20px;
+}
+
+// ---- шапка: окно данных ----
+//
+// Подписанный переключатель, а не таблетки в ряд с разделами кабинета.
+// Раньше две одинаковые таблетки стояли в семидесяти пикселях друг от
+// друга: одна меняла экран, вторая — числа. Одинаковая форма обещает
+// одинаковое последствие.
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 20px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.when {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.seg-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.seg-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--bg-elevated);
+
+  button {
+    min-height: 32px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+
+  button:hover {
+    color: var(--text);
+  }
+
+  button.on {
+    background: var(--surface-hover);
+    box-shadow: inset 0 0 0 1px var(--border-strong);
+    color: var(--text);
+  }
+}
+
+// ---- общий словарь блока ----
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+// Пояснение при числе. Ширина ограничена: строка длиннее 62 знаков
+// перестаёт читаться с одного прохода, а читают её один раз.
+.say {
+  max-width: 62ch;
+  margin: 14px 0 0;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+
+  b {
+    color: var(--text);
+    font-weight: 600;
+  }
+}
+
+.say.small {
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+
+// Карточка — панель кабинета, а не своя: этот блок живёт на экране
+// «Все проекты» между такими же панелями, и собственная геометрия
+// читалась как вставка из другого продукта. Те же 1px по --line,
+// тот же радиус, тот же отступ.
+.card {
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.chead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+
+  h3 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .say {
+    margin-top: 4px;
+  }
+}
+
+// ---- ОТВЕТ: объём и цена тысячи рядом ----
+//
+// Одна рамка на две половины, а не карточка-герой и плитка четвёртой в
+// ряду. Продаёт их ОТНОШЕНИЕ: объём растёт — цена тысячи падает; порознь
+// ни одно из этих чисел не аргумент.
+
+.answer {
+  display: grid;
+  gap: 0;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.half {
+  display: flex;
+  flex-direction: column;
+  padding: 26px 28px;
+}
+
+// Латунная кромка у объёма, ледяная у цены: два цвета смысла держат
+// половины различимыми и без линейки между ними.
+// Ровно одна акцентная величина на блок — как во всём кабинете.
+// Золото здесь значило «ставка» и осталось только в лесенке тарифа,
+// где оно и значит ставку; главный ответ золотым быть перестал, иначе
+// одно и то же число оказывалось на экране двух разных цветов.
+.half.views {
+  // Половины уже разделены рамкой и подложкой — третий разделитель
+  // ничего не добавлял.
+  border-left: 0;
+}
+
+.half.price {
+  border-left: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.big {
+  margin: 0;
+  font-family: var(--font-head);
+  // Сорок четыре, а не шестьдесят четыре. Число остаётся самым громким
+  // на экране, но попадает в шаг кабинета: 11 подпись → 28 плитка →
+  // 44 ответ. Шестьдесят четыре выбивались из него вдвое и делали
+  // блок отдельной страницей внутри страницы.
+  font-size: clamp(34px, 3.4vw, 44px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.big.brass {
+  color: var(--accent);
+}
+
+.big.ice {
+  color: var(--ice);
+}
+
+.big .unit {
+  margin-left: 0.14em;
+  color: var(--text-dim);
+  font: 700 0.42em/1 var(--font-body);
+  font-style: normal;
+}
+
+// Насечки: подпись продукта. 9:16 у каждой — родная форма ролика.
+app-steps {
+  margin-top: 18px;
+}
+
+.scale {
+  margin: 8px 0 0;
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+
+// ---- отклик одной строкой ----
+//
+// Взаимодействия, комментарии и ER — не три показателя, а один
+// разложенный: ER считается из тех же действий, что стоят слева. Четыре
+// равные плитки объявляли их независимыми, и три из четырёх стояли с
+// прочерком.
+
+.react {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.react-row {
+  display: flex;
+  gap: 12px 28px;
+  flex-wrap: wrap;
+}
+
+.react-row .r {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.react-row .num {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.react-row i {
+  color: var(--text-dim);
+  font-size: 11.5px;
+  font-style: normal;
+}
+
+// Лучший день окна. Прижат к низу половины: она выше соседней ровно на
+// столько, на сколько лесенка длиннее отклика, и пустота под последней
+// строкой читается как «здесь что-то не догрузилось».
+.best {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: auto 0 0;
+  padding-top: 18px;
+
+  .bk {
+    color: var(--text-faint);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  b {
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  .bv {
+    color: var(--accent);
+    font-family: var(--font-head);
+    font-size: 19px;
+    font-variant-numeric: tabular-nums;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+// ---- доказательства ----
+
+.proofs {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1.35fr 1fr;
+  margin-top: 16px;
+}
+
+// Одна карточка из двух: растягивать её на полторы колонки незачем — от
+// этого в ней появляется пустота, которая читается как «вторую забыли».
+.proofs.one {
+  grid-template-columns: 1fr;
+}
+
+.viral {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.clip {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 86px 1fr;
+}
+
+// Кадр 9:16 — родная форма ролика. Настоящей обложки у нас нет и взяться
+// ей неоткуда: ролик лежит на чужой площадке, а мы храним ссылку,
+// счётчики и дату. Поэтому здесь ЗНАК ПЛОЩАДКИ на её цвете, а не серая
+// заглушка: заглушка читается как несработавшая загрузка, то есть как
+// поломка, и заставляет искать, что сломалось.
+.cover {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  aspect-ratio: 9 / 16;
+  padding: 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  overflow: hidden;
+
+  .pl {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .cfoot {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .cdate {
+    color: var(--text-dim);
+    font-size: 10px;
+  }
+
+  .cn {
+    color: var(--text);
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+.clip .body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  justify-content: center;
+  min-width: 0;
+}
+
+.clip .ttl {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+// Автор и вовлечённость — одной строкой под названием: это подпись к
+// ролику, а не ещё два показателя. Крупнее её делать нельзя, иначе она
+// начнёт спорить с просмотрами, ради которых ролик сюда и попал.
+.clip .by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+
+  .who {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .er {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// Цель 44 px с числом и стрелкой наружу. Значок в 26 пикселей не обещал
+// ничего, не говорил, сколько там просмотров, и промахивался пальцем.
+.go {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s;
+
+  &:hover {
+    border-color: var(--border-hover);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+  }
+
+  .gl {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .gv {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .arr {
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+}
+
+// ---- ранжированные площадки ----
+//
+// Список с пропорциональными полосами вместо пяти одинаковых карточек.
+// При разнице в сорок раз одинаковые карточки рисовали TikTok и Likee
+// одного размера — то есть скрывали ровно то, ради чего разбор смотрят.
+
+.rank {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    gap: 10px;
+    align-items: center;
+    grid-template-columns: 8px minmax(72px, auto) 1fr auto;
+    padding: 9px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  li:first-child {
+    border-top: 0;
+  }
+
+  li.zero {
+    opacity: 0.55;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .nm {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .track {
+    display: block;
+    height: 7px;
+    border-radius: 99px;
+    background: var(--bg-elevated);
+    overflow: hidden;
+  }
+
+  .track b {
+    display: block;
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  .val {
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .val.none {
+    color: var(--text-faint);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 400;
+  }
+}
+
+// ---- график ----
+//
+// Стоит ПОСЛЕ ответа: он про «как рос», а страницу открывают ради
+// «сколько и почём». На телефоне свёрнут — шесть линий на 358 пикселях
+// без курсора не читаются.
+
+.chartcard {
+  margin-top: 26px;
+}
+
+.chartcard h3 {
+  margin: 0 0 12px;
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.chartcard .foldrow {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .answer,
+  .proofs {
+    grid-template-columns: 1fr;
+  }
+
+  .half.price {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .prow {
+    grid-template-columns: 1fr auto;
+  }
+
+  .prow .pempty {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .half {
+    padding: 20px 18px;
+  }
+
+  .clip {
+    grid-template-columns: 70px 1fr;
+  }
+}
+
+// Уменьшенное движение: полосы встают сразу на свою ширину. Набор числа
+// выключается в самой директиве — там это решение про данные, а не про css.
+@media (prefers-reduced-motion: reduce) {
+  .rank .track b {
+    transition: none;
+  }
+}

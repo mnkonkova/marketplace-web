@@ -1,9 +1,10 @@
-import { ApplicationConfig, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
 import {
-  provideRouter,
-  withComponentInputBinding,
-  withInMemoryScrolling,
-} from '@angular/router';
+  ApplicationConfig,
+  LOCALE_ID,
+  importProvidersFrom,
+  provideZoneChangeDetection,
+} from '@angular/core';
+import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { registerLocaleData } from '@angular/common';
@@ -97,6 +98,11 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptors([authInterceptor])),
     provideAnimationsAsync(),
     importProvidersFrom(NzModalModule),
+    // Без этого пайпы number и date молча берут en-US: registerLocaleData
+    // выше кладёт данные, но не говорит приложению, какой локалью
+    // пользоваться. В русском интерфейсе это выглядело как «3,000,000»
+    // просмотров и «8 Sep» вместо «3 000 000» и «8 сен».
+    { provide: LOCALE_ID, useValue: 'ru' },
     provideNzI18n(ru_RU),
     provideNzIcons(icons),
     importProvidersFrom(FormsModule),

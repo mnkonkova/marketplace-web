@@ -1,20 +1,5 @@
 @use '../../../shared/scss/breakpoints' as bp;
 
-h1 {
-  margin: 0 0 8px;
-}
-
-.head {
-  margin-bottom: 16px;
-
-  .hint {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 13px;
-    line-height: 1.4;
-  }
-}
-
 .filters {
   display: flex;
   gap: 8px;
@@ -34,20 +19,30 @@ h1 {
   font-size: 13px;
 }
 
-.user-row {
-  &.clickable {
-    cursor: pointer;
+// Имя — кнопка, а не строка целиком: в строке ещё меню действий, и
+// «клик куда угодно» отнимал бы у него промахи.
+.person {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
 
-    &:hover {
-      background: var(--surface-hover);
-    }
+  &:hover {
+    color: var(--cta);
   }
 }
 
-.row-actions {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+// Колонка меню прижата вправо и не растягивается: это не данные, а одна
+// точка входа в действия.
+td.r,
+th.r {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .dim {
@@ -55,56 +50,11 @@ h1 {
 }
 
 @media (max-width: bp.$touch) {
-  h1 {
-    font-size: 20px;
+  // Раскладку фильтров на телефоне задаёт общий слой CRM
+  // (shared/scss/_crm-touch.scss): сетка по двое в ряд и поля под
+  // палец. Здесь остаётся только то, что есть на этой странице.
+  .filters .search-input {
+    min-width: 0;
   }
 
-  .filters {
-    flex-direction: column;
-    align-items: stretch;
-
-    .search-input,
-    ::ng-deep nz-select {
-      width: 100%;
-      min-width: 0 !important;
-    }
-  }
-
-  // NzTable → card-layout с inline-лейблами (тот же паттерн что в managers).
-  ::ng-deep .ant-table {
-    min-width: 0 !important;
-
-    .ant-table-thead {
-      display: none;
-    }
-
-    .ant-table-tbody {
-      tr {
-        display: block;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 10px;
-        background: var(--surface);
-      }
-
-      td {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-        padding: 4px 0 !important;
-        border: none !important;
-
-        &[data-label]::before {
-          content: attr(data-label);
-          flex-shrink: 0;
-          min-width: 130px;
-          color: var(--text-muted);
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-      }
-    }
-  }
 }

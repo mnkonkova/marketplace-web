@@ -183,3 +183,29 @@ export function nonEmptySocialLinks(
   }
   return out;
 }
+
+/**
+ * Ник из ссылки на профиль: «https://tiktok.com/@nastya» → «@nastya».
+ *
+ * Нужен там, где важно не «есть ссылка», а «чей это аккаунт»: в составе
+ * проекта менеджер сверяет ник с тем, что прислал креатор, и открывать
+ * ради этого пять вкладок бессмысленно. Ничего осмысленного вытащить не
+ * удалось — отдаём хост: он всё равно говорит больше, чем сырой URL в
+ * триста символов.
+ */
+export function profileHandle(url: string): string {
+  const raw = (url ?? '').trim();
+  if (!raw) return '';
+  let parsed: URL;
+  try {
+    parsed = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+  } catch {
+    return raw;
+  }
+  // Первый непустой сегмент пути — это и есть профиль во всех пяти
+  // площадках: /@nick, /clip-123, /channel/UC…. Хвост вроде /video/741
+  // отбрасываем: он про ролик, а не про аккаунт.
+  const seg = parsed.pathname.split('/').filter(Boolean)[0] ?? '';
+  if (!seg) return parsed.hostname.replace(/^www\./, '');
+  return seg.startsWith('@') ? seg : `@${seg}`;
+}

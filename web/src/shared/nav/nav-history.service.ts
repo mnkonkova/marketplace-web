@@ -12,23 +12,21 @@ export interface BackTarget {
 /** Карта URL-паттернов → человеческий label. Первый match выигрывает.
  *  Не RegExp ради удобства редактирования. */
 const LABEL_MAP: { test: (url: string) => boolean; label: string }[] = [
-  { test: (u) => u === '/' || u.startsWith('/?'),                 label: 'На главную' },
-  { test: (u) => u.startsWith('/search'),                         label: 'К каталогу' },
-  { test: (u) => u.startsWith('/clarify'),                        label: 'Уточнить запрос' },
-  { test: (u) => u.startsWith('/feed'),                           label: 'К ленте' },
-  { test: (u) => u.startsWith('/me/projects'),                    label: 'К моим проектам' },
-  { test: (u) => u.startsWith('/me/specialist/projects'),         label: 'К моим работам' },
-  { test: (u) => u.startsWith('/me'),                             label: 'В кабинет' },
-  { test: (u) => u.startsWith('/manager/board'),                  label: 'К канбану' },
-  { test: (u) => u.startsWith('/manager'),                        label: 'Менеджер · инбокс' },
-  { test: (u) => u.startsWith('/admin/board'),                    label: 'К канбану' },
-  { test: (u) => u.startsWith('/admin/projects'),                 label: 'Ко всем проектам' },
-  { test: (u) => u.startsWith('/admin/dashboard'),                label: 'К дашборду' },
-  { test: (u) => u.startsWith('/admin/pipelines'),                label: 'К воронкам' },
-  { test: (u) => u.startsWith('/admin/managers'),                 label: 'К менеджерам' },
-  { test: (u) => u.startsWith('/admin/productions'),              label: 'К продакшенам' },
-  { test: (u) => u.startsWith('/admin'),                          label: 'В админку' },
-  { test: (u) => u.startsWith('/specialist/'),                    label: 'К специалисту' },
+  { test: (u) => u === '/' || u.startsWith('/?'), label: 'На главную' },
+  { test: (u) => u.startsWith('/search'), label: 'К каталогу' },
+  { test: (u) => u.startsWith('/clarify'), label: 'Уточнить запрос' },
+  { test: (u) => u.startsWith('/feed'), label: 'К ленте' },
+  { test: (u) => u.startsWith('/me/projects'), label: 'К моим проектам' },
+  { test: (u) => u.startsWith('/me/specialist/projects'), label: 'К моим работам' },
+  { test: (u) => u.startsWith('/me'), label: 'В кабинет' },
+  { test: (u) => u.startsWith('/manager/projects'), label: 'К моим проектам' },
+  { test: (u) => u.startsWith('/manager'), label: 'Ко входящим' },
+  { test: (u) => u.startsWith('/admin/projects'), label: 'Ко всем проектам' },
+  { test: (u) => u.startsWith('/admin/pipelines'), label: 'К воронкам' },
+  { test: (u) => u.startsWith('/admin/team'), label: 'К команде' },
+  { test: (u) => u.startsWith('/admin/productions'), label: 'К продакшенам' },
+  { test: (u) => u.startsWith('/admin'), label: 'В сводку' },
+  { test: (u) => u.startsWith('/specialist/'), label: 'К специалисту' },
 ];
 
 export function labelForUrl(url: string): string | null {

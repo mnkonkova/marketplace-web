@@ -1,0 +1,465 @@
+<app-page-head
+  title="Тарифы"
+  subtitle="Строка — проект: условия у каждого свои. Прайс площадки остался шаблоном, с которого заполняют новый проект."
+>
+  <div head-action class="head-acts">
+    <!-- Переключатель вида той же деталью, что и окно сводки: это
+         взаимоисключающий выбор, а не две независимые ссылки. -->
+    <div class="segbar" aria-label="Что показывать">
+      <button
+        type="button"
+        [attr.aria-selected]="view() === 'projects'"
+        (click)="view.set('projects')"
+      >
+        Проекты
+      </button>
+      <button
+        type="button"
+        [attr.aria-selected]="view() === 'template'"
+        (click)="view.set('template')"
+      >
+        Шаблон площадки
+      </button>
+    </div>
+    @if (view() === 'template') {
+    <button nz-button nzType="primary" nzSize="small" type="button" (click)="openForm()">
+      Выпустить версию прайса
+    </button>
+    }
+  </div>
+</app-page-head>
+
+@if (view() === 'projects') {
+<div class="crm-page tariff">
+  @if (rowsLoading()) {
+  <p class="empty">Загружаем…</p>
+  } @else if (!rows().length) {
+  <p class="empty">Проектов с креаторами пока нет.</p>
+  } @else {
+  <!-- Проект без тарифа считается ПО НУЛЯМ, и на экране денег это
+           выглядит как «ещё не начислили». Поэтому такие идут первыми и
+           сосчитаны отдельно. -->
+  @if (missing()) {
+  <p class="reg-warn">
+    Без тарифа {{ missing() }} {{ missing() === 1 ? 'проект' : 'проекта и больше' }} — они считаются
+    по нулям, и на экране денег это выглядит как «ещё не начислили».
+  </p>
+  }
+
+  <!-- Свой класс на обёртке: правила телефона снимают с неё рамку и
+           прокрутку, а на этой же странице есть вторая таблица —
+           история версий прайса, — которую прокручивать как раз надо. -->
+  <div class="twrap reg-wrap">
+    <table class="reg">
+      <thead>
+        <tr>
+          <th>Проект</th>
+          <th>Заказчик</th>
+          <th>Менеджер</th>
+          <th>Модель</th>
+          <th>Период заказчику</th>
+          <th>Обновлён</th>
+          <th class="r"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of rows(); track r.project_id) {
+        <tr [class.nofee]="!r.has_terms">
+          <td data-label="Проект"><b>{{ r.title || 'Без названия' }}</b></td>
+          <td data-label="Заказчик">{{ r.client_name || '—' }}</td>
+          <td data-label="Менеджер">{{ r.manager_name || 'не назначен' }}</td>
+          <td data-label="Модель">{{ modelLabel(r) }}</td>
+          <td data-label="Период заказчику" class="num">{{ feeLabel(r) }}</td>
+          <td data-label="Обновлён">
+            {{ r.updated_at ? (r.updated_at | date: 'dd.MM.yyyy') : '—' }}
+          </td>
+          <td class="r">
+            <button type="button" class="btn sm" (click)="toggleProject(r.project_id)">
+              {{ openProject() === r.project_id ? 'Свернуть' : 'Править' }}
+            </button>
+          </td>
+        </tr>
+        @if (openProject() === r.project_id) {
+        <tr class="editor">
+          <td colspan="7">
+            <app-project-tariff [projectId]="r.project_id" (saved)="loadRows()" />
+          </td>
+        </tr>
+        } }
+      </tbody>
+    </table>
+  </div>
+  }
+</div>
+} @else {
+<div class="crm-page tariff">
+  @if (loading()) {
+  <p class="empty">Загружаем…</p>
+  } @else { @if (current(); as v) {
+  <div class="rates">
+    <div class="rate">
+      <span class="cap">Фикс за ролик</span>
+      <b>{{ money(v.fee_per_video) }} <small>/ ролик с заказчика</small></b>
+      <div class="tier">
+        <span class="d">креатору</span>
+        <span class="v">{{ money(v.creator_fee_per_video ?? v.fee_per_video) }}</span>
+      </div>
+      <div class="tier">
+        <span class="d">остаётся площадке</span>
+        <span class="v">{{ money(marginSalary(v)) }}</span>
+      </div>
+      <div class="tier">
+        <span class="d">первый месяц</span>
+        <span class="v">{{ v.videos_first_month }} видео</span>
+      </div>
+      <div class="tier">
+        <span class="d">со второго месяца</span>
+        <span class="v">{{ v.videos_next_months }} видео / мес</span>
+      </div>
+    </div>
+
+    <div class="rate">
+      <span class="cap">За просмотры</span>
+      <b>{{ money(v.rate_per_1000_views) }} <small>/ 1000 с заказчика</small></b>
+      <div class="tier">
+        <span class="d">до {{ v.bonus_views_threshold | number }} просмотров на ролик</span>
+        <span class="v">{{ money(v.rate_per_1000_views) }}</span>
+      </div>
+      <div class="tier">
+        <span class="d">свыше порога</span>
+        <span class="v">{{ money(v.rate_per_1000_views_over) }}</span>
+      </div>
+      <div class="tier">
+        <span class="d">креатору до порога</span>
+        <span class="v">{{ money(creatorShare(v, 'rate')) }}</span>
+      </div>
+      <div class="tier">
+        <span class="d">креатору свыше</span>
+        <span class="v">{{ money(creatorShare(v, 'rateOver')) }}</span>
+      </div>
+      <span class="offnote">
+        Ставка падает после порога — так виральный ролик не съедает бюджет. Порог считается по
+        ролику целиком, суммой по всем пяти площадкам.
+      </span>
+    </div>
+
+    <div class="rate" [class.off]="!clicksOn(v)">
+      <span class="cap">За переходы</span>
+      @if (clicksOn(v)) {
+      <b>{{ money(v.click_bonus_rate) }} <small>/ переход</small></b>
+      <div class="tier">
+        <span class="d">до {{ v.click_bonus_threshold | number }} переходов в месяц</span>
+        <span class="v">{{ money(v.click_bonus_rate) }}</span>
+      </div>
+      <div class="tier">
+        <span class="d">каждый следующий</span>
+        <span class="v">{{ money(v.click_bonus_rate_over) }}</span>
+      </div>
+      <span class="offnote">
+        Счётчика переходов у нас нет: число менеджер сводит руками из аналитики заказчика. Ставка
+        объявлена — по ней и считают обе стороны.
+      </span>
+      } @else {
+      <b>—</b>
+      <span class="offnote">
+        Переходы не считаем: ставка не объявлена. Объявите её в новой версии прайса — и клиент, и
+        менеджер увидят, по чему считать.
+      </span>
+      }
+    </div>
+  </div>
+
+  @if (steps(v).length) {
+  <h2 class="sec">Ступени</h2>
+  <p class="sub">
+    Набрали за период столько просмотров — период стоит столько. Берётся последняя взятая ступень, а
+    не сумма всех пройденных.
+  </p>
+  <div class="twrap">
+    <table>
+      <thead>
+        <tr>
+          <th>От просмотров за период</th>
+          <th>Платит заказчик</th>
+          <th>Креатору</th>
+          <th>Остаётся площадке</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (st of steps(v); track st.from_views) {
+        <tr>
+          <td class="num">{{ st.from_views | number }}</td>
+          <td>{{ money(st.client_fee) }}</td>
+          <td>{{ money(stepCreatorFee(st)) }}</td>
+          <td>{{ money(st.client_fee - stepCreatorFee(st)) }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+
+  <h2 class="sec">KPI по подписчикам</h2>
+  @if (subsOn(v)) {
+  <p class="sub">
+    {{ money(v.subscriber_rate) }} за подписчика с заказчика, креатору {{
+    money(v.creator_subscriber_rate ?? v.subscriber_rate) }}. Сборщика подписчиков у нас нет: число
+    за период вписывает менеджер руками — так же, как переходы по UTM.
+  </p>
+  } @else {
+  <p class="sub">
+    Не считаем: ставка не объявлена. Объявите её в новой версии — и в проекте появится поле, куда
+    менеджер вписывает подписчиков за период.
+  </p>
+  }
+
+  <h2 class="sec">Текст условий · {{ versionLabel(v) }}</h2>
+  <p class="body">{{ v.body }}</p>
+  } @else {
+  <p class="empty">
+    Прайса ещё нет. Пока его нет, менеджер заполняет условия каждого проекта руками, а кнопка «Взять
+    из прайса» в проекте ничего не даёт.
+  </p>
+  } } @if (versions().length) {
+  <h2 class="sec">История версий</h2>
+  <div class="twrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Версия</th>
+          <th>Выпущена</th>
+          <th>Фикс за ролик</th>
+          <th>За 1000</th>
+          <th>Креатору</th>
+          <th>Согласий</th>
+          <th>Проектов</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (v of versions(); track v.version) {
+        <tr>
+          <td class="num">{{ versionLabel(v) }}</td>
+          <td>{{ v.published_at | date: 'd MMM y' }}</td>
+          <td>{{ money(v.fee_per_video) }}</td>
+          <td>{{ money(v.rate_per_1000_views) }}</td>
+          <td>{{ money(creatorShare(v, 'rate')) }} / 1000</td>
+          <td>{{ v.consented_clients }}</td>
+          <td>{{ v.used_by_projects }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</div>
+
+@if (formOpen()) {
+<div class="ovl" (click)="closeForm()"></div>
+<div class="modal crm-page" role="dialog" aria-label="Новая версия прайса">
+  <h2>Новая версия прайса</h2>
+  <p class="sub">
+    Действующая версия останется как есть — по ней досчитываются начатые проекты. Новая начнёт
+    действовать сразу после выпуска.
+  </p>
+
+  <!-- Фикс стоит первым и отдельной парой: это основная цена работы,
+       а ступени ниже — надбавка за рост. Обе стороны рядом, потому что
+       разница между ними и есть маржа площадки, и вводить их в разных
+       концах формы значит считать её в уме. -->
+  <h3 class="sec">Фикс за ролик</h3>
+  <p class="sub">
+    Цена одной вышедшей выкладки, а не месяца: месяц с пятью роликами не должен стоить как месяц с
+    тридцатью. Заменяет собой нижнюю ступень лесенки — там и был фикс за период. Пусто — фикса за
+    ролик нет, цена берётся из ступеней, как раньше.
+  </p>
+  <div class="grid">
+    <label>
+      <span class="lbl">Заказчик платит за ролик, ₽</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.feePerVideo" />
+    </label>
+    <label>
+      <span class="lbl">Креатор получает за ролик, ₽</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.creatorFeePerVideo" />
+    </label>
+  </div>
+
+  <h3 class="sec">Платит заказчик</h3>
+  <p class="sub">
+    Оклад за месяц выключен: фикс считается за ролик, выше. Поле осталось для старых версий прайса —
+    новую заводите с нулём, иначе фикс посчитается дважды.
+  </p>
+  <div class="grid">
+    <label>
+      <span class="lbl">Оклад за месяц, ₽ — старая модель</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.salary" />
+    </label>
+    <label>
+      <span class="lbl">Видео в первый месяц</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.videosFirst" />
+    </label>
+    <label>
+      <span class="lbl">Видео со второго месяца</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.videosNext" />
+    </label>
+    <label>
+      <span class="lbl">За 1000 просмотров, ₽</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.rate" />
+    </label>
+    <label>
+      <span class="lbl">Порог просмотров на ролик</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.threshold" />
+    </label>
+    <label>
+      <span class="lbl">За 1000 свыше порога, ₽</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.rateOver" />
+    </label>
+  </div>
+
+  <h3 class="sec">Получает креатор</h3>
+  <p class="sub">
+    Пусто — креатор получает столько же, сколько платит заказчик: площадка ничего не удерживает. Это
+    не то же самое, что ноль.
+  </p>
+  <div class="grid">
+    <label>
+      <span class="lbl">Оклад за месяц, ₽ — старая модель</span>
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        placeholder="как у заказчика"
+        [(ngModel)]="draft.creatorSalary"
+      />
+    </label>
+    <label>
+      <span class="lbl">За 1000 просмотров, ₽</span>
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        placeholder="как у заказчика"
+        [(ngModel)]="draft.creatorRate"
+      />
+    </label>
+    <label>
+      <span class="lbl">За 1000 свыше порога, ₽</span>
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        placeholder="как у заказчика"
+        [(ngModel)]="draft.creatorRateOver"
+      />
+    </label>
+  </div>
+
+  <h3 class="sec">За переходы по UTM</h3>
+  <p class="sub">
+    Счётчика кликов у нас нет — число сводит менеджер руками из аналитики заказчика. Но ставка
+    должна быть объявлена: по ней считают обе стороны. Выключено — переходы не входят в счёт вовсе;
+    это не то же самое, что ставка ноль.
+  </p>
+  <label class="check">
+    <input type="checkbox" [(ngModel)]="draft.countClicks" />
+    <span>Считать переходы</span>
+  </label>
+  @if (draft.countClicks) {
+  <div class="grid">
+    <label>
+      <span class="lbl">За переход, ₽</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.clickRate" />
+    </label>
+    <label>
+      <span class="lbl">Порог переходов в месяц</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.clickThreshold" />
+    </label>
+    <label>
+      <span class="lbl">За переход свыше порога, ₽</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.clickRateOver" />
+    </label>
+  </div>
+  }
+
+  <h3 class="sec">Ступени</h3>
+  <p class="sub">
+    Порог объёма и цена периода на нём: «набрали 300 000 — период стоит столько-то». Берётся
+    последняя взятая ступень, а не сумма пройденных. Ступеней может быть сколько угодно, но нижней с
+    порогом 0 больше не нужно: её место занял фикс за ролик. Ступеней нет вовсе — сверх фикса
+    считается ставка за тысячу.
+  </p>
+  @if (draft.steps.length) {
+  <div class="steps">
+    <div class="steps-head">
+      <span>От просмотров</span>
+      <span>Платит заказчик, ₽</span>
+      <span>Креатору, ₽</span>
+      <span></span>
+    </div>
+    @for (st of draft.steps; track $index) {
+    <div class="step-row">
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        step="1000"
+        [(ngModel)]="st.fromViews"
+        [name]="'from' + $index"
+      />
+      <input class="inp" type="number" min="0" [(ngModel)]="st.clientFee" [name]="'fee' + $index" />
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        placeholder="как у заказчика"
+        [(ngModel)]="st.creatorFee"
+        [name]="'cfee' + $index"
+      />
+      <button class="btn quiet sm" type="button" (click)="removeStep($index)">Убрать</button>
+    </div>
+    }
+  </div>
+  }
+  <button class="btn quiet" type="button" (click)="addStep()">Добавить ступень</button>
+
+  <h3 class="sec">KPI по подписчикам</h3>
+  <p class="sub">
+    Подписчиков никто не собирает: сборщика по ним в продукте нет. Объявляем только ставку — число
+    за период вписывает менеджер руками, ровно так же, как переходы по UTM. Выключено — KPI не
+    входит в счёт вовсе; это не то же самое, что ставка ноль.
+  </p>
+  <label class="check">
+    <input type="checkbox" [(ngModel)]="draft.countSubs" name="countSubs" />
+    <span>Считать подписчиков</span>
+  </label>
+  @if (draft.countSubs) {
+  <div class="grid">
+    <label>
+      <span class="lbl">За подписчика, ₽</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="draft.subRate" name="subRate" />
+    </label>
+    <label>
+      <span class="lbl">Креатору за подписчика, ₽</span>
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        placeholder="как у заказчика"
+        [(ngModel)]="draft.creatorSubRate"
+        name="creatorSubRate"
+      />
+    </label>
+  </div>
+  }
+
+  <h3 class="sec">Текст условий</h3>
+  <p class="sub">С ним соглашается заказчик перед стартом проекта.</p>
+  <textarea class="inp body-input" rows="8" [(ngModel)]="draft.body"></textarea>
+
+  <div class="modal-actions">
+    <button class="btn quiet" type="button" (click)="closeForm()">Отмена</button>
+    <button class="btn primary" type="button" [disabled]="saving()" (click)="publish()">
+      Выпустить версию
+    </button>
+  </div>
+</div>
+} }

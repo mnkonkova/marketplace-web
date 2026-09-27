@@ -1,4 +1,5 @@
 @use '../../../shared/scss/breakpoints' as bp;
+@use '../../../shared/scss/touch' as touch;
 
 .section-title {
   margin: 0 0 12px;
@@ -90,6 +91,13 @@
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 16px;
+
+  // У проекта без воронки левый столбец пустой, и сетка растягивала
+  // контакты на треть ширины рядом с пустотой.
+  &.solo {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+  }
 }
 
 .stage {
@@ -192,22 +200,6 @@
   }
 }
 
-.danger-zone {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-left: 16px;
-  border-left: 1px dashed var(--border);
-
-  small {
-    color: var(--text-dim);
-    font-size: 11px;
-    max-width: 180px;
-    line-height: 1.3;
-  }
-}
-
 .pending {
   color: #f59e0b;
 }
@@ -292,82 +284,6 @@
   }
 }
 
-.comments {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.comment {
-  background: var(--bg-elevated);
-  border-radius: 6px;
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-
-  &.internal {
-    background: rgba(245, 158, 11, 0.06);
-    border-left: 3px solid rgba(245, 158, 11, 0.55);
-    padding-left: 9px;
-  }
-
-  .comment-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .badge-internal {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: #f59e0b;
-    background: rgba(245, 158, 11, 0.14);
-    padding: 1px 6px;
-    border-radius: 999px;
-  }
-
-  strong {
-    font-size: 13px;
-  }
-
-  p {
-    margin: 0;
-    font-size: 14px;
-  }
-
-  small {
-    color: var(--text-dim);
-    font-size: 11px;
-  }
-}
-
-.comment-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
-  flex-wrap: wrap;
-}
-
-.internal-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--text-muted);
-
-  &.on {
-    color: #f59e0b;
-    font-weight: 500;
-  }
-}
-
 .empty {
   color: var(--text-dim);
   margin: 0;
@@ -397,37 +313,6 @@
 
     dd {
       font-size: 14px;
-    }
-  }
-
-  // assign-row у админа на mobile — вертикальный stack, select на всю
-  // ширину, danger-zone отдельным блоком без декоративного border-left.
-  .hero ::ng-deep .assign-row {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-  .hero ::ng-deep .assign-label {
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-  .hero ::ng-deep nz-select {
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-  .danger-zone {
-    margin-left: 0;
-    padding-left: 0;
-    border-left: none;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-    padding-top: 12px;
-    border-top: 1px dashed var(--border);
-
-    small {
-      max-width: none;
     }
   }
 
@@ -478,9 +363,8 @@
     flex-wrap: wrap;
   }
 
-  // Лента событий / комментарии — увеличиваем высоту, чтобы touch-скролл
-  // имел больше места и не упирался в края.
-  .comments,
+  // Лента событий — увеличиваем высоту, чтобы touch-скролл имел больше
+  // места и не упирался в края.
   .feed {
     max-height: 480px;
   }
@@ -526,5 +410,199 @@
       color: var(--text-dim);
       font-size: 11px;
     }
+  }
+}
+
+// ── админский блок над проектом ─────────────────────────
+// Заменяет менеджерскую боковую колонку: та в чужом проекте показывала
+// «Других проектов на вас нет» и сводку чужого дня. Здесь только факты,
+// которые у проекта действительно есть.
+.admin-meta {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+
+  .mrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 13px;
+
+    & + .mrow {
+      margin-top: 8px;
+    }
+  }
+
+  .lbl {
+    min-width: 168px;
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+
+  .val {
+    color: var(--text);
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  // История свёрнута: она нужна, когда что-то пошло не так, а не каждый
+  // раз при открытии проекта.
+  .hist {
+    margin-top: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+
+    summary {
+      color: var(--text-muted);
+      font-size: 12.5px;
+      cursor: pointer;
+    }
+
+    .n {
+      color: var(--text-dim);
+    }
+
+    .feed {
+      margin-top: 10px;
+    }
+  }
+
+  // Узкий экран — строками в столбик: подпись и селект менеджера в одну
+  // строку не помещаются.
+  @media (max-width: bp.$touch) {
+    .mrow {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    nz-select {
+      width: 100% !important;
+      min-width: 0 !important;
+    }
+  }
+}
+
+// ── меню «⋯» в полосе крошек ────────────────────────────
+.proj-menu {
+  position: relative;
+
+  .dots {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: none;
+    color: var(--text-muted);
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--border);
+      color: var(--text);
+    }
+  }
+
+  // Подложка ловит клик мимо меню: без неё оно закрывается только
+  // повторным попаданием в те же 28 пикселей.
+  .menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: default;
+  }
+
+  // Меню растёт ВЛЕВО от кнопки, а не вправо.
+  //
+  // Кнопка «⋯» стоит у правого края полосы крошек, и меню шириной в 180
+  // пикселей от неё уезжало за край экрана: на телефоне «Удалить проект»
+  // просто не влезало. Привязка к правому краю — единственное место, где
+  // ширина меню никуда не упирается.
+  .menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: auto;
+    z-index: 21;
+    min-width: 180px;
+    max-width: calc(100vw - 24px);
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+
+    button {
+      display: block;
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 7px;
+      background: none;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13.5px;
+      text-align: left;
+      cursor: pointer;
+
+      &:hover {
+        background: var(--surface-hover);
+      }
+
+      &.danger {
+        color: var(--danger);
+      }
+    }
+  }
+
+  // На телефоне пункт меню — цель под палец, а не строка текста: в
+  // тринадцать пикселей высотой попадают курсором.
+  @media (max-width: bp.$touch) {
+    .dots {
+      width: 44px;
+      height: 44px;
+    }
+
+    .menu button {
+      min-height: 44px;
+      padding: 10px 14px;
+      font-size: 15px;
+    }
+  }
+}
+
+.feed li.none {
+  border-left-color: transparent;
+  color: var(--text-dim);
+}
+
+.confirm-hint {
+  margin-bottom: 8px;
+}
+
+
+// Меню карточки проекта: 28×28 — курсорная цель. На телефоне это
+// единственный вход в действия проекта, и промахиваться по нему
+// человек будет чаще, чем попадать.
+@media (max-width: bp.$touch) {
+  .dots {
+    width: touch.$tap;
+    height: touch.$tap;
   }
 }

@@ -97,7 +97,8 @@
   border: 2px solid var(--bg);
   border-radius: 50%;
   background: var(--cta);
-  color: #fff;
+  // Как и у кнопок: белое на коралле не дотягивает до 4.5:1.
+  color: var(--ink);
 
   svg {
     width: 18px;

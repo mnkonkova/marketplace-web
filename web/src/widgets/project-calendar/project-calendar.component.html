@@ -1,0 +1,153 @@
+<header class="cal-head">
+  <button type="button" aria-label="Предыдущий месяц" (click)="shift(-1)">
+    <span nz-icon nzType="left" nzTheme="outline"></span>
+  </button>
+  <strong>{{ title() }}</strong>
+  <button type="button" aria-label="Следующий месяц" (click)="shift(1)">
+    <span nz-icon nzType="right" nzTheme="outline"></span>
+  </button>
+</header>
+
+<div class="grid">
+  @for (w of weekdays; track w) {
+    <span class="wd">{{ w }}</span>
+  }
+  @for (c of cells(); track $index) {
+    @if (c.blank) {
+      <span class="cell blank"></span>
+    } @else {
+      <button
+        type="button"
+        class="cell"
+        [class.has]="c.published || c.planned"
+        [class.is-selected]="selected() === c.date"
+        (click)="pick(c)"
+      >
+        <span class="num">{{ c.day }}</span>
+        <!-- Лица тех, кто снимает в этот день. Точки остаются: они про
+             состояние (вышло / запланировано), лица — про людей. -->
+        @if (c.items.length) {
+          <span class="faces">
+            @for (i of facesShown(c); track i.publication_id) {
+              @if (avatarUrl(i); as url) {
+                <img class="face" [src]="url" [alt]="who(i)" [attr.title]="who(i)" />
+              } @else {
+                <span class="face letter" [attr.title]="who(i)">{{ initial(i) }}</span>
+              }
+            }
+            @if (facesRest(c)) {
+              <span class="face rest">+{{ facesRest(c) }}</span>
+            }
+          </span>
+        }
+        @if (c.published) {
+          <span class="dot published" [attr.title]="c.published + ' вышло'"></span>
+        }
+        @if (c.planned) {
+          <span class="dot planned" [attr.title]="c.planned + ' запланировано'"></span>
+        }
+      </button>
+    }
+  }
+</div>
+
+<!-- Полоса месяцев проекта. Сетка показывает один месяц, и без полосы
+     даже непустой месяц не отвечает на «а это всё?»: одна точка в
+     сентябре при десяти выкладках в августе читается как поломка.
+     Месяц без выкладок в полосе приглушён — он в ней только потому, что
+     на нём сейчас стоят. -->
+@if (strip().length) {
+  <div class="months" role="group" aria-label="Месяцы с выкладками">
+    @for (m of strip(); track m) {
+      <button
+        type="button"
+        class="mbtn"
+        [class.on]="m === month()"
+        [class.void]="!hasItems(m)"
+        [attr.aria-current]="m === month() ? 'true' : null"
+        (click)="goMonth(m)"
+      >
+        {{ short(m) }}
+      </button>
+    }
+  </div>
+}
+
+@if (selectedCell(); as c) {
+  <p class="picked">
+    {{ c.date | date: 'd MMMM' }}:
+    @if (c.published) {
+      вышло {{ c.published }}
+    }
+    @if (c.published && c.planned) {
+      ·
+    }
+    @if (c.planned) {
+      запланировано {{ c.planned }}
+    }
+  </p>
+  @if (c.items.length) {
+    <ul class="picked-items">
+      @for (i of c.items; track i.publication_id) {
+        <li>
+          <span
+            class="dot"
+            [class.published]="i.status === 'published'"
+            [class.planned]="i.status === 'planned'"
+          ></span>
+          @if (personLink(i); as link) {
+            <a class="nm nm-link" [routerLink]="link">
+              @if (avatarUrl(i); as url) {
+                <img class="face" [src]="url" [alt]="who(i)" />
+              } @else {
+                <span class="face letter">{{ initial(i) }}</span>
+              }
+              {{ who(i) }}
+            </a>
+          } @else {
+            <span class="nm">
+              @if (avatarUrl(i); as url) {
+                <img class="face" [src]="url" [alt]="who(i)" />
+              } @else {
+                <span class="face letter">{{ initial(i) }}</span>
+              }
+              {{ who(i) }}
+            </span>
+          }
+          <span class="st">{{ i.status === 'published' ? 'вышло' : 'запланировано' }}</span>
+        </li>
+      }
+    </ul>
+  }
+} @else if (monthEmpty()) {
+  <!-- Пустой месяц объясняем словами. Сама по себе пустая сетка
+       одинаково читается и как «в этом месяце ничего не стоит», и как
+       «данные не доехали», и как «сломалось» — а чаще всего это было
+       четвёртое: выкладки лежали в соседнем месяце, потому что период
+       проекта катится от первой публикации, а календарь открывался на
+       текущем.
+
+       Дорога отсюда — кнопкой, а не стрелкой: листать наугад по пустым
+       месяцам никто не станет. -->
+  @if (projectEmpty()) {
+    <p class="legend empty">
+      Выкладок в проекте пока нет — ни вышедших, ни запланированных. Они появятся в календаре, как
+      только менеджер проставит даты.
+    </p>
+  } @else {
+    <p class="legend empty">
+      В {{ inWords(month()) }} выкладок нет.
+      @if (neighbours().before; as m) {
+        <button type="button" class="jump" (click)="goMonth(m)">Показать {{ inWords(m) }}</button>
+      }
+      @if (neighbours().after; as m) {
+        <button type="button" class="jump" (click)="goMonth(m)">Показать {{ inWords(m) }}</button>
+      }
+    </p>
+  }
+} @else {
+  <p class="legend">
+    <span class="dot published"></span> вышло <span class="dot planned"></span> запланировано ·
+    нажмите на день, чтобы увидеть, что выходит
+  </p>
+}

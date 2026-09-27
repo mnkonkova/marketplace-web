@@ -1,9 +1,13 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import { API_URL } from '@shared/api/api-url.token';
+import { AdminProjectsSort, ProjectKind, ProjectStatus } from '../model/project.types';
 import {
+  CommentInput,
+  CommentParticipant,
+  CommentThread,
   ProjectClientView,
   ProjectComment,
   ProjectEvent,
@@ -16,11 +20,53 @@ interface ListResp<T> {
   items: T[];
 }
 
+// Параметры сужения переписки. Без thread ручка отдаёт все ветки сразу —
+// пустой параметр слать нельзя, бэк ответит bad_thread.
+function threadParams(thread?: CommentThread, creatorId?: string): HttpParams {
+  let params = new HttpParams();
+  if (thread) params = params.set('thread', thread);
+  if (thread === 'creator' && creatorId) params = params.set('creator_id', creatorId);
+  return params;
+}
+
+// Параметры админского списка проектов. Все опциональны: без них ручка
+// отдаёт первую страницу (20 строк, свежие сверху, без тестовых).
+export interface AdminProjectsParams {
+  // Поиск по названию проекта и по клиенту. Короче 2 символов сервер
+  // игнорирует — по одной букве совпадёт весь список.
+  q?: string;
+  // Точный статус проекта либо 'unfinished' — четыре незавершённых одним
+  // набором (draft|active|on_hold|dispute). Пусто = всё, кроме отменённых.
+  status?: ProjectStatus | 'unfinished';
+  // Ветка: креаторы или продакшн. Списки у них разные по смыслу — у
+  // одних план выкладок, у других шаги воронки, — и смотрят их порознь.
+  kind?: ProjectKind;
+  // uuid менеджера либо 'none' — проекты без ответственного. «Никого»
+  // нельзя выразить пустым значением: пустое значит «любой».
+  manager?: string;
+  include_test?: boolean;
+  sort?: AdminProjectsSort;
+  limit?: number;
+  offset?: number;
+}
+
+export interface AdminProjectsResult {
+  items: ProjectManagerView[];
+  // Сколько строк под текущими фильтрами всего — для пагинатора.
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface CreateProjectPayload {
-  pipeline_id: string;
+  // Вид проекта. Воронку при создании не выбирают: продакшну сервер
+  // подставляет её по умолчанию, остальным она не нужна.
+  kind: ProjectKind;
   title: string;
   notes?: string;
   budget?: number;
+  // Пометить проект как тестовый: админский список такие прячет.
+  is_test?: boolean;
   // Один из двух обязателен.
   client_user_id?: string;
   client_name?: string;
@@ -67,10 +113,37 @@ export class ProjectApi {
     return this.http.get<ListResp<ProjectComment>>(`${this.api}/me/projects/${projectId}/comments`);
   }
 
-  public clientCreateComment(projectId: string, body: string): Observable<ProjectComment> {
+  // Клиентская ветка. Ни переписки менеджера с креаторами, ни внутренних
+  // заметок клиент не видит — ветку выбирает ручка, параметров не нужно.
+  public clientCreateComment(projectId: string, input: CommentInput): Observable<ProjectComment> {
+    return this.http.post<ProjectComment>(`${this.api}/me/projects/${projectId}/comments`, input);
+  }
+
+  public clientCommentParticipants(projectId: string): Observable<ListResp<CommentParticipant>> {
+    return this.http.get<ListResp<CommentParticipant>>(
+      `${this.api}/me/projects/${projectId}/comments/participants`,
+    );
+  }
+
+  // ---- Creator ----
+
+  // Своя ветка с менеджером. Какая именно — решает сервер по токену.
+  public creatorListComments(projectId: string): Observable<ListResp<ProjectComment>> {
+    return this.http.get<ListResp<ProjectComment>>(
+      `${this.api}/me/creator/projects/${projectId}/comments`,
+    );
+  }
+
+  public creatorCreateComment(projectId: string, input: CommentInput): Observable<ProjectComment> {
     return this.http.post<ProjectComment>(
-      `${this.api}/me/projects/${projectId}/comments`,
-      { body },
+      `${this.api}/me/creator/projects/${projectId}/comments`,
+      input,
+    );
+  }
+
+  public creatorCommentParticipants(projectId: string): Observable<ListResp<CommentParticipant>> {
+    return this.http.get<ListResp<CommentParticipant>>(
+      `${this.api}/me/creator/projects/${projectId}/comments/participants`,
     );
   }
 
@@ -105,29 +178,6 @@ export class ProjectApi {
 
   public managerGetFull(projectId: string): Observable<ProjectFullView> {
     return this.http.get<ProjectFullView>(`${this.api}/manager/projects/${projectId}`);
-  }
-
-  public managerAdvanceStage(
-    projectId: string,
-    updatedAt?: string,
-  ): Observable<ProjectFullView> {
-    return this.http.post<ProjectFullView>(
-      `${this.api}/manager/projects/${projectId}/advance_stage`,
-      updatedAt ? { updated_at: updatedAt } : {},
-    );
-  }
-
-  public managerMoveStage(
-    projectId: string,
-    targetStageId: string,
-    updatedAt?: string,
-  ): Observable<ProjectFullView> {
-    return this.http.post<ProjectFullView>(
-      `${this.api}/manager/projects/${projectId}/move_stage`,
-      updatedAt
-        ? { target_stage_id: targetStageId, updated_at: updatedAt }
-        : { target_stage_id: targetStageId },
-    );
   }
 
   public managerMoveStep(
@@ -174,9 +224,28 @@ export class ProjectApi {
     );
   }
 
-  public managerListComments(projectId: string): Observable<ListResp<ProjectComment>> {
+  // Без параметров — вся переписка разом: клиентская ветка, ветки
+  // креаторов и внутренние заметки. thread сужает до одной; для creator
+  // обязателен creatorId.
+  public managerListComments(
+    projectId: string,
+    thread?: CommentThread,
+    creatorId?: string,
+  ): Observable<ListResp<ProjectComment>> {
     return this.http.get<ListResp<ProjectComment>>(
       `${this.api}/manager/projects/${projectId}/comments`,
+      { params: threadParams(thread, creatorId) },
+    );
+  }
+
+  public managerCommentParticipants(
+    projectId: string,
+    thread?: CommentThread,
+    creatorId?: string,
+  ): Observable<ListResp<CommentParticipant>> {
+    return this.http.get<ListResp<CommentParticipant>>(
+      `${this.api}/manager/projects/${projectId}/comments/participants`,
+      { params: threadParams(thread, creatorId) },
     );
   }
 
@@ -188,70 +257,82 @@ export class ProjectApi {
   }
 
   public managerRejectSpecialist(projectId: string, reason: string): Observable<void> {
-    return this.http.post<void>(
-      `${this.api}/manager/projects/${projectId}/reject_specialist`,
-      { reason },
-    );
+    return this.http.post<void>(`${this.api}/manager/projects/${projectId}/reject_specialist`, {
+      reason,
+    });
   }
 
   // Назначить спеца напрямую (минуя proposed). Используется когда проект
   // создан вручную или предложенный спец был отклонён.
   public managerAssignSpecialist(projectId: string, specialistID: string): Observable<void> {
-    return this.http.post<void>(
-      `${this.api}/manager/projects/${projectId}/assign_specialist`,
-      { specialist_user_id: specialistID },
-    );
+    return this.http.post<void>(`${this.api}/manager/projects/${projectId}/assign_specialist`, {
+      specialist_user_id: specialistID,
+    });
   }
 
   public adminAssignSpecialist(projectId: string, specialistID: string): Observable<void> {
-    return this.http.post<void>(
-      `${this.api}/admin/projects/${projectId}/assign_specialist`,
-      { specialist_user_id: specialistID },
-    );
+    return this.http.post<void>(`${this.api}/admin/projects/${projectId}/assign_specialist`, {
+      specialist_user_id: specialistID,
+    });
   }
 
-  public managerCreateComment(
-    projectId: string,
-    body: string,
-    isInternal: boolean,
-  ): Observable<ProjectComment> {
+  // Ветку менеджер выбирает сам полем thread (плюс creator_id для
+  // креаторской). Прежнее is_internal бэк тоже понимает, но раз ветка
+  // теперь явная, шлём её.
+  public managerCreateComment(projectId: string, input: CommentInput): Observable<ProjectComment> {
     return this.http.post<ProjectComment>(
       `${this.api}/manager/projects/${projectId}/comments`,
-      { body, is_internal: isInternal },
+      input,
     );
   }
 
   // ---- Admin ----
-  public adminListProjects(status?: string): Observable<ListResp<ProjectManagerView>> {
-    const url = `${this.api}/admin/projects${status ? `?status=${status}` : ''}`;
-    return this.http.get<ListResp<ProjectManagerView>>(url);
+
+  // Поиск, фильтры, сортировка и страница считаются на сервере. Тянуть
+  // весь список в браузер ради одного фильтра — тупик: проектов
+  // становится больше, а размер ответа и так был ограничен сверху.
+  public adminListProjects(params: AdminProjectsParams = {}): Observable<AdminProjectsResult> {
+    let httpParams = new HttpParams();
+    // Пустые значения не шлём: `status=` бэк прочитал бы как «фильтра
+    // нет», но в URL он выглядел бы как выбранный фильтр.
+    if (params.q) httpParams = httpParams.set('q', params.q);
+    if (params.status) httpParams = httpParams.set('status', params.status);
+    // Ветку слать обязательно: без неё выпадашка «Все ветки / Креаторы /
+    // Продакшн» выглядела рабочей и не делала ничего — сервер параметр
+    // принимает, а мы его не клали. Фильтр, который притворяется
+    // исправным, хуже отсутствующего: по нему принимают решения.
+    if (params.kind) httpParams = httpParams.set('kind', params.kind);
+    if (params.manager) httpParams = httpParams.set('manager', params.manager);
+    if (params.include_test) httpParams = httpParams.set('include_test', 'true');
+    if (params.sort) httpParams = httpParams.set('sort', params.sort);
+    if (params.limit !== undefined) httpParams = httpParams.set('limit', String(params.limit));
+    if (params.offset !== undefined) httpParams = httpParams.set('offset', String(params.offset));
+    return this.http.get<AdminProjectsResult>(`${this.api}/admin/projects`, {
+      params: httpParams,
+    });
   }
 
   public adminGetProject(projectId: string): Observable<ProjectFullView> {
     return this.http.get<ProjectFullView>(`${this.api}/admin/projects/${projectId}`);
   }
 
-  public adminAdvanceStage(
-    projectId: string,
-    updatedAt?: string,
-  ): Observable<ProjectFullView> {
-    return this.http.post<ProjectFullView>(
-      `${this.api}/admin/projects/${projectId}/advance_stage`,
-      updatedAt ? { updated_at: updatedAt } : {},
+  /**
+   * Вернуть отменённый проект в тот статус, в котором он был до отмены.
+   * 409 — отменяли до появления ручки или правили статус руками: угаданный
+   * статус молча поменял бы, кого проект ждёт.
+   */
+  public adminRestoreProject(projectId: string): Observable<{ status: ProjectStatus }> {
+    return this.http.post<{ status: ProjectStatus }>(
+      `${this.api}/admin/projects/${projectId}/restore`,
+      {},
     );
   }
 
-  public adminMoveStage(
-    projectId: string,
-    targetStageId: string,
-    updatedAt?: string,
-  ): Observable<ProjectFullView> {
-    return this.http.post<ProjectFullView>(
-      `${this.api}/admin/projects/${projectId}/move_stage`,
-      updatedAt
-        ? { target_stage_id: targetStageId, updated_at: updatedAt }
-        : { target_stage_id: targetStageId },
-    );
+  /** Пометить проект тестовым или снять пометку: тестовые в списках скрыты. */
+  public adminMarkProjectTest(projectId: string, isTest: boolean): Observable<void> {
+    return this.http.post<void>(`${this.api}/admin/projects/${projectId}/mark_test`, {
+      is_test: isTest,
+    });
   }
 
   public adminMoveStep(
@@ -267,35 +348,18 @@ export class ProjectApi {
     );
   }
 
-  // Сменить воронку проекта (прогресс сбрасывается, project_steps пересоздаются).
-  public adminChangeFunnel(
-    projectId: string,
-    pipelineId: string,
-  ): Observable<ProjectFullView> {
-    return this.http.post<ProjectFullView>(
-      `${this.api}/admin/projects/${projectId}/change_funnel`,
-      { pipeline_id: pipelineId },
-    );
-  }
-
   // Назначить/снять менеджера на проекте. managerUserId=null → unassign.
-  public adminAssignManager(
-    projectId: string,
-    managerUserId: string | null,
-  ): Observable<void> {
-    return this.http.post<void>(
-      `${this.api}/admin/projects/${projectId}/assign`,
-      { manager_user_id: managerUserId },
-    );
+  public adminAssignManager(projectId: string, managerUserId: string | null): Observable<void> {
+    return this.http.post<void>(`${this.api}/admin/projects/${projectId}/assign`, {
+      manager_user_id: managerUserId,
+    });
   }
 
   // Soft-delete: status=cancelled, физически чистится через 30 дней.
   public adminCancelProject(projectId: string, reason: string): Observable<void> {
-    return this.http.request<void>(
-      'delete',
-      `${this.api}/admin/projects/${projectId}`,
-      { body: { reason } },
-    );
+    return this.http.request<void>('delete', `${this.api}/admin/projects/${projectId}`, {
+      body: { reason },
+    });
   }
 
   public adminListEvents(projectId: string): Observable<ListResp<ProjectEvent>> {
@@ -313,9 +377,9 @@ export class ProjectApi {
     body: string,
     isInternal: boolean,
   ): Observable<ProjectComment> {
-    return this.http.post<ProjectComment>(
-      `${this.api}/admin/projects/${projectId}/comments`,
-      { body, is_internal: isInternal },
-    );
+    return this.http.post<ProjectComment>(`${this.api}/admin/projects/${projectId}/comments`, {
+      body,
+      is_internal: isInternal,
+    });
   }
 }

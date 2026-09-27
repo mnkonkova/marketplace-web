@@ -1,0 +1,221 @@
+<section class="acc-block">
+  <div class="acc-head">
+    <h2>@if (isCreator()) { Мои аккаунты } @else { Аккаунты, с которых выходят ролики }</h2>
+  </div>
+  <p class="note">
+    @if (isManager()) {
+      У каждого креатора свои аккаунты: ссылка, логин и — если нужен — пароль. Заказчик видит этот
+      же список: это первое, что он спрашивает после запуска.
+    } @else if (isCreator()) {
+      Аккаунты для ЭТОГО проекта — не обязательно ваша личная страница. Их видят менеджер и
+      заказчик: по ним они находят ролик и считают просмотры.
+    } @else {
+      Аккаунты, с которых выходят ваши ролики. Заполняет менеджер.
+    }
+  </p>
+
+  @if (!secretsEnabled()) {
+    <p class="note warn">
+      Пароли сейчас не хранятся: у сервиса нет ключа шифрования. Ссылки и логины работают, пароль
+      передайте другим способом.
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="note">Загружаем…</p>
+  } @else {
+    @for (g of groups(); track g.id) {
+      <div class="acc-group">
+        <div class="acc-group-hd">
+          <b>{{ g.title }}</b>
+          @if (canEdit()) {
+            <button nz-button nzSize="small" type="button" (click)="startAdd(g.id)">
+              Добавить аккаунт
+            </button>
+          }
+        </div>
+
+        @if (!g.accounts.length && !addingFor(g.id)) {
+          <p class="note dim">
+            @if (canEdit()) {
+              Аккаунтов нет. Без ссылки просмотры с площадки не считаются.
+            } @else {
+              Менеджер ещё не заполнил.
+            }
+          </p>
+        }
+
+        @for (a of g.accounts; track a.id) {
+          <ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: a }" />
+        }
+
+        @if (addingFor(g.id) && !touch) {
+          <div class="acc-row is-form">
+            <ng-container [ngTemplateOutlet]="formTpl" />
+          </div>
+        }
+      </div>
+    }
+  }
+</section>
+
+<!-- На тач-экране форма живёт в нижнем листе — одна на добавление и
+     правку: какой доступ правим, видно по подписи. -->
+@if (touch && editing()) {
+  <app-sheet
+    [open]="true"
+    [title]="editing() === 'new' ? 'Новый аккаунт' : 'Править аккаунт'"
+    [note]="ownerName()"
+    (closed)="cancel()"
+  >
+    <ng-container [ngTemplateOutlet]="formTpl" />
+  </app-sheet>
+}
+
+<ng-template #rowTpl let-a>
+  <div class="acc-row">
+    <div class="acc-main">
+      <b class="ttl">{{ label(a) }}</b>
+      <span class="plat">{{ platformLabel(a.platform) }}</span>
+      @if (a.url) {
+        <a class="lnk" [href]="a.url" target="_blank" rel="noopener">{{ a.url }}</a>
+      }
+    </div>
+
+    <div class="acc-creds">
+      @if (a.login) {
+        <span class="fld">
+          <span class="k">Логин</span>
+          <b class="v">{{ a.login }}</b>
+          <button nz-button nzSize="small" nzType="text" type="button" (click)="copy(a.login)">
+            Копировать
+          </button>
+        </span>
+      }
+      <!-- Пароль: сперва точки, значение — по нажатию. Экран проекта
+           показывают начальству и вставляют в коммерческое, и пароль от
+           аккаунта не должен попадать туда сам собой. Пароль
+           необязателен: у большинства аккаунтов креатор заходит сам, и
+           «не заведён» — нормальное состояние, а не пробел. -->
+      @if (a.has_password) {
+        <span class="fld">
+          <span class="k">Пароль</span>
+          @if (password(a); as pass) {
+            <b class="v mono">{{ pass }}</b>
+            <button nz-button nzSize="small" nzType="text" type="button" (click)="copy(pass)">
+              Копировать
+            </button>
+            <button nz-button nzSize="small" nzType="text" type="button" (click)="reveal(a)">
+              Скрыть
+            </button>
+          } @else {
+            <b class="v mono">••••••••</b>
+            <button
+              nz-button
+              nzSize="small"
+              nzType="text"
+              type="button"
+              [disabled]="busy() === a.id"
+              (click)="reveal(a)"
+            >
+              Показать
+            </button>
+          }
+        </span>
+      } @else {
+        <span class="fld">
+          <span class="k">Пароль</span>
+          <span class="v none">не нужен</span>
+        </span>
+      }
+    </div>
+
+    @if (a.note) {
+      <p class="acc-note">{{ a.note }}</p>
+    }
+
+    @if (canEdit()) {
+      <div class="acc-actions">
+        <button nz-button nzSize="small" type="button" (click)="startEdit(a)">Править</button>
+        <button
+          nz-button
+          nzSize="small"
+          nzDanger
+          type="button"
+          [disabled]="busy() === a.id"
+          (click)="remove(a)"
+        >
+          Удалить
+        </button>
+      </div>
+    }
+
+    @if (editing() === a.id && !touch) {
+      <ng-container [ngTemplateOutlet]="formTpl" />
+    }
+  </div>
+</ng-template>
+
+<ng-template #formTpl>
+  <!-- На телефоне эта же форма едет в нижний лист (app-sheet выше):
+       раскрытая в середине длинного списка, она уезжала за край. -->
+  <form class="acc-form" (submit)="$event.preventDefault(); save()">
+    @if (ownerName(); as who) {
+      <p class="f wide owner">Аккаунт: <b>{{ who }}</b></p>
+    }
+    <label class="f">
+      <span>Площадка</span>
+      <select [(ngModel)]="form.platform" name="platform">
+        @for (p of platforms; track p) {
+          <option [value]="p">{{ platformLabel(p) }}</option>
+        }
+      </select>
+    </label>
+    <label class="f">
+      <span>Название</span>
+      <input [(ngModel)]="form.title" name="title" placeholder="основной, второй, для тестов" />
+    </label>
+    <label class="f wide">
+      <span>Ссылка на профиль</span>
+      <input [(ngModel)]="form.url" name="url" placeholder="https://" inputmode="url" />
+    </label>
+    <label class="f">
+      <span>Логин</span>
+      <input [(ngModel)]="form.login" name="login" autocomplete="off" />
+    </label>
+    <label class="f">
+      <span>Пароль</span>
+      <input
+        [(ngModel)]="form.password"
+        name="password"
+        type="password"
+        autocomplete="new-password"
+        [disabled]="!secretsEnabled()"
+        [placeholder]="editing() === 'new' ? '' : 'оставить прежний'"
+      />
+    </label>
+    <label class="f wide">
+      <span>Заметка</span>
+      <input [(ngModel)]="form.note" name="note" placeholder="двухфакторка на телефоне Оли" />
+    </label>
+
+    <div class="acc-form-ft add-actions">
+      <button nz-button nzType="primary" nzSize="small" type="submit" [disabled]="busy() !== null">
+        Сохранить
+      </button>
+      <button nz-button nzSize="small" type="button" (click)="cancel()">Отмена</button>
+      @if (editing() !== 'new') {
+        <button nz-button nzSize="small" nzDanger type="button" (click)="save(true)">
+          Стереть пароль
+        </button>
+      }
+      <span class="hint">
+        @if (editing() === 'new') {
+          Пароль шифруется на сервере.
+        } @else {
+          Пустое поле пароля — оставить прежний.
+        }
+      </span>
+    </div>
+  </form>
+</ng-template>

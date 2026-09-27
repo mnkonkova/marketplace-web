@@ -1,5 +1,16 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnDestroy,
+  OnInit,
+  TemplateRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { CommonModule, NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
@@ -7,7 +18,6 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
-import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { formatDistanceToNow } from 'date-fns';
@@ -16,29 +26,28 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { AdminApi, ManagerInfo } from '@entities/admin/api/admin.api';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
-import { PipelineApi } from '@entities/pipeline/api/pipeline.api';
 import { ProjectApi } from '@entities/project/api/project.api';
-import {
-  ChangeFunnelDialog,
-  ChangeFunnelDialogData,
-  ChangeFunnelDialogResult,
-} from '@features/change-funnel/change-funnel.dialog';
 import { AssignSpecialistDialogComponent } from '@features/assign-specialist/assign-specialist.dialog';
 import {
-  ProjectComment,
   ProjectEvent,
   ProjectFullView,
+  ProjectKind,
   ProjectStepView,
 } from '@entities/project/model/project.types';
 import {
+  PROJECT_KIND_LABEL,
   PROJECT_STATUS_COLOR,
   PROJECT_STATUS_LABEL,
   STAGE_STATUS_COLOR,
   STAGE_STATUS_LABEL,
   getStepBadge,
 } from '@shared/lib/project-status';
-import { ManagerLayoutComponent } from '@widgets/manager-layout/manager-layout.component';
+import { ManagerTurnkeyProjectComponent } from '@widgets/manager-turnkey-project/manager-turnkey-project.component';
+import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
+import { ProjectMaterialsComponent } from '@widgets/project-materials/project-materials.component';
+import { ProjectPublicationsComponent } from '@widgets/project-publications/project-publications.component';
 import { BackLinkComponent } from '@shared/nav/back-link.component';
+import { CrmShellStore } from '@widgets/crm-layout/crm-shell.store';
 
 @Component({
   selector: 'app-manager-project-detail',
@@ -53,20 +62,21 @@ import { BackLinkComponent } from '@shared/nav/back-link.component';
     NzProgressModule,
     NzModalModule,
     NzSelectModule,
-    NzSwitchModule,
-    ManagerLayoutComponent,
+    NgTemplateOutlet,
     BackLinkComponent,
+    ManagerTurnkeyProjectComponent,
+    ProjectCommentsComponent,
+    ProjectMaterialsComponent,
+    ProjectPublicationsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './manager-project-detail.page.html',
   styleUrl: './manager-project-detail.page.scss',
 })
-export class ManagerProjectDetailPage implements OnInit {
+export class ManagerProjectDetailPage implements OnInit, OnDestroy {
   private readonly api = inject(ProjectApi);
 
   private readonly adminApi = inject(AdminApi);
-
-  private readonly pipelineApi = inject(PipelineApi);
 
   private readonly auth = inject(AuthSessionStore);
 
@@ -78,15 +88,38 @@ export class ManagerProjectDetailPage implements OnInit {
 
   private readonly modal = inject(NzModalService);
 
+  private readonly shell = inject(CrmShellStore);
+
+  /** Меню «⋯» карточки — его рисует полоса крошек CRM-оболочки. */
+  private readonly actionsTpl = viewChild<TemplateRef<unknown>>('actionsTpl');
+
   // Список всех менеджеров (для админ-блока «Назначить менеджера»). Грузится
   // только если текущий юзер admin. Если manager — блок не показывается.
   public readonly managers = signal<ManagerInfo[]>([]);
 
   public readonly isAdmin = this.auth.role;
 
+  // Свой id — чтобы в переписке свои сообщения были подписаны «Вы».
+  public readonly meId = this.auth.userId;
+
   public readonly assignedManagerId = signal<string | null>(null);
 
   public readonly claimBusy = signal(false);
+
+  public constructor() {
+    // Меню «⋯» — только у админа: удаление проекта менеджеру недоступно.
+    // Крошки оболочка строит сама, страница добавляет к ним только то,
+    // чего в дереве разделов нет, — название открытого проекта.
+    effect(() => {
+      const admin = this.isAdmin() === 'admin';
+      this.shell.setTrail([{ label: this.project()?.title ?? 'Проект' }]);
+      this.shell.setActions(admin ? (this.actionsTpl() ?? null) : null);
+    });
+  }
+
+  public ngOnDestroy(): void {
+    this.shell.reset();
+  }
 
   public get assignedManagerValue(): string {
     return this.assignedManagerId() ?? '';
@@ -115,12 +148,6 @@ export class ManagerProjectDetailPage implements OnInit {
 
   public readonly events = signal<ProjectEvent[]>([]);
 
-  public readonly comments = signal<ProjectComment[]>([]);
-
-  public readonly commentBody = signal('');
-
-  public readonly commentInternal = signal(false);
-
   public readonly proposingBusy = signal(false);
 
   public readonly cancelBusy = signal(false);
@@ -147,56 +174,80 @@ export class ManagerProjectDetailPage implements OnInit {
     });
   }
 
-  public openChangeFunnel(): void {
-    const p = this.project();
-    if (!p) return;
-    this.pipelineApi.list().subscribe({
-      next: (r) => {
-        const ref = this.modal.create<
-          ChangeFunnelDialog,
-          ChangeFunnelDialogData,
-          ChangeFunnelDialogResult | null
-        >({
-          nzTitle: 'Сменить воронку',
-          nzContent: ChangeFunnelDialog,
-          nzFooter: null,
-          nzWidth: 520,
-          nzClassName: 'change-funnel-modal',
-          nzData: {
-            projectId: p.id,
-            projectTitle: p.title,
-            currentPipelineId: p.pipeline_id,
-            pipelines: r.items,
-          },
-        });
-        ref.afterClose.subscribe((res: ChangeFunnelDialogResult | null | undefined) => {
-          if (res?.pipelineId) this.fetch(p.id);
-        });
-      },
-      error: () => this.msg.error('Не удалось загрузить список воронок'),
-    });
+  // Меню «⋯» у названия проекта. Удаление лежит здесь, а не кнопкой в
+  // тулбаре: оно необратимо и стояло вплотную к «Применить» — промах в
+  // один сантиметр стоил проекта.
+  public readonly menuOpen = signal(false);
+
+  public readonly deleteConfirm = signal('');
+
+  public readonly deleteReason = signal('');
+
+  public get deleteConfirmValue(): string {
+    return this.deleteConfirm();
   }
 
-  public cancelProject(): void {
+  public set deleteConfirmValue(v: string) {
+    this.deleteConfirm.set(v);
+  }
+
+  public get deleteReasonValue(): string {
+    return this.deleteReason();
+  }
+
+  public set deleteReasonValue(v: string) {
+    this.deleteReason.set(v);
+  }
+
+  public toggleMenu(): void {
+    this.menuOpen.set(!this.menuOpen());
+  }
+
+  public closeMenu(): void {
+    this.menuOpen.set(false);
+  }
+
+  /**
+   * Подтверждение удаления — вводом названия проекта.
+   *
+   * «Да/нет» здесь не годится: диалог с одной кнопкой подтверждается
+   * рефлекторно, а проект уходит из всех списков сразу и возвращается
+   * только SQL-ом. Набранное название заставляет посмотреть, какой именно
+   * проект удаляешь.
+   */
+  public askDelete(tpl: unknown): void {
     const p = this.project();
     if (!p) return;
-    const ok = window.confirm(
-      `Удалить проект «${p.title}»?\n\nОн исчезнет из списков и канбана сразу. ` +
-        `Физически удалится из БД через 30 дней (данные ещё можно восстановить SQL-ом).`,
-    );
-    if (!ok) return;
-    const reason = window.prompt('Причина (для лога активности, можно пропустить):') ?? '';
-    this.cancelBusy.set(true);
-    this.api.adminCancelProject(p.id, reason).subscribe({
-      next: () => {
-        this.cancelBusy.set(false);
-        this.msg.success('Проект удалён');
-        void this.router.navigate(['/admin/projects']);
-      },
-      error: (e: { error?: { message?: string } }) => {
-        this.cancelBusy.set(false);
-        this.msg.error(e?.error?.message || 'Не удалось удалить');
-      },
+    this.menuOpen.set(false);
+    this.deleteConfirm.set('');
+    this.deleteReason.set('');
+    this.modal.create({
+      nzTitle: 'Удалить проект',
+      nzContent: tpl as never,
+      nzOkText: 'Удалить',
+      nzOkDanger: true,
+      nzOnOk: () =>
+        new Promise<boolean>((resolve) => {
+          if (this.deleteConfirm().trim() !== p.title) {
+            this.msg.warning('Название не совпадает — проект остался на месте');
+            resolve(false);
+            return;
+          }
+          this.cancelBusy.set(true);
+          this.api.adminCancelProject(p.id, this.deleteReason().trim()).subscribe({
+            next: () => {
+              this.cancelBusy.set(false);
+              this.msg.success('Проект удалён');
+              void this.router.navigate(['/admin/projects']);
+              resolve(true);
+            },
+            error: (e: { error?: { message?: string } }) => {
+              this.cancelBusy.set(false);
+              this.msg.error(e?.error?.message || 'Не удалось удалить');
+              resolve(false);
+            },
+          });
+        }),
     });
   }
 
@@ -261,6 +312,23 @@ export class ManagerProjectDetailPage implements OnInit {
 
   public stepBadge(s: ProjectStepView) {
     return getStepBadge(s.status, s.owner);
+  }
+
+  public kindLabel(k: ProjectFullView['kind']): string {
+    return PROJECT_KIND_LABEL[k] ?? k;
+  }
+
+  /**
+   * Есть ли у проекта план выкладок вместо воронки.
+   *
+   * Шаблон спрашивает об этом в пяти местах — и шапку, и боковую
+   * колонку, и выбор виджета решает один и тот же признак. Пока это был
+   * литерал `kind === 'creators_turnkey'`, каждый новый вид проекта
+   * приходилось дописывать в пять условий, и промах в одном из них
+   * выглядит как случайно пропавший блок, а не как забытая правка.
+   */
+  public hasPublicationPlan(kind: ProjectKind): boolean {
+    return kind === 'creators_turnkey' || kind === 'brand_turnkey';
   }
 
   public statusLabel(s: ProjectFullView['display_status']): string {
@@ -356,42 +424,10 @@ export class ManagerProjectDetailPage implements OnInit {
     });
   }
 
-  public sendComment(): void {
-    const p = this.project();
-    const body = this.commentBody().trim();
-    if (!p || !body) return;
-    const internal = this.commentInternal();
-    this.api.managerCreateComment(p.id, body, internal).subscribe({
-      next: () => {
-        this.commentBody.set('');
-        this.commentInternal.set(false);
-        this.fetch(p.id, true);
-      },
-      error: () => this.msg.error('Не удалось отправить'),
-    });
-  }
-
-  public get commentInternalValue(): boolean {
-    return this.commentInternal();
-  }
-
-  public set commentInternalValue(v: boolean) {
-    this.commentInternal.set(v);
-  }
-
   // Telegram-хэндл может быть `@user` или просто `user` — нормализуем в https-ссылку.
   public tgLink(handle: string): string {
     const h = handle.replace(/^@/, '').trim();
     return `https://t.me/${h}`;
-  }
-
-  // Двусторонняя привязка ngModel ↔ signal.
-  public get commentBodyValue(): string {
-    return this.commentBody();
-  }
-
-  public set commentBodyValue(v: string) {
-    this.commentBody.set(v);
   }
 
   public get skipCommentValue(): string {
@@ -414,9 +450,6 @@ export class ManagerProjectDetailPage implements OnInit {
     });
     this.api.managerListEvents(id).subscribe({
       next: (r) => this.events.set(r.items),
-    });
-    this.api.managerListComments(id).subscribe({
-      next: (r) => this.comments.set(r.items),
     });
     // Только админ может назначать менеджера. Грузим список разово.
     if (this.isAdmin() === 'admin' && this.managers().length === 0) {

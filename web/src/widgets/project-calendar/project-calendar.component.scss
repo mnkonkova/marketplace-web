@@ -1,0 +1,268 @@
+:host {
+  display: block;
+  // Сетка месяца не растягивается во всю ширину экрана: на 1440px
+  // ячейка дня раздувалась до ладони, и календарь читался как таблица
+  // из семи столбцов, а не как месяц. 520px — ширина, на которой
+  // квадратный день остаётся квадратным.
+  max-width: 520px;
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+
+  button {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border-strong, #2c313a);
+    border-radius: 8px;
+    background: var(--bg-elevated, #111316);
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  button:hover {
+    color: var(--text);
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.wd {
+  padding-bottom: 4px;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-align: center;
+}
+
+.cell {
+  position: relative;
+  // Колонкой, а не по центру: в дне теперь три яруса — число, лица тех,
+  // кто снимает, и точки состояния. Центрированное число оставляло
+  // календарь ответом на «сколько», а спрашивают у него «кто и когда».
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: default;
+
+  &.has {
+    border-color: var(--border-strong, #2c313a);
+    background: var(--bg-elevated, #111316);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  &.is-selected {
+    border-color: var(--cta, #f0553c);
+  }
+}
+
+.blank {
+  border: none;
+  background: none;
+}
+
+// Лица в клетке. Больше трёх не помещается — остаток числом.
+.faces {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  max-width: 100%;
+}
+
+.face {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 auto;
+
+  &.letter,
+  &.rest {
+    display: grid;
+    place-items: center;
+    background: var(--surface-hover, #21242b);
+    color: var(--text);
+    font-size: 9px;
+    font-weight: 600;
+  }
+
+  &.rest {
+    color: var(--text-muted);
+  }
+}
+
+.picked-items .face {
+  width: 20px;
+  height: 20px;
+  margin-right: 2px;
+
+  &.letter {
+    font-size: 10px;
+  }
+}
+
+.nm-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Точка — единственное, чем день с выкладкой отличается от пустого.
+// Пять пикселей цветом --text-dim на тёмной клетке почти не видно, и
+// календарь читается как пустой: «дат не отображается».
+.dot {
+  position: absolute;
+  bottom: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+
+  &.published {
+    left: calc(50% - 8px);
+    background: var(--accent, #20a194);
+  }
+
+  &.planned {
+    left: calc(50% + 2px);
+    background: var(--text-muted);
+  }
+}
+
+.legend,
+.picked {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+
+  .dot {
+    position: static;
+    display: inline-block;
+    margin: 0 2px 0 6px;
+  }
+}
+
+// Полоса месяцев с выкладками. Прокручивается, а не переносится: у
+// длинного проекта их дюжина, и вторая строка чипов под календарём
+// начинает спорить с самой сеткой за внимание.
+.months {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mbtn {
+    flex: 0 0 auto;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--text);
+      border-color: var(--border-strong, #2c313a);
+    }
+
+    &.on {
+      border-color: var(--accent, #2fbd8f);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    // Месяц, в котором выкладок нет: он попал в полосу только потому,
+    // что на нём сейчас стоят. Приглушён, чтобы не обещать содержимое.
+    &.void {
+      color: var(--text-dim);
+      border-style: dashed;
+    }
+  }
+}
+
+// Пустой месяц. Строка заметнее обычной легенды намеренно: это не
+// подпись под сеткой, а ответ на вопрос «почему тут ничего нет».
+.legend.empty {
+  line-height: 1.6;
+
+  .jump {
+    margin-left: 8px;
+    padding: 4px 10px;
+    border: 1px solid var(--border-strong, #2c313a);
+    border-radius: 8px;
+    background: var(--bg-elevated, #111316);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--accent, #2fbd8f);
+      color: var(--accent, #2fbd8f);
+    }
+  }
+}
+
+// Кто выходит в выбранный день. Имя приходит в самой записи календаря,
+// поэтому строка теперь про человека, а не про количество.
+.picked-items {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 12.5px;
+  }
+
+  .dot {
+    position: static;
+    flex: 0 0 auto;
+  }
+
+  .nm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    color: var(--text);
+  }
+
+  .st {
+    color: var(--text-dim);
+  }
+}

@@ -39,7 +39,32 @@ describe('AuthSessionStore: восстановление прав CRM', () => {
     expect(auth.role()).toBe('admin');
   });
 
-  it('не ходит в /me, когда флаги уже есть', async () => {
+  it('не ходит в /me, когда сессия полная', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        access_token: 'a',
+        refresh_token: 'r',
+        user_id: 'u1',
+        // Имя — тоже часть полной сессии: админская оболочка подписывает
+        // им блок пользователя, и без него она не знает, под кем работает.
+        display_name: 'Мария',
+        kind: 'client',
+        is_admin: false,
+        is_manager: true,
+      }),
+    );
+    const auth = store();
+    await Promise.resolve();
+    http.expectNone((r) => r.url.endsWith('/me'));
+    expect(auth.role()).toBe('manager');
+    expect(auth.userId()).toBe('u1');
+  });
+
+  it('дочитывает /me ради user_id, даже если флаги CRM уже есть', async () => {
+    // Сессия, сохранённая до появления поля: права известны, а свой id —
+    // нет. Без него в переписке не отличить свои сообщения от чужих, и
+    // ждать релога ради этого нельзя.
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -52,8 +77,10 @@ describe('AuthSessionStore: восстановление прав CRM', () => {
     );
     const auth = store();
     await Promise.resolve();
-    http.expectNone((r) => r.url.endsWith('/me'));
-    expect(auth.role()).toBe('manager');
+    http
+      .expectOne((r) => r.url.endsWith('/me'))
+      .flush({ user_id: 'u7', kind: 'client', is_manager: true });
+    expect(auth.userId()).toBe('u7');
   });
 
   it('гостя не трогает', async () => {

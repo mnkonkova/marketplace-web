@@ -4,6 +4,16 @@ import { Observable } from 'rxjs';
 
 import { API_URL } from '@shared/api/api-url.token';
 import { TokenPair } from '@entities/auth/model/auth.types';
+import {
+  AdminSearchResult,
+  AdminSummary,
+  AuditParams,
+  AuditResult,
+  LoginLinkResult,
+  TeamMember,
+  TransferResult,
+  UserCard,
+} from '../model/admin-shell.types';
 
 export interface ManagerInfo {
   user_id: string;
@@ -50,12 +60,6 @@ export interface ListAllUsersParams {
   role?: 'manager' | 'admin' | 'regular';
   limit?: number;
   offset?: number;
-}
-
-export interface CreateClientResult {
-  user_id: string;
-  invite_token?: string;
-  invite_url?: string;
 }
 
 export interface InviteGenerateResult {
@@ -165,16 +169,15 @@ export class AdminApi {
     return this.http.post<void>(`${this.api}/admin/managers/${id}/approve`, {});
   }
 
+  /**
+   * Снять роль менеджера.
+   *
+   * На активных проектах отвечает 409 со списком этих проектов — это не
+   * сбой, а сценарий: проекты сначала передают другому, иначе они
+   * остаются за человеком, который больше не может их открыть.
+   */
   public revokeManager(id: string): Observable<void> {
     return this.http.post<void>(`${this.api}/admin/managers/${id}/revoke`, {});
-  }
-
-  public createClient(body: {
-    email: string;
-    display_name: string;
-    generate_invite: boolean;
-  }): Observable<CreateClientResult> {
-    return this.http.post<CreateClientResult>(`${this.api}/admin/users`, body);
   }
 
   // Админский bypass email-верификации. Идемпотентно: повторный вызов
@@ -204,18 +207,78 @@ export class AdminApi {
   // Делает существующего юзера менеджером + (если sendInvite=true) сразу
   // выдаёт magic-link. Идемпотентно: повторный вызов на уже-менеджере
   // просто перегенерит invite. is_approved=TRUE ставится одновременно.
-  public promoteToManager(
-    userId: string,
-    sendInvite: boolean,
-  ): Observable<InviteGenerateResult> {
-    return this.http.post<InviteGenerateResult>(
-      `${this.api}/admin/managers/promote`,
-      { user_id: userId, send_invite: sendInvite },
-    );
+  public promoteToManager(userId: string, sendInvite: boolean): Observable<InviteGenerateResult> {
+    return this.http.post<InviteGenerateResult>(`${this.api}/admin/managers/promote`, {
+      user_id: userId,
+      send_invite: sendInvite,
+    });
   }
 
   public redeemInvite(token: string): Observable<RedeemResp> {
     return this.http.post<RedeemResp>(`${this.api}/auth/redeem_invite/${token}`, {});
+  }
+
+  // ─── Оболочка админки: сводка, команда, журнал, поиск ────────────
+
+  /**
+   * Сводка одним запросом: что требует внимания, разрез по веткам,
+   * нагрузка команды и счётчики сайдбара. Экран и сайдбар читают её из
+   * общего хранилища (AdminSummaryStore) — второго запроса нет.
+   */
+  public summary(): Observable<AdminSummary> {
+    return this.http.get<AdminSummary>(`${this.api}/admin/summary`);
+  }
+
+  public listTeam(): Observable<{ items: TeamMember[] }> {
+    return this.http.get<{ items: TeamMember[] }>(`${this.api}/admin/team`);
+  }
+
+  /** Карточка человека: профиль, модерация, проекты и его журнал. */
+  public getUserCard(userId: string): Observable<UserCard> {
+    return this.http.get<UserCard>(`${this.api}/admin/users/${userId}`);
+  }
+
+  public listAudit(params: AuditParams = {}): Observable<AuditResult> {
+    const httpParams: Record<string, string> = {};
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== null && v !== '') httpParams[k] = String(v);
+    }
+    return this.http.get<AuditResult>(`${this.api}/admin/audit`, { params: httpParams });
+  }
+
+  /** Проекты и люди для ⌘K. Пустой запрос ручка не любит — не шлём. */
+  public globalSearch(q: string): Observable<AdminSearchResult> {
+    return this.http.get<AdminSearchResult>(`${this.api}/admin/search`, { params: { q } });
+  }
+
+  /**
+   * Одноразовая ссылка входа сотруднику: 72 часа, гасит предыдущую.
+   * Отправки на почту нет — ссылку копируют руками.
+   */
+  public staffLoginLink(userId: string): Observable<LoginLinkResult> {
+    return this.http.post<LoginLinkResult>(`${this.api}/admin/users/${userId}/login_link`, {});
+  }
+
+  /**
+   * Передать проекты уходящего менеджера другому. Пустой projectIds —
+   * все незавершённые: это основной сценарий, сотрудник уходит целиком.
+   */
+  public transferProjects(
+    fromUserId: string,
+    toUserId: string,
+    projectIds?: string[],
+  ): Observable<TransferResult> {
+    return this.http.post<TransferResult>(
+      `${this.api}/admin/managers/${fromUserId}/transfer_projects`,
+      { to_user_id: toUserId, project_ids: projectIds },
+    );
+  }
+
+  /** Пометить человека тестовым (или снять пометку). */
+  public markUserTest(userId: string, isTest: boolean): Observable<void> {
+    return this.http.post<void>(`${this.api}/admin/users/${userId}/mark_test`, {
+      is_test: isTest,
+    });
   }
 
   // ─── Модерация специалистов ──────────────────────────────────────
@@ -244,10 +307,9 @@ export class AdminApi {
   }
 
   public approveSpecialist(userId: string, expectedUpdatedAt?: string): Observable<void> {
-    return this.http.post<void>(
-      `${this.api}/admin/moderation/specialists/${userId}/approve`,
-      { expected_updated_at: expectedUpdatedAt },
-    );
+    return this.http.post<void>(`${this.api}/admin/moderation/specialists/${userId}/approve`, {
+      expected_updated_at: expectedUpdatedAt,
+    });
   }
 
   public rejectSpecialist(
@@ -255,9 +317,9 @@ export class AdminApi {
     reason: string,
     expectedUpdatedAt?: string,
   ): Observable<void> {
-    return this.http.post<void>(
-      `${this.api}/admin/moderation/specialists/${userId}/reject`,
-      { reason, expected_updated_at: expectedUpdatedAt },
-    );
+    return this.http.post<void>(`${this.api}/admin/moderation/specialists/${userId}/reject`, {
+      reason,
+      expected_updated_at: expectedUpdatedAt,
+    });
   }
 }

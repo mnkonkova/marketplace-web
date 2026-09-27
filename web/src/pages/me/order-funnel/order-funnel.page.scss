@@ -1,0 +1,421 @@
+@use 'breakpoints' as bp;
+
+// Словарь макета (.stage, .steps, .kinds, .ccard, .basket, .inv, .notice,
+// .sumrow, .lock, .summary) живёт в shared/scss/_crm.scss под .crm-page —
+// страница носит этот класс. Здесь только то, что есть у одной этой
+// воронки: параметры заказа, зоны подборки и согласие с условиями.
+
+// Короткая строка согласия существует только для телефона: в липкой
+// полосе полный текст занимает треть экрана и отжимает кнопку за край.
+.order-funnel .consent-short {
+  display: none;
+}
+
+.order-funnel {
+  .lead {
+    margin: 8px 0 20px;
+  }
+
+  .center {
+    text-align: center;
+  }
+
+  .loading {
+    color: var(--muted-2, #616772);
+    font-size: 13px;
+    padding: 24px 0;
+    margin: 0;
+  }
+
+  // Параметры заказа стоят НАД подбором, а не под ним: месяц задаёт и
+  // лимит, и занятость, то есть меняет сам каталог. Спрашивать его после
+  // выбора людей значило бы отбирать уже сделанный выбор.
+  .params {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .param {
+    display: block;
+  }
+
+  .param-note {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted, #8c94a0);
+    line-height: 1.5;
+  }
+
+  .filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+
+    .inp {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .cat {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 160px;
+    }
+  }
+
+  .ccard {
+    .cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    // Занятого в этом месяце нельзя даже отметить: приглашение уходит
+    // только на реально свободное место, и «выбрать и получить отказ»
+    // читается как поломка, а не как правило.
+    &.busy {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .busy-note {
+      color: var(--amber, #e2a33c);
+      font-family: inherit;
+      font-weight: 500;
+    }
+  }
+
+  .catalog-note {
+    margin-top: 18px;
+    margin-bottom: 0;
+  }
+
+  .kind-soon {
+    margin-top: 20px;
+    margin-bottom: 0;
+  }
+
+  .basket-sub {
+    font-size: 12.5px;
+    margin-bottom: 10px;
+  }
+
+  // Граница между «зовём сразу» и «резервом» — не украшение: она
+  // показывает, где кончается лимит месяца и начинается очередь.
+  .zone {
+    margin: 12px 0 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-2, #616772);
+  }
+
+  .reserve-zone {
+    margin-top: 16px;
+  }
+
+  .reserve-hint {
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--amber, #e2a33c);
+  }
+
+  .brow {
+    &.reserve .nm {
+      color: var(--muted, #8c94a0);
+    }
+
+    .ord {
+      display: flex;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+
+    .x[disabled] {
+      opacity: 0.35;
+      cursor: default;
+    }
+  }
+
+  .forecast-note {
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted, #8c94a0);
+  }
+
+  .consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-top: 14px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--muted, #8c94a0);
+    cursor: pointer;
+
+    input {
+      margin: 2px 0 0;
+      flex: 0 0 auto;
+    }
+  }
+
+  .terms-body {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--muted-2, #616772);
+
+    summary {
+      cursor: pointer;
+    }
+
+    p {
+      margin: 8px 0 0;
+      white-space: pre-line;
+      line-height: 1.55;
+    }
+  }
+
+  .send {
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .basket.static {
+    position: static;
+  }
+
+  .sums {
+    margin-top: 12px;
+  }
+
+  .foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line, #23272d);
+
+    .sp {
+      flex: 1;
+    }
+  }
+
+  .done-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+}
+
+// Бриф: подписи полей и пометка «необязательно».
+//
+// Пометка стоит У ПОЛЯ, а не сноской под формой: человек читает форму
+// сверху вниз и бросает её на третьем поле, до сносок не доходя.
+.brief {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+
+  .param.wide {
+    grid-column: 1 / -1;
+  }
+
+  .opt {
+    margin-left: 6px;
+    color: var(--muted-2);
+    font-size: 11.5px;
+    font-style: normal;
+    font-weight: 400;
+  }
+
+  .hint {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted-2);
+    font-size: 12px;
+  }
+}
+
+// ── тач: подбор креаторов ──────────────────────────────────────
+//
+// На телефоне этот экран был непроходимым. Карточка креатора — плитка
+// с обложкой 9:13, то есть шестьсот пикселей высоты на человека: семеро
+// в каталоге давали четыре тысячи пикселей прокрутки. А корзина с
+// итогом и кнопкой «Отправить заявку» стоит ПОД каталогом — до неё
+// нужно было проскроллить всех до последнего.
+//
+// Поэтому на узком экране: карточка становится строкой (портрет 56,
+// имя, цена, галочка), а итог и кнопка — липкой полосой внизу, как
+// корзина в магазине. Оба решения из макетов «Сотки»: там же так
+// устроены списки людей и нижняя панель действия.
+@media (max-width: bp.$touch) {
+  .pick-grid {
+    display: block;
+  }
+
+  // Каталог — плотной сеткой, как лента с роликами: три квадрата в
+  // ряд, встык, подпись поверх картинки.
+  //
+  // Выбирают здесь ЛЮДЕЙ и смотрят на лица, поэтому картинке отдан
+  // весь квадрат: рамки, скругления и подпись отдельным блоком под
+  // плиткой съедали половину места, а на узком экране это и есть
+  // разница между «шестеро на экране» и «полтора».
+  //
+  // Было: обложка 9:13 во всю ширину — шестьсот пикселей на человека,
+  // семеро в каталоге давали четыре тысячи пикселей прокрутки.
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    // Встык, как в ленте: сетка читается сплошным полотном, и взгляд
+    // не спотыкается о просветы между карточками.
+    gap: 2px;
+    // Во всю ширину экрана: поля страницы здесь только мешают.
+    margin: 0 -12px;
+  }
+
+  .ccard {
+    position: relative;
+    border: 0;
+    border-radius: 0;
+    background: none;
+
+    &.on {
+      box-shadow: none;
+
+      // Отметку показываем рамкой ПОВЕРХ картинки — на встык-сетке
+      // рамка самой плитки сдвинула бы соседей.
+      .cover::after {
+        position: absolute;
+        inset: 0;
+        border: 3px solid var(--coral);
+        content: '';
+      }
+    }
+
+    .cover {
+      aspect-ratio: 1;
+      border-radius: 0;
+      font-size: 24px;
+    }
+
+    .check {
+      width: 26px;
+      height: 26px;
+      top: 6px;
+      right: 6px;
+    }
+
+    // Подпись — поверх картинки, по нижнему краю, на затемнении: так в
+    // ленте и подписывают ролики. Отдельным блоком под плиткой она
+    // прибавляла к каждой ещё полсотни пикселей.
+    .meta {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      padding: 14px 6px 5px;
+      background: linear-gradient(to top, rgb(0 0 0 / 72%), transparent);
+      color: #fff;
+      pointer-events: none;
+
+      b {
+        display: block;
+        overflow: hidden;
+        font-size: 11.5px;
+        line-height: 1.25;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      // Категория на плитке в треть экрана уже не помещается рядом с
+      // ценой: цена важнее — она одна на всех и объясняет, за что
+      // платят. Категорию человек выбирает фильтром над каталогом.
+      .rl {
+        display: none;
+      }
+
+      .pr {
+        display: block;
+        overflow: hidden;
+        color: rgb(255 255 255 / 82%);
+        font-size: 10.5px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .busy-note {
+        color: #ffd2c8;
+      }
+    }
+  }
+
+  // Корзина — липкой полосой внизу: до итога и кнопки должно быть
+  // дотянуться с любого места списка, а не «после всех креаторов».
+  //
+  // И полоса обязана быть УЗКОЙ. С подборкой, пояснениями и полным
+  // текстом согласия она занимала две трети экрана и закрывала тот
+  // самый каталог, ради которого человек сюда пришёл. Поэтому на
+  // телефоне в ней остаётся только суть: сколько отмечено, во сколько
+  // обойдётся, согласие одной строкой и кнопка.
+  .basket {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin: 12px -12px 0;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    border-top: 1px solid var(--line-2);
+    background: var(--card);
+    box-shadow: 0 -10px 24px rgb(0 0 0 / 12%);
+
+    h2,
+    .basket-sub,
+    .empty,
+    .brow,
+    .forecast-note,
+    .terms-body,
+    .consent-full {
+      display: none;
+    }
+
+    .picked-count {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .consent {
+      align-items: center;
+      margin: 0 0 8px;
+      font-size: 12.5px;
+      line-height: 1.3;
+    }
+
+    .consent-short {
+      display: inline;
+    }
+
+    .btot {
+      margin: 0 0 8px;
+    }
+
+    .send {
+      width: 100%;
+      min-height: 48px;
+    }
+  }
+}

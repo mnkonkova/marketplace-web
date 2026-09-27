@@ -1,164 +1,111 @@
-<app-admin-layout>
-  <header class="head">
-    <div>
-      <h1>Дашборд воронок</h1>
-      <p class="subtitle">Сводка по всем проектам в системе.</p>
-    </div>
-    <a [routerLink]="['/admin/board']" class="head-link">Открыть канбан →</a>
-  </header>
+<app-page-head
+  title="Сводка"
+  subtitle="Что требует вас сегодня. Каждый пункт ведёт в отфильтрованный список."
+>
+  <p head-action class="today">{{ today() }}</p>
+</app-page-head>
 
-  @if (loading()) {
-    <nz-spin nzSize="large"></nz-spin>
-  } @else if (stats().length === 0) {
-    <nz-empty nzNotFoundContent="Воронок ещё нет"></nz-empty>
-  } @else {
-    @let t = totals();
-    @let h = health();
-    <section class="totals">
-      <div class="t-card t-total">
-        <span class="t-icon">📊</span>
-        <span class="t-label">Всего проектов</span>
-        <strong class="t-value">{{ t.total }}</strong>
-      </div>
-      <div class="t-card t-active">
-        <span class="t-icon">⚡</span>
-        <span class="t-label">В работе</span>
-        <strong class="t-value">{{ t.active + t.waiting }}</strong>
-        @if (t.waiting) {
-          <span class="t-sub">из них {{ t.waiting }} ждут клиента</span>
-        }
-      </div>
-      <div class="t-card t-done">
-        <span class="t-icon">✓</span>
-        <span class="t-label">Завершено</span>
-        <strong class="t-value">{{ t.completed }}</strong>
-        @if (h.avgLead != null) {
-          <span class="t-sub">средний лид-тайм {{ h.avgLead }} дн.</span>
-        }
-      </div>
-      <div class="t-card t-cancel">
-        <span class="t-icon">⊘</span>
-        <span class="t-label">Отменено</span>
-        <strong class="t-value">{{ t.cancelled }}</strong>
-      </div>
-    </section>
+<app-list-state [loading]="loading()" [error]="error()" (retry)="retry()">
+  <div class="home">
+    <section class="card att-card">
+      <header class="card-hd">
+        <h2>Требует внимания</h2>
+        <span class="num">{{ total() }}</span>
+      </header>
 
-    <section class="health" [class.has-issues]="h.orphans + h.stuck + h.overRevisions > 0">
-      <h2 class="section-title">Требуют внимания</h2>
-      <div class="health-grid">
-        <a
-          class="h-chip"
-          [class.is-warn]="h.orphans > 0"
-          [routerLink]="['/admin/projects']"
-          [queryParams]="{ unassigned: '1' }"
-        >
-          <span class="h-emoji">👤</span>
-          <span class="h-label">Без менеджера</span>
-          <strong class="h-value">{{ h.orphans }}</strong>
-        </a>
-        <div class="h-chip" [class.is-warn]="h.stuck > 0">
-          <span class="h-emoji">⏱</span>
-          <span class="h-label">Без активности 7+ дней</span>
-          <strong class="h-value">{{ h.stuck }}</strong>
-        </div>
-        <div class="h-chip" [class.is-warn]="h.overRevisions > 0">
-          <span class="h-emoji">↻</span>
-          <span class="h-label">Превышен лимит правок</span>
-          <strong class="h-value">{{ h.overRevisions }}</strong>
-        </div>
-      </div>
-    </section>
-
-    <section class="funnels">
-      @for (s of stats(); track s.pipeline.id) {
-        <article class="funnel" [class.inactive]="!s.pipeline.is_active">
-          <header class="funnel-head">
-            <div class="funnel-title">
-              <h2>{{ s.pipeline.name }}</h2>
-              @if (s.pipeline.is_default) {
-                <span class="badge default">по умолчанию</span>
-              }
-              @if (!s.pipeline.is_active) {
-                <span class="badge inactive">неактивна</span>
-              }
-            </div>
-            <span class="total-pill">{{ s.total }}</span>
-          </header>
-
-          @if (s.total === 0) {
-            <p class="empty">— проектов нет</p>
-          } @else {
-            <div
-              class="distribution"
-              [attr.role]="'img'"
-              [attr.aria-label]="'Распределение по статусам'"
-            >
-              @if (s.new) {
-                <span class="seg seg-new" [style.flex-grow]="s.new"
-                      [attr.title]="'Новые: ' + s.new"></span>
-              }
-              @if (s.active) {
-                <span class="seg seg-active" [style.flex-grow]="s.active"
-                      [attr.title]="'В работе: ' + s.active"></span>
-              }
-              @if (s.waiting) {
-                <span class="seg seg-waiting" [style.flex-grow]="s.waiting"
-                      [attr.title]="'Ждут клиента: ' + s.waiting"></span>
-              }
-              @if (s.onHold) {
-                <span class="seg seg-hold" [style.flex-grow]="s.onHold"
-                      [attr.title]="'На паузе: ' + s.onHold"></span>
-              }
-              @if (s.completed) {
-                <span class="seg seg-done" [style.flex-grow]="s.completed"
-                      [attr.title]="'Завершены: ' + s.completed"></span>
-              }
-              @if (s.cancelled) {
-                <span class="seg seg-cancel" [style.flex-grow]="s.cancelled"
-                      [attr.title]="'Отменены: ' + s.cancelled"></span>
-              }
-            </div>
-
-            <ul class="legend">
-              @if (s.new) {
-                <li><span class="dot dot-new"></span> Новые<strong>{{ s.new }}</strong></li>
-              }
-              @if (s.active) {
-                <li><span class="dot dot-active"></span> В работе<strong>{{ s.active }}</strong></li>
-              }
-              @if (s.waiting) {
-                <li><span class="dot dot-waiting"></span> Ждут клиента<strong>{{ s.waiting }}</strong></li>
-              }
-              @if (s.onHold) {
-                <li><span class="dot dot-hold"></span> На паузе<strong>{{ s.onHold }}</strong></li>
-              }
-              @if (s.completed) {
-                <li><span class="dot dot-done"></span> Завершены<strong>{{ s.completed }}</strong></li>
-              }
-              @if (s.cancelled) {
-                <li><span class="dot dot-cancel"></span> Отменены<strong>{{ s.cancelled }}</strong></li>
-              }
-            </ul>
-
-            @if (s.conversionPct != null || s.avgLeadDays != null) {
-              <footer class="funnel-foot">
-                @if (s.conversionPct != null) {
-                  <span class="f-stat">
-                    <span class="f-label">Конверсия</span>
-                    <strong class="f-value">{{ s.conversionPct }}%</strong>
-                  </span>
-                }
-                @if (s.avgLeadDays != null) {
-                  <span class="f-stat">
-                    <span class="f-label">Средний лид-тайм</span>
-                    <strong class="f-value">{{ s.avgLeadDays }} дн.</strong>
-                  </span>
-                }
-              </footer>
-            }
+      @for (r of rows(); track r.key) {
+      <div class="att" [class]="'t-' + r.tone">
+        <span class="ic" aria-hidden="true"><app-crm-icon [name]="r.icon" /></span>
+        <div class="bd">
+          <b>{{ r.title }}<span class="num">{{ r.block.count }}</span></b>
+          @if (r.note) {
+          <p>{{ r.note }}</p>
           }
-        </article>
+        </div>
+        <button type="button" class="go" (click)="open(r)">{{ r.action }}</button>
+      </div>
+      }
+
+      <!-- Пустые блоки не исчезают, а собираются сюда: пропавшая строка
+           читается как «не посчитали», а не как «там чисто». -->
+      @if (calm()) {
+      <p class="calm">
+        <app-crm-icon name="ok" />
+        <span>{{ calm() }}</span>
+      </p>
       }
     </section>
-  }
-</app-admin-layout>
+
+    <div class="stack">
+      <section class="card tight">
+        <header class="card-hd"><h2>Проекты по веткам</h2></header>
+        @for (b of branches(); track b.kind) {
+        <div class="branch">
+          <div class="hd">
+            <b>{{ b.label }}</b>
+            <span class="num dim">{{ b.total }} {{ projectsWord(b.total) }}</span>
+          </div>
+        </div>
+        } @empty {
+        <p class="dim small">Проектов пока нет.</p>
+        } @if (statusParts().length) {
+        <div class="branch">
+          <div class="hd">
+            <b>По статусам</b>
+            <span class="num dim">{{ statusTotal() }}</span>
+          </div>
+          <div class="dist" role="img" aria-label="Распределение проектов по статусам">
+            @for (p of statusParts(); track p.status) {
+            <i [style.flex]="p.count" [style.background]="p.color" [title]="p.label"></i>
+            }
+          </div>
+          <div class="legend">
+            @for (p of statusParts(); track p.status) {
+            <span [style.--c]="p.color">{{ p.label }} <b class="num">{{ p.count }}</b></span>
+            }
+          </div>
+        </div>
+        }
+      </section>
+
+      <section class="card tight">
+        <header class="card-hd"><h2>Нагрузка команды</h2></header>
+        <p class="dim small">Проекты в работе · просрочено</p>
+        @for (l of loads(); track l.member.user_id) {
+        <div class="load">
+          <span class="who">
+            <span class="av" aria-hidden="true">{{ initial(l.member) }}</span>
+            <span class="nm" [title]="name(l.member)">{{ name(l.member) }}</span>
+          </span>
+          <span class="bar"><i [style.width.%]="l.percent"></i></span>
+          <span class="num">
+            {{ l.member.active_projects }} @if (l.member.overdue_projects) { ·
+            <span class="late">{{ l.member.overdue_projects }}</span>
+            }
+          </span>
+        </div>
+        } @empty {
+        <p class="dim small">Проектов ни за кем не закреплено.</p>
+        } @if (loadsRest()) {
+        <a class="all" routerLink="/admin/team">Вся команда · ещё {{ loadsRest() }}</a>
+        }
+      </section>
+
+      <section class="card tight">
+        <header class="card-hd"><h2>Журнал</h2></header>
+        @for (e of log(); track e.id) {
+        <div class="logrow">
+          <time [attr.datetime]="e.created_at">{{ ago(e.created_at) }}</time>
+          <span>
+            <b>{{ e.actor_display_name || e.actor_email || 'Система' }}</b>
+            {{ actionLabel(e) }}
+          </span>
+        </div>
+        } @empty {
+        <p class="dim small">Записей пока нет.</p>
+        }
+        <a class="all" routerLink="/admin/audit">Весь журнал</a>
+      </section>
+    </div>
+  </div>
+</app-list-state>

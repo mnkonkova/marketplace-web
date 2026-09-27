@@ -1,0 +1,57 @@
+<section class="panel">
+  <h2 class="section-title">Занятость</h2>
+  <!-- Середина абзаца в отдельном span: на телефоне тач-слой её гасит
+       (.note .long в creator-availability.component.touch.scss), и
+       остаётся одна фраза — та, ради которой абзац и написан. Текст
+       один на оба размера намеренно: два разных в шаблоне разошлись бы
+       при первой же правке. -->
+  <p class="note">
+    <span class="long"
+      >Это видят клиенты, когда расставляют приоритет. Держите честно — иначе приглашения будут
+      мимо. </span
+    >Неотмеченный месяц — не «свободен»: клиент видит его как неизвестность, и в подборе вы там не
+    первый.
+  </p>
+  <!-- .mextra и .mfold — пара для тач-слоя: на телефоне видны ближайшие
+       три месяца, остальные разворачивает строка под списком. На
+       десктопе шесть строк занимают полкарточки и прятать нечего. -->
+  <ul class="avl-months" [class.mfold]="folded()">
+    @for (m of months(); track m.key; let i = $index) {
+      <!-- Состояние читается по самому переключателю: нажатый сегмент и
+           есть текущий выбор. Подпись осталась ровно для третьего
+           состояния — неотмеченного месяца: у него не нажато ничего, и
+           без слов это выглядело бы как несохранённый выбор, а не как
+           «вы про этот месяц ещё не сказали». -->
+      <li [class.mextra]="i >= visibleOnPhone" [class.unset]="stateOf(m.key) === null">
+        <span class="name">{{ m.label }}</span>
+        @if (stateOf(m.key) === null) {
+          <span class="state">не отмечен</span>
+        }
+        <span class="month-actions" role="group" [attr.aria-label]="'Занятость: ' + m.label">
+          <button
+            class="linkish"
+            type="button"
+            [attr.aria-pressed]="stateOf(m.key) === false"
+            [disabled]="stateOf(m.key) === false"
+            (click)="set(m.key, false)"
+          >
+            Занят
+          </button>
+          <button
+            class="linkish"
+            type="button"
+            [attr.aria-pressed]="stateOf(m.key) === true"
+            [disabled]="stateOf(m.key) === true"
+            (click)="set(m.key, true)"
+          >
+            Свободен
+          </button>
+        </span>
+      </li>
+    }
+  </ul>
+
+  <button type="button" class="foldrow" (click)="toggleFold()">
+    {{ folded() ? 'Ещё ' + hiddenCount() + ' ' + monthWord() : 'Свернуть' }}
+  </button>
+</section>

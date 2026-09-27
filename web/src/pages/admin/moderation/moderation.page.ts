@@ -1,22 +1,26 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
-import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import {
-  AdminApi,
-  ModerationListStatus,
-  ModerationQueueItem,
-} from '@entities/admin/api/admin.api';
-import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.component';
+import { AdminApi, ModerationListStatus, ModerationQueueItem } from '@entities/admin/api/admin.api';
+import { formatAgo } from '@shared/lib/format';
+import { parseApiError } from '@shared/api/api-error';
+import { ListStateComponent } from '@shared/ui/list-state/list-state.component';
+import { PageHeadComponent } from '@shared/ui/page-head/page-head.component';
+import { StatusTagComponent, StatusTone } from '@shared/ui/status-tag/status-tag.component';
+import { PersonCardComponent } from '@widgets/person-card/person-card.component';
+import { PersonCardStore } from '@widgets/person-card/person-card.store';
 
 @Component({
   selector: 'app-admin-moderation',
@@ -24,15 +28,14 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
   imports: [
     CommonModule,
     FormsModule,
-    RouterLink,
-    NzTableModule,
     NzButtonModule,
-    NzTagModule,
     NzAvatarModule,
     NzSelectModule,
-    NzEmptyModule,
     NzIconModule,
-    AdminLayoutComponent,
+    ListStateComponent,
+    PageHeadComponent,
+    StatusTagComponent,
+    PersonCardComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './moderation.page.html',
@@ -41,9 +44,11 @@ import { AdminLayoutComponent } from '@widgets/admin-layout/admin-layout.compone
 export class AdminModerationPage implements OnInit {
   private readonly api = inject(AdminApi);
 
-  private readonly msg = inject(NzMessageService);
+  private readonly person = inject(PersonCardStore);
 
   public readonly loading = signal(true);
+
+  public readonly error = signal<string | null>(null);
 
   public readonly items = signal<ModerationQueueItem[]>([]);
 
@@ -73,14 +78,14 @@ export class AdminModerationPage implements OnInit {
     this.fetch();
   }
 
-  public statusTagColor(s: ModerationQueueItem['moderation_status']): string {
+  public statusTone(s: ModerationQueueItem['moderation_status']): StatusTone {
     switch (s) {
       case 'pending_review':
-        return 'gold';
+        return 'wait';
       case 'approved':
-        return 'green';
+        return 'ok';
       case 'rejected':
-        return 'red';
+        return 'blocked';
     }
   }
 
@@ -95,28 +100,33 @@ export class AdminModerationPage implements OnInit {
     }
   }
 
+  // Своя копия «сколько прошло» жила здесь и говорила «3 д назад», пока
+  // в остальном приложении то же самое читалось «3 дня назад».
   public agoLabel(updatedAt: string): string {
-    const diffMs = Date.now() - new Date(updatedAt).getTime();
-    const m = Math.floor(diffMs / 60000);
-    if (m < 1) return 'только что';
-    if (m < 60) return `${m} мин назад`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h} ч назад`;
-    const d = Math.floor(h / 24);
-    return `${d} д назад`;
+    return formatAgo(updatedAt);
   }
 
-  private fetch(): void {
+  /**
+   * Решение принимают в карточке человека: она показывает всё, на чём его
+   * основывают, — профиль, площадки, проекты и историю, — а очередь
+   * отвечает только на «кто следующий».
+   */
+  public openCard(userId: string, ev: Event): void {
+    this.person.open(userId, ev.currentTarget);
+  }
+
+  public fetch(): void {
     this.loading.set(true);
+    this.error.set(null);
     this.api.listModerationQueue(this.statusFilter, 50, 0).subscribe({
       next: (r) => {
         this.items.set(r.items);
         this.total.set(r.total);
         this.loading.set(false);
       },
-      error: () => {
+      error: (e) => {
         this.loading.set(false);
-        this.msg.error('Не удалось загрузить очередь');
+        this.error.set(parseApiError(e, 'Не удалось загрузить очередь.').message);
       },
     });
   }

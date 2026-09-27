@@ -1,0 +1,173 @@
+@use 'breakpoints' as bp;
+
+// Блок стоит внутри панели кабинета (.sotka), и словарь у него оттуда.
+// Здесь — только плитка ролика: в макете на её месте плеер, а у нас
+// ролик лежит на чужой площадке и открывается там.
+:host {
+  display: block;
+}
+
+.player {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #fff;
+
+  &:hover {
+    text-decoration: none;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  // Кадр, если площадка его отдаёт, — подложкой под портретом.
+  .frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.35;
+  }
+
+  .who {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    padding: 0 8px;
+
+    b {
+      font-size: 13px;
+      font-weight: 600;
+      text-shadow: 0 1px 6px rgb(0 0 0 / 45%);
+    }
+  }
+
+  // Треугольник «играть» из макета здесь не нужен: плеера нет, и
+  // обещать его нельзя.
+  &::after {
+    content: none;
+  }
+
+  .tc {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    i {
+      font-style: normal;
+      font-family: var(--mono);
+      font-size: 9px;
+      background: rgb(0 0 0 / 45%);
+      border-radius: 4px;
+      padding: 1px 4px;
+    }
+  }
+}
+
+.rev-note {
+  margin-top: 10px;
+}
+
+.rev-acts {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.hint,
+.queue-note {
+  font-size: 12px;
+}
+
+.queue-note {
+  margin: 10px 0 0;
+}
+
+.returned {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.small {
+  font-size: 12px;
+}
+
+// Где откроется ролик. Подпись нужна потому, что площадку выбираем мы:
+// YouTube, если он есть, иначе Reels, иначе TikTok — там ролик
+// открывается страницей с плеером, а не лентой, которая тут же уносит
+// в следующий.
+.player .who .where {
+  font-style: normal;
+  font-size: 11px;
+  opacity: 0.85;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 45%);
+}
+
+// Ссылки ролика над чек-листом: менеджер смотрит их тут же, тут и
+// правит. Адрес длинный — обрезаем, а не переносим: три строки ссылки
+// отодвигают вниз то, ради чего экран открыт.
+.revlinks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.revlink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .grow {
+    flex: 1;
+    min-width: 0;
+  }
+
+  a.grow {
+    overflow: hidden;
+    color: var(--accent);
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ic {
+    flex: 0 0 auto;
+    min-width: 34px;
+    padding: 3px 6px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    color: var(--muted);
+    font-size: 11px;
+    text-align: center;
+  }
+}
+
+@media (max-width: bp.$touch) {
+  .revlink {
+    flex-wrap: wrap;
+
+    .btn {
+      min-height: 44px;
+    }
+
+    a.grow,
+    .inp {
+      flex: 1 0 100%;
+    }
+  }
+}

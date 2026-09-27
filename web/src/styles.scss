@@ -1,5 +1,21 @@
 @use 'design' as design;
+// Словарь страниц проекта — перенос макетов. Глобально, как и
+// дизайн-система: он общий для нескольких экранов, и копии в ленивых
+// чанках дороже одной в начальном.
+@use 'crm';
+// Правки чужой разметки внутри CRM — после 'crm': они её и правят.
+@use 'crm-shell';
+// Тач-слой CRM: списки админки на телефоне становятся карточками.
+@use 'crm-touch';
 @use 'editor' as editor;
+// Кабинеты «Сотки»: словарь под .sotka и его тач-слой. Тоже глобально —
+// он общий для трёх кабинетов и оболочки CRM. Вынести его в ленивый
+// чанк мешает бюджет на стиль компонента (16 КБ): словарь целого
+// кабинета в него не влезает, а поднимать порог для ВСЕХ компонентов
+// ради одного файла — значит снять сторожа с настоящих раздутых стилей.
+@use 'sotka';
+// Тач-слой кабинетов — после словаря: он его и правит.
+@use 'sotka-touch';
 
 /* Полоса прокрутки резервирует место всегда: вкладки кабинета разной
    высоты, и при переключении скроллбар то появлялся, то исчезал — ширина
@@ -7,20 +23,64 @@
 html {
   scrollbar-gutter: stable;
 }
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+/* Два шрифта вместо одного. Archivo 700–800 — заголовки и числа-герои:
+   у Manrope на 54–92 px цифры плывут по ширине и «258 000» приходится
+   вычитывать. Inter 400–600 — интерфейс и таблицы, у него tnum честный.
+   Подключение то же, что было у Manrope: один css2 с Google Fonts. */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+/* Шрифты кабинетов «Сотки». Unbounded 500/700 — заголовки и числа-герои,
+   Onest 400–700 — интерфейс, JetBrains Mono — счётчики и журнал. Вторым
+   запросом, а не в общий css2: за пределами .sotka они не нужны, и
+   подмешивать их в набор всего сайта незачем. */
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
 :root {
   /* Палитра дизайн-системы кабинета — теперь общая для всего сайта.
      Раньше кабинет и мастер жили на #0b0c0e, а лента и главная на более
-     холодном #060a0c: на переходе между экранами фон заметно менялся. */
-  --bg: #0b0c0e;
-  --bg-elevated: #111316;
-  --surface: #15181c;
-  --surface-hover: #181c22;
-  --border: rgba(255, 255, 255, 0.08);
-  --text: #eef6f8;
-  --text-muted: rgba(238, 246, 248, 0.62);
-  --text-dim: rgba(238, 246, 248, 0.38);
+     холодном #060a0c: на переходе между экранами фон заметно менялся.
+
+     v2 «Ступени»: земля ушла с нейтрального чёрного на зелёно-чёрные
+     чернила, и между землёй и карточкой стало девять пунктов светлоты
+     вместо четырёх. При четырёх всё лежало на одной глубине: карточка
+     не читалась как карточка, и «поднятая поверхность» была неотличима
+     от обычной. */
+  --ink: #080c0b; /* земля */
+  --slate: #111716; /* карточка */
+  --slate-2: #1a2221; /* поднятая поверхность: блок-ответ, ховер строки */
+
+  --bg: var(--ink);
+  /* Поля и вторичные кнопки: в макете они стоят прямо на земле с рамкой
+     --line-2. Полутон между землёй и карточкой, чтобы поле на карточке
+     всё-таки читалось как углубление. */
+  --bg-elevated: #0e1413;
+  --surface: var(--slate);
+  --surface-hover: var(--slate-2);
+  --border: #1c2422;
+  --border-strong: #2a3532;
+  --border-hover: #3a4744;
+
+  /* Текст — ЧЕТЫРЕ ступени, а не две.
+     Было три, и нижняя (--text-dim) стояла на rgba .38 = 2.6:1 — то есть
+     ниже любого порога. На ней был набран состав денег у креатора: самая
+     нужная строка экрана самым нечитаемым цветом. Числа контраста на
+     карточке (#111716): t1 16.8:1, t2 8.7:1, t3 5.2:1, t4 4.5:1. */
+  --text: #f2f7f5; /* t1: заголовки, числа */
+  --text-muted: #a9b6b2; /* t2: основной текст */
+  --text-dim: #7e8d88; /* t3: подписи */
+  /* t4: сноски и «нет данных». В макете здесь #6C7A76 — он давал 4.04:1
+     на карточке, под порогом 4.5; подняли на полтона. */
+  --text-faint: #74827e;
+
+  /* ДВА ЦВЕТА СМЫСЛА вместо одного акцента.
+     Латунь — то, что ВЫРОСЛО: просмотры, ступени, заработок.
+     Лёд — то, что УПАЛО: цена тысячи просмотров, сравнение с рынком.
+     Дальше по коду их читать как «хорошо/плохо» нельзя: упавшая цена
+     тысячи — это хорошо, и лёд её хвалит. */
+  --brass: #f0b357;
+  --brass-dim: rgb(240 179 87 / 14%);
+  --ice: #8fd3e6;
+  --ice-dim: rgb(143 211 230 / 12%);
+
   --accent: #20a194;
   --accent-dim: rgba(45, 212, 191, 0.15);
   --danger: #ff6470;
@@ -32,6 +92,41 @@ html {
   --cta: #f0553c;
   --cta-hover: #ff6a52;
   --cta-active: #d34630;
+
+  /* Статусная палитра. Жила внутри .crm-page (--green/--amber/--red) и
+     потому была недоступна всему, что рисуется вне страниц проекта, —
+     статусные плашки в списках брали палитру ng-zorro и приезжали то
+     золотыми, то оранжевыми за одно и то же состояние. Что каждый цвет
+     значит, описано в shared/ui/status-tag. */
+  /* Моноширинный — ТОЛЬКО машинные строки: адреса, идентификаторы,
+     коды. На числах-героях он давал «3   000   000» с провалами между
+     разрядами — номерной знак, а не сумма. Табличные цифры Inter/Archivo
+     держат разряды в столбце и без него. */
+  --crm-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ok: #2fbd8f;
+  --ok-line: #1f6f57;
+  --ok-bg: rgb(47 189 143 / 10%);
+  /* ПРЕДУПРЕЖДЕНИЕ — коралловое, а не янтарное. Решение владельца:
+     янтарь занят латунью и теперь значит «выросло». Одним цветом
+     предупреждение от действия больше не отличить, поэтому каждое
+     предупреждение обязано нести значок (.mark::before, .pill.warn,
+     «!» в плашке) — цвет его больше не опознаёт. */
+  --warn: #f0553c;
+  --warn-line: #5d2a22;
+  --warn-bg: rgb(240 85 60 / 8%);
+  --bad: #e0604e;
+  --bad-line: #4a2b28;
+  --bad-bg: rgb(224 96 78 / 10%);
+  /* Синий — «к сведению»: не ждёт действия и не сломано, но знать надо.
+     Четвёртый смысл рядом с зелёным, коралловым и красным. */
+  --info: #4b8fd6;
+  --info-line: #274b6e;
+  --info-bg: rgb(75 143 214 / 12%);
+
+  /* Шрифты: заголовочный и интерфейсный. --crm-mono третьим — он не
+     шрифт текста, а пометка «эта строка машинная». */
+  --font-head: 'Archivo', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
 }
 
 *,
@@ -46,7 +141,11 @@ body {
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Manrope', system-ui, sans-serif;
+  font-family: var(--font-body);
+  /* Табличные цифры глобально: в списках и таблицах разряды обязаны
+     стоять друг под другом, иначе два числа рядом не сравнить взглядом.
+     Это и есть замена моноширинному на числах. */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -57,6 +156,10 @@ h4,
 h5,
 h6 {
   color: var(--text);
+  /* Заголовки — Archivo. Трекинг −3,5 % на крупных кеглях: Archivo
+     800 набран широко, и без поджатия заголовок распадается на буквы. */
+  font-family: var(--font-head);
+  letter-spacing: -0.02em;
 }
 
 /* ng-zorro dark overrides */
@@ -66,7 +169,12 @@ h6 {
 .ant-input,
 .ant-input-affix-wrapper,
 .ant-select-selector,
-.ant-btn-default {
+/* Кнопка без nzType приезжает с классом .ant-btn БЕЗ .ant-btn-default:
+   правило её не находило, и она оставалась белой со светлой темы ant —
+   белый прямоугольник с чёрной надписью посреди тёмной страницы. */
+.ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-link):not(
+    .ant-btn-text
+  ):not(.ant-btn-background-ghost) {
   background: var(--surface) !important;
   color: var(--text) !important;
   border-color: var(--border) !important;
@@ -142,6 +250,43 @@ h6 {
     color: #ff9c98 !important;
     border-color: rgba(255, 77, 79, 0.6) !important;
   }
+}
+
+/* Окно nz-modal целиком помещается в экран.
+   ng-zorro ставит окно на 100px сверху и высоту ему не ограничивает: чуть
+   более длинный текст — и низ с кнопками уезжает за край. Прокручивается
+   при этом обёртка, то есть подтверждение приходится искать колесом, а на
+   коротком окне ноутбука его не видно вовсе. Самый неприятный случай —
+   удаление проекта: там подтверждение вводом названия, и не видно ни
+   поля, ни кнопки.
+
+   Лечим тем же приёмом, что и собственные окна CRM (.modal в
+   shared/scss/_crm.scss): высота ограничена экраном, прокручивается ТЕЛО,
+   низ с кнопками липкий. Правило общее, а не на один класс: окно, из
+   которого не видно кнопку, сломано у любого. */
+.ant-modal {
+  top: 60px;
+  padding-bottom: 60px;
+}
+
+.ant-modal-content {
+  display: flex;
+  max-height: calc(100dvh - 120px);
+  flex-direction: column;
+}
+
+.ant-modal-body {
+  overflow: auto;
+  min-height: 0;
+}
+
+.ant-modal-footer {
+  position: sticky;
+  bottom: 0;
+  flex: 0 0 auto;
+  /* Фон обязателен: у ant он прозрачный, и прилипший низ показывал бы
+     сквозь себя уезжающее под него тело. */
+  background: var(--surface);
 }
 
 /* nz-drawer (bottom-sheet) — приводим к тёмной теме. По дефолту ng-zorro
@@ -352,8 +497,13 @@ h6 {
 /* Главное действие — коралловое. Зелёный остаётся акцентом состояний
    (выбранные чипы, «сохранено», статусы), но как цвет кнопки он спорил с
    кораллом: «Создать проект» был зелёным, «Найти» и «Далее» — коралловыми. */
+/* Надпись цветом земли, а не белым: белое на коралле даёт 3.46:1 —
+   ниже порога 4.5 для обычного текста, а это главная кнопка продукта.
+   Затемнять сам коралл нельзя, он один на весь сайт. Тёмная надпись на
+   ярком коралле — 5.68:1. То же сделано для .btn.primary в
+   shared/scss/_crm.scss и миксинов дизайн-системы. */
 .ant-btn-primary {
-  color: #fff !important;
+  color: var(--ink) !important;
   background: var(--cta);
   border-color: var(--cta) !important;
 }
@@ -370,7 +520,7 @@ h6 {
 .ant-btn-primary:focus {
   background: var(--cta);
   border-color: var(--cta) !important;
-  color: #fff !important;
+  color: var(--ink) !important;
 }
 
 .ant-btn-primary:focus-visible {
@@ -380,7 +530,7 @@ h6 {
 
 .ant-btn-primary:hover {
   background: var(--cta-hover);
-  color: #fff !important;
+  color: var(--ink) !important;
   border-color: var(--cta-hover) !important;
 }
 
@@ -389,7 +539,7 @@ h6 {
 .ant-btn-primary:active {
   background: var(--cta-active) !important;
   border-color: var(--cta-active) !important;
-  color: #fff !important;
+  color: var(--ink) !important;
 }
 
 // .project-cart-btn — стилизация переехала в feed.page.scss и
@@ -410,7 +560,9 @@ h6 {
 /* Вторичная кнопка на наведении — светлее, но той же породы. Зелёная
    заливка делала «Отмену» заметнее «Сохранить»; !important здесь бил даже
    правило дизайн-системы внутри кабинета, так что зеленело везде. */
-.ant-btn-default:hover {
+.ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-link):not(.ant-btn-text):not(
+    .ant-btn-background-ghost
+  ):hover {
   color: var(--text) !important;
   background: var(--surface-hover) !important;
   border-color: var(--border-strong, #2c313a) !important;
@@ -588,16 +740,20 @@ h6 {
 .ant-pagination-item:hover,
 .ant-pagination-prev:hover .ant-pagination-item-link,
 .ant-pagination-next:hover .ant-pagination-item-link {
-  border-color: var(--accent) !important;
+  border-color: var(--cta) !important;
 }
 
 .ant-pagination-item:hover a {
-  color: var(--accent) !important;
+  color: var(--cta) !important;
 }
 
+/* Текущая страница — коралловая, как всё выбранное и нажатое в
+   приложении. Зелёный здесь читался как «готово»: в таблице, где зелёным
+   помечены одобренные строки, тот же цвет на номере страницы означал
+   что-то про содержимое, а означает он «вы здесь». */
 .ant-pagination-item-active {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
+  background: var(--cta) !important;
+  border-color: var(--cta) !important;
 }
 
 .ant-pagination-item-active,
@@ -633,6 +789,29 @@ h6 {
 
 /* nzShowSizeChanger открывает .ant-select — общий select-override его
    покрывает (см. выше .ant-select-selector и т.п.), повторять не нужно. */
+
+/* Меню строки (app-row-menu). Выпадашка ng-zorro уезжает в оверлей на
+   уровень body — scoped-стили компонента до неё не достают, поэтому
+   красный пункт описан здесь. */
+.ant-dropdown-menu.row-menu {
+  background: var(--surface) !important;
+  border: 1px solid var(--border);
+}
+
+.ant-dropdown-menu.row-menu .ant-dropdown-menu-item {
+  color: var(--text) !important;
+}
+
+.ant-dropdown-menu.row-menu .ant-dropdown-menu-item:hover {
+  background: var(--surface-hover) !important;
+}
+
+/* Разрушающее — красным: в списке из пяти пунктов одинакового веса
+   необратимый ничем не отличался от остальных. */
+.ant-dropdown-menu.row-menu .ant-dropdown-menu-item.danger,
+.ant-dropdown-menu.row-menu .ant-dropdown-menu-item.danger:hover {
+  color: var(--danger) !important;
+}
 
 .ant-message-notice-content {
   background: var(--surface) !important;
@@ -1100,6 +1279,16 @@ app-invite-banner,
    системы она не доехала — белая карточка с прямыми кнопками посреди
    тёмного сайта. */
 .link-page,
+/* Админский кабинет. До дизайн-системы он не доходил вовсе: поля и
+   селекты рисовались дефолтом ant — светлая тема и скругление 2px
+   посреди тёмной страницы, — а радиусы в собственных стилях гуляли от
+   4 до 999px. Экран администратора — такая же часть продукта, и язык у
+   него должен быть тот же, что в кабинете. */
+/* Страницы проекта: перенос макетов из ~/tmp. Классы там свои
+   (.hero, .slotcard, .terms…), но поля и кнопки ant внутри должны
+   выглядеть как везде. */
+.crm-page,
+.crm-shell,
 /* Диалог входа открывается из пяти мест, поэтому цепляемся к самому
    компоненту, а не к nzClassName на каждом вызове. */
 app-auth-dialog,
@@ -1114,6 +1303,13 @@ app-email-unverified-dialog,
   @include design.tokens;
   @include design.ant-fields;
   @include design.sheet-trigger;
+}
+
+/* Таблицы CRM шире экрана: в них десять колонок и меню действий в
+   последней. Без прокрутки внутри контейнера правый край просто
+   обрезался — до меню строки было не добраться. */
+.crm-shell .ant-table-content {
+  overflow-x: auto;
 }
 
 /* Окно «Подтвердите email»: заголовок и кнопки в общем стиле. */
