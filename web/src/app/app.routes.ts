@@ -114,6 +114,18 @@ export const routes: Routes = [
     loadComponent: () =>
       import('@pages/me/creator-projects/creator-projects.page').then((m) => m.CreatorProjectsPage),
   },
+  // Вход из мини-аппа Telegram. БЕЗ guard'а намеренно: человек сюда
+  // приходит без сессии — её здесь и выдают. Бот в адресе: от него
+  // зависит роль нового человека, и спрашивать её вторым экраном
+  // незачем — выбор сделан тем, в какого бота написали.
+  {
+    path: 'tg',
+    loadComponent: () => import('@pages/tg/tg-entry.page').then((m) => m.TgEntryPage),
+  },
+  {
+    path: 'tg/:bot',
+    loadComponent: () => import('@pages/tg/tg-entry.page').then((m) => m.TgEntryPage),
+  },
   // Заявки «под ключ»: что предлагают снять и чем на это ответить.
   // Приглашение больше не именное — заявка уходит рассылкой всем
   // креаторам, — поэтому это список, а не письмо с одной кнопкой.

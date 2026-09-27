@@ -52,6 +52,7 @@ import { periodTitle } from '@entities/billing/lib/period';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { CreatorAvailabilityComponent } from '@widgets/creator-availability/creator-availability.component';
+import { TelegramLinkComponent } from '@features/telegram-link/telegram-link.component';
 import { BillingApi } from '@entities/billing/api/billing.api';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
 import { nextStepKind } from '@entities/billing/lib/creator-highlights';
@@ -97,6 +98,7 @@ const SUGGEST_FOLD_AT = 3;
     NzSpinModule,
     NzTagModule,
     CreatorAvailabilityComponent,
+    TelegramLinkComponent,
     ProjectAccountsComponent,
     ProjectCommentsComponent,
     AppHeaderComponent,

@@ -54,6 +54,7 @@ import { clientTitle } from '@entities/project/lib/project-title';
 import type { ProjectClientView } from '@entities/project/model/project.types';
 import type { CalendarPerson } from '@widgets/project-calendar/project-calendar.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
+import { TelegramLinkComponent } from '@features/telegram-link/telegram-link.component';
 import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
 import type { SeriesPoint } from '@shared/lib/chart-series';
 import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
@@ -106,6 +107,7 @@ const TABS: readonly ClientTab[] = ['summary', 'videos', 'calendar', 'money', 'a
     FormsModule,
     RouterLink,
     ProjectCommentsComponent,
+    TelegramLinkComponent,
     LineChartComponent,
     SotkaAvaComponent,
     SotkaTopComponent,
