@@ -136,6 +136,24 @@ test('на экране входа видно каждую кнопку и ка�
   expect(back.color, 'кнопка «Назад»: текст сливается с подложкой').not.toBe(back.bg);
 });
 
+test('тому, кто входит через Яндекс, объясняют путь вместо пароля', async ({ page }) => {
+  test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
+  await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);
+  await page.getByRole('button', { name: 'У меня есть аккаунт' }).click();
+
+  // У аккаунта, заведённого через Яндекс, пароля нет вовсе: экран
+  // спросил бы его и не принял ничего, а человек решил бы, что
+  // сломались мы. Поэтому подсказка стоит ДО ввода.
+  await page.getByRole('button', { name: /Пароля у вас нет/ }).click();
+  await expect(page.getByRole('heading', { name: 'Вы входите через Яндекс' })).toBeVisible();
+  await expect(page.getByText('Получать уведомления в Telegram')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Открыть сайт в браузере' })).toBeVisible();
+
+  // И назад к развилке — тупика здесь быть не должно.
+  await page.getByRole('button', { name: 'Назад' }).click();
+  await expect(page.getByRole('heading', { name: 'Первый раз здесь?' })).toBeVisible();
+});
+
 test('«я здесь впервые» заводит креатора и уводит в его проекты', async ({ page }) => {
   test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
   await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);

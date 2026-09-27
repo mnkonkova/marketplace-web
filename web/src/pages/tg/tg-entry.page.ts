@@ -64,9 +64,39 @@ import {
               </button>
             </div>
           }
+          @case ('yandex') {
+            <!-- Вход через Яндекс внутри мини-аппа невозможен: он
+                 уводит в браузер, и сессия остаётся там. Поэтому не
+                 прячем тупик за кнопкой, а объясняем обходной путь —
+                 он короткий и работает. -->
+            <h1>Вы входите через Яндекс</h1>
+            <p class="muted">
+              Пароля у такого аккаунта нет, и спрашивать его здесь бессмысленно. Привязать телеграм
+              можно из кабинета — это три шага и одна ссылка:
+            </p>
+            <ol class="steps">
+              <li>откройте сайт в браузере и войдите через Яндекс;</li>
+              <li>в любом своём проекте нажмите «Получать уведомления в Telegram»;</li>
+              <li>перейдите по ссылке — она приведёт сюда и всё свяжет.</li>
+            </ol>
+            <div class="acts">
+              <button type="button" class="btn primary" (click)="openSite()">
+                Открыть сайт в браузере
+              </button>
+              <button type="button" class="btn" (click)="state.set('fork')">Назад</button>
+            </div>
+          }
           @case ('login') {
             <h1>Вход в аккаунт</h1>
             <p class="muted">Пароль спросим один раз — дальше вход из Telegram будет сам.</p>
+            <!-- Про Яндекс говорим ДО того, как человек трижды введёт
+                 несуществующий пароль и решит, что сломались мы. -->
+            <p class="muted">
+              Входите через Яндекс?
+              <button type="button" class="linky" (click)="state.set('yandex')">
+                Пароля у вас нет — вот что делать
+              </button>
+            </p>
             <label class="fld">
               <span>Почта или телефон</span>
               <input type="text" autocomplete="username" [(ngModel)]="login" name="login" />
@@ -198,6 +228,27 @@ import {
       .btn[disabled] {
         opacity: 0.5;
       }
+
+      .steps {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--tg-text);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      /* Ссылка внутри абзаца, а не кнопка: по смыслу это переход к
+         объяснению. Кнопкой она остаётся ради доступности — её видно
+         с клавиатуры и читает скринридер. */
+      .linky {
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--tg-btn);
+        font: inherit;
+        text-decoration: underline;
+        cursor: pointer;
+      }
     `,
   ],
 })
@@ -208,7 +259,9 @@ export class TgEntryPage implements OnInit {
 
   private readonly route = inject(ActivatedRoute);
 
-  public readonly state = signal<'loading' | 'outside' | 'fork' | 'login' | 'error'>('loading');
+  public readonly state = signal<'loading' | 'outside' | 'fork' | 'login' | 'yandex' | 'error'>(
+    'loading',
+  );
 
   public readonly busy = signal(false);
 
@@ -242,6 +295,28 @@ export class TgEntryPage implements OnInit {
 
   public createNew(): void {
     this.enter({ create: true });
+  }
+
+  /**
+   * Открыть сайт в браузере.
+   *
+   * Через openLink самого Telegram: обычный переход внутри webview
+   * оставил бы человека в мини-аппе без его собственной шапки, а
+   * вход через Яндекс всё равно уводит наружу.
+   */
+  public openSite(): void {
+    const url = window.location.origin;
+    const tg = (window as unknown as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } })
+      .Telegram?.WebApp;
+    try {
+      if (tg?.openLink) {
+        tg.openLink(url);
+        return;
+      }
+    } catch {
+      /* старый клиент — уходим обычной ссылкой */
+    }
+    window.open(url, '_blank', 'noopener');
   }
 
   public linkExisting(): void {
