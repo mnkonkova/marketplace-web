@@ -71,6 +71,10 @@ const CATEGORY_LABEL: Record<string, string> = {
 // которые принимает заказчик.
 const STEP_LABELS = ['Вид проекта', 'Бриф', 'Креаторы', 'Заявка'];
 
+// Во второй ветке третий шаг о другом: креаторов там не выбирают —
+// снимаем мы, ролики выходят с аккаунтов бренда. Остаётся объём.
+const STEP_LABELS_BRAND = ['Вид проекта', 'Бриф', 'Объём', 'Заявка'];
+
 @Component({
   selector: 'app-order-funnel-page',
   standalone: true,
@@ -92,7 +96,19 @@ export class OrderFunnelPage implements OnInit {
 
   private readonly destroyRef = inject(DestroyRef);
 
-  public readonly stepLabels = STEP_LABELS;
+  /**
+   * Ветка воронки.
+   *
+   * `creators` — блогеры снимают у себя; `brand` — снимаем мы, ролики
+   * выходят с аккаунтов бренда. Ветка живёт здесь, а не выводится из
+   * пустого состава: «никого не отметили» бывает в обеих, и догадка
+   * однажды заведёт проект не того вида.
+   */
+  public readonly branch = signal<'creators' | 'brand'>('creators');
+
+  public readonly noCrew = computed(() => this.branch() === 'brand');
+
+  public readonly stepLabels = computed(() => (this.noCrew() ? STEP_LABELS_BRAND : STEP_LABELS));
 
   /** Шаг, на котором стоит человек. */
   public readonly step = signal(0);
@@ -189,6 +205,10 @@ export class OrderFunnelPage implements OnInit {
       const ids = this.picked();
       const needed = this.needed();
       const videos = this.videos();
+      // Ветка — тоже вход: во второй смета считается без людей, и
+      // переключение веток обязано пересчитать её, а не оставить
+      // прежнее число от чужого экрана.
+      this.branch();
       untracked(() => this.scheduleEstimate(ids, needed, videos));
     });
     this.destroyRef.onDestroy(() => {
@@ -210,17 +230,26 @@ export class OrderFunnelPage implements OnInit {
   // ---- шаг 0: вид проекта ----
 
   public chooseCreators(): void {
+    this.branch.set('creators');
     this.step.set(1);
   }
 
   /**
-   * Вторая ветка — другой экран, которого ещё нет. Показываем это прямо,
-   * а не ведём в пустую страницу: «скоро» честнее, чем 404.
+   * Вторая ветка — «видео под ключ», проект без креаторов.
+   *
+   * Заводится ТАК ЖЕ, как первая: бриф, объём, отправка, и в ту же
+   * секунду появляется проект с перепиской. Раньше здесь стояла
+   * плашка «экран продакшена ещё не готов», и человек уходил писать
+   * менеджеру словами — половина не доходила вовсе.
    */
-  public readonly productionAsked = signal(false);
-
   public chooseProduction(): void {
-    this.productionAsked.set(true);
+    this.branch.set('brand');
+    // Отметки первой ветки не должны утечь во вторую: вернулись назад,
+    // сменили ветку — состав обязан обнулиться, иначе сервер откажет
+    // «в проекте без креаторов отмечать некого», и виноватым будет
+    // выглядеть экран.
+    this.picked.set([]);
+    this.step.set(1);
   }
 
   // ---- шаг 1: подбор ----
@@ -369,7 +398,11 @@ export class OrderFunnelPage implements OnInit {
 
   private scheduleEstimate(ids: string[], needed: number, videos: number): void {
     if (this.estimateTimer) clearTimeout(this.estimateTimer);
-    if (ids.length === 0 || needed < 1 || videos < 1) {
+    // Во второй ветке считать есть что и без людей: цена там — ролики ×
+    // фикс, и «никого не отметили» здесь не «рано считать», а свойство
+    // услуги. В первой пустой состав по-прежнему значит «ещё рано».
+    const enough = this.noCrew() ? videos >= 1 : ids.length > 0 && needed >= 1 && videos >= 1;
+    if (!enough) {
       this.estimateKey = '';
       this.estimate.set(null);
       this.estimating.set(false);
@@ -378,7 +411,7 @@ export class OrderFunnelPage implements OnInit {
     // На сумму влияет состав, а не приоритет: перестановка строк меняет
     // очередь приглашений и ничего больше. Считать по ней смету заново
     // значит гасить уже показанное число ради того же самого ответа.
-    const key = `${[...ids].sort().join(',')}|${needed}|${videos}`;
+    const key = `${this.branch()}|${[...ids].sort().join(',')}|${needed}|${videos}`;
     if (key === this.estimateKey && this.estimate()) return;
     this.estimateKey = key;
     this.estimating.set(true);
@@ -401,7 +434,13 @@ export class OrderFunnelPage implements OnInit {
   }
 
   public canSubmit(): boolean {
-    return this.picked().length > 0 && (this.consented() || this.agreed) && !this.submitting();
+    if (this.submitting()) return false;
+    if (!this.consented() && !this.agreed) return false;
+    // Во второй ветке отмечать некого: заявка держится на брифе и
+    // объёме, и требовать здесь «хотя бы одного креатора» значило бы
+    // запереть человека на экране, где выбирать не из чего.
+    if (this.noCrew()) return this.videos() > 0;
+    return this.picked().length > 0;
   }
 
   /**
@@ -435,11 +474,15 @@ export class OrderFunnelPage implements OnInit {
       .createOrder({
         start_month: this.month(),
         // Сколько отметили — столько и отметили: мест больше нет, и
-        // это же число идёт в потолок цены.
+        // это же число идёт в потолок цены. Во второй ветке отмечать
+        // некого, и ноль здесь — не «забыли выбрать», а свойство ветки.
         needed: this.picked().length,
         videos_count: this.videos(),
         creator_ids: this.picked(),
         brief: this.brief,
+        // Ветка уезжает на сервер явно: по пустому составу её не
+        // угадать — «никого не отметили» бывает и в первой.
+        project_kind: this.noCrew() ? 'brand_turnkey' : 'creators_turnkey',
         // Потолок, который человек ВИДЕЛ на баре. Сервер его не
         // пересчитывает: менеджеру нужно знать не «сколько вышло бы
         // сейчас», а с каким числом в голове нажали «Отправить», —
@@ -493,6 +536,9 @@ export class OrderFunnelPage implements OnInit {
 
   private applyOrder(o: Order): void {
     this.order.set(o);
+    // Заявку открыли по ссылке — ветку берём из неё, а не из того, что
+    // человек нажимал в этой вкладке: вкладка может быть новой.
+    this.branch.set(o.project_kind === 'brand_turnkey' ? 'brand' : 'creators');
     this.projectId.set(o.project_id ?? '');
     // Открытая по ссылке заявка показывается последним шагом: дальше
     // человек живёт в проекте, а не в воронке.
@@ -642,6 +688,10 @@ export class OrderFunnelPage implements OnInit {
     // черновой, другой просто нет.
     const e = this.orderEstimate() ?? this.estimate();
     if (!e) return 0;
+    // Во второй ветке верхняя ступень не участвует: ступени добирает
+    // ЧЕЛОВЕК просмотрами своих роликов, а человека здесь нет. Остаётся
+    // фикс за ролики — он и есть вся цена.
+    if (this.noCrew()) return e.salaries;
     const creators = this.order() ? e.creators : this.needed();
     return e.salaries + creators * this.topStepFee();
   });

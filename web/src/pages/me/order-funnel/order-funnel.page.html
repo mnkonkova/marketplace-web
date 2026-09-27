@@ -9,7 +9,7 @@
 <main class="sotka crm-page order-funnel">
   <div class="stage">
     <div class="steps">
-      @for (label of stepLabels; track label; let i = $index; let last = $last) {
+      @for (label of stepLabels(); track label; let i = $index; let last = $last) {
       <span class="s" [class.done]="i < step()" [class.cur]="i === step()">
         <span class="n">
           @if (i < step()) {
@@ -79,36 +79,17 @@
             </svg>
           </span>
           <b>Видео под ключ</b>
-          <p>Снимаем и монтируем мы, ролик остаётся вам. Вы платите за продакшен.</p>
+          <!-- Тот же регулярный формат, что и слева, но снимаем мы:
+               прежний текст обещал разовый ролик «на диск» — другую
+               услугу, которой в этой ветке больше нет. -->
+          <p>Снимаем и монтируем мы, ролики выходят с ваших аккаунтов. Вы платите за ролики.</p>
           <ul>
-            <li>бриф → КП → смета → оплата</li>
-            <li>черновик и одна правка</li>
-            <li>исходники и финал вам на диск</li>
+            <li>выбирать никого не нужно</li>
+            <li>ролики выкладываем на ваши площадки</li>
+            <li>статистика просмотров в кабинете</li>
           </ul>
         </button>
       </div>
-
-      @if (productionAsked()) {
-      <div class="notice info kind-soon">
-        <span class="ic">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7" />
-            <path
-              d="M12 11v5m0-8.2v.1"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-          </svg>
-        </span>
-        <span class="tx">
-          <b>Этот путь пока оформляется через менеджера</b>
-          Экран продакшена ещё не готов, и заводить заявку вслепую нечестно: у продакшена другой
-          бриф и другая смета. Напишите менеджеру в чат проекта или на почту — он соберёт бриф и
-          вернётся с КП.
-        </span>
-      </div>
-      }
     </section>
     }
 
@@ -189,14 +170,104 @@
           [disabled]="!brief.product.trim()"
           (click)="step.set(2)"
         >
-          Дальше — креаторы
+          {{ noCrew() ? 'Дальше — объём' : 'Дальше — креаторы' }}
         </button>
       </div>
     </section>
     }
 
+    <!-- 2 · объём (вторая ветка: креаторов не выбирают) -->
+    <!--
+      Отдельная секция, а не «та же с погашенным каталогом». Пустой
+      каталог с подписью «здесь никого нет» — это экран, на котором
+      человек ищет, что он сделал не так. Здесь выбирать не из чего по
+      устройству услуги: снимаем мы.
+    -->
+    @if (step() === 2 && noCrew()) {
+    <section>
+      <h1>Сколько роликов в месяц</h1>
+      <p class="sub lead">
+        Креаторов выбирать не нужно — снимаем и монтируем мы, ролики выходят с ваших аккаунтов.
+        Остаётся объём: с какого месяца начинаем и сколько роликов в нём.
+      </p>
+
+      <div class="params card tight">
+        <label class="param">
+          <span class="lbl">Месяц старта</span>
+          <select
+            class="inp"
+            [ngModel]="month()"
+            (ngModelChange)="changeMonth($event)"
+            name="month-brand"
+          >
+            @for (m of months; track m) {
+            <option [value]="m">{{ monthName(m) }}</option>
+            }
+          </select>
+        </label>
+        <label class="param">
+          <span class="lbl">Роликов за месяц</span>
+          <input
+            class="inp"
+            type="number"
+            min="1"
+            [ngModel]="videos()"
+            (ngModelChange)="setVideos($event)"
+            name="videos-brand"
+          />
+        </label>
+        <p class="param-note">
+          Аккаунты, с которых ролики будут выходить, заведёт менеджер вместе с вами — в проекте, для
+          этого есть отдельный раздел.
+        </p>
+      </div>
+
+      <aside class="basket static">
+        <h2>Сколько это будет стоить</h2>
+        <!-- Одно число и без расшифровки — как и в первой ветке.
+             Верхней ступени здесь нет: ступени добирает ЧЕЛОВЕК
+             просмотрами своих роликов, а человека в этом проекте не
+             бывает. Остаётся фикс за ролики, и он известен заранее. -->
+        <div class="btot">
+          <span>{{ ceiling() ? 'Меньше' : 'Смету посчитает менеджер' }}</span>
+          <b>
+            @if (estimating()) { считаем… } @else if (ceiling()) { {{ money(ceiling()) }} } @else {
+            — }
+          </b>
+        </div>
+        <p class="forecast-note">
+          Это цена роликов. Точную сумму назовёт менеджер: он же уточнит объём и площадки.
+        </p>
+
+        @if (terms(); as t) {
+        <label class="consent">
+          <input
+            type="checkbox"
+            [(ngModel)]="agreed"
+            [disabled]="consented()"
+            name="agreed-brand"
+          />
+          <span class="consent-full">
+            Принимаю условия работы, версия {{ t.version }}. Заказ навсегда останется на этой версии
+            — новый прайс его не переписывает.
+          </span>
+          <span class="consent-short">Принимаю условия, версия {{ t.version }}</span>
+        </label>
+        <details class="terms-body">
+          <summary>Прочитать условия</summary>
+          <p>{{ t.body }}</p>
+        </details>
+        }
+
+        <button class="btn primary send" type="button" [disabled]="!canSubmit()" (click)="submit()">
+          {{ submitting() ? 'Отправляем…' : 'Отправить заявку' }}
+        </button>
+      </aside>
+    </section>
+    }
+
     <!-- 2 · креаторы -->
-    @if (step() === 2) {
+    @if (step() === 2 && !noCrew()) {
     <section>
       <h1>Кто будет снимать</h1>
       <p class="sub lead">
@@ -421,10 +492,20 @@
     @if (step() === 3) {
     <section>
       <h1>Заявка у нас</h1>
+      @if (noCrew()) {
+      <!-- Ни слова про приглашения и состав: в этой ветке их не будет,
+           и обещать человеку то, чего не случится, — худший способ
+           начать работу. -->
+      <p class="sub lead">
+        Мы напишем по стоимости и срокам. Снимаем сами — искать креаторов не нужно, менеджер уточнит
+        объём и заведёт аккаунты, с которых ролики будут выходить.
+      </p>
+      } @else {
       <p class="sub lead">
         Мы напишем по стоимости и креаторам. Приглашение уже ушло — креаторы отвечают сами, и состав
         менеджер соберёт из тех, кто откликнулся.
       </p>
+      }
 
       <div class="card done-card">
         @if (orderEstimate(); as e) {

@@ -1,5 +1,5 @@
 import { test, expect, request as pwRequest, type APIRequestContext } from '@playwright/test';
-import { AUTH_KEY } from '../fixtures/world';
+import { AUTH_KEY, psql } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
@@ -133,7 +133,7 @@ async function openPicking(page: import('@playwright/test').Page): Promise<void>
   await expect(page.locator('.ccard').first()).toBeVisible({ timeout: 15_000 });
 }
 
-test('выбор вида ведёт на подбор, а вторая ветка — не в никуда', async ({ page }) => {
+test('обе ветки ведут в бриф, и дальше — каждая в своё', async ({ page }) => {
   await page
     .getByRole('button', { name: /Завести( ещё один)? проект/ })
     .first()
@@ -141,16 +141,22 @@ test('выбор вида ведёт на подбор, а вторая ветк
   await expect(page).toHaveURL(/\/me\/orders\/new/);
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
 
-  // Продакшена ещё нет. Нажатие обязано объяснить это на месте, а не
-  // увести на пустую страницу или промолчать.
+  // Вторая ветка — «видео под ключ»: снимаем мы, выбирать некого.
+  // Заводится она так же, как первая: бриф, объём, отправка. Раньше
+  // здесь стояла плашка «экран ещё не готов», и путь кончался ничем.
   await page.locator('.kind.k2').click();
-  await expect(page).toHaveURL(/\/me\/orders\/new/);
-  await expect(page.locator('.kind-soon')).toContainText('менеджера');
-  await expect(page.getByRole('heading', { name: 'Кто будет снимать' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'О чём снимаем' })).toBeVisible();
+  await page.locator('input[name="product"]').fill('Ролики для бренда (e2e)');
+  await page.getByRole('button', { name: 'Дальше — объём' }).click();
+  await expect(page.getByRole('heading', { name: 'Сколько роликов в месяц' })).toBeVisible();
+  // Каталога здесь нет вовсе — не спрятан, а отсутствует: выбирать не
+  // из чего по устройству услуги.
+  await expect(page.locator('.ccard')).toHaveCount(0);
 
-  // А первая ветка ведёт в бриф, и уже оттуда — в подбор, где каталог
-  // не пустой: пустой каталог — это та же дорога в никуда, только
-  // длиннее.
+  // А первая ветка ведёт в подбор, где каталог не пустой: пустой
+  // каталог — это та же дорога в никуда, только длиннее.
+  await page.goto('/me/orders/new');
+  await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
   await page.locator('.kind.k1').click();
   await expect(page.getByRole('heading', { name: 'О чём снимаем' })).toBeVisible();
   // Название — единственное обязательное поле брифа: из него получается
@@ -253,6 +259,68 @@ test('заявка заводит проект сразу, и отмеченны
     await expect(page.locator('.ptabs')).toBeVisible({ timeout: 15_000 });
   } finally {
     if (orderId) await cancelOrder(orderId);
+  }
+});
+
+test('вторая ветка заводит проект без креаторов — тем же путём', async ({ page }) => {
+  await page
+    .getByRole('button', { name: /Завести( ещё один)? проект/ })
+    .first()
+    .click();
+  await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
+  await page.locator('.kind.k2').click();
+
+  await expect(page.getByRole('heading', { name: 'О чём снимаем' })).toBeVisible();
+  await page.locator('input[name="product"]').fill('Ролики с наших аккаунтов (e2e)');
+  await page.getByRole('button', { name: 'Дальше — объём' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Сколько роликов в месяц' })).toBeVisible();
+  // Смета здесь считается БЕЗ людей: цена — ролики × фикс, и ждать
+  // «отметьте хоть кого-нибудь» не от чего.
+  await expect(page.locator('.btot b')).not.toHaveText('считаем…', { timeout: 15_000 });
+
+  const consent = page.locator('.consent input');
+  if (await consent.isEnabled()) await consent.check();
+
+  let orderId = '';
+  try {
+    const [created] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().endsWith('/me/orders') && r.request().method() === 'POST',
+      ),
+      page.locator('.send').click(),
+    ]);
+    expect(created.status(), await created.text()).toBe(201);
+
+    const sent = JSON.parse(created.request().postData() ?? '{}');
+    // Ветка уезжает на сервер явно: по пустому составу её не угадать —
+    // «никого не отметили» бывает и в первой ветке.
+    expect(sent.project_kind, 'ветка названа явно').toBe('brand_turnkey');
+    expect(sent.creator_ids, 'во второй ветке отмечать некого').toEqual([]);
+
+    const body = await created.json();
+    orderId = body.order.id;
+    expect(body.order.project_id, 'заявка завела проект').toBeTruthy();
+    expect(body.order.project_kind).toBe('brand_turnkey');
+
+    await expect(page.getByRole('heading', { name: 'Заявка у нас' })).toBeVisible({
+      timeout: 15_000,
+    });
+    // Ни слова про приглашения и состав: в этой ветке их не будет.
+    await expect(page.getByText('Приглашение уже ушло')).toHaveCount(0);
+
+    // И проект живой: он в кабинете, и это карточка «Сотки» с
+    // вкладками, а не воронка со стадиями.
+    await page.getByRole('button', { name: 'Открыть проект' }).click();
+    await expect(page).toHaveURL(new RegExp(`/me/projects/${body.order.project_id}`), {
+      timeout: 15_000,
+    });
+    await expect(page.locator('app-client-turnkey-project')).toBeVisible({ timeout: 20_000 });
+  } finally {
+    if (orderId) {
+      await cancelOrder(orderId);
+      psql(`DELETE FROM creator_orders WHERE id = '${orderId}';`);
+    }
   }
 });
 

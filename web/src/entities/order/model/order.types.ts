@@ -82,10 +82,18 @@ export interface OrderCandidate {
   expires_at?: string;
 }
 
+// Какой проект вырастает из заявки. Ровно два значения: заявка
+// порождает либо проект с креаторами, либо проект без них — «видео под
+// ключ», где снимаем мы и ролики выходят с аккаунтов бренда.
+export type OrderProjectKind = 'creators_turnkey' | 'brand_turnkey';
+
 export interface Order {
   id: string;
   client_user_id: string;
   project_id?: string;
+  // Ветка воронки. Хранится в заказе, а не выводится из состава:
+  // «никого не отметили» бывает в обеих.
+  project_kind: OrderProjectKind;
   terms_version_id?: string;
   start_month: string;
   needed: number;
