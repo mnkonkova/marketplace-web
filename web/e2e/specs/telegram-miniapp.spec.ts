@@ -142,6 +142,26 @@ test('кнопка из сообщения приводит на нужный э
   await expect(page).toHaveURL(/\/me\/creator\/projects/, { timeout: 20_000 });
 });
 
+test('подпись из фрагмента адреса не теряется по дороге', async ({ page }) => {
+  test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
+
+  // Так это приходит на живом телефоне: Telegram кладёт подпись во
+  // ФРАГМЕНТ адреса, а не в query. Роутер Angular переписывает адрес
+  // на первой же навигации и перекодирует фрагмент — и скрипт
+  // Telegram, загруженный асинхронно, читает уже испорченную строку:
+  // подпись не сходится, user приезжает в процентах и не разбирается
+  // как JSON. Человек видит «данные не разобрались», не сделав
+  // ничего.
+  const init = signInitData(tgUserID + 5, 'frag');
+  await page.goto(`/tg/creator#tgWebAppData=${encodeURIComponent(init)}`);
+
+  // Развилка — значит строка доехала целой и подпись сошлась:
+  // «этого телеграма мы не знаем» это ответ сервера, а не разбор.
+  await expect(page.getByRole('heading', { name: 'Первый раз здесь?' })).toBeVisible({
+    timeout: 20_000,
+  });
+});
+
 test('подделанная подпись не пускает', async ({ page }) => {
   const fake = signInitData(tgUserID + 1, 'lev').replace(
     /hash=[0-9a-f]+/,
