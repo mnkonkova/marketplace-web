@@ -249,11 +249,22 @@ export class TgEntryPage implements OnInit {
   /**
    * Куда вести.
    *
-   * Админа — в админку, креатора и менеджера — в креаторские проекты
-   * (канбан в мини-аппе исключён решением владельца: он не работает
-   * пальцем), остальных — в проекты заказчика.
+   * Сперва — туда, куда звали: в сообщении бота стоит кнопка «Открыть»
+   * с адресом конкретной выкладки или заявки, и приводить человека на
+   * список проектов после неё значит заставить его искать то, о чём
+   * ему только что написали.
+   *
+   * Адрес проверяем: принимаем только СВОЙ путь из кабинета. Иначе
+   * ссылка вида `/tg?to=https://чужой.сайт` уводила бы человека с
+   * нашей сессией куда угодно.
    */
   private go(): void {
+    const to = this.route.snapshot.queryParamMap.get('to') ?? '';
+    if (safeInternalPath(to)) {
+      void this.router.navigateByUrl(to, { replaceUrl: true });
+      return;
+    }
+
     const roles = this.auth.roles();
     if (roles.includes('admin')) {
       void this.router.navigate(['/admin'], { replaceUrl: true });
@@ -265,4 +276,24 @@ export class TgEntryPage implements OnInit {
     }
     void this.router.navigate(['/me/projects'], { replaceUrl: true });
   }
+}
+
+/**
+ * Свой ли это путь кабинета.
+ *
+ * Правила простые и все обязательные: начинается с одного слеша (то
+ * есть не `//чужой.сайт` и не `https://…`), ведёт в кабинет или
+ * админку, не содержит переводов строк и пробелов. Всё остальное
+ * игнорируем молча: человек всё равно попадёт в свой кабинет, просто
+ * не на тот экран.
+ */
+export function safeInternalPath(raw: string): boolean {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return false;
+  // Пробелы и обратные слеши: в адресе их не бывает, а в подделке
+  // бывают — переводом строки, например, раньше резали заголовки.
+  if (/[\s\\]/.test(raw)) return false;
+  // Выход вверх по дереву: `/me/../../` формально начинается с /me,
+  // а ведёт куда угодно.
+  if (raw.split('/').includes('..')) return false;
+  return /^\/(me|admin|manager)(\/|$|\?)/.test(raw);
 }

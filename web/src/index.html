@@ -4,6 +4,16 @@
     <meta charset="utf-8" />
     <title>Wayprmarket — подбор специалистов</title>
     <base href="/" />
+
+    <!-- Мини-апп Telegram. Скрипт нужен НЕ на одной странице входа, а
+         на всех: внутри Telegram кабинет отвечает вибрацией на
+         нажатия, разворачивается на весь лист и показывает кнопку
+         «назад» его же шапки. Он крошечный, отдаётся с CDN Telegram и
+         у любого, кто хоть раз открывал мини-апп, лежит в кеше;
+         async — чтобы не задерживать первую отрисовку тем, кто пришёл
+         из браузера. Вне Telegram объект остаётся пустым, и всё, что
+         на него опирается, само превращается в no-op. -->
+    <script async src="https://telegram.org/js/telegram-web-app.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090c" />
     <meta
