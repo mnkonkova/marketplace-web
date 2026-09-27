@@ -260,7 +260,9 @@ test('смета заказа не показывает заказчику кр�
     .click();
   await expect(page.getByRole('heading', { name: 'Что делаем?' })).toBeVisible({ timeout: 15_000 });
   await page.locator('.kind.k1').click();
-  // Первый шаг воронки — бриф; каталог креаторов за ним.
+  // Первый шаг воронки — бриф; каталог креаторов за ним. Название
+  // обязательно: из него получается имя проекта.
+  await page.locator('input[name="product"]').fill('Смета без ставок (e2e)');
   await page.getByRole('button', { name: 'Дальше — креаторы' }).click();
   await expect(page.locator('.ccard').first()).toBeVisible({ timeout: 15_000 });
 

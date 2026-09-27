@@ -45,6 +45,7 @@ import { ManagerBoardComponent } from '@pages/manager/board/board.page';
 
 const KIND_LABEL: Record<ProjectKind, string> = {
   creators_turnkey: 'Креаторы под ключ',
+  brand_turnkey: 'Бренд под ключ',
   production_turnkey: 'Продакшен под ключ',
   general: 'Общий проект',
 };
@@ -194,7 +195,8 @@ export class ManagerProjectsPage implements OnInit {
 
   /**
    * Чем проект живёт сейчас. У проекта с воронкой это шаг, у проекта с
-   * креаторами шагов нет — там осмысленна доля закрытых выкладок.
+   * планом выкладок (креаторы или бренд) шагов нет — там осмысленна доля
+   * закрытых выкладок.
    *
    * Числом, а не процентом: «100% выкладок закрыто» на проекте, где дат
    * ещё не проставили, — чистое враньё (нечего закрывать, а звучит как
@@ -202,7 +204,8 @@ export class ManagerProjectsPage implements OnInit {
    * отдаёт рядом с процентом, и при пустом плане говорим об этом прямо.
    */
   public where(p: ProjectManagerView): string {
-    if (p.kind !== 'creators_turnkey') return p.current_step_title || p.current_stage_name || '—';
+    const hasPlan = p.kind === 'creators_turnkey' || p.kind === 'brand_turnkey';
+    if (!hasPlan) return p.current_step_title || p.current_stage_name || '—';
     if (!p.progress_total) return 'дат в плане нет';
     return `${p.progress_done ?? 0} из ${p.progress_total} по плану периода`;
   }

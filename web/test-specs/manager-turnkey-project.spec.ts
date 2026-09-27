@@ -9,7 +9,7 @@ import type { Payment, PaymentStatus } from '@entities/billing/model/billing.typ
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import type { Publication, PublicationStatus } from '@entities/publication/model/publication.types';
 import { ProjectApi } from '@entities/project/api/project.api';
-import type { ProjectFullView } from '@entities/project/model/project.types';
+import type { ProjectFullView, ProjectKind } from '@entities/project/model/project.types';
 import { ManagerTurnkeyProjectComponent } from '@widgets/manager-turnkey-project/manager-turnkey-project.component';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzDrawerService } from 'ng-zorro-antd/drawer';
@@ -56,7 +56,11 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
     };
   }
 
-  function setup(items: Publication[], payments: Payment[] = []) {
+  function setup(
+    items: Publication[],
+    payments: Payment[] = [],
+    kind: ProjectKind = 'creators_turnkey',
+  ) {
     TestBed.resetTestingModule();
     const api = jasmine.createSpyObj<PublicationApi>('api', [
       'managerList',
@@ -128,7 +132,7 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
     fixture.componentRef.setInput('project', {
       id: 'pr1',
       title: 'PetFlat',
-      kind: 'creators_turnkey',
+      kind,
     } as ProjectFullView);
     fixture.detectChanges();
     return fixture.componentInstance;
@@ -194,5 +198,69 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
     const cmp = setup([pub({ id: 'a', status: 'cancelled' })], []);
 
     expect(cmp.prepaymentRisk()).toBe(false);
+  });
+
+  // ---- проект без креаторов ----
+  //
+  // Карточка у обоих видов одна: заводить второй почти такой же виджет
+  // значило бы держать две копии вёрстки, расходящиеся с первой правки.
+  // Разводит их карта блоков, и вот проверка, что разводит.
+
+  it('у проекта без креаторов выключены проверка, чек-лист, состав и начисления', () => {
+    const cmp = setup([pub({ id: 'a' })], [], 'brand_turnkey');
+    const b = cmp.blocks();
+
+    expect(b.review).toBeFalse();
+    expect(b.checklist).toBeFalse();
+    expect(b.roster).toBeFalse();
+    expect(b.billing).toBeFalse();
+    // А это остаётся: план, ссылки, аккаунты, материалы и статистика.
+    expect(b.publications).toBeTrue();
+    expect(b.accounts).toBeTrue();
+    expect(b.materials).toBeTrue();
+    expect(b.stats).toBeTrue();
+    // И появляется своё: стоимость, которую называет менеджер.
+    expect(b.cost).toBeTrue();
+  });
+
+  it('нижняя полоса на телефоне считается из карты блоков, а не из литерала', () => {
+    const creators = setup([pub({ id: 'a' })])
+      .phoneTabs()
+      .map((t) => t.key);
+    expect(creators).toEqual(['alerts', 'plan', 'links', 'review', 'team', 'pay']);
+
+    const brand = setup([pub({ id: 'a' })], [], 'brand_turnkey').phoneTabs();
+    // Вкладки «Проверка» у этого вида быть не должно: она открыла бы
+    // пустой экран — секцию прячет тач-слой по data-sec.
+    expect(brand.map((t) => t.key)).toEqual(['alerts', 'plan', 'links', 'team', 'pay']);
+    // «Команда» без состава читается как потерянный раздел: там аккаунты.
+    expect(brand.find((t) => t.key === 'team')?.title).toBe('Аккаунты');
+  });
+
+  it('у проекта без креаторов не бывает тревоги про предоплату', () => {
+    // Выкладка есть, платежей нет — у проекта с креаторами это тревога.
+    expect(
+      setup([pub({ id: 'a' })], [])
+        .alerts()
+        .some((a) => a.key === 'prepay'),
+    ).toBeTrue();
+    // Здесь начислять некому, и обещать действие, которого на экране
+    // нет, тревога не должна.
+    expect(
+      setup([pub({ id: 'a' })], [], 'brand_turnkey')
+        .alerts()
+        .some((a) => a.key === 'prepay'),
+    ).toBeFalse();
+  });
+
+  it('стоимость проекта показывается рублями, а пустая — пустой строкой', () => {
+    const cmp = setup([], [], 'brand_turnkey');
+    // Условий у проекта ещё нет: поле пустое, а не «0» — ноль читался бы
+    // как названная нулевая цена.
+    expect(cmp.costRubles()).toBe('');
+    expect(cmp.costPer1000()).toBeNull();
+
+    cmp.terms.set({ project_cost: 5_000_000 } as never);
+    expect(cmp.costRubles()).toBe('50000');
   });
 });

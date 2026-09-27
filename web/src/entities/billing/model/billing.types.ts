@@ -58,6 +58,15 @@ export interface BillingTerms {
   // Пусто — KPI не считается вовсе.
   subscriber_rate?: number;
   creator_subscriber_rate?: number;
+  /**
+   * Стоимость проекта за период, копейки. Называет менеджер.
+   *
+   * Единственное денежное поле проекта без креаторов: складывать сумму
+   * не из кого, а СПВ считать надо. Лежит в том же снимке условий, что и
+   * ставки, — двух ответов на вопрос «сколько стоит проект» быть не
+   * должно.
+   */
+  project_cost?: number;
   // С какой версии прайса сняты числа. Только для истории.
   terms_version_id?: string;
   updated_at?: string;
@@ -155,6 +164,8 @@ export interface BillingTermsInput {
   // значит «ставка задана и равна нулю».
   subscriber_rate?: number | null;
   creator_subscriber_rate?: number | null;
+  // Стоимость проекта за период, копейки. См. BillingTerms.project_cost.
+  project_cost?: number;
 }
 
 // ---- прайс площадки (админ) ----

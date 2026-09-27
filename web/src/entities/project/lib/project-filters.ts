@@ -67,7 +67,7 @@ const SORTS: AdminProjectsSort[] = ['updated_asc', 'updated_desc', 'created_asc'
 
 const STATUSES: ProjectStatus[] = ['draft', 'active', 'on_hold', 'dispute', 'done', 'cancelled'];
 
-const KINDS: ProjectKind[] = ['creators_turnkey', 'production_turnkey', 'general'];
+const KINDS: ProjectKind[] = ['creators_turnkey', 'brand_turnkey', 'production_turnkey', 'general'];
 
 const PAGE_SIZES = [20, 50, 100];
 
@@ -220,6 +220,7 @@ export const MANAGER_STATUS_OPTIONS: FilterOption<StatusFilter>[] = STATUS_OPTIO
 export const KIND_OPTIONS: FilterOption<KindFilter>[] = [
   { value: '', label: 'Все ветки' },
   { value: 'creators_turnkey', label: 'Креаторы' },
+  { value: 'brand_turnkey', label: 'Бренд' },
   { value: 'production_turnkey', label: 'Продакшн' },
   { value: 'general', label: 'Общие' },
 ];

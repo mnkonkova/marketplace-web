@@ -153,6 +153,9 @@ test('выбор вида ведёт на подбор, а вторая ветк
   // длиннее.
   await page.locator('.kind.k1').click();
   await expect(page.getByRole('heading', { name: 'О чём снимаем' })).toBeVisible();
+  // Название — единственное обязательное поле брифа: из него получается
+  // имя проекта в кабинете, и без него кнопка «Дальше» заперта.
+  await page.locator('input[name="product"]').fill('Беспроводные наушники (e2e)');
   await page.getByRole('button', { name: 'Дальше — креаторы' }).click();
   await expect(page.getByRole('heading', { name: 'Кто будет снимать' })).toBeVisible();
   await expect(page.locator('.ccard').first()).toBeVisible({ timeout: 15_000 });

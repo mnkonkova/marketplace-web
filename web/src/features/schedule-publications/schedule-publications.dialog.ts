@@ -5,6 +5,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { panelData, panelRef } from '@shared/lib/panel';
 
 import { PublicationApi } from '@entities/publication/api/publication.api';
+import type { ProjectSettings } from '@entities/publication/model/publication.types';
 import { BatchRequest } from '@entities/publication/model/publication.types';
 import { parseApiError } from '@shared/api/api-error';
 
@@ -155,12 +156,26 @@ function key(d: Date): string {
         }
       </div>
 
-      @if (data.draftRequired) {
-        <div class="switchrow">
-          <span class="tx">
-            <b>Черновик за {{ draftLeadDays }} дня до выкладки</b>
-            <span>Вторая дата проставится автоматически от каждой выбранной</span>
+      <!-- Этап черновика спрашивается ЗДЕСЬ и только здесь.
+           Со страницы проекта тумблер убран: решение принимают ровно в
+           этот момент — когда видно, на какие дни встанут сроки, — а не
+           заранее в настройках, куда за ним отдельно идти. Настройка при
+           этом проектная: выключили — у новых выкладок останется одна
+           дата, уже проставленные сроки не стираются. -->
+      <div class="switchrow">
+        <span class="tx">
+          <b>Этап согласования черновика</b>
+          <span>
+            @if (draftOn()) {
+              Два срока: сдать черновик за {{ draftLeadDays }}
+              {{ draftLeadDays === 1 ? 'день' : 'дня' }} до выкладки и выложить. Бот пингует по
+              первому.
+            } @else {
+              Один срок — дата выкладки. Уже проставленные сроки черновика останутся как есть.
+            }
           </span>
+        </span>
+        @if (draftOn()) {
           <input
             class="lead"
             type="number"
@@ -169,15 +184,16 @@ function key(d: Date): string {
             [(ngModel)]="draftLeadDays"
             name="lead"
           />
-          <button
-            type="button"
-            class="sw"
-            [class.on]="draftOn()"
-            (click)="draftOn.set(!draftOn())"
-            aria-label="Этап черновика"
-          ></button>
-        </div>
-      }
+        }
+        <button
+          type="button"
+          class="sw"
+          [class.on]="draftOn()"
+          [attr.aria-pressed]="draftOn()"
+          (click)="toggleDraft()"
+          aria-label="Этап согласования черновика"
+        ></button>
+      </div>
 
       <!-- Считаем то, что добавится, а не «люди × дни»: почти всё в этом
            произведении уже стоит в плане, и обещать 60 там, где заведётся
@@ -318,7 +334,27 @@ export class SchedulePublicationsDialogComponent {
 
   public readonly busy = signal(false);
 
-  public readonly draftOn = signal(true);
+  /**
+   * Этап черновика включён. Начальное значение — настройка ПРОЕКТА:
+   * окно не заводит свою правду о том же, а показывает записанную и
+   * позволяет её изменить.
+   *
+   * data.draftRequired — только подсказка на первые миллисекунды; как
+   * приедут настройки проекта, берём их (если человек к тумблеру ещё не
+   * притронулся — переключать под рукой нельзя).
+   */
+  public readonly draftOn = signal(panelData<SchedulePublicationsData>().draftRequired);
+
+  /** Нынешние настройки проекта целиком. */
+  private readonly settings = signal<ProjectSettings | null>(null);
+
+  /** Тумблер трогали руками — не перетирать ответом сервера. */
+  private draftTouched = false;
+
+  public toggleDraft(): void {
+    this.draftTouched = true;
+    this.draftOn.set(!this.draftOn());
+  }
 
   public draftLeadDays = 2;
 
@@ -340,6 +376,20 @@ export class SchedulePublicationsDialogComponent {
       const [y, m] = first.split('-').map(Number);
       this.showMonth(y, m - 1);
     }
+
+    // Настройки проекта — ради этапа черновика: тумблер здесь правит
+    // ПРОЕКТ, а не эту пачку, и открываться он обязан на том значении,
+    // которое записано. Заодно они нужны при сохранении: ручка заменяет
+    // настройки целиком.
+    this.api.managerProjectSettings(this.data.projectID).subscribe({
+      next: (st) => {
+        this.settings.set(st);
+        if (!this.draftTouched) this.draftOn.set(st.draft_required);
+      },
+      // Молча: не прочитали — тумблер остаётся на подсказке из data, а
+      // сохранять настройку без прочитанных мы всё равно не станем.
+      error: () => this.settings.set(null),
+    });
   }
 
   /** Открыть календарь на заданном месяце. Номер месяца с нуля. */
@@ -494,21 +544,50 @@ export class SchedulePublicationsDialogComponent {
     const req: BatchRequest = {
       creator_user_ids: [...this.picked()],
       dates: [...this.days()].sort(),
-      draft_lead_days:
-        this.data.draftRequired && this.draftOn() ? Number(this.draftLeadDays) || 0 : 0,
+      draft_lead_days: this.draftOn() ? Number(this.draftLeadDays) || 0 : 0,
     };
     this.busy.set(true);
     this.api.managerCreateBatch(this.data.projectID, req).subscribe({
       next: (res) => {
         this.busy.set(false);
         this.msg.success(`Создано выкладок: ${res.created}`);
-        this.closeWith(res);
+        // Тумблер переключили — значит решение про этап черновика
+        // приняли сейчас, и оно относится ко всему проекту, а не к этой
+        // пачке. Сохраняем ПОСЛЕ создания и молча: выкладки уже стоят, и
+        // отказ на настройке не должен выглядеть так, будто не стоят.
+        const cur = this.settings();
+        if (cur && cur.draft_required !== this.draftOn()) {
+          // Настройки шлём ЦЕЛИКОМ: ручка заменяет их полностью, и
+          // отправка одного поля молча выключила бы заказчику показ
+          // статистики. Поэтому и читаем их сперва — без прочитанных
+          // настроек сохранять нельзя.
+          this.api
+            .managerSaveProjectSettings(this.data.projectID, {
+              ...cur,
+              draft_required: this.draftOn(),
+            })
+            .subscribe({
+              error: () =>
+                this.msg.error('Выкладки созданы, но настройку черновика сохранить не удалось.'),
+            });
+        }
+        // Возвращаем и МЕСЯЦ, который человек видел в календаре: план
+        // за окном переключится на него и покажет результат. Считать
+        // месяц по самой ранней созданной дате нельзя — пачка достаёт и
+        // тех, кому этот день ставили раньше, и «самой ранней»
+        // оказывается чужая дата из прошлого месяца.
+        this.closeWith({ ...res, month: this.monthKey(this.cursor()) });
       },
       error: (e) => {
         this.busy.set(false);
         this.msg.error(parseApiError(e, 'Не удалось создать выкладки.').message);
       },
     });
+  }
+
+  /** «2026-10» из даты: тем же ключом живёт месяц в плане за окном. */
+  private monthKey(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
   public cancel(): void {

@@ -95,10 +95,12 @@ export function getStepBadge(status: StepStatus, owner: StepOwner): StepBadge {
   }
 }
 
-// Вид проекта. Выкладки бывают только у creators_turnkey — до появления
-// поля kind это определялось по наличию выкладок, то есть догадкой.
+// Вид проекта. План выкладок бывает у creators_turnkey и brand_turnkey —
+// до появления поля kind это определялось по наличию выкладок, то есть
+// догадкой.
 export const PROJECT_KIND_LABEL: Record<ProjectKind, string> = {
   creators_turnkey: 'Креаторы под ключ',
+  brand_turnkey: 'Бренд под ключ',
   production_turnkey: 'Продакшен под ключ',
   general: 'Общий проект',
 };
@@ -128,7 +130,10 @@ export function projectProgressMeasure(
   const percent = Math.max(0, Math.min(100, Math.round(progress || 0)));
   const nothingToMeasure = total !== undefined && total !== null && total === 0;
   switch (kind) {
+    // Оба вида с планом выкладок меряются одним и тем же — долей
+    // закрытых выкладок; людей в проекте это не касается.
     case 'creators_turnkey':
+    case 'brand_turnkey':
       if (nothingToMeasure) {
         return {
           percent: null,
@@ -170,6 +175,7 @@ export function projectStageLabel(kind: ProjectKind, currentStageName?: string):
   if (currentStageName) return currentStageName;
   switch (kind) {
     case 'creators_turnkey':
+    case 'brand_turnkey':
       return 'Без стадий — план выкладок';
     case 'general':
       return 'Без стадий — один срок';

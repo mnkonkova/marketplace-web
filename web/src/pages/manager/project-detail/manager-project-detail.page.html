@@ -59,7 +59,7 @@
        проекте показывала «Других проектов на вас нет» и чей-то чужой день.
        Здесь то, что админу действительно нужно знать о проекте, — и только
        то, что есть на самом деле. -->
-  @if (isAdmin() === 'admin') { @let sideless = p.kind === 'creators_turnkey';
+  @if (isAdmin() === 'admin') { @let sideless = hasPublicationPlan(p.kind);
   <section class="admin-meta">
     <div class="mrow">
       <span class="lbl">Ответственный менеджер</span>
@@ -110,14 +110,14 @@
   </section>
   }
 
-  <!-- У проекта «креаторы под ключ» нет воронки, а заголовок, состав и
+  <!-- У проекта с планом выкладок нет воронки, а заголовок, состав и
        счётчики рисует его собственная шапка. Здесь остаётся только то, что
        относится к администрированию проекта, — и если этого нет, шапки нет
        вовсе: пустая полоса выглядит как незагрузившийся блок. -->
-  @let claimable = !p.assigned_to_user_id && isAdmin() !== 'admin'; @let showHero = p.kind !==
-  'creators_turnkey' || claimable; @if (showHero) {
+  @let claimable = !p.assigned_to_user_id && isAdmin() !== 'admin'; @let showHero =
+  !hasPublicationPlan(p.kind) || claimable; @if (showHero) {
   <header class="hero">
-    @if (p.kind !== 'creators_turnkey') {
+    @if (!hasPublicationPlan(p.kind)) {
     <div class="title-row">
       <h1>{{ p.title }}</h1>
       <nz-tag [nzColor]="statusColor(p.display_status)">
@@ -177,7 +177,7 @@
     </div>
     }
   </header>
-  } @if (p.kind === 'creators_turnkey') {
+  } @if (hasPublicationPlan(p.kind)) {
   <app-manager-turnkey-project [project]="p" [meId]="meId()" [chrome]="false" />
   } @else {
   <app-project-publications [projectID]="p.id" [kind]="p.kind" />
@@ -189,9 +189,9 @@
   <app-project-comments [projectId]="p.id" role="manager" [meId]="meId()" />
   }
 
-  <!-- У проекта «креаторы под ключ» контакты и сводка живут в боковой
+  <!-- У проекта с планом выкладок контакты и сводка живут в боковой
        колонке самого проекта, а воронки нет вовсе — этот блок ему не нужен. -->
-  @if (p.kind !== 'creators_turnkey') {
+  @if (!hasPublicationPlan(p.kind)) {
   <div class="cols" [class.solo]="!p.stages.length">
     @if (p.stages.length) {
     <section class="funnel">

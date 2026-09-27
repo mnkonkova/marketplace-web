@@ -178,6 +178,12 @@ export class OrderApi {
     return this.http.post<Order>(`${this.api}/manager/orders/${orderId}/invite`, {});
   }
 
+  // Убрать человека из заявки: не подходит, звать не будем. Согласившийся
+  // сюда не попадает — он уже в составе проекта, и выводят его оттуда.
+  public managerRemoveCandidate(orderId: string, creatorId: string): Observable<Order> {
+    return this.http.delete<Order>(`${this.api}/manager/orders/${orderId}/candidates/${creatorId}`);
+  }
+
   public managerAddCandidates(orderId: string, creatorIds: string[]): Observable<Order> {
     return this.http.post<Order>(`${this.api}/manager/orders/${orderId}/candidates`, {
       creator_ids: creatorIds,

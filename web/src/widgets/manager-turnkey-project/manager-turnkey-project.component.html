@@ -126,30 +126,13 @@
              разных местах значит править одно, не видя другого. -->
         <app-project-autoping [projectId]="project().id" />
 
-        <!-- Этап черновика — настройка ПРОЕКТА, а не свойство отдельной
-             выкладки: у всех выкладок он один. Стоит рядом с автопингом,
-             потому что меняет ровно то, по какому сроку бот пингует. -->
-        @if (settings(); as st) {
-          <div class="switchrow">
-            <span class="tx">
-              <b>Этап согласования черновика</b>
-              <span>
-                Включено — у выкладки два срока: сдать черновик и выложить, и бот пингует по
-                первому. Выключите — у новых выкладок останется только дата выкладки; уже
-                проставленные сроки не стираются.
-              </span>
-            </span>
-            <button
-              type="button"
-              class="sw"
-              [class.on]="st.draft_required"
-              [disabled]="settingsBusy()"
-              (click)="toggleDraftStage()"
-              [attr.aria-pressed]="st.draft_required"
-              aria-label="Этап согласования черновика"
-            ></button>
-          </div>
-        }
+        <!-- Тумблер «этап согласования черновика» отсюда убран.
+             Спрашивать его на странице проекта незачем: решение это
+             принимают ровно в тот момент, когда проставляют даты, — и
+             спрашивается оно там, в окне «Проставить пачкой», где рядом
+             видно, на какие дни встанут сроки. Настройка проекта от
+             этого не изменилась: окно её и читает, и пишет.
+             См. features/schedule-publications. -->
       </div>
 
       <!-- ССЫЛКИ. Отдельно от проверки: проверка показывает ОДИН ролик,
@@ -165,385 +148,510 @@
       </div>
 
       <!-- ПРОВЕРКА РОЛИКА и ЧЕК-ЛИСТ проекта — рядом: по чек-листу
-           ролик и принимают. -->
-      <div class="span-12 sec sec-review">
-        <div class="subgrid">
-          <div class="span-7 panel">
-            <app-project-review [projectId]="project().id" />
-          </div>
-          <div class="span-5 panel">
-            <div class="panel-h">
-              <h2>Чек-лист проекта</h2>
-              <span class="sub">креатор видит его при сдаче</span>
+           ролик и принимают. Обоих не бывает там, где нет креаторов:
+           проверять работу не у кого и требования предъявлять некому. -->
+      @if (blocks().review) {
+        <div class="span-12 sec sec-review">
+          <div class="subgrid">
+            <div class="span-7 panel">
+              <app-project-review [projectId]="project().id" />
             </div>
-            <app-project-checklist [projectId]="project().id" />
-            <div class="label section-h">Материалы для креаторов</div>
-            <app-project-materials [projectId]="project().id" role="manager" />
+            <div class="span-5 panel">
+              <div class="panel-h">
+                <h2>Чек-лист проекта</h2>
+                <span class="sub">креатор видит его при сдаче</span>
+              </div>
+              <app-project-checklist [projectId]="project().id" />
+              <div class="label section-h">Материалы для креаторов</div>
+              <app-project-materials [projectId]="project().id" role="manager" />
+            </div>
           </div>
         </div>
-      </div>
+      }
 
       <!-- КРЕАТОРЫ И АККАУНТЫ. Пустая площадка — красным: ролик идёт на
-           все пять, и та, где человека нет, просмотров не приносит. -->
-      <div class="span-12 sec sec-team">
-        <div class="subgrid">
-          <div class="span-12 panel">
-            <div class="panel-h">
-              <h2>Креаторы и аккаунты</h2>
-              <span class="sub">
-                {{ crew().length }} {{ plural(crew().length, 'человек', 'человека', 'человек') }} в
-                составе
-              </span>
-            </div>
-            @if (!crew().length) {
-              <p class="muted">Состав пуст. Добавьте креаторов — без них план не поставить.</p>
-            } @else {
-              <div class="tbl-wrap">
-                <table class="cards">
-                  <thead>
-                    <tr>
-                      <th>Креатор</th>
-                      <th>Аккаунты</th>
-                      <th class="r">Роликов</th>
-                      <th class="r">Просмотры</th>
-                      <th>Статус</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (c of crewRows(); track c.person.user_id) {
-                      <tr>
-                        <td class="head">
-                          <span class="crlink">
-                            <app-sotka-ava [name]="c.person.display_name" [size]="28" />
-                            <span>{{ c.person.display_name }}</span>
-                          </span>
-                        </td>
-                        <td data-label="Аккаунты">
-                          <div class="acc-cell">
-                            @for (p of platforms; track p) {
-                              @if (c.links[p]; as url) {
-                                <a
-                                  class="plat"
-                                  [href]="url"
-                                  target="_blank"
-                                  rel="noopener"
-                                  [title]="url"
-                                  >{{ platformShort[p] }}</a
-                                >
-                              } @else {
-                                <span
-                                  class="plat nd missing"
-                                  [title]="
-                                    platformLabel[p] + ': ссылки нет — просмотры не считаются'
-                                  "
-                                  >{{ platformShort[p] }}</span
-                                >
-                              }
-                            }
-                          </div>
-                        </td>
-                        <td class="r mono" data-label="Роликов">{{ c.done }} / {{ c.planned }}</td>
-                        <td class="r mono" data-label="Просмотры">{{ digits(c.views) }}</td>
-                        <td data-label="Статус">
-                          @if (c.late) {
-                            <span class="pill crit">просрочено {{ c.late }}</span>
-                          } @else if (c.review) {
-                            <span class="pill warn">на проверке</span>
-                          } @else {
-                            <span class="pill ok">в графике</span>
-                          }
-                        </td>
-                        <td class="r">
-                          <button type="button" class="btn sm" (click)="remindCreator(c)">
-                            Пингнуть
-                          </button>
-                          <button
-                            type="button"
-                            class="btn sm"
-                            (click)="toggleCrew(c.person.user_id)"
-                          >
-                            {{ openCrew() === c.person.user_id ? 'Свернуть' : 'Ролики' }}
-                          </button>
-                        </td>
-                      </tr>
+           все пять, и та, где человека нет, просмотров не приносит.
 
-                      <!-- РАЗБОР РОЛИКОВ. В строке стоит сумма просмотров,
+           У проекта без креаторов всё про людей уходит, а аккаунты
+           остаются: с них ролики и выходят. -->
+      @if (blocks().roster || blocks().accounts) {
+        <div class="span-12 sec sec-team">
+          <div class="subgrid">
+            @if (blocks().roster) {
+              <div class="span-12 panel">
+                <div class="panel-h">
+                  <h2>Креаторы и аккаунты</h2>
+                  <span class="sub">
+                    {{ crew().length }}
+                    {{ plural(crew().length, 'человек', 'человека', 'человек') }} в составе
+                  </span>
+                </div>
+                @if (!crew().length) {
+                  <p class="muted">Состав пуст. Добавьте креаторов — без них план не поставить.</p>
+                } @else {
+                  <div class="tbl-wrap">
+                    <table class="cards">
+                      <thead>
+                        <tr>
+                          <th>Креатор</th>
+                          <th class="r">Роликов</th>
+                          <th class="r">Просмотры</th>
+                          <th>Статус</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (c of crewRows(); track c.person.user_id) {
+                          <tr>
+                            <td class="head">
+                              <span class="crlink">
+                                <app-sotka-ava [name]="c.person.display_name" [size]="28" />
+                                <span>{{ c.person.display_name }}</span>
+                              </span>
+                            </td>
+                            <td class="r mono" data-label="Роликов">
+                              {{ c.done }} / {{ c.planned }}
+                            </td>
+                            <td class="r mono" data-label="Просмотры">{{ digits(c.views) }}</td>
+                            <td data-label="Статус">
+                              @if (c.late) {
+                                <span class="pill crit">просрочено {{ c.late }}</span>
+                              } @else if (c.review) {
+                                <span class="pill warn">на проверке</span>
+                              } @else {
+                                <span class="pill ok">в графике</span>
+                              }
+                            </td>
+                            <td class="r">
+                              <button type="button" class="btn sm" (click)="remindCreator(c)">
+                                Пингнуть
+                              </button>
+                              <button
+                                type="button"
+                                class="btn sm"
+                                (click)="toggleCrew(c.person.user_id)"
+                              >
+                                {{ openCrew() === c.person.user_id ? 'Свернуть' : 'Ролики' }}
+                              </button>
+                            </td>
+                          </tr>
+
+                          <!-- РАЗБОР РОЛИКОВ. В строке стоит сумма просмотров,
                            а сумма одинаково выглядит и у ровного
                            исполнителя, и у того, у кого один ролик
                            выстрелил, а остальные девять пустые. Медиана и
                            столбики отвечают на вопрос, который менеджер
                            задаёт про человека на самом деле: звать ли его
                            в следующий месяц. -->
-                      @if (openCrew() === c.person.user_id) {
-                        <tr class="crew-stats">
-                          <td colspan="6">
-                            @if (crewStats(c.person.user_id); as st) {
-                              @if (st.basis === 1) {
-                                <!-- Один измеренный ролик: медиана,
+                          @if (openCrew() === c.person.user_id) {
+                            <tr class="crew-stats">
+                              <td colspan="6">
+                                @if (crewStats(c.person.user_id); as st) {
+                                  @if (st.basis === 1) {
+                                    <!-- Один измеренный ролик: медиана,
                                      лучший и слабейший — это он же. Одно
                                      число, повторённое трижды, и столбик
                                      в одиночку читаются как поломка, а не
                                      как разбор. Пока роликов мало,
                                      честнее сказать это словами. -->
-                                <div class="cs-head one">
-                                  <span class="cs-num">
-                                    <b class="mono">{{ digits(st.best.views) }}</b>
-                                    <span class="muted small">
-                                      единственный измеренный ролик ·
-                                      {{ st.best.title || 'без названия' }}
-                                    </span>
-                                  </span>
-                                  <a
-                                    class="btn sm"
-                                    [href]="pubUrl(st.best)"
-                                    target="_blank"
-                                    rel="noopener"
-                                    >Открыть</a
-                                  >
-                                </div>
-                              } @else {
-                                <div class="cs-head">
-                                  <span class="cs-num">
-                                    <b class="mono">{{ digits(st.median) }}</b>
-                                    <span class="muted small">
-                                      медиана по {{ st.basis }}
-                                      {{ plural(st.basis, 'ролику', 'роликам', 'роликам') }}
-                                    </span>
-                                  </span>
-                                  <span class="cs-num">
-                                    <b class="mono">{{ digits(st.best.views) }}</b>
-                                    <span class="muted small">
-                                      лучший · {{ st.best.title || 'без названия' }}
-                                    </span>
-                                  </span>
-                                  @if (st.worst.id !== st.best.id) {
-                                    <span class="cs-num">
-                                      <b class="mono">{{ digits(st.worst.views) }}</b>
-                                      <span class="muted small">
-                                        слабее всех · {{ st.worst.title || 'без названия' }}
+                                    <div class="cs-head one">
+                                      <span class="cs-num">
+                                        <b class="mono">{{ digits(st.best.views) }}</b>
+                                        <span class="muted small">
+                                          единственный измеренный ролик ·
+                                          {{ st.best.title || 'без названия' }}
+                                        </span>
                                       </span>
-                                    </span>
-                                  }
-                                </div>
+                                      <a
+                                        class="btn sm"
+                                        [href]="pubUrl(st.best)"
+                                        target="_blank"
+                                        rel="noopener"
+                                        >Открыть</a
+                                      >
+                                    </div>
+                                  } @else {
+                                    <div class="cs-head">
+                                      <span class="cs-num">
+                                        <b class="mono">{{ digits(st.median) }}</b>
+                                        <span class="muted small">
+                                          медиана по {{ st.basis }}
+                                          {{ plural(st.basis, 'ролику', 'роликам', 'роликам') }}
+                                        </span>
+                                      </span>
+                                      <span class="cs-num">
+                                        <b class="mono">{{ digits(st.best.views) }}</b>
+                                        <span class="muted small">
+                                          лучший · {{ st.best.title || 'без названия' }}
+                                        </span>
+                                      </span>
+                                      @if (st.worst.id !== st.best.id) {
+                                        <span class="cs-num">
+                                          <b class="mono">{{ digits(st.worst.views) }}</b>
+                                          <span class="muted small">
+                                            слабее всех · {{ st.worst.title || 'без названия' }}
+                                          </span>
+                                        </span>
+                                      }
+                                    </div>
 
-                                <!-- Столбики в порядке выхода: видно не
+                                    <!-- Столбики в порядке выхода: видно не
                                    только разброс, но и куда он движется. -->
-                                <div class="cs-bars" role="list">
-                                  @for (b of st.bars; track b.pub.id) {
-                                    <a
-                                      role="listitem"
-                                      class="cs-bar"
-                                      [class.best]="b.best"
-                                      [class.worst]="b.worst"
-                                      [href]="pubUrl(b.pub)"
-                                      target="_blank"
-                                      rel="noopener"
-                                      [title]="
-                                        (b.pub.title || 'Без названия') +
-                                        ' · ' +
-                                        digits(b.pub.views) +
-                                        ' просмотров'
-                                      "
-                                    >
-                                      <i [style.height.%]="b.height"></i>
-                                    </a>
+                                    <div class="cs-bars" role="list">
+                                      @for (b of st.bars; track b.pub.id) {
+                                        <a
+                                          role="listitem"
+                                          class="cs-bar"
+                                          [class.best]="b.best"
+                                          [class.worst]="b.worst"
+                                          [href]="pubUrl(b.pub)"
+                                          target="_blank"
+                                          rel="noopener"
+                                          [title]="
+                                            (b.pub.title || 'Без названия') +
+                                            ' · ' +
+                                            digits(b.pub.views) +
+                                            ' просмотров'
+                                          "
+                                        >
+                                          <i [style.height.%]="b.height"></i>
+                                        </a>
+                                      }
+                                    </div>
+                                    <p class="muted small cs-note">
+                                      Считаем по измеренным роликам: свежий, ещё не собранный, — это
+                                      не ноль просмотров, а отсутствие замера.
+                                    </p>
                                   }
-                                </div>
-                                <p class="muted small cs-note">
-                                  Считаем по измеренным роликам: свежий, ещё не собранный, — это не
-                                  ноль просмотров, а отсутствие замера.
-                                </p>
-                              }
-                            } @else {
-                              <p class="muted">
-                                По этому человеку ещё нет ни одного измеренного ролика — считать
-                                нечего.
-                              </p>
-                            }
-                          </td>
-                        </tr>
-                      }
-                    }
-                  </tbody>
-                </table>
-              </div>
-              <p class="muted table-note">
-                Ссылки на аккаунты приходят из профиля креатора: пустую площадку он заполняет сам, в
-                своём кабинете.
-              </p>
-            }
-          </div>
+                                } @else {
+                                  <p class="muted">
+                                    По этому человеку ещё нет ни одного измеренного ролика — считать
+                                    нечего.
+                                  </p>
+                                }
+                              </td>
+                            </tr>
+                          }
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <p class="muted table-note">
+                    Ссылки, логины и пароли — ниже: это те самые аккаунты, с которых выходят ролики.
+                  </p>
+                }
 
-          <!-- Очередь приглашений. Стоит НАД составом, потому что
+                <!-- Аккаунты — В ТОМ ЖЕ блоке, а не отдельной панелью
+                     рядом. Раньше их было два: в таблице стояли ссылки
+                     из ПРОФИЛЯ креатора (то есть его личные страницы, а
+                     не обязательно те, откуда выходят ролики), а настоящие
+                     аккаунты проекта жили панелью ниже. Два списка ссылок
+                     про одно и то же расходятся на первой же правке, и
+                     менеджер открывает не тот. Остался один — проектный,
+                     с логином и паролем; заказчик видит его же. -->
+                <div class="acc-inline">
+                  <app-project-accounts
+                    [projectId]="project().id"
+                    role="manager"
+                    [creators]="crew()"
+                  />
+                </div>
+              </div>
+
+              <!-- Очередь приглашений. Стоит НАД составом, потому что
                объясняет его: состав — это результат очереди, а не
                отдельный список. Заказа может не быть вовсе (проект
                завели руками) — тогда блока просто нет. -->
-          @if (order(); as o) {
-            <div class="span-12 panel ranks">
-              <div class="panel-h">
-                <h2>Состав и приглашения</h2>
-                <span class="sub">
-                  клиент прислал приоритет: отказался или промолчал трое суток — зовём следующего
-                </span>
-                @if (canInviteNext()) {
-                  <button
-                    type="button"
-                    class="btn sm push"
-                    [disabled]="orderBusy()"
-                    (click)="inviteNext()"
-                  >
-                    Пригласить следующего
-                  </button>
-                }
-              </div>
-
-              @if (orderFreeSlots() > 0) {
-                <p class="muted ranks-note">
-                  Свободных мест: {{ orderFreeSlots() }} из {{ o.needed }}.
-                  @if (o.reserve_left === 0) {
-                    Резерв кончился — звать некого, состав добирается из каталога.
-                  }
-                </p>
-              }
-
-              <div class="list">
-                @for (c of queue(); track c.creator_user_id) {
-                  <div class="row rnk" [class]="candidateTone(c.status)">
-                    <span class="n">{{ c.priority }}</span>
-                    <app-sotka-ava [name]="c.creator_name || 'Креатор'" [size]="28" />
-                    <div class="grow">
-                      <div class="t">{{ c.creator_name || 'Креатор' }}</div>
-                      <div class="muted small">
-                        @switch (c.status) {
-                          @case ('invited') {
-                            ответ до {{ c.expires_at | date: 'd MMM, HH:mm' }} — приглашение живёт
-                            трое суток
-                          }
-                          @case ('accepted') {
-                            взял заявку {{ c.responded_at | date: 'd MMM' }}, в проекте
-                          }
-                          @case ('declined') {
-                            отказался {{ c.responded_at | date: 'd MMM' }} — место ушло следующему
-                          }
-                          @case ('expired') {
-                            не ответил за трое суток — место ушло следующему
-                          }
-                          @default {
-                            ждёт очереди: позовём, когда освободится место
-                          }
-                        }
-                      </div>
-                    </div>
-                    <span class="tag">{{ candidateLabel[c.status] }}</span>
+              @if (order(); as o) {
+                <div class="span-12 panel ranks">
+                  <div class="panel-h">
+                    <h2>Кого хочет заказчик</h2>
+                    <span class="sub">
+                      звёздочка — «хочу особенно этого»: так и написано в его приглашении
+                    </span>
+                    @if (canInviteNext()) {
+                      <button
+                        type="button"
+                        class="btn sm push"
+                        [disabled]="orderBusy()"
+                        (click)="inviteNext()"
+                      >
+                        Пригласить следующего
+                      </button>
+                    }
                   </div>
-                }
-              </div>
-            </div>
-          }
 
-          <div class="span-12 panel">
-            <div class="panel-h">
-              <h2>Состав</h2>
-              <span class="sub">кто снимает в этом проекте</span>
-            </div>
-            <div class="list">
-              @for (c of crew(); track c.user_id) {
-                <div class="row">
-                  <app-sotka-ava [name]="c.display_name" [size]="28" />
-                  <div class="grow">
-                    <div class="t">{{ c.display_name }}</div>
-                    <div class="muted small">в проекте с {{ c.added_at | date: 'dd.MM' }}</div>
+                  @if (orderFreeSlots() > 0) {
+                    <p class="muted ranks-note">
+                      Свободных мест: {{ orderFreeSlots() }} из {{ o.needed }}.
+                      @if (o.reserve_left === 0) {
+                        Резерв кончился — звать некого, состав добирается из каталога.
+                      }
+                    </p>
+                  }
+
+                  <div class="list">
+                    @for (c of queue(); track c.creator_user_id) {
+                      <div class="row rnk" [class]="candidateTone(c.status)">
+                        <!-- Номер приоритета ушёл: очереди больше нет, и
+                             цифра «3» рядом с человеком означала бы порядок,
+                             которого не существует. Вместо неё — отметка
+                             заказчика, единственное, что он о людях сказал. -->
+                        <span class="n" [class.want]="c.is_preferred" [attr.aria-hidden]="true">
+                          {{ c.is_preferred ? '★' : '·' }}
+                        </span>
+                        <app-sotka-ava [name]="c.creator_name || 'Креатор'" [size]="28" />
+                        <div class="grow">
+                          <div class="t">
+                            {{ c.creator_name || 'Креатор' }}
+                            @if (c.is_preferred) {
+                              <span class="want-tag">хочет особенно</span>
+                            }
+                          </div>
+                          <div class="muted small">
+                            @switch (c.status) {
+                              @case ('invited') {
+                                ответ до {{ c.expires_at | date: 'd MMM, HH:mm' }} — приглашение
+                                живёт трое суток
+                              }
+                              @case ('accepted') {
+                                взял заявку {{ c.responded_at | date: 'd MMM' }}, в проекте
+                              }
+                              @case ('declined') {
+                                отказался {{ c.responded_at | date: 'd MMM' }} — место ушло
+                                следующему
+                              }
+                              @case ('expired') {
+                                не ответил за трое суток — место ушло следующему
+                              }
+                              @default {
+                                ждёт очереди: позовём, когда освободится место
+                              }
+                            }
+                          </div>
+                        </div>
+                        <span class="tag">{{ candidateLabel[c.status] }}</span>
+                        <!-- Убрать из заявки: человек не подходит, и звать
+                             его незачем. Состав от этого не меняется —
+                             того, кто уже в проекте, убирают ниже, в
+                             «Составе». -->
+                        <button
+                          type="button"
+                          class="btn sm quiet"
+                          [disabled]="orderBusy()"
+                          [attr.aria-label]="'Убрать из заявки: ' + (c.creator_name || 'креатора')"
+                          (click)="dropCandidate(c)"
+                        >
+                          Убрать
+                        </button>
+                      </div>
+                    }
                   </div>
                 </div>
-              } @empty {
-                <p class="muted">Пока никого.</p>
               }
-            </div>
-            <p class="faint roster-note">В пакет берутся только креаторы — блогеры и авторы UGC.</p>
-            <button type="button" class="btn sm roster-btn" (click)="addCreator()">
-              Добавить креатора
-            </button>
-          </div>
 
-          <!-- Аккаунты — внутри состава, по людям: ролики выходят с
-               аккаунтов креаторов, а не с общего аккаунта бренда, и
-               список без владельца читается как чужая связка ключей. -->
-          <div class="span-12 panel">
-            <app-project-accounts [projectId]="project().id" role="manager" [creators]="crew()" />
+              <div class="span-12 panel">
+                <div class="panel-h">
+                  <h2>Состав</h2>
+                  <span class="sub">кто снимает в этом проекте</span>
+                </div>
+                <div class="list">
+                  @for (c of crew(); track c.user_id) {
+                    <div class="row">
+                      <app-sotka-ava [name]="c.display_name" [size]="28" />
+                      <div class="grow">
+                        <div class="t">{{ c.display_name }}</div>
+                        <div class="muted small">в проекте с {{ c.added_at | date: 'dd.MM' }}</div>
+                      </div>
+                      <!-- Вывести из состава. Мягко: выкладки, ссылки и
+                           цифры человека остаются в проекте и в
+                           начислениях — иначе «убрал не того» переписывало
+                           бы историю и ломало уже посчитанные деньги. -->
+                      <button
+                        type="button"
+                        class="btn sm quiet"
+                        [disabled]="crewBusy() === c.user_id"
+                        [attr.aria-label]="'Вывести из состава: ' + c.display_name"
+                        (click)="removeCreator(c)"
+                      >
+                        Убрать
+                      </button>
+                    </div>
+                  } @empty {
+                    <p class="muted">Пока никого.</p>
+                  }
+                </div>
+                <p class="faint roster-note">
+                  В пакет берутся только креаторы — блогеры и авторы UGC.
+                </p>
+                <button type="button" class="btn sm roster-btn" (click)="addCreator()">
+                  Добавить креатора
+                </button>
+              </div>
+            }
+
+            <!-- Отдельной панелью аккаунты стоят только там, где состава
+                 нет вовсе: у проекта без креаторов владельцев у них нет,
+                 и это не потерянные данные — аккаунты брендовые. Там, где
+                 состав есть, аккаунты живут внутри него (см. выше): это
+                 один разговор, и два списка ссылок про одно и то же
+                 расходятся на первой правке. -->
+            @if (blocks().accounts && !blocks().roster) {
+              <div class="span-12 panel">
+                <app-project-accounts
+                  [projectId]="project().id"
+                  role="manager"
+                  [creators]="crew()"
+                />
+              </div>
+            }
+
+            <!-- Материалы. Там, где есть чек-лист, они стоят рядом с ним:
+               это одно задание креатору. Там, где чек-листа нет, им
+               место здесь — среди проектного имущества. -->
+            @if (blocks().materials && !blocks().checklist) {
+              <div class="span-12 panel">
+                <div class="panel-h">
+                  <h2>Материалы проекта</h2>
+                  <span class="sub">сценарии, музыка, готовые ролики</span>
+                </div>
+                <app-project-materials [projectId]="project().id" role="manager" />
+              </div>
+            }
           </div>
         </div>
-      </div>
+      }
 
       <!-- НАЧИСЛЕНИЯ и СДЕЛКА. Единственное место, где деньги двигаются
-           руками, и потому единственное с очередью шагов. -->
-      <div class="span-12 sec sec-pay">
-        <div class="subgrid">
-          <div class="span-8 panel">
-            <div class="panel-h">
-              <h2>Начисления{{ periodTitleText() ? ' · ' + periodTitleText() : '' }}</h2>
-              <span class="sub">единственное место, где деньги двигаются руками</span>
-              <!-- Выбор периода. Счёт выставляют за ПРОШЛЫЙ период, и без
+           руками, и потому единственное с очередью шагов.
+
+           У проекта без креаторов начислять некому, и вместо всей этой
+           очереди здесь одно поле: сколько стоит проект. По нему
+           считается СПВ — иначе главный вопрос к такому проекту остался
+           бы без ответа. -->
+      @if (blocks().billing || blocks().cost) {
+        <div class="span-12 sec sec-pay">
+          <div class="subgrid">
+            @if (blocks().cost) {
+              <div class="span-12 panel">
+                <div class="panel-h">
+                  <h2>Стоимость проекта</h2>
+                  <span class="sub">по ней считается цена просмотра</span>
+                </div>
+                <p class="muted">
+                  Начислений по людям у этого проекта нет — складывать сумму не из кого. Назовите её
+                  сами: столько стоит проект за период.
+                </p>
+                <div class="switchrow">
+                  <span class="tx">
+                    <b>Сколько стоит проект за период</b>
+                    <span
+                      >В рублях. Пусто — СПВ не считается: ноль читался бы как «бесплатно».</span
+                    >
+                  </span>
+                  <input
+                    class="cost-in num"
+                    type="number"
+                    min="0"
+                    step="1000"
+                    inputmode="numeric"
+                    data-test="project-cost"
+                    [value]="costDraft || costRubles()"
+                    (input)="onCost($event)"
+                    aria-label="Стоимость проекта за период, рублей"
+                  />
+                  <button
+                    type="button"
+                    class="btn sm"
+                    [disabled]="costBusy()"
+                    data-test="project-cost-save"
+                    (click)="saveCost()"
+                  >
+                    Сохранить
+                  </button>
+                </div>
+                @if (costPer1000(); as cpv) {
+                  <div class="cpv" data-test="project-cpv">
+                    <div class="label">Цена тысячи просмотров</div>
+                    <div class="big num">{{ money(cpv) }}</div>
+                    <div class="faint">
+                      {{ money(terms()?.project_cost ?? 0) }} на
+                      {{ digits(report()?.views ?? 0) }} просмотров — считает сервер
+                    </div>
+                  </div>
+                } @else {
+                  <p class="faint">
+                    СПВ появится, когда будут и стоимость, и просмотры: делить пока не на что.
+                  </p>
+                }
+              </div>
+            }
+            @if (blocks().billing) {
+              <div class="span-8 panel">
+                <div class="panel-h">
+                  <h2>Начисления{{ periodTitleText() ? ' · ' + periodTitleText() : '' }}</h2>
+                  <span class="sub">единственное место, где деньги двигаются руками</span>
+                  <!-- Выбор периода. Счёт выставляют за ПРОШЛЫЙ период, и без
                    этой выпадашки менеджер отвечает на «сколько мы
                    выставили в сентябре» из головы. Список — именно
                    периоды, а не календарные месяцы. -->
-              @if (canUnlock()) {
-                <button
-                  type="button"
-                  class="btn sm"
-                  [disabled]="moneyBusy()"
-                  (click)="unlockPeriod()"
-                >
-                  Переоткрыть период
-                </button>
-              }
-              @if (periodChoices().length > 1) {
-                <label class="period-pick">
-                  <span>Период</span>
-                  <select
-                    [value]="period()?.seq ?? ''"
-                    (change)="setPeriod($any($event.target).value)"
-                  >
-                    @for (c of periodChoices(); track c.seq) {
-                      <option [value]="c.seq">{{ periodLabel2(c) }}</option>
-                    }
-                  </select>
-                </label>
-              }
-            </div>
+                  @if (canUnlock()) {
+                    <button
+                      type="button"
+                      class="btn sm"
+                      [disabled]="moneyBusy()"
+                      (click)="unlockPeriod()"
+                    >
+                      Переоткрыть период
+                    </button>
+                  }
+                  @if (periodChoices().length > 1) {
+                    <label class="period-pick">
+                      <span>Период</span>
+                      <select
+                        [value]="period()?.seq ?? ''"
+                        (change)="setPeriod($any($event.target).value)"
+                      >
+                        @for (c of periodChoices(); track c.seq) {
+                          <option [value]="c.seq">{{ periodLabel2(c) }}</option>
+                        }
+                      </select>
+                    </label>
+                  }
+                </div>
 
-            <!-- Две пометки, и схлопывать их в одну нельзя.
+                <!-- Две пометки, и схлопывать их в одну нельзя.
                  «Предварительно» значит «подожди, числа ещё изменятся».
                  «Приблизительно» — «период подытожен, но мерить было
                  нечем». Бывают порознь и означают разное действие. -->
-            @if (period()) {
-              <div class="period-line">
-                <b>{{ periodTitleText() }}</b>
-                @if (preliminary()) {
-                  <span class="state prelim">Предварительно</span>
+                @if (period()) {
+                  <div class="period-line">
+                    <b>{{ periodTitleText() }}</b>
+                    @if (preliminary()) {
+                      <span class="state prelim">Предварительно</span>
+                    }
+                    @if (approximate()) {
+                      <span class="state approx">Данные приблизительные</span>
+                    }
+                    @if (snapshotNote()) {
+                      <span class="asof">{{ snapshotNote() }}</span>
+                    }
+                  </div>
+                  @if (preliminary()) {
+                    <p class="muted period-note">
+                      Период идёт до {{ periodEndDay() }}. Суммы ещё изменятся. Утвердить и
+                      выплатить — после подытога периода.
+                    </p>
+                  }
+                  @if (approximate()) {
+                    <p class="muted period-note">
+                      Поденной статистики за этот период уже нет: числа подтянуты по последнему
+                      известному снимку, а не измерены на отсечку.
+                    </p>
+                  }
                 }
-                @if (approximate()) {
-                  <span class="state approx">Данные приблизительные</span>
-                }
-                @if (snapshotNote()) {
-                  <span class="asof">{{ snapshotNote() }}</span>
-                }
-              </div>
-              @if (preliminary()) {
-                <p class="muted period-note">
-                  Период идёт до {{ periodEndDay() }}. Суммы ещё изменятся. Утвердить и выплатить —
-                  после подытога периода.
-                </p>
-              }
-              @if (approximate()) {
-                <p class="muted period-note">
-                  Поденной статистики за этот период уже нет: числа подтянуты по последнему
-                  известному снимку, а не измерены на отсечку.
-                </p>
-              }
-            }
 
-            <!-- ОЧЕРЕДЬ ШАГОВ. Кнопка только у следующего: между
+                <!-- ОЧЕРЕДЬ ШАГОВ. Кнопка только у следующего: между
                  «посчитали» и «отправили деньги» проходит время, и
                  путать их нельзя. У «Подытожить» кнопки нет вовсе —
                  период запирается сам.
@@ -551,226 +659,237 @@
                  Периода нет — нет и очереди: «Пересчитать» обещало бы
                  действие, которого не существует, а сервер ответил бы
                  отказом «периодов нет». Вместо неё объяснение ниже. -->
-            @if (period()) {
-              <div class="pipeline">
-                @for (s of paySteps(); track s.key; let i = $index) {
-                  <div
-                    class="pstep"
-                    [class.done]="s.state === 'done'"
-                    [class.cur]="s.state === 'cur'"
-                  >
-                    <span class="k">
-                      @if (s.state === 'done') {
-                        ✓ сделано
-                      } @else if (s.state === 'cur') {
-                        следующий шаг
-                      } @else {
-                        после шага {{ i }}
-                      }
-                    </span>
-                    <b>{{ s.title }}</b>
-                    <span class="muted step-note">{{ s.note }}</span>
-                    @if (s.action) {
-                      <button
-                        type="button"
-                        class="btn sm dark"
-                        [disabled]="moneyBusy()"
-                        (click)="onPayStep(s.key)"
+                @if (period()) {
+                  <div class="pipeline">
+                    @for (s of paySteps(); track s.key; let i = $index) {
+                      <div
+                        class="pstep"
+                        [class.done]="s.state === 'done'"
+                        [class.cur]="s.state === 'cur'"
                       >
-                        {{ s.action }}
-                      </button>
+                        <span class="k">
+                          @if (s.state === 'done') {
+                            ✓ сделано
+                          } @else if (s.state === 'cur') {
+                            следующий шаг
+                          } @else {
+                            после шага {{ i }}
+                          }
+                        </span>
+                        <b>{{ s.title }}</b>
+                        <span class="muted step-note">{{ s.note }}</span>
+                        @if (s.action) {
+                          <button
+                            type="button"
+                            class="btn sm dark"
+                            [disabled]="moneyBusy()"
+                            (click)="onPayStep(s.key)"
+                          >
+                            {{ s.action }}
+                          </button>
+                        }
+                      </div>
                     }
                   </div>
                 }
-              </div>
-            }
 
-            @if (!period()) {
-              <p class="muted">
-                Период начнётся с первого вышедшего ролика: пока ничего не опубликовано, отсчитывать
-                не от чего и считать нечего.
-              </p>
-            } @else if (!payRows().length) {
-              <p class="muted">Начислений ещё нет: пока не вышел первый ролик, считать нечего.</p>
-            } @else {
-              <div class="tbl-wrap">
-                <table class="cards">
-                  <thead>
-                    <tr>
-                      <th>Креатор</th>
-                      <th class="r">{{ salaryCol() }}</th>
-                      <th class="r">Бонус</th>
-                      <th class="r">Вычет</th>
-                      <th class="r">Итого</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (r of payRows(); track r.a.creator_user_id) {
-                      <tr>
-                        <td class="head">
-                          <span class="crlink">
-                            <app-sotka-ava
-                              [name]="r.a.creator_name || 'Без имени'"
-                              [src]="r.a.creator_avatar_url"
-                              [size]="24"
-                            />
-                            <span>{{ r.a.creator_name || 'Без имени' }}</span>
-                          </span>
-                        </td>
-                        <td class="r mono" [attr.data-label]="salaryCol()">
-                          {{ money(r.salary) }}
-                        </td>
-                        <td class="r mono" data-label="Бонус">
-                          {{ r.bonus ? money(r.bonus) : '—' }}
-                        </td>
-                        <td class="r mono deduct" data-label="Вычет">
-                          @if (r.deduction) {
-                            − {{ money(r.deduction) }}
-                            <span class="muted small">
-                              {{ r.short }} из {{ r.a.videos_planned }} не сдано
-                            </span>
-                          } @else {
-                            —
-                          }
-                        </td>
-                        <td class="r mono" data-label="Итого">
-                          <b>{{ money(r.total) }}</b>
-                        </td>
-                      </tr>
-                    }
-                  </tbody>
-                  @if (totals(); as t) {
-                    <tfoot>
-                      <tr>
-                        <td>
-                          {{ payRows().length }}
-                          {{ plural(payRows().length, 'креатор', 'креатора', 'креаторов') }}
-                        </td>
-                        <td class="r mono" [attr.data-label]="salaryCol()">
-                          {{ money(t.salaries) }}
-                        </td>
-                        <td class="r mono" data-label="Бонус">
-                          {{ money(t.views_bonus + t.click_bonus) }}
-                        </td>
-                        <td class="r mono" data-label="Вычет">
-                          {{ t.deductions ? '− ' + money(t.deductions) : '—' }}
-                        </td>
-                        <td class="r mono" data-label="Итого">
-                          {{ money(t.payouts ?? t.total) }}
-                        </td>
-                      </tr>
-                    </tfoot>
+                @if (!period()) {
+                  <p class="muted">
+                    Период начнётся с первого вышедшего ролика: пока ничего не опубликовано,
+                    отсчитывать не от чего и считать нечего.
+                  </p>
+                } @else if (!payRows().length) {
+                  <p class="muted">
+                    Начислений ещё нет: пока не вышел первый ролик, считать нечего.
+                  </p>
+                } @else {
+                  <div class="tbl-wrap">
+                    <table class="cards">
+                      <thead>
+                        <tr>
+                          <th>Креатор</th>
+                          <th class="r">{{ salaryCol() }}</th>
+                          <th class="r">Бонус</th>
+                          <th class="r">Вычет</th>
+                          <th class="r">Итого</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (r of payRows(); track r.a.creator_user_id) {
+                          <tr>
+                            <td class="head">
+                              <span class="crlink">
+                                <app-sotka-ava
+                                  [name]="r.a.creator_name || 'Без имени'"
+                                  [src]="r.a.creator_avatar_url"
+                                  [size]="24"
+                                />
+                                <span>{{ r.a.creator_name || 'Без имени' }}</span>
+                              </span>
+                            </td>
+                            <td class="r mono" [attr.data-label]="salaryCol()">
+                              {{ money(r.salary) }}
+                            </td>
+                            <td class="r mono" data-label="Бонус">
+                              {{ r.bonus ? money(r.bonus) : '—' }}
+                            </td>
+                            <td class="r mono deduct" data-label="Вычет">
+                              @if (r.deduction) {
+                                − {{ money(r.deduction) }}
+                                <span class="muted small">
+                                  {{ r.short }} из {{ r.a.videos_planned }} не сдано
+                                </span>
+                              } @else {
+                                —
+                              }
+                            </td>
+                            <td class="r mono" data-label="Итого">
+                              <b>{{ money(r.total) }}</b>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                      @if (totals(); as t) {
+                        <tfoot>
+                          <tr>
+                            <td>
+                              {{ payRows().length }}
+                              {{ plural(payRows().length, 'креатор', 'креатора', 'креаторов') }}
+                            </td>
+                            <td class="r mono" [attr.data-label]="salaryCol()">
+                              {{ money(t.salaries) }}
+                            </td>
+                            <td class="r mono" data-label="Бонус">
+                              {{ money(t.views_bonus + t.click_bonus) }}
+                            </td>
+                            <td class="r mono" data-label="Вычет">
+                              {{ t.deductions ? '− ' + money(t.deductions) : '—' }}
+                            </td>
+                            <td class="r mono" data-label="Итого">
+                              {{ money(t.payouts ?? t.total) }}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      }
+                    </table>
+                  </div>
+                  @if (moneyPreview()) {
+                    <p class="muted period-note">
+                      Период ещё идёт — суммы предварительные и вырастут вместе с просмотрами.
+                    </p>
                   }
-                </table>
-              </div>
-              @if (moneyPreview()) {
-                <p class="muted period-note">
-                  Период ещё идёт — суммы предварительные и вырастут вместе с просмотрами.
-                </p>
-              }
-            }
+                }
 
-            <!-- РАСЧЁТ С ЗАКАЗЧИКОМ. Пока не отмечен, у него крупно
+                <!-- РАСЧЁТ С ЗАКАЗЧИКОМ. Пока не отмечен, у него крупно
                  висит плашка «к оплате»: снимает её этот шаг, а не
                  календарь. -->
-            @if (settled()) {
-              <div class="plaque-settled settle">
-                <span class="pill ok">рассчитались</span>
-                <div class="grow">
-                  <b>{{ periodTitleText() }}</b>
-                  <span class="muted">· деньги получены, плашка у заказчика снята</span>
-                </div>
-              </div>
-            } @else {
-              <div class="plaque due settle">
-                <span class="pill warn">у заказчика висит плашка</span>
-                <div class="grow">
-                  <b>{{ periodTitleText() || 'Текущий период' }}</b>
-                  <span class="muted">· пока не отметите, он видит её крупно</span>
-                </div>
-                <button
-                  type="button"
-                  class="btn dark"
-                  [disabled]="moneyBusy()"
-                  (click)="markSettled()"
-                >
-                  Отметить, что рассчитались
-                </button>
-              </div>
-            }
+                @if (settled()) {
+                  <div class="plaque-settled settle">
+                    <span class="pill ok">рассчитались</span>
+                    <div class="grow">
+                      <b>{{ periodTitleText() }}</b>
+                      <span class="muted">· деньги получены, плашка у заказчика снята</span>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="plaque due settle">
+                    <span class="pill warn">у заказчика висит плашка</span>
+                    <div class="grow">
+                      <b>{{ periodTitleText() || 'Текущий период' }}</b>
+                      <span class="muted">· пока не отметите, он видит её крупно</span>
+                    </div>
+                    <button
+                      type="button"
+                      class="btn dark"
+                      [disabled]="moneyBusy()"
+                      (click)="markSettled()"
+                    >
+                      Отметить, что рассчитались
+                    </button>
+                  </div>
+                }
 
-            @if (journal().length) {
-              <div class="journal">
-                @for (e of journal(); track e.id) {
-                  <div>
-                    <span class="ts">{{ e.created_at | date: 'dd.MM HH:mm' }}</span>
-                    <span>{{ eventText(e) }}</span>
+                @if (journal().length) {
+                  <div class="journal">
+                    @for (e of journal(); track e.id) {
+                      <div>
+                        <span class="ts">{{ e.created_at | date: 'dd.MM HH:mm' }}</span>
+                        <span>{{ eventText(e) }}</span>
+                      </div>
+                    }
                   </div>
                 }
               </div>
+
+              <div class="span-4 stack">
+                <div class="panel">
+                  <div class="panel-h">
+                    <h2>Сделка целиком</h2>
+                    <span class="sub">видно только вам</span>
+                  </div>
+                  @if (totals(); as t) {
+                    <div class="calc num">
+                      <div class="ln">
+                        <span>Заказчику к оплате</span><b>{{ money(t.total) }}</b>
+                      </div>
+                      @if (t.payouts !== undefined) {
+                        <div class="ln">
+                          <span>Креаторам</span><b>− {{ money(t.payouts) }}</b>
+                        </div>
+                      }
+                      @if (t.margin !== undefined) {
+                        <div class="ln total">
+                          <span>Маржа</span><b class="margin">{{ money(t.margin) }}</b>
+                        </div>
+                      }
+                    </div>
+                    <div class="calc num deal-second">
+                      <div class="ln">
+                        <span>Получено от заказчика</span><b>{{ money(receivedFromClient()) }}</b>
+                      </div>
+                    </div>
+                  } @else {
+                    <p class="muted">
+                      Итогов периода ещё нет: их считает сервер после первой выкладки.
+                    </p>
+                  }
+                  <button type="button" class="btn deal-btn" (click)="openClientView()">
+                    Статистика глазами заказчика →
+                  </button>
+                </div>
+              </div>
             }
           </div>
-
-          <div class="span-4 stack">
-            <div class="panel">
-              <div class="panel-h">
-                <h2>Сделка целиком</h2>
-                <span class="sub">видно только вам</span>
-              </div>
-              @if (totals(); as t) {
-                <div class="calc num">
-                  <div class="ln">
-                    <span>Заказчику к оплате</span><b>{{ money(t.total) }}</b>
-                  </div>
-                  @if (t.payouts !== undefined) {
-                    <div class="ln">
-                      <span>Креаторам</span><b>− {{ money(t.payouts) }}</b>
-                    </div>
-                  }
-                  @if (t.margin !== undefined) {
-                    <div class="ln total">
-                      <span>Маржа</span><b class="margin">{{ money(t.margin) }}</b>
-                    </div>
-                  }
-                </div>
-                <div class="calc num deal-second">
-                  <div class="ln">
-                    <span>Получено от заказчика</span><b>{{ money(receivedFromClient()) }}</b>
-                  </div>
-                </div>
-              } @else {
-                <p class="muted">
-                  Итогов периода ещё нет: их считает сервер после первой выкладки.
-                </p>
-              }
-              <button type="button" class="btn deal-btn" (click)="openClientView()">
-                Статистика глазами заказчика →
-              </button>
-            </div>
-          </div>
         </div>
-      </div>
+      }
 
       <!-- ЦИФРЫ ПРОЕКТА. Те же, что видит заказчик, и из того же отчёта:
            менеджер отвечает на «сколько набрали» и решает, кого звать в
            следующий месяц, — за этим он не должен уходить с экрана. -->
-      <div class="span-12 panel sec sec-stats">
-        <div class="panel-h">
-          <h2>Статистика</h2>
-          <span class="sub">просмотры, прирост и разбивка по площадкам</span>
+      @if (blocks().stats) {
+        <div class="span-12 panel sec sec-stats">
+          <div class="panel-h">
+            <h2>Статистика</h2>
+            <span class="sub">просмотры, прирост и разбивка по площадкам</span>
+          </div>
+          <!-- Разбор по креаторам — только там, где они есть: пустая
+             таблица «кто сколько набрал» читается как поломка сбора, а
+             не как «делить не по кому». -->
+          <app-project-stats [report]="report()" [showCreators]="blocks().roster" />
         </div>
-        <app-project-stats [report]="report()" [showCreators]="true" />
-      </div>
+      }
 
       <!-- ПЕРЕПИСКА. Три ветки: с заказчиком, с креаторами, внутренние
            заметки — их разводит сама ручка. -->
-      <div class="span-12 panel sec sec-talk">
-        <div class="panel-h">
-          <h2>Переписка</h2>
-          <span class="sub">с заказчиком и креаторами</span>
+      @if (blocks().internalComments) {
+        <div class="span-12 panel sec sec-talk">
+          <div class="panel-h">
+            <h2>Переписка</h2>
+            <span class="sub">с заказчиком и креаторами</span>
+          </div>
+          <app-project-comments [projectId]="project().id" role="manager" [meId]="meId()" />
         </div>
-        <app-project-comments [projectId]="project().id" role="manager" [meId]="meId()" />
-      </div>
+      }
     </div>
   </main>
 

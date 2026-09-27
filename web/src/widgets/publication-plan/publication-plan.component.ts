@@ -508,9 +508,7 @@ export class PublicationPlanComponent {
           nzHeight: '88%',
           nzBodyStyle: { padding: '0 16px 24px' },
         })
-        .afterClose.subscribe((res) => {
-          if (res) this.changed.emit();
-        });
+        .afterClose.subscribe((res) => this.afterSchedule(res));
       return;
     }
     this.modal
@@ -521,9 +519,33 @@ export class PublicationPlanComponent {
         nzFooter: null,
         nzWidth: 560,
       })
-      .afterClose.subscribe((res) => {
-        if (res) this.changed.emit();
-      });
+      .afterClose.subscribe((res) => this.afterSchedule(res));
+  }
+
+  /**
+   * Что делаем после простановки пачкой: перечитываем план И
+   * переключаем сетку на месяц, в котором выкладки завелись.
+   *
+   * Без переключения это выглядит как «ничего не произошло»: даты
+   * ставят на следующий месяц, а сетка остаётся на текущем — там не
+   * меняется ни одна клетка. Человек жмёт обновление страницы, видит
+   * ровно то же самое и решает, что кнопка сломана. Данные при этом
+   * приходят исправно, просто показываем мы другой месяц.
+   */
+  private afterSchedule(res: unknown): void {
+    if (!res) return;
+    this.changed.emit();
+    // Месяц берём ИЗ ОКНА — тот, что человек видел в календаре, когда
+    // отмечал дни. По самой ранней созданной дате считать нельзя: пачка
+    // достаёт и тех, кому этот день ставили раньше, и «самой ранней»
+    // оказывается чужая дата из прошлого месяца — сетка осталась бы на
+    // месте, то есть ровно в том состоянии, из-за которого всё и
+    // затевалось.
+    const month = (res as { month?: string }).month;
+    if (month && month !== this.month()) {
+      this.month.set(month);
+      this.picked.set(null);
+    }
   }
 
   private run(req: ReturnType<PublicationApi['managerAddPublication']>, ok: string): void {

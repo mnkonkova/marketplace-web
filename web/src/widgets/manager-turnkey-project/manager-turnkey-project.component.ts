@@ -31,6 +31,7 @@ import type {
   PeriodTotals,
   Payment,
 } from '@entities/billing/model/billing.types';
+import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import type { MonthRequest } from '@entities/publication/model/publication.types';
 import type {
@@ -296,6 +297,66 @@ export class ManagerTurnkeyProjectComponent {
     });
   }
 
+  /**
+   * Убрать человека из заявки.
+   *
+   * Это не то же, что вывести из состава: тут мы отказываемся ЗВАТЬ, а
+   * состав не трогаем. Согласившегося сервер и не отдаст — ответит, что
+   * выводить надо из состава проекта.
+   */
+  public dropCandidate(c: OrderCandidate): void {
+    const o = this.order();
+    if (!o || this.orderBusy()) return;
+    this.orderBusy.set(true);
+    this.orderApi.managerRemoveCandidate(o.id, c.creator_user_id).subscribe({
+      next: (updated) => {
+        this.orderBusy.set(false);
+        this.order.set(updated);
+      },
+      error: (e) => {
+        this.orderBusy.set(false);
+        this.msg.error(parseApiError(e, 'Не удалось убрать из заявки.').message);
+      },
+    });
+  }
+
+  /** Кого сейчас выводим из состава: по нему же и запирается кнопка. */
+  public readonly crewBusy = signal('');
+
+  /**
+   * Вывести креатора из состава — мягко.
+   *
+   * Выкладки, ссылки и цифры человека остаются в проекте и в
+   * начислениях: «убрал не того» не должно переписывать историю и
+   * ломать уже посчитанные деньги. На сервере это removed_at, а не
+   * DELETE.
+   */
+  public removeCreator(c: ProjectPerson): void {
+    if (this.crewBusy()) return;
+    this.modal.confirm({
+      nzTitle: `Вывести из состава ${c.display_name}?`,
+      nzContent:
+        'Его выкладки, ссылки и просмотры останутся в проекте и в начислениях — ' +
+        'уйдёт только человек. Вернуть можно кнопкой «Добавить креатора».',
+      nzOkText: 'Вывести',
+      nzOkDanger: true,
+      nzOnOk: () => {
+        this.crewBusy.set(c.user_id);
+        this.api.managerRemoveCreator(this.project().id, c.user_id).subscribe({
+          next: () => {
+            this.crewBusy.set('');
+            this.msg.success('Креатор выведен из состава.');
+            this.load(this.project().id);
+          },
+          error: (e) => {
+            this.crewBusy.set('');
+            this.msg.error(parseApiError(e, 'Не удалось вывести из состава.').message);
+          },
+        });
+      },
+    });
+  }
+
   private loadOrder(id: string): void {
     this.orderApi.managerProjectOrder(id).subscribe({
       next: (o) => this.order.set(o),
@@ -349,6 +410,86 @@ export class ManagerTurnkeyProjectComponent {
 
   /** Суммы приходят в копейках: на экран — рублями. */
   public readonly money = formatMoney;
+
+  // ---- стоимость проекта, которую называет менеджер ----
+  //
+  // У проекта с креаторами сумма складывается из начислений людям, и СПВ
+  // считается по ней. Там, где людей нет, складывать нечего: сумму
+  // называет менеджер, и она же идёт в делимое СПВ. Хранится она в том
+  // же снимке условий, что и ставки, — поэтому и сохраняется той же
+  // ручкой, а не своей.
+
+  /** Черновик поля «стоимость», в рублях: копейки в поле ввода не носят. */
+  public costDraft = '';
+
+  public readonly costBusy = signal(false);
+
+  /**
+   * Что стоит в поле, пока его не трогали.
+   *
+   * Отдельным computed, а не записью в costDraft из подписки: условия
+   * приезжают асинхронно, и присвоение затёрло бы уже начатый ввод.
+   */
+  public readonly costRubles = computed(() => {
+    const kop = this.terms()?.project_cost ?? 0;
+    return kop > 0 ? String(Math.round(kop / 100)) : '';
+  });
+
+  public onCost(e: Event): void {
+    this.costDraft = (e.target as HTMLInputElement).value;
+  }
+
+  /**
+   * СПВ — стоимость тысячи просмотров. Считает сервер тем же делением,
+   * что и в начислениях: два разных СПВ на одном экране хуже, чем ни
+   * одного.
+   */
+  public readonly costPer1000 = computed(() => this.report()?.cost_per_1000 ?? null);
+
+  /**
+   * Сохранить стоимость.
+   *
+   * Отправляем нулевые ставки рядом с суммой осознанно: ручка условий
+   * переписывает снимок целиком, а у проекта без креаторов ставок нет
+   * ни одной — оставить их «как было» значило бы хранить тариф, по
+   * которому никто ничего не считает.
+   */
+  public saveCost(): void {
+    if (this.costBusy()) return;
+    const raw = (this.costDraft || this.costRubles()).replace(/\s/g, '');
+    const rubles = Number(raw);
+    if (!Number.isFinite(rubles) || rubles < 0) {
+      this.msg.error('Стоимость — число в рублях, не меньше нуля.');
+      return;
+    }
+    this.costBusy.set(true);
+    this.billingApi
+      .managerSaveTerms(this.project().id, {
+        project_cost: Math.round(rubles * 100),
+        salary_per_month: 0,
+        rate_per_1000_views: 0,
+        rate_per_1000_views_over: 0,
+        bonus_views_threshold: 0,
+      })
+      .subscribe({
+        next: (t) => {
+          this.costBusy.set(false);
+          this.terms.set(t);
+          this.costDraft = '';
+          // Отчёт перечитываем: СПВ считается из этой суммы, и без
+          // перечитывания рядом со свежей стоимостью стоял бы старый СПВ.
+          this.api.managerReport(this.project().id).subscribe({
+            next: (r) => this.report.set(r),
+            error: () => this.report.set(null),
+          });
+          this.msg.success('Стоимость проекта сохранена.');
+        },
+        error: (e) => {
+          this.costBusy.set(false);
+          this.msg.error(parseApiError(e, 'Не удалось сохранить стоимость.').message);
+        },
+      });
+  }
 
   /**
    * Действующие выкладки — то же множество, что показывает план.
@@ -583,6 +724,9 @@ export class ManagerTurnkeyProjectComponent {
   public readonly alerts = computed<ManagerAlert[]>(() => {
     const out: ManagerAlert[] = [];
     const t = this.today();
+    // Тревога про то, чего у вида нет, — не «пустая строка», а ложная:
+    // она обещает действие, которого на экране не будет.
+    const b = this.blocks();
 
     if (this.burning().length) {
       // Вычеты за недосданное считает сервер: у карточки просрочек это
@@ -624,7 +768,7 @@ export class ManagerTurnkeyProjectComponent {
       });
     }
 
-    if (this.prepaymentRisk()) {
+    if (b.billing && this.prepaymentRisk()) {
       const missing = Math.max(0, this.accruedTotal() - this.receivedFromClient());
       out.push({
         key: 'prepay',
@@ -642,7 +786,7 @@ export class ManagerTurnkeyProjectComponent {
     // Подтверждение конца периода. Стоит выше мелких тревог: от этой
     // даты считается вся цепочка дальше — отсечка, доплата по прайсу и
     // то, в какой период попадут следующие выкладки.
-    if (this.periodEndAsk()) {
+    if (b.billing && this.periodEndAsk()) {
       const ask = this.periodEndAsk()!;
       const same = ask.last === ask.endsOn;
       out.push({
@@ -693,7 +837,7 @@ export class ManagerTurnkeyProjectComponent {
     // Возвращённые ролики. Числом здесь имя, а не количество: пока
     // возврат один — а он обычно один, — менеджеру важно, КОМУ он
     // написал и ждёт ли тот до срока выкладки.
-    if (this.returned().length) {
+    if (b.review && this.returned().length) {
       const list = this.returned();
       const first = list[0];
       out.push({
@@ -840,6 +984,22 @@ export class ManagerTurnkeyProjectComponent {
   public readonly platformLabel = PLATFORM_LABEL;
 
   /**
+   * Что у этого вида проекта вообще есть.
+   *
+   * До сих пор карточка менеджера карту блоков не спрашивала вовсе: её
+   * секции ничем не выключались, а нужный виджет выбирался проверкой
+   * вида на уровне страницы. С появлением второго вида с планом
+   * выкладок это означало бы второй почти такой же виджет — и две
+   * копии одной вёрстки, расходящиеся с первой правки.
+   *
+   * statsAllowed: true — настройка «показывать статистику» касается
+   * заказчика, а не менеджера: он видит цифры всегда.
+   */
+  public readonly blocks = computed(() =>
+    projectBlocks('manager', { kind: this.project().kind, statsAllowed: true }),
+  );
+
+  /**
    * Открытый раздел НА ТЕЛЕФОНЕ.
    *
    * На десктопе экран идёт одной лентой — тревоги, план, проверка,
@@ -853,14 +1013,39 @@ export class ManagerTurnkeyProjectComponent {
     this.section.set(key);
   }
 
-  public readonly phoneTabs = computed<SotkaTab[]>(() => [
-    { key: 'alerts', title: 'Горит', icon: 'bell', badge: this.alerts().length },
-    { key: 'plan', title: 'План', icon: 'cal' },
-    { key: 'links', title: 'Ссылки', icon: 'grid' },
-    { key: 'review', title: 'Проверка', icon: 'check', badge: this.toReview() },
-    { key: 'team', title: 'Команда', icon: 'users' },
-    { key: 'pay', title: 'Деньги', icon: 'wallet' },
-  ]);
+  /**
+   * Нижняя полоса на телефоне — из карты блоков, а не из литерала.
+   *
+   * Разделы прячет тач-слой по data-sec, и вкладка на раздел, которого у
+   * вида нет, открывала бы пустой экран. Виноватым при этом выглядел бы
+   * не список вкладок, а вёрстка.
+   */
+  public readonly phoneTabs = computed<SotkaTab[]>(() => {
+    const b = this.blocks();
+    const tabs: SotkaTab[] = [
+      { key: 'alerts', title: 'Горит', icon: 'bell', badge: this.alerts().length },
+    ];
+    if (b.publications) {
+      tabs.push({ key: 'plan', title: 'План', icon: 'cal' });
+      tabs.push({ key: 'links', title: 'Ссылки', icon: 'grid' });
+    }
+    if (b.review) {
+      tabs.push({ key: 'review', title: 'Проверка', icon: 'check', badge: this.toReview() });
+    }
+    if (b.roster || b.accounts) {
+      // Название по содержимому: там, где состава нет, «Команда» ведёт
+      // на список аккаунтов и читается как потерянный раздел.
+      tabs.push({
+        key: 'team',
+        title: b.roster ? 'Команда' : 'Аккаунты',
+        icon: b.roster ? 'users' : 'grid',
+      });
+    }
+    if (b.billing || b.cost) {
+      tabs.push({ key: 'pay', title: 'Деньги', icon: 'wallet' });
+    }
+    return tabs;
+  });
 
   /** Сколько роликов ждёт проверки — счётчик на вкладке. */
   public readonly toReview = computed(
@@ -1277,28 +1462,10 @@ export class ManagerTurnkeyProjectComponent {
    */
   public readonly settings = signal<ProjectSettings | null>(null);
 
-  public readonly settingsBusy = signal(false);
-
-  public toggleDraftStage(): void {
-    const cur = this.settings();
-    if (!cur || this.settingsBusy()) return;
-    const next: ProjectSettings = { ...cur, draft_required: !cur.draft_required };
-    // Оптимистично: тумблер отзывается сразу, а на отказе возвращается —
-    // иначе между нажатием и ответом он выглядит сломанным.
-    this.settings.set(next);
-    this.settingsBusy.set(true);
-    this.api.managerSaveProjectSettings(this.project().id, next).subscribe({
-      next: (saved) => {
-        this.settings.set(saved);
-        this.settingsBusy.set(false);
-      },
-      error: (e) => {
-        this.settings.set(cur);
-        this.settingsBusy.set(false);
-        this.msg.error(parseApiError(e, 'Не удалось сохранить настройку.').message);
-      },
-    });
-  }
+  // Тумблера этой настройки на странице больше нет: решение принимают в
+  // момент простановки дат, там его и спрашивают — в окне «Проставить
+  // пачкой», где рядом видно, на какие дни встанут сроки. Сама настройка
+  // остаётся здесь, потому что окно берёт из неё начальное состояние.
 
   /** Журнал действий по проекту: кто что сделал и когда. */
   public readonly journal = signal<ProjectEvent[]>([]);

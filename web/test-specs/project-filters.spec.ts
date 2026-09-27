@@ -78,6 +78,19 @@ describe('parseProjectFilters', () => {
     expect(sent.kind).toBeUndefined();
   });
 
+  // Четвёртая ветка появилась после трёх, и списку допустимых видов её
+  // легко было не дописать: тогда ссылка с ?kind=brand_turnkey молча
+  // открывалась бы со сброшенным фильтром — «все ветки» вместо одной.
+  it('читает бренд под ключ как ветку, а не как мусор в адресе', () => {
+    expect(parseProjectFilters(params({ kind: 'brand_turnkey' })).kind).toBe('brand_turnkey');
+  });
+
+  it('бренд под ключ уезжает в адрес и в запрос тем же значением', () => {
+    const f = parseProjectFilters(params({ kind: 'brand_turnkey' }));
+    expect(projectFiltersToQuery(f)['kind']).toBe('brand_turnkey');
+    expect(projectFiltersToParams(f).kind).toBe('brand_turnkey');
+  });
+
   it('размер страницы — только из списка допустимых', () => {
     expect(parseProjectFilters(params({ size: '50' })).pageSize).toBe(50);
     // Иначе `?size=100000` из письма означал бы «выгрузи всё» одной ссылкой.

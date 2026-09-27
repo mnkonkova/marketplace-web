@@ -1,4 +1,5 @@
 import {
+  PROJECT_KIND_LABEL,
   PROJECT_STATUS_LABEL,
   PROJECT_STATUS_COLOR,
   STAGE_STATUS_LABEL,
@@ -142,5 +143,33 @@ describe('прогресс при пустом плане', () => {
   // всего» им неизвестно, и выдумывать за них «мерить нечего» нельзя.
   it('без числа выкладок поведение прежнее', () => {
     expect(projectProgressMeasure('creators_turnkey', 100).percent).toBe(100);
+  });
+});
+
+/**
+ * Бренд под ключ — тот же план выкладок, только ролики выходят с
+ * аккаунтов бренда. Ни стадий, ни шагов у него нет, и мерить его надо
+ * ровно тем же, чем проект с креаторами: иначе два одинаковых по сути
+ * проекта показывали бы в списке разные меры.
+ */
+describe('бренд под ключ', () => {
+  it('у вида есть человеческое название', () => {
+    expect(PROJECT_KIND_LABEL.brand_turnkey).toBe('Бренд под ключ');
+  });
+
+  it('прогресс меряется выкладками — как у креаторов', () => {
+    const m = projectProgressMeasure('brand_turnkey', 42, 10);
+    expect(m.percent).toBe(42);
+    expect(m.caption).toBe('по выкладкам');
+  });
+
+  it('дат в плане нет — полоски нет, а есть объяснение', () => {
+    const m = projectProgressMeasure('brand_turnkey', 100, 0);
+    expect(m.percent).toBeNull();
+    expect(m.caption).toBe('дат в плане нет');
+  });
+
+  it('стадий нет — говорим про план выкладок, а не ставим прочерк', () => {
+    expect(projectStageLabel('brand_turnkey')).toBe('Без стадий — план выкладок');
   });
 });

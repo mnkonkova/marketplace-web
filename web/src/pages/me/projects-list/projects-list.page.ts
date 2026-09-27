@@ -318,8 +318,13 @@ export class ProjectsListPage {
     // числа в этих колонках у них не прочерк «не посчитали», а «нечего
     // считать». Поэтому они идут теми же строками, но с подписью про
     // этап, а не про просмотры.
+    //
+    // Проекты с планом выкладок сюда не попадают ни одним видом: их
+    // строки уже собраны выше из сводки, и вторая строка того же
+    // проекта — с прочерками вместо просмотров — читалась бы как второй
+    // проект.
     for (const p of this.projects()) {
-      if (p.kind === 'creators_turnkey') continue;
+      if (p.kind === 'creators_turnkey' || p.kind === 'brand_turnkey') continue;
       out.push({
         id: p.id,
         title: clientTitle(p.title),

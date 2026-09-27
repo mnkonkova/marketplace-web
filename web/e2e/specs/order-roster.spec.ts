@@ -122,10 +122,11 @@ test.describe('очередь на экране', () => {
     await expect(page.locator('.ranks')).toBeVisible({ timeout: 15_000 });
   }
 
-  test('очередь идёт по приоритету, а не в порядке ответа сервера', async ({ page }) => {
+  test('строки идут в порядке сервера, а отметку заказчика видно на каждой', async ({ page }) => {
     // Сервер отдаёт кандидатов по priority. Разворачиваем ответ, чтобы
-    // проверить не сервер, а экран: порядок строк здесь — это порядок
-    // приглашений, и полагаться на чужую сортировку он не должен.
+    // проверить не сервер, а экран: порядок строк здесь — это порядок,
+    // в котором заказчик отмечал людей, и полагаться на чужую
+    // сортировку экран не должен.
     await page.route('**/manager/projects/*/order', async (route) => {
       const res = await route.fetch();
       const body = await res.json();
@@ -137,7 +138,12 @@ test.describe('очередь на экране', () => {
 
     const rows = page.locator('.rnk');
     await expect(rows).toHaveCount(3);
-    await expect(rows.locator('.n')).toHaveText(['1', '2', '3']);
+    // Номеров приоритета здесь больше нет: очереди приглашений не
+    // существует, приглашение уходит всем сразу, и цифра «3» рядом с
+    // человеком обещала бы порядок, которого нет. Осталась единственное,
+    // что заказчик о людях сказал, — «хочу особенно».
+    await expect(rows.locator('.n')).toHaveText(['★', '★', '★']);
+    await expect(rows.locator('.want-tag')).toHaveCount(3);
     for (const [i, name] of seeded!.names.entries()) {
       await expect(rows.nth(i), `на ${i + 1}-м месте должен стоять ${name}`).toContainText(name);
     }

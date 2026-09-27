@@ -282,3 +282,38 @@
     font-size: 12.5px;
   }
 }
+
+// Стоимость проекта и СПВ по ней. Своя пара правил, а не общий .quote:
+// тот — сетка из трёх плиток под разбор суммы, а здесь одно число и
+// подпись, откуда оно взялось.
+.cost-in {
+  width: 140px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  text-align: right;
+}
+
+.cpv {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+
+  .big {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    margin: 2px 0;
+  }
+}
+
+// Аккаунты внутри блока состава: отделяем линией, но не рамкой — это
+// продолжение того же разговора, а не соседняя карточка.
+.acc-inline {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}

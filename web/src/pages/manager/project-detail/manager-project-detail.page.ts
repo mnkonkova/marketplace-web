@@ -31,6 +31,7 @@ import { AssignSpecialistDialogComponent } from '@features/assign-specialist/ass
 import {
   ProjectEvent,
   ProjectFullView,
+  ProjectKind,
   ProjectStepView,
 } from '@entities/project/model/project.types';
 import {
@@ -315,6 +316,19 @@ export class ManagerProjectDetailPage implements OnInit, OnDestroy {
 
   public kindLabel(k: ProjectFullView['kind']): string {
     return PROJECT_KIND_LABEL[k] ?? k;
+  }
+
+  /**
+   * Есть ли у проекта план выкладок вместо воронки.
+   *
+   * Шаблон спрашивает об этом в пяти местах — и шапку, и боковую
+   * колонку, и выбор виджета решает один и тот же признак. Пока это был
+   * литерал `kind === 'creators_turnkey'`, каждый новый вид проекта
+   * приходилось дописывать в пять условий, и промах в одном из них
+   * выглядит как случайно пропавший блок, а не как забытая правка.
+   */
+  public hasPublicationPlan(kind: ProjectKind): boolean {
+    return kind === 'creators_turnkey' || kind === 'brand_turnkey';
   }
 
   public statusLabel(s: ProjectFullView['display_status']): string {

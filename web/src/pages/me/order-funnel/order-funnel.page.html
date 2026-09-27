@@ -123,18 +123,24 @@
       </p>
 
       <div class="card brief">
+        <!-- Название — единственное обязательное поле: из него
+             получается имя проекта в кабинете, и без него там окажется
+             безымянный «Новый проект», которых через месяц будет три.
+             Остальное можно дописать потом — и об этом сказано прямо,
+             иначе форму бросают на третьем поле. -->
         <label class="param">
-          <span class="lbl">Что продвигаем</span>
+          <span class="lbl">Название проекта</span>
           <input
             class="inp"
-            placeholder="Корм для кошек PetFlat"
+            placeholder="Например: беспроводные наушники, весенний запуск"
             [ngModel]="brief.product"
             (ngModelChange)="brief.product = $event"
             name="product"
           />
+          <span class="hint">Так проект будет называться в вашем кабинете.</span>
         </label>
         <label class="param">
-          <span class="lbl">Зачем</span>
+          <span class="lbl">Зачем снимаем <i class="opt">необязательно</i></span>
           <input
             class="inp"
             placeholder="Продажи, узнаваемость, прогрев к запуску"
@@ -144,27 +150,27 @@
           />
         </label>
         <label class="param">
-          <span class="lbl">Кому</span>
+          <span class="lbl">Кому <i class="opt">необязательно</i></span>
           <input
             class="inp"
-            placeholder="Хозяева кошек, 25–40, города-миллионники"
+            placeholder="Покупатели 25–40, города-миллионники"
             [ngModel]="brief.audience"
             (ngModelChange)="brief.audience = $event"
             name="audience"
           />
         </label>
         <label class="param">
-          <span class="lbl">Каким тоном</span>
+          <span class="lbl">Каким тоном <i class="opt">необязательно</i></span>
           <input
             class="inp"
-            placeholder="По-дружески, без пафоса"
+            placeholder="По-простому, без рекламного тона"
             [ngModel]="brief.tone"
             (ngModelChange)="brief.tone = $event"
             name="tone"
           />
         </label>
         <label class="param wide">
-          <span class="lbl">На что равняться</span>
+          <span class="lbl">На что равняться <i class="opt">необязательно</i></span>
           <textarea
             class="inp"
             rows="3"
@@ -177,7 +183,14 @@
       </div>
 
       <div class="stage-acts">
-        <button class="btn primary" type="button" (click)="step.set(2)">Дальше — креаторы</button>
+        <button
+          class="btn primary"
+          type="button"
+          [disabled]="!brief.product.trim()"
+          (click)="step.set(2)"
+        >
+          Дальше — креаторы
+        </button>
       </div>
     </section>
     }
@@ -321,6 +334,13 @@
             так и будет написано в его приглашении.
           </p>
 
+          <!-- Счётчик — для телефона: там подборка свёрнута в липкую
+               полосу, и «сколько я отметил» иначе не видно вовсе. -->
+          <p class="picked-count">
+            @if (picked().length === 0) { Никого не отметили — состав предложит менеджер } @else {
+            Отмечено: {{ picked().length }} }
+          </p>
+
           @if (picked().length === 0) {
           <p class="empty">
             Пока никого — отметьте слева. Можно и не отмечать: тогда состав предложит менеджер.
@@ -368,10 +388,15 @@
           } @if (terms(); as t) {
           <label class="consent">
             <input type="checkbox" [(ngModel)]="agreed" [disabled]="consented()" name="agreed" />
-            <span>
+            <span class="consent-full">
               Принимаю условия работы, версия {{ t.version }}. Заказ навсегда останется на этой
               версии — новый прайс его не переписывает.
             </span>
+            <!-- На телефоне то же согласие одной строкой: полный текст
+                 занимает треть липкой полосы и отжимает кнопку за край.
+                 Прочитать его целиком по-прежнему можно в «Прочитать
+                 условия». -->
+            <span class="consent-short">Принимаю условия, версия {{ t.version }}</span>
           </label>
           <details class="terms-body">
             <summary>Прочитать условия</summary>

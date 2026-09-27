@@ -28,8 +28,21 @@ describe('SchedulePublicationsDialogComponent', () => {
 
   function setup(draftRequired = false, existing: ScheduledPublication[] = []) {
     TestBed.resetTestingModule();
-    api = jasmine.createSpyObj<PublicationApi>('api', ['managerCreateBatch']);
+    api = jasmine.createSpyObj<PublicationApi>('api', [
+      'managerCreateBatch',
+      'managerProjectSettings',
+      'managerSaveProjectSettings',
+    ]);
     api.managerCreateBatch.and.returnValue(of({ batch_id: 'b1', created: 0, items: [] }) as never);
+    // Тумблер этапа черновика правит НАСТРОЙКУ ПРОЕКТА, поэтому окно
+    // читает её при открытии: без заглушки падает всё окно, а не одна
+    // специя про черновик.
+    api.managerProjectSettings.and.returnValue(
+      of({ draft_required: draftRequired, client_sees_stats: true }) as never,
+    );
+    api.managerSaveProjectSettings.and.returnValue(
+      of({ draft_required: draftRequired, client_sees_stats: true }) as never,
+    );
     ref = jasmine.createSpyObj<NzModalRef>('ref', ['destroy']);
     const data: SchedulePublicationsData = {
       projectID: 'pr1',
@@ -155,15 +168,23 @@ describe('SchedulePublicationsDialogComponent', () => {
       const cmp = setup(false, existing);
       // Хватает одной существующей выкладки: снятая галочка всё равно
       // ничего не отменит, а человек уйдёт уверенный, что дату убрал.
-      expect(cmp.isLocked(jan(10))).withContext('стоит у обоих').toBeTrue();
-      expect(cmp.isLocked(jan(17))).withContext('стоит у одного — всё равно не снять').toBeTrue();
-      expect(cmp.isLocked(jan(20))).withContext('свободная дата').toBeFalse();
+      expect(cmp.isLocked(jan(10)))
+        .withContext('стоит у обоих')
+        .toBeTrue();
+      expect(cmp.isLocked(jan(17)))
+        .withContext('стоит у одного — всё равно не снять')
+        .toBeTrue();
+      expect(cmp.isLocked(jan(20)))
+        .withContext('свободная дата')
+        .toBeFalse();
       // Неполная дата отмечена отдельно: кому-то её ещё добавят.
       expect(cmp.isPartial(jan(10))).toBeFalse();
       expect(cmp.isPartial(jan(17))).toBeTrue();
 
       cmp.toggleDay(jan(10));
-      expect(cmp.days().has(jan(10))).withContext('галочка осталась').toBeTrue();
+      expect(cmp.days().has(jan(10)))
+        .withContext('галочка осталась')
+        .toBeTrue();
     });
 
     it('«Сбросить» не снимает того, что уже в плане', () => {
@@ -219,5 +240,80 @@ describe('SchedulePublicationsDialogComponent', () => {
     cmp.draftOn.set(false);
     cmp.create();
     expect(api.managerCreateBatch.calls.mostRecent().args[1].draft_lead_days).toBe(0);
+  });
+
+  // Тумблер этапа черновика живёт ТОЛЬКО здесь: с карточки менеджера он
+  // убран, потому что решение принимают в тот момент, когда ставят даты.
+  // Значит окно обязано и прочитать настройку проекта, и записать её.
+  describe('этап черновика — настройка проекта', () => {
+    it('открывается на записанном в проекте значении, а не на подсказке', () => {
+      // data.draftRequired приходит false, настройки проекта говорят true.
+      TestBed.resetTestingModule();
+      api = jasmine.createSpyObj<PublicationApi>('api', [
+        'managerCreateBatch',
+        'managerProjectSettings',
+        'managerSaveProjectSettings',
+      ]);
+      api.managerCreateBatch.and.returnValue(
+        of({ batch_id: 'b1', created: 0, items: [] }) as never,
+      );
+      api.managerProjectSettings.and.returnValue(
+        of({ draft_required: true, client_sees_stats: false }) as never,
+      );
+      api.managerSaveProjectSettings.and.returnValue(
+        of({ draft_required: true, client_sees_stats: false }) as never,
+      );
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: PublicationApi, useValue: api },
+          { provide: NzModalRef, useValue: jasmine.createSpyObj<NzModalRef>('ref', ['destroy']) },
+          {
+            provide: NZ_MODAL_DATA,
+            useValue: {
+              projectID: 'pr1',
+              creators: [{ user_id: 'u1', display_name: 'Анастасия' }],
+              draftRequired: false,
+              existing: [],
+            } as SchedulePublicationsData,
+          },
+          {
+            provide: NzMessageService,
+            useValue: jasmine.createSpyObj('msg', ['error', 'success', 'info']),
+          },
+        ],
+      });
+      TestBed.overrideComponent(SchedulePublicationsDialogComponent, { set: { template: '' } });
+      const fixture = TestBed.createComponent(SchedulePublicationsDialogComponent);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.draftOn()).toBeTrue();
+    });
+
+    it('переключённый тумблер сохраняется целиком, вместе с чужими полями', () => {
+      const cmp = setup(false);
+      cmp.toggleDraft();
+      cmp.togglePicked('u1');
+      cmp.preset('tue_thu');
+
+      cmp.create();
+
+      expect(api.managerSaveProjectSettings).toHaveBeenCalledWith('pr1', {
+        // client_sees_stats обязан доехать нетронутым: ручка заменяет
+        // настройки целиком, и отправка одного поля погасила бы
+        // заказчику статистику.
+        client_sees_stats: true,
+        draft_required: true,
+      });
+    });
+
+    it('нетронутый тумблер настройку не переписывает', () => {
+      const cmp = setup(false);
+      cmp.togglePicked('u1');
+      cmp.preset('tue_thu');
+
+      cmp.create();
+
+      expect(api.managerSaveProjectSettings).not.toHaveBeenCalled();
+    });
   });
 });

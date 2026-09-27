@@ -301,7 +301,13 @@
                 <thead>
                   <tr>
                     <th colspan="2">Ролик</th>
-                    <th>Креатор</th>
+                    <!-- Колонка «чей ролик» бывает только там, где ролики
+                         снимают люди со стороны. У проекта без креаторов
+                         они выходят с аккаунтов бренда, и колонка стояла
+                         пустой на всю таблицу. -->
+                    @if (blocks().crew) {
+                      <th>Креатор</th>
+                    }
                     <th>Площадки</th>
                     <th class="r">Просмотры</th>
                     <th class="r">ER</th>
@@ -325,16 +331,18 @@
                         <div class="vt">{{ v.title || 'Без названия' }}</div>
                         <div class="muted mono">{{ v.published_at | date: 'dd.MM' }}</div>
                       </td>
-                      <td data-label="Креатор">
-                        <span class="crlink">
-                          <app-sotka-ava
-                            [name]="creatorName(v.creator_name)"
-                            [src]="videoPerson(v)?.avatar_url"
-                            [size]="26"
-                          />
-                          <span>{{ creatorName(v.creator_name) }}</span>
-                        </span>
-                      </td>
+                      @if (blocks().crew) {
+                        <td data-label="Креатор">
+                          <span class="crlink">
+                            <app-sotka-ava
+                              [name]="creatorName(v.creator_name)"
+                              [src]="videoPerson(v)?.avatar_url"
+                              [size]="26"
+                            />
+                            <span>{{ creatorName(v.creator_name) }}</span>
+                          </span>
+                        </td>
+                      }
                       <td data-label="Площадки">
                         <div class="acc-cell">
                           @for (l of allPlatforms(v); track l.platform) {
@@ -592,106 +600,119 @@
               }
             </div>
 
-            <div class="span-6 panel">
-              <div class="panel-h">
-                <h2>Сколько будет стоить следующий месяц</h2>
-                <span class="server">расчёт сервера</span>
-              </div>
-              <!-- Двигают ОБА числа: цена месяца складывается из роликов
+            <!-- Прикидка следующего месяца — только там, где команду
+                 собирают. Она считается по числу креаторов и роликов, а
+                 у проекта без креаторов первый множитель не существует:
+                 ползунок «Креаторов в команде» спрашивал бы о том, чего
+                 в этом проекте не бывает, а «Заказать этот месяц» звал
+                 бы менеджера собирать несуществующий состав. Стоимость
+                 такого проекта называет менеджер одним числом. -->
+            @if (blocks().crew) {
+              <div class="span-6 panel">
+                <div class="panel-h">
+                  <h2>Сколько будет стоить следующий месяц</h2>
+                  <span class="server">расчёт сервера</span>
+                </div>
+                <!-- Двигают ОБА числа: цена месяца складывается из роликов
                    и людей, и ползунок только по людям отвечал на половину
                    вопроса. -->
-              <label for="smeta-v" class="muted smeta-l">
-                Роликов за месяц: <b class="num ink">{{ smetaVideos() }}</b>
-              </label>
-              <input
-                id="smeta-v"
-                class="range"
-                type="range"
-                min="0"
-                max="90"
-                step="5"
-                [value]="smetaVideos()"
-                (input)="onSmetaVideos($event)"
-              />
-              <label for="smeta" class="muted smeta-l">
-                Креаторов в команде: <b class="num ink">{{ smetaCount() }}</b>
-              </label>
-              <input
-                id="smeta"
-                class="range"
-                type="range"
-                min="1"
-                max="20"
-                step="1"
-                [value]="smetaCount()"
-                (input)="onSmeta($event)"
-              />
-              @if (smetaEstimate(); as e) {
-                <!-- Главное число — ПОТОЛОК, и названо оно потолком.
+                <label for="smeta-v" class="muted smeta-l">
+                  Роликов за месяц: <b class="num ink">{{ smetaVideos() }}</b>
+                </label>
+                <input
+                  id="smeta-v"
+                  class="range"
+                  type="range"
+                  min="0"
+                  max="90"
+                  step="5"
+                  [value]="smetaVideos()"
+                  (input)="onSmetaVideos($event)"
+                />
+                <label for="smeta" class="muted smeta-l">
+                  Креаторов в команде: <b class="num ink">{{ smetaCount() }}</b>
+                </label>
+                <input
+                  id="smeta"
+                  class="range"
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="1"
+                  [value]="smetaCount()"
+                  (input)="onSmeta($event)"
+                />
+                @if (smetaEstimate(); as e) {
+                  <!-- Главное число — ПОТОЛОК, и названо оно потолком.
                      «Меньше N ₽» — это то, во что месяц точно уложится:
                      фикс за ролики известен заранее, а сверху каждый
                      креатор может добрать не больше верхней ступени. -->
-                @if (topStepFee()) {
-                  <div class="ceil">
-                    <span class="label">Меньше</span>
-                    <b class="num">{{ money(smetaCeiling()) }}</b>
-                  </div>
-                }
-                <!-- Разбора здесь нет намеренно: на этот вопрос человек
+                  @if (topStepFee()) {
+                    <div class="ceil">
+                      <span class="label">Меньше</span>
+                      <b class="num">{{ money(smetaCeiling()) }}</b>
+                    </div>
+                  }
+                  <!-- Разбора здесь нет намеренно: на этот вопрос человек
                      хочет один ответ — «во сколько обойдётся». Строки
                      «фикс столько, потолок просмотров столько» он
                      складывает глазами и всё равно читает нижнюю сумму,
                      а лишние числа заставляют перепроверять, не забыли
                      ли чего. Из чего она собрана, объясняют в воронке,
                      где состав уже виден. -->
-                @if (!topStepFee()) {
-                  <div class="quote">
-                    <div>
-                      <span class="label">
-                        {{ e.terms.fee_per_video ? 'Фикс за ролики' : 'Оклады' }}
-                      </span>
-                      <b class="num">{{ money(e.salaries) }}</b>
+                  @if (!topStepFee()) {
+                    <div class="quote">
+                      <div>
+                        <span class="label">
+                          {{ e.terms.fee_per_video ? 'Фикс за ролики' : 'Оклады' }}
+                        </span>
+                        <b class="num">{{ money(e.salaries) }}</b>
+                      </div>
                     </div>
-                  </div>
-                  <p class="muted period-note">
-                    Бонус за просмотры считается, когда известно, кто снимает, — в воронке заказа.
-                  </p>
+                    <p class="muted period-note">
+                      Бонус за просмотры считается, когда известно, кто снимает, — в воронке заказа.
+                    </p>
+                  }
+                } @else if (smetaBusy()) {
+                  <p class="muted period-note">Считаем…</p>
+                } @else {
+                  <p class="muted period-note">Смету посчитает сервер в воронке заказа.</p>
                 }
-              } @else if (smetaBusy()) {
-                <p class="muted period-note">Считаем…</p>
-              } @else {
-                <p class="muted period-note">Смету посчитает сервер в воронке заказа.</p>
-              }
-              <!-- Кнопка, а не только ссылка на каталог: из прикидки
+                <!-- Кнопка, а не только ссылка на каталог: из прикидки
                    человек шёл писать менеджеру словами, и половина не
                    доходила вовсе. Нажатие заводит ЗАЯВКУ — у менеджера
                    загорается плашка, в общий чат уходит сообщение с
                    числами и потолком, который тут показан. -->
-              @if (monthRequest(); as mr) {
-                <p class="muted period-note asked">
-                  Заявка у менеджера: {{ mr.videos }}
-                  {{ plural(mr.videos, 'ролик', 'ролика', 'роликов') }} и {{ mr.creators }}
-                  {{ plural(mr.creators, 'креатор', 'креатора', 'креаторов') }}, потолок
-                  {{ money(mr.ceiling) }}. Он напишет по стоимости и составу.
+                @if (monthRequest(); as mr) {
+                  <p class="muted period-note asked">
+                    Заявка у менеджера: {{ mr.videos }}
+                    {{ plural(mr.videos, 'ролик', 'ролика', 'роликов') }} и {{ mr.creators }}
+                    {{ plural(mr.creators, 'креатор', 'креатора', 'креаторов') }}, потолок
+                    {{ money(mr.ceiling) }}. Он напишет по стоимости и составу.
+                  </p>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn primary ask-btn"
+                    [disabled]="askBusy() || !smetaEstimate()"
+                    (click)="askMonth()"
+                  >
+                    {{ askBusy() ? 'Отправляем…' : 'Заказать этот месяц' }}
+                  </button>
+                }
+                <p class="muted period-note">
+                  Заявка — это ещё не счёт: менеджер уточнит состав и цену.
+                  <a routerLink="/me/orders/new">Открыть каталог креаторов</a>
                 </p>
-              } @else {
-                <button
-                  type="button"
-                  class="btn primary ask-btn"
-                  [disabled]="askBusy() || !smetaEstimate()"
-                  (click)="askMonth()"
-                >
-                  {{ askBusy() ? 'Отправляем…' : 'Заказать этот месяц' }}
-                </button>
-              }
-              <p class="muted period-note">
-                Заявка — это ещё не счёт: менеджер уточнит состав и цену.
-                <a routerLink="/me/orders/new">Открыть каталог креаторов</a>
-              </p>
-            </div>
+              </div>
+            }
 
-            <!-- Состав периода: за кого именно выставлен счёт. -->
-            @if (!billing()?.accruals?.length) {
+            <!-- Состав периода: за кого именно выставлен счёт. Людей нет
+                 — и панели нет: «Команда появится, когда начнётся
+                 период» у проекта без креаторов обещает то, чего не
+                 будет никогда. Поэтому условие проверяет и состав
+                 проекта, и наличие начислений. -->
+            @if (blocks().crew && !billing()?.accruals?.length) {
               <div class="span-12 panel">
                 <div class="panel-h"><h2>Команда периода</h2></div>
                 <p class="muted">
@@ -699,7 +720,7 @@
                   кого.
                 </p>
               </div>
-            } @else {
+            } @else if (blocks().crew) {
               <div class="span-12 panel">
                 <div class="panel-h">
                   <h2>Команда периода</h2>
