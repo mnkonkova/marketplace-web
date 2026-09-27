@@ -7,9 +7,13 @@ import { PublicationApi } from '@entities/publication/api/publication.api';
 import { CreatorProject } from '@entities/publication/model/publication.types';
 import { daysLeft } from '@entities/publication/lib/publication-status';
 import { plural } from '@shared/lib/format';
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { parseApiError } from '@shared/api/api-error';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { PrMarketNavItem, PrMarketTopComponent } from '@widgets/prmarket-top/prmarket-top.component';
+import {
+  PrMarketNavItem,
+  PrMarketTopComponent,
+} from '@widgets/prmarket-top/prmarket-top.component';
 
 // «Мои проекты» креатора: проекты, где он в действующем составе, со
 // счётчиками только по своим выкладкам. До этой ручки на страницу выкладок
@@ -31,6 +35,8 @@ export class CreatorProjectsPage {
   private readonly api = inject(PublicationApi);
 
   private readonly msg = inject(NzMessageService);
+
+  private readonly auth = inject(AuthSessionStore);
 
   public readonly loading = signal(true);
 
@@ -80,6 +86,13 @@ export class CreatorProjectsPage {
     // бот, но ответить на неё надо здесь, и найти это место человек
     // должен без ссылки из сообщения.
     { title: 'Заявки', link: '/me/creator/invitations' },
+    // «Веду» — для тех, кто ещё и менеджер. Один человек с двумя
+    // шляпами: здесь его собственные съёмки, там — проекты, которые
+    // он ведёт. В мини-аппе это единственный способ перейти между
+    // ними: шапки сайта там нет.
+    ...(this.auth.hasRole('manager')
+      ? [{ title: 'Веду', link: '/manager/projects' } as PrMarketNavItem]
+      : []),
   ]);
 
   /**

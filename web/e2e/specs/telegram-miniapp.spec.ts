@@ -97,6 +97,45 @@ test('незнакомый телеграм спрашивает, новый ч�
   await expect(page.getByRole('button', { name: 'У меня есть аккаунт' })).toBeVisible();
 });
 
+test('на экране входа видно каждую кнопку и каждую подпись', async ({ page }) => {
+  test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
+  await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);
+  await expect(page.getByRole('heading', { name: 'Первый раз здесь?' })).toBeVisible({
+    timeout: 20_000,
+  });
+
+  // Тот самый промах: у второй кнопки цвет текста был «как у
+  // родителя», а родитель внутри Telegram красится ЕГО темой — и
+  // надпись пропадала на тёмном фоне. Проверяем не «класс на месте»,
+  // а видно ли текст: цвет буквы не совпадает с цветом подложки.
+  const contrast = async (locator: import('@playwright/test').Locator) =>
+    locator.evaluate((el) => {
+      const own = getComputedStyle(el);
+      let bg = own.backgroundColor;
+      let node: HTMLElement | null = el;
+      // Прозрачную подложку ищем у предков: на кнопке её может не
+      // быть вовсе.
+      while (node && (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent')) {
+        node = node.parentElement;
+        bg = node ? getComputedStyle(node).backgroundColor : 'rgb(255, 255, 255)';
+      }
+      return { color: own.color, bg };
+    });
+
+  for (const name of ['Я здесь впервые', 'У меня есть аккаунт']) {
+    const { color, bg } = await contrast(page.getByRole('button', { name }));
+    expect(color, `${name}: текст сливается с подложкой`).not.toBe(bg);
+  }
+
+  // И на втором шаге — подписи полей: они тоже красились «как
+  // родитель» и были невидимы.
+  await page.getByRole('button', { name: 'У меня есть аккаунт' }).click();
+  await expect(page.getByText('Почта или телефон')).toBeVisible();
+  await expect(page.getByText('Пароль', { exact: true })).toBeVisible();
+  const back = await contrast(page.getByRole('button', { name: 'Назад' }));
+  expect(back.color, 'кнопка «Назад»: текст сливается с подложкой').not.toBe(back.bg);
+});
+
 test('«я здесь впервые» заводит креатора и уводит в его проекты', async ({ page }) => {
   test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
   await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);
@@ -157,6 +196,22 @@ test('подпись из фрагмента адреса не теряется 
 
   // Развилка — значит строка доехала целой и подпись сошлась:
   // «этого телеграма мы не знаем» это ответ сервера, а не разбор.
+  await expect(page.getByRole('heading', { name: 'Первый раз здесь?' })).toBeVisible({
+    timeout: 20_000,
+  });
+});
+
+test('подпись во фрагменте без кодирования — тоже не теряется', async ({ page }) => {
+  test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
+
+  // Так это приходит на части клиентов: подпись лежит во фрагменте
+  // КАК ЕСТЬ, с обычными «&» внутри, а следом идут собственные
+  // параметры Telegram. Обрезка по первому «&» оставляла от неё один
+  // query_id — сервер честно отвечал «нет hash», и человек упирался в
+  // «данные не разобрались», не сделав ничего.
+  const init = signInitData(tgUserID + 6, 'raw');
+  await page.goto(`/tg/creator#tgWebAppData=${init}&tgWebAppVersion=7.0&tgWebAppPlatform=android`);
+
   await expect(page.getByRole('heading', { name: 'Первый раз здесь?' })).toBeVisible({
     timeout: 20_000,
   });
@@ -236,6 +291,24 @@ test.describe('кабинет внутри мини-аппа', () => {
     await expect(page.getByRole('button', { name: 'Получать уведомления в Telegram' })).toHaveCount(
       0,
     );
+  });
+
+  test('менеджер открывает свои проекты и не теряет навигацию', async ({ context, page }) => {
+    await context.addInitScript(
+      ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
+      [AUTH_KEY, box.sessions.manager] as const,
+    );
+    await page.goto(
+      `/manager/projects?dev_init_data=${encodeURIComponent('user=%7B%22id%22%3A1%7D&hash=z')}`,
+    );
+
+    // Мини-апп опознан — вибрация и «назад» работают.
+    await expect(page.locator('body.tg-app')).toHaveCount(1, { timeout: 20_000 });
+    // И навигация не потерялась: у менеджерских экранов своя оболочка
+    // CRM, шапка сайта в ней не участвует вовсе.
+    await expect(page.getByRole('heading', { name: 'Мои проекты' })).toBeVisible({
+      timeout: 20_000,
+    });
   });
 
   test('в обычном браузере тот же экран с шапкой', async ({ context, page }) => {

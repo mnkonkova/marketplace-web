@@ -9,9 +9,13 @@ import { Invitation, ResponseMode } from '@entities/order/model/order.types';
 import { MeRepository } from '@entities/me/repository/me.repository';
 import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import { plural } from '@shared/lib/format';
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { parseApiError } from '@shared/api/api-error';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { PrMarketNavItem, PrMarketTopComponent } from '@widgets/prmarket-top/prmarket-top.component';
+import {
+  PrMarketNavItem,
+  PrMarketTopComponent,
+} from '@widgets/prmarket-top/prmarket-top.component';
 
 /**
  * «Заявки» креатора: что предлагают снять и чем на это ответить.
@@ -44,6 +48,8 @@ export class CreatorInvitationsPage {
   private readonly http = inject(HttpClient);
 
   private readonly msg = inject(NzMessageService);
+
+  private readonly auth = inject(AuthSessionStore);
 
   public readonly loading = signal(true);
 
@@ -86,6 +92,13 @@ export class CreatorInvitationsPage {
   public readonly nav = computed<readonly PrMarketNavItem[]>(() => [
     { title: 'Мои проекты', link: '/me/creator/projects' },
     { title: 'Заявки', link: '/me/creator/invitations', current: true },
+    // «Веду» — для тех, кто ещё и менеджер. Один человек с двумя
+    // шляпами: здесь его собственные съёмки, там — проекты, которые
+    // он ведёт. В мини-аппе это единственный способ перейти между
+    // ними: шапки сайта там нет.
+    ...(this.auth.hasRole('manager')
+      ? [{ title: 'Веду', link: '/manager/projects' } as PrMarketNavItem]
+      : []),
   ]);
 
   /** Сколько заявок ждут ответа: их и видно в шапке. */

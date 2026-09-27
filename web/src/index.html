@@ -29,9 +29,26 @@
     <script>
       (function () {
         try {
-          var src = window.location.hash || window.location.search || '';
-          var m = /[?#&]tgWebAppData=([^&]*)/.exec(src);
-          if (m && m[1]) window.__tgInitData = decodeURIComponent(m[1]);
+          var src = (window.location.hash || window.location.search || '').slice(1);
+          var i = src.indexOf('tgWebAppData=');
+          if (i < 0) return;
+          var raw = src.slice(i + 'tgWebAppData='.length);
+
+          // Обрезаем по следующему СОБСТВЕННОМУ параметру Telegram
+          // (они все начинаются с tgWebApp), а не по первому «&».
+          // У части клиентов подпись лежит во фрагменте как есть, с
+          // обычными «&» внутри: обрезка по первому из них оставляла
+          // от неё один query_id, и сервер честно отвечал «нет hash».
+          var cut = raw.search(/&tgWebApp/);
+          if (cut >= 0) raw = raw.slice(0, cut);
+
+          // Раскодируем только то, что закодировано: у других
+          // клиентов внутри %3D и %26. Признак — наличие hash= в
+          // готовом виде: если он уже есть, трогать строку нельзя,
+          // иначе развалится подпись (в user бывает и «&»).
+          var out = raw;
+          if (!/(^|&)hash=/.test(raw)) out = decodeURIComponent(raw);
+          if (/(^|&)hash=/.test(out)) window.__tgInitData = out;
         } catch (e) {
           /* адрес без фрагмента — обычный заход */
         }
