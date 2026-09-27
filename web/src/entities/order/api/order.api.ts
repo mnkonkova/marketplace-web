@@ -10,6 +10,7 @@ import {
   OrderBrief,
   OrderEstimate,
   OrderLimit,
+  OrderProjectKind,
   OrderResponse,
   OrderTerms,
   ResponseMode,
@@ -53,6 +54,9 @@ export class OrderApi {
     // сообщение менеджеру: разговор начинается с той суммы, которую
     // человек видел.
     ceiling?: number;
+    // Ветка воронки. Пусто = креаторы: так работали все заявки до
+    // второй ветки.
+    project_kind?: OrderProjectKind;
   }): Observable<{ order: Order; busy_creators?: string[] }> {
     return this.http.post<{ order: Order; busy_creators?: string[] }>(
       `${this.api}/me/orders`,
