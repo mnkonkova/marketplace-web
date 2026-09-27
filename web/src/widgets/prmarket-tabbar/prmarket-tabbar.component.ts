@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { CommonModule } from '@angular/common';
 
 /** Значки нижней полосы. Имена — из макета. */
-export type SotkaIcon =
+export type PrMarketIcon =
   | 'grid'
   | 'chart'
   | 'wallet'
@@ -14,10 +14,10 @@ export type SotkaIcon =
   | 'users'
   | 'coin';
 
-export interface SotkaTab {
+export interface PrMarketTab {
   key: string;
   title: string;
-  icon: SotkaIcon;
+  icon: PrMarketIcon;
   /** Красный счётчик: просрочки и неоплаченное. 0 — значка нет. */
   badge?: number;
 }
@@ -36,15 +36,15 @@ export interface SotkaTab {
  * вызова, здесь только рисуется.
  */
 @Component({
-  selector: 'app-sotka-tabbar',
+  selector: 'app-prmarket-tabbar',
   standalone: true,
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './sotka-tabbar.component.html',
-  styleUrl: './sotka-tabbar.component.scss',
+  templateUrl: './prmarket-tabbar.component.html',
+  styleUrl: './prmarket-tabbar.component.scss',
 })
-export class SotkaTabbarComponent {
-  public readonly tabs = input<readonly SotkaTab[]>([]);
+export class PrMarketTabbarComponent {
+  public readonly tabs = input<readonly PrMarketTab[]>([]);
 
   public readonly current = input('');
 

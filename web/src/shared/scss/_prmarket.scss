@@ -1,4 +1,4 @@
-@mixin sotka-tokens {
+@mixin prmarket-tokens {
   --ground: #eef0ea;
   --surface: #fff;
   --surface-2: #f6f7f3;
@@ -28,7 +28,7 @@
   --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
 
   // Токены дизайн-системы «Ступеней» — псевдонимами на светлую палитру
-  // кабинета. Внутри .sotka встречаются общие компоненты приложения
+  // кабинета. Внутри .prmarket встречаются общие компоненты приложения
   // (переписка, график), и написаны они на этих именах. Без псевдонимов
   // они остались бы тёмными островами на светлой земле — не «в другом
   // стиле», а нечитаемыми: тёмная карточка со светлым текстом поверх
@@ -94,19 +94,19 @@
   color-scheme: light;
 }
 
-// Кабинеты «Сотки» — перенос из макета ~/tmp/sotka-cabinets.html.
+// Кабинеты «PrMarket» — перенос из макета ~/tmp/prmarket-cabinets.html.
 //
 // Это ПЕРЕНОС, а не «по мотивам»: имена классов, размеры и цвета взяты из
 // макета как есть. В макете они глобальные (.panel, .btn, .row, голый
 // table), а у нас глобальными им быть нельзя — остальное приложение живёт
 // на тёмной теме «Ступени» и схлестнулось бы с ними на первом же .btn.
-// Поэтому весь словарь лежит внутри .sotka, и этот класс носят на себе
+// Поэтому весь словарь лежит внутри .prmarket, и этот класс носят на себе
 // три кабинета: заказчика, креатора и менеджера с админом.
 //
 // Своя палитра здесь не прихоть верстальщика: у «Ступеней» земля тёмная,
 // а кабинеты макета светлые, и половинчатая пересадка (наши цвета в
 // чужую вёрстку) даёт экран, не похожий ни на то, ни на другое. Токены
-// объявлены на самой .sotka, а не в :root, чтобы за её пределами ничего
+// объявлены на самой .prmarket, а не в :root, чтобы за её пределами ничего
 // не поехало.
 
 // Кабинет с футером — колонка: футер прижат к низу экрана и стоит на
@@ -118,7 +118,7 @@
 // `margin: 0 auto` при `max-width`, а во флексе авторазметка полей
 // сильнее выравнивания — лента с просмотрами уезжала на середину
 // экрана, хотя вкладки под ней оставались слева.
-.sotka:has(> app-support-footer) {
+.prmarket:has(> app-support-footer) {
   display: flex;
   flex-direction: column;
 
@@ -157,7 +157,7 @@
 // админские справочники остались бы тёмными островами внутри светлой
 // рамы. Вне оболочки (воронка заказа на витрине) .crm-page по-прежнему
 // тёмный — там он и должен быть тёмным.
-.sotka,
+.prmarket,
 :root .crm-shell,
 :root .crm-shell .crm-page,
 // Экран, который носит ОБА словаря сразу: воронка заказа размечена
@@ -166,63 +166,63 @@
 // токены дизайн-системы на том же элементе (styles.scss, @include
 // design.tokens), и на равной силе побеждал он — карточки оставались
 // чёрными, а заголовки белыми по светлому.
-:root .sotka.crm-page,
-:root .sotka .crm-page {
-  @include sotka-tokens;
+:root .prmarket.crm-page,
+:root .prmarket .crm-page {
+  @include prmarket-tokens;
 }
 
 // Окна и шторки ng-zorro живут в оверлее в конце body — до них не
-// достают ни .sotka, ни .crm-shell. Без этого «Проставить пачкой»,
+// достают ни .prmarket, ни .crm-shell. Без этого «Проставить пачкой»,
 // открытая из светлого кабинета, приезжала чёрной: своя разметка у
 // диалога написана на общих токенах, а общие токены остались тёмными.
 //
 // Условие — по тому, что сейчас на экране: открыт кабинет, значит и
 // окно над ним кабинетное. На витрине окна остаются тёмными.
-body:has(.sotka) .ant-modal,
+body:has(.prmarket) .ant-modal,
 body:has(.crm-shell) .ant-modal,
-body:has(.sotka) .ant-drawer,
+body:has(.prmarket) .ant-drawer,
 body:has(.crm-shell) .ant-drawer,
-body:has(.sotka) .ant-message-notice-content,
+body:has(.prmarket) .ant-message-notice-content,
 body:has(.crm-shell) .ant-message-notice-content,
-body:has(.sotka) .ant-dropdown,
+body:has(.prmarket) .ant-dropdown,
 body:has(.crm-shell) .ant-dropdown,
 // Разметка окна может быть написана словарём .crm-page (простановка
 // дат пачкой — как раз такая). Сам по себе .crm-page объявлен тёмным, и
 // без отдельной строки календарь в светлом окне оставался чёрным.
-body:has(.sotka) .ant-modal .crm-page,
+body:has(.prmarket) .ant-modal .crm-page,
 body:has(.crm-shell) .ant-modal .crm-page,
-body:has(.sotka) .ant-drawer .crm-page,
+body:has(.prmarket) .ant-drawer .crm-page,
 body:has(.crm-shell) .ant-drawer .crm-page {
-  @include sotka-tokens;
+  @include prmarket-tokens;
 
   color: var(--ink);
 }
 
 // Кнопки внутри окон и шторок кабинета.
 //
-// Шторка рисуется в оверлее ng-zorro — вне .sotka, — и правила кабинета
+// Шторка рисуется в оверлее ng-zorro — вне .prmarket, — и правила кабинета
 // до неё не достают: «Сохранить» и «Отмена» в листе «Добавить аккаунт»
 // оставались квадратными наклейками из темы antd, хотя вызвал их
 // кабинет с радиусом 12.
-body:has(.sotka) .ant-modal .ant-btn,
+body:has(.prmarket) .ant-modal .ant-btn,
 body:has(.crm-shell) .ant-modal .ant-btn,
-body:has(.sotka) .ant-drawer .ant-btn,
+body:has(.prmarket) .ant-drawer .ant-btn,
 body:has(.crm-shell) .ant-drawer .ant-btn {
   border-radius: 12px;
 }
 
 // Заголовок окна в общей таблице стилей прибит белым (там тёмная тема).
 // На светлом окне он становился белым по белому.
-body:has(.sotka) .ant-modal-title,
+body:has(.prmarket) .ant-modal-title,
 body:has(.crm-shell) .ant-modal-title,
-body:has(.sotka) .ant-modal-confirm-title,
+body:has(.prmarket) .ant-modal-confirm-title,
 body:has(.crm-shell) .ant-modal-confirm-title,
-body:has(.sotka) .ant-modal-confirm-body > .anticon + span,
+body:has(.prmarket) .ant-modal-confirm-body > .anticon + span,
 body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
   color: var(--ink) !important;
 }
 
-.sotka {
+.prmarket {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--body);
@@ -2651,7 +2651,7 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
   // «добавить выкладку»): разметка у них осталась прежней, и переписывать
   // её ради новых имён классов значило бы переносить логику вместе с
   // вёрсткой. На телефоне окно приезжает нижним листом — см.
-  // shared/scss/_sotka-touch.scss.
+  // shared/scss/_prmarket-touch.scss.
   .ovl {
     position: fixed;
     inset: 0;
@@ -2885,17 +2885,17 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
 // светлым красили один body, ниже первого экрана (кабинет ровно 100vh,
 // а страница длиннее) проступала тёмная земля витрины — чёрная полоса
 // под кабинетом.
-html:has(.sotka),
+html:has(.prmarket),
 html:has(.crm-shell),
-body:has(.sotka),
+body:has(.prmarket),
 body:has(.crm-shell) {
   background: #eef0ea;
 }
 
 @media (prefers-color-scheme: dark) {
-  html:has(.sotka),
+  html:has(.prmarket),
   html:has(.crm-shell),
-  body:has(.sotka),
+  body:has(.prmarket),
   body:has(.crm-shell) {
     background: #101311;
   }
@@ -2904,7 +2904,7 @@ body:has(.crm-shell) {
 // Кабинет внутри CRM-оболочки. Своей земли и своих полей ему там не
 // надо: и то и другое уже дала оболочка, а вторые поля поверх первых
 // съедают у таблицы плана два столбца.
-.crm-shell .sotka {
+.crm-shell .prmarket {
   min-height: 0;
   background: transparent;
 
@@ -2923,27 +2923,27 @@ body:has(.crm-shell) {
 // макета, где они объявлены отдельным набором, — у зелёно-чёрной земли
 // свои акценты, и выведенные из светлых они бы поплыли.
 @media (prefers-color-scheme: dark) {
-  .sotka,
+  .prmarket,
   :root .crm-shell,
   :root .crm-shell .crm-page,
-  :root .sotka.crm-page,
-  :root .sotka .crm-page,
-  body:has(.sotka) .ant-modal,
+  :root .prmarket.crm-page,
+  :root .prmarket .crm-page,
+  body:has(.prmarket) .ant-modal,
   body:has(.crm-shell) .ant-modal,
-  body:has(.sotka) .ant-drawer,
+  body:has(.prmarket) .ant-drawer,
   body:has(.crm-shell) .ant-drawer,
-  body:has(.sotka) .ant-message-notice-content,
+  body:has(.prmarket) .ant-message-notice-content,
   body:has(.crm-shell) .ant-message-notice-content,
-  body:has(.sotka) .ant-dropdown,
+  body:has(.prmarket) .ant-dropdown,
   body:has(.crm-shell) .ant-dropdown,
   // Разметка окна словарём .crm-page — та же строка, что и в светлом
   // наборе выше. Без неё окно оказывалось тёмным СНАРУЖИ и светлым
   // ВНУТРИ: фон брался у .ant-modal, а --ink оставался чернильным от
   // светлого набора, и «Проставить даты выкладок» читались тёмным по
   // тёмному — виден был только белый островок карточки черновика.
-  body:has(.sotka) .ant-modal .crm-page,
+  body:has(.prmarket) .ant-modal .crm-page,
   body:has(.crm-shell) .ant-modal .crm-page,
-  body:has(.sotka) .ant-drawer .crm-page,
+  body:has(.prmarket) .ant-drawer .crm-page,
   body:has(.crm-shell) .ant-drawer .crm-page {
     --ground: #101311;
     --surface: #191d1a;

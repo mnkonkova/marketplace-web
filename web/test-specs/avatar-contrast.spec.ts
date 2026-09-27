@@ -99,7 +99,7 @@ describe('Аватар-плашка: буква читается на подло
     // светлую палитру. Если буква красится токеном темы, она меняется
     // вместе с ней — а подложка у плашки своя и не меняется.
     const light = document.createElement('div');
-    light.className = 'sotka';
+    light.className = 'prmarket';
     light.appendChild(host.cloneNode(true));
     document.body.appendChild(light);
 

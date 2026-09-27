@@ -46,7 +46,7 @@
           <tr>
             <td class="name">
               <span class="crlink">
-                <app-sotka-ava [name]="row.person.display_name" [size]="24" />
+                <app-prmarket-ava [name]="row.person.display_name" [size]="24" />
                 <span class="nm">
                   <span>{{ row.person.display_name }}</span>
                   <!-- «Сколько он обычно даёт» — медиана, а не среднее:
@@ -113,7 +113,7 @@
     @for (row of rows(); track row.person.user_id) {
       <div class="feed-row">
         <div class="feed-who">
-          <app-sotka-ava [name]="row.person.display_name" [size]="42" />
+          <app-prmarket-ava [name]="row.person.display_name" [size]="42" />
           <div class="grow">
             <div class="t">{{ row.person.display_name }}</div>
             <div class="muted small">

@@ -3,9 +3,9 @@ import { expect, type Page } from '@playwright/test';
 /**
  * Переходы по разделам — там, где экран на них поделён.
  *
- * Кабинеты переписаны по макетам «Сотки», и устройство разделов стало
+ * Кабинеты переписаны по макетам «PrMarket», и устройство разделов стало
  * другим: на ДЕСКТОПЕ карточка проекта снова одна длинная страница, а
- * разделы прячет только тач-слой (data-sec, см. _sotka-touch.scss).
+ * разделы прячет только тач-слой (data-sec, см. _prmarket-touch.scss).
  * Вкладки в прежнем смысле остались одни — в карточке проекта у
  * заказчика.
  *
@@ -80,7 +80,7 @@ export type CabinetTab = 'Дашборд' | 'Проекты';
  * чтобы спека всё так же начиналась с загруженного экрана.
  */
 export async function openCabinetTab(page: Page, _name: CabinetTab): Promise<void> {
-  await expect(page.locator('.sotka').first(), 'кабинет нарисован').toBeVisible({
+  await expect(page.locator('.prmarket').first(), 'кабинет нарисован').toBeVisible({
     timeout: 15_000,
   });
 }
@@ -95,7 +95,7 @@ export type CreatorTab = 'Общая' | 'Мои выкладки' | 'Переп�
  * нарисовано. Ждём кабинет — и только.
  */
 export async function openCreatorTab(page: Page, _name: CreatorTab): Promise<void> {
-  await expect(page.locator('.sotka').first(), 'кабинет креатора нарисован').toBeVisible({
+  await expect(page.locator('.prmarket').first(), 'кабинет креатора нарисован').toBeVisible({
     timeout: 15_000,
   });
 }
@@ -116,7 +116,7 @@ export type ManagerTab =
  * только тач-слой.
  */
 export async function openManagerTab(page: Page, _name: ManagerTab): Promise<void> {
-  await expect(page.locator('.sotka').first(), 'карточка проекта нарисована').toBeVisible({
+  await expect(page.locator('.prmarket').first(), 'карточка проекта нарисована').toBeVisible({
     timeout: 15_000,
   });
 }

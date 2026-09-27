@@ -12,7 +12,7 @@ import type {
 } from '@entities/publication/model/publication.types';
 import { ALL_PLATFORMS } from '@entities/publication/model/publication.types';
 import { parseApiError } from '@shared/api/api-error';
-import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
+import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
 
 /**
  * Все ссылки проекта — по креаторам.
@@ -30,7 +30,7 @@ import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
 @Component({
   selector: 'app-project-links',
   standalone: true,
-  imports: [CommonModule, FormsModule, SotkaAvaComponent],
+  imports: [CommonModule, FormsModule, PrMarketAvaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-links.component.html',
   styleUrl: './project-links.component.scss',

@@ -106,7 +106,7 @@
     <ul class="bycrew">
       @for (row of r.by_creator; track row.creator_user_id) {
         <li>
-          <app-sotka-ava [name]="row.creator_name || 'Без имени'" [size]="22" />
+          <app-prmarket-ava [name]="row.creator_name || 'Без имени'" [size]="22" />
           <span class="name">
             {{ row.creator_name || 'Без имени' }}
             <small class="muted">

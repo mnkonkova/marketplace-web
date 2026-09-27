@@ -1,12 +1,12 @@
 <app-header />
 
-<!-- Словарь кабинета (.sotka) поверх макетного (.crm-page).
+<!-- Словарь кабинета (.prmarket) поверх макетного (.crm-page).
      Воронка — вход в кабинет заказчика, и открывается она из «Всех
      проектов»: тёмная страница посреди светлых читалась как чужая
-     часть продукта. Классы разметки остаются макетные — .sotka
+     часть продукта. Классы разметки остаются макетные — .prmarket
      объявляет те же имена переменных на светлые значения (см.
-     sotka-tokens), поэтому переверстывать нечего, меняется палитра. -->
-<main class="sotka crm-page order-funnel">
+     prmarket-tokens), поэтому переверстывать нечего, меняется палитра. -->
+<main class="prmarket crm-page order-funnel">
   <div class="stage">
     <div class="steps">
       @for (label of stepLabels(); track label; let i = $index; let last = $last) {

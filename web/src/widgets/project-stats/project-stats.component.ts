@@ -12,7 +12,7 @@ import type { SeriesPoint } from '@shared/lib/chart-series';
 import { plural } from '@shared/lib/format';
 import { ErValueComponent } from '@shared/ui/er-value/er-value.component';
 import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
-import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
+import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
 
 // Цифры проекта: итоги, накопительный график по дням и разрез по
 // площадкам. Один и тот же отчёт отдают три ручки (клиент, креатор,
@@ -32,7 +32,7 @@ import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
 @Component({
   selector: 'app-project-stats',
   standalone: true,
-  imports: [CommonModule, ErValueComponent, LineChartComponent, SotkaAvaComponent],
+  imports: [CommonModule, ErValueComponent, LineChartComponent, PrMarketAvaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-stats.component.html',
   styleUrls: ['./project-stats.component.scss', './project-stats.component.touch.scss'],

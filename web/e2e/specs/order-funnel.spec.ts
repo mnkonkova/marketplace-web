@@ -309,7 +309,7 @@ test('вторая ветка заводит проект без креатор�
     // Ни слова про приглашения и состав: в этой ветке их не будет.
     await expect(page.getByText('Приглашение уже ушло')).toHaveCount(0);
 
-    // И проект живой: он в кабинете, и это карточка «Сотки» с
+    // И проект живой: он в кабинете, и это карточка «PrMarket» с
     // вкладками, а не воронка со стадиями.
     await page.getByRole('button', { name: 'Открыть проект' }).click();
     await expect(page).toHaveURL(new RegExp(`/me/projects/${body.order.project_id}`), {

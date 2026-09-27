@@ -1,4 +1,6 @@
 import { createHmac } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test, expect, request as pwRequest } from '@playwright/test';
 import { AUTH_KEY, psql } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
@@ -17,7 +19,30 @@ import { openClientTab } from '../fixtures/ui';
  * что стоит на стенде: иначе тест проверял бы наш код своей же
  * копией алгоритма и был бы зелёным при сломанной проверке.
  */
-const BOT_TOKEN = process.env.E2E_TG_BOT_TOKEN ?? '111111:AA-stand-creator-token';
+/**
+ * Токен берём ТОТ ЖЕ, на котором работает стенд, — иначе подпись не
+ * сойдётся и специя покажет «вход сломан» там, где сломана она сама.
+ *
+ * Читаем его из .env бэкенда, а не держим в репозитории: это
+ * настоящий токен настоящего бота, и место ему там, где .gitignore.
+ * Нет файла или строки — специи, которым нужна верная подпись,
+ * пропускаются с внятным сообщением, а не падают.
+ */
+function standBotToken(): string {
+  if (process.env.E2E_TG_BOT_TOKEN) return process.env.E2E_TG_BOT_TOKEN;
+  const envPath =
+    process.env.E2E_API_ENV ?? join(__dirname, '..', '..', '..', '..', 'marketplace-api', '.env');
+  try {
+    const line = readFileSync(envPath, 'utf8')
+      .split('\n')
+      .find((l) => l.startsWith('TELEGRAM_CREATOR_BOT_TOKEN='));
+    return (line ?? '').slice('TELEGRAM_CREATOR_BOT_TOKEN='.length).trim();
+  } catch {
+    return '';
+  }
+}
+
+const BOT_TOKEN = standBotToken();
 const API = process.env.E2E_API ?? 'http://127.0.0.1:8080';
 
 /** initData ровно в том виде, в каком его отдаёт Telegram. */
@@ -61,6 +86,7 @@ test('вне Telegram страница входа объясняет, что э�
 });
 
 test('незнакомый телеграм спрашивает, новый человек или нет', async ({ page }) => {
+  test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
   await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);
 
   // Молча второй аккаунт не заводим: у человека уже может быть наш — с
@@ -72,6 +98,7 @@ test('незнакомый телеграм спрашивает, новый ч�
 });
 
 test('«я здесь впервые» заводит креатора и уводит в его проекты', async ({ page }) => {
+  test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
   await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);
   await expect(page.getByRole('heading', { name: 'Первый раз здесь?' })).toBeVisible({
     timeout: 20_000,

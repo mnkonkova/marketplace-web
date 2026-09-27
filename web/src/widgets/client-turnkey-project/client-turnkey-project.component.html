@@ -1,5 +1,5 @@
-<div class="sotka">
-  <app-sotka-top
+<div class="prmarket">
+  <app-prmarket-top
     [showWho]="false"
     [title]="title()"
     [subtitle]="subtitleLine()"
@@ -243,7 +243,7 @@
                         <div class="rank">#{{ i + 1 }}</div>
                         <h3>{{ v.title || 'Без названия' }}</h3>
                         <div class="vcard-who">
-                          <app-sotka-ava
+                          <app-prmarket-ava
                             [name]="creatorName(v.creator_name)"
                             [src]="videoPerson(v)?.avatar_url"
                             [size]="24"
@@ -334,7 +334,7 @@
                       @if (blocks().crew) {
                         <td data-label="Креатор">
                           <span class="crlink">
-                            <app-sotka-ava
+                            <app-prmarket-ava
                               [name]="creatorName(v.creator_name)"
                               [src]="videoPerson(v)?.avatar_url"
                               [size]="26"
@@ -423,7 +423,7 @@
                     @if (d.people.length) {
                       <span class="who-av">
                         @for (p of d.people.slice(0, 3); track p.name) {
-                          <app-sotka-ava [name]="p.name" [src]="p.avatar" [size]="18" />
+                          <app-prmarket-ava [name]="p.name" [src]="p.avatar" [size]="18" />
                         }
                         @if (d.people.length > 3) {
                           <span class="more">+{{ d.people.length - 3 }}</span>
@@ -471,7 +471,7 @@
                         <div class="grow">
                           <div class="t">{{ v.title || 'Без названия' }}</div>
                           <div class="who-row">
-                            <app-sotka-ava
+                            <app-prmarket-ava
                               [name]="creatorName(v.creator_name)"
                               [src]="videoPerson(v)?.avatar_url"
                               [size]="22"
@@ -495,7 +495,7 @@
                     }
                     @for (p of dayPlanned(); track p.publication_id) {
                       <div class="row">
-                        <app-sotka-ava [name]="creatorName(p.creator_name)" [size]="28" />
+                        <app-prmarket-ava [name]="creatorName(p.creator_name)" [size]="28" />
                         <span class="grow muted">{{ creatorName(p.creator_name) }} · по плану</span>
                       </div>
                     }
@@ -746,7 +746,7 @@
                           <td class="head">
                             @if (creatorLinkable(a)) {
                               <a class="crlink" [routerLink]="specialistLink(a)">
-                                <app-sotka-ava
+                                <app-prmarket-ava
                                   [name]="creatorName(a.creator_name)"
                                   [src]="a.creator_avatar_url"
                                   [size]="24"
@@ -755,7 +755,7 @@
                               </a>
                             } @else {
                               <span class="crlink">
-                                <app-sotka-ava
+                                <app-prmarket-ava
                                   [name]="creatorName(a.creator_name)"
                                   [src]="a.creator_avatar_url"
                                   [size]="24"
@@ -908,5 +908,5 @@
 
   <!-- Те же разделы, что вкладками наверху, но в зоне большого пальца.
        На десктопе полоса не рисуется вовсе. -->
-  <app-sotka-tabbar [tabs]="phoneTabs()" [current]="tab()" (pick)="setTab($any($event))" />
+  <app-prmarket-tabbar [tabs]="phoneTabs()" [current]="tab()" (pick)="setTab($any($event))" />
 </div>

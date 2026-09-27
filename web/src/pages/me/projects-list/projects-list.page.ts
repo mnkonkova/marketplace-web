@@ -46,7 +46,7 @@ import {
   LineChartComponent,
 } from '@shared/ui/line-chart/line-chart.component';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { SotkaTopComponent } from '@widgets/sotka-top/sotka-top.component';
+import { PrMarketTopComponent } from '@widgets/prmarket-top/prmarket-top.component';
 import { SupportFooterComponent } from '@widgets/support-footer/support-footer.component';
 import { withFromPage } from '@shared/nav/from-page';
 
@@ -124,7 +124,7 @@ const MONTHS_SHORT = [
 
 /**
  * Кабинет заказчика, экран «Все проекты» — перенос из макета
- * ~/tmp/sotka-cabinets.html (раздел «ЗАКАЗЧИК · ВСЕ ПРОЕКТЫ»).
+ * ~/tmp/prmarket-cabinets.html (раздел «ЗАКАЗЧИК · ВСЕ ПРОЕКТЫ»).
  *
  * Порядок блоков в макете — это порядок вопросов, с которыми экран
  * открывают: во сколько обходится просмотр → что происходит в проектах
@@ -147,7 +147,7 @@ const MONTHS_SHORT = [
     RouterLink,
     AppHeaderComponent,
     LineChartComponent,
-    SotkaTopComponent,
+    PrMarketTopComponent,
     SupportFooterComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
