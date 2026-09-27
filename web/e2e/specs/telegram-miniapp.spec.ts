@@ -2,7 +2,7 @@ import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test, expect, request as pwRequest } from '@playwright/test';
-import { AUTH_KEY, psql } from '../fixtures/world';
+import { AUTH_KEY, psql, resetRateLimits } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 import { openClientTab } from '../fixtures/ui';
 
@@ -70,11 +70,47 @@ function signInitData(tgUserID: number, username: string, authDate = new Date())
 /** Свой телеграм на каждый прогон: аккаунт заводится настоящий. */
 const tgUserID = 900_000_000 + (Date.now() % 90_000_000);
 
+/**
+ * Знакомый телеграм: человек уже зарегистрирован и привязан.
+ *
+ * Заводим SQL-ем, а не через мини-апп: регистрации там больше нет —
+ * анкета заполняется на сайте. Проверять на этом человеке надо
+ * другое: что знакомый телеграм пускают сразу и ведут туда, куда
+ * звала кнопка из сообщения.
+ */
+test.beforeAll(() => {
+  psql(`
+INSERT INTO users (email, password_hash, kind, is_approved, is_active, email_verified_at,
+                   display_name, telegram_user_id)
+VALUES ('tg-known-${tgUserID}@example.com', 'x', 'specialist', TRUE, TRUE, now(),
+        'Знакомый телеграм', ${tgUserID})
+ON CONFLICT (email) DO NOTHING;
+
+INSERT INTO specialist_profiles (user_id, display_name)
+SELECT id, 'Знакомый телеграм' FROM users WHERE telegram_user_id = ${tgUserID}
+ON CONFLICT (user_id) DO NOTHING;
+
+INSERT INTO user_identities (provider, provider_id, user_id)
+SELECT 'telegram', '${tgUserID}', id FROM users WHERE telegram_user_id = ${tgUserID}
+ON CONFLICT DO NOTHING;
+
+INSERT INTO telegram_links (user_id, bot, tg_user_id, tg_chat_id, tg_username)
+SELECT id, 'creator', ${tgUserID}, ${tgUserID}, 'lev'
+FROM users WHERE telegram_user_id = ${tgUserID}
+ON CONFLICT DO NOTHING;`);
+});
+
 test.afterAll(() => {
   // Человек, заведённый этой спекой, живёт без почты — найти его можно
   // только по телеграму.
   psql(`DELETE FROM users WHERE telegram_user_id = ${tgUserID};`);
 });
+
+// Вход считается по тому же лимиту, что и обычный: десять попыток в
+// минуту с адреса. Специй здесь полтора десятка, и они укладываются в
+// минуту втроём — хвост ловил 429 и падал «элемент не найден», хотя
+// сломан был только счётчик.
+test.beforeEach(() => resetRateLimits());
 
 test('вне Telegram страница входа объясняет, что это другой вход', async ({ page }) => {
   await page.goto('/tg');
@@ -87,7 +123,9 @@ test('вне Telegram страница входа объясняет, что э�
 
 test('незнакомый телеграм спрашивает, новый человек или нет', async ({ page }) => {
   test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
-  await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);
+  await page.goto(
+    `/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID + 20, 'nobody'))}`,
+  );
 
   // Молча второй аккаунт не заводим: у человека уже может быть наш — с
   // проектами и историей.
@@ -99,7 +137,9 @@ test('незнакомый телеграм спрашивает, новый ч�
 
 test('на экране входа видно каждую кнопку и каждую подпись', async ({ page }) => {
   test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
-  await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);
+  await page.goto(
+    `/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID + 21, 'nobody2'))}`,
+  );
   await expect(page.getByRole('heading', { name: 'Первый раз здесь?' })).toBeVisible({
     timeout: 20_000,
   });
@@ -138,7 +178,9 @@ test('на экране входа видно каждую кнопку и ка�
 
 test('тому, кто входит через Яндекс, объясняют путь вместо пароля', async ({ page }) => {
   test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
-  await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);
+  await page.goto(
+    `/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID + 22, 'nobody3'))}`,
+  );
   await page.getByRole('button', { name: 'У меня есть аккаунт' }).click();
 
   // У аккаунта, заведённого через Яндекс, пароля нет вовсе: экран
@@ -154,31 +196,102 @@ test('тому, кто входит через Яндекс, объясняют 
   await expect(page.getByRole('heading', { name: 'Первый раз здесь?' })).toBeVisible();
 });
 
-test('«я здесь впервые» заводит креатора и уводит в его проекты', async ({ page }) => {
+test('«я здесь впервые» уводит в анкету на сайте и привязывает телеграм после регистрации', async ({
+  page,
+  context,
+}) => {
   test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
-  await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);
+  const fresh = tgUserID + 11;
+  await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(fresh, 'new'))}`);
   await expect(page.getByRole('heading', { name: 'Первый раз здесь?' })).toBeVisible({
     timeout: 20_000,
   });
 
-  const [created] = await Promise.all([
+  // Регистрации в мини-аппе нет намеренно: анкета с категориями и
+  // портфолио заполняется на сайте, а «я новый» нажимали и те, у кого
+  // аккаунт давно есть, — телеграм привязывался к пустому дублю.
+  await page.evaluate(() => {
+    const urls: string[] = [];
+    (window as unknown as { __opened: string[] }).__opened = urls;
+    (window as unknown as { open: (u?: string | URL) => null }).open = (u) => {
+      urls.push(String(u));
+      return null;
+    };
+  });
+  const [ticket] = await Promise.all([
     page.waitForResponse(
-      (r) => r.url().includes('/auth/telegram/miniapp') && r.request().method() === 'POST',
+      (r) => r.url().includes('/auth/telegram/link-ticket') && r.request().method() === 'POST',
     ),
     page.getByRole('button', { name: 'Я здесь впервые' }).click(),
   ]);
-  expect(created.status(), await created.text()).toBe(200);
-  const body = await created.json();
-  expect(body.is_new, 'первый вход заводит аккаунт').toBe(true);
-  // Бот определяет роль: в креаторского пишут исполнители.
-  expect(body.kind).toBe('specialist');
+  expect(ticket.status(), await ticket.text()).toBe(200);
+  const code = (await ticket.json()).code as string;
 
-  // И человек оказывается в своём кабинете, а не на витрине.
-  await expect(page).toHaveURL(/\/me\/creator\/projects/, { timeout: 20_000 });
+  const urls: string[] = await page.evaluate(
+    () => (window as unknown as { __opened: string[] }).__opened ?? [],
+  );
+  expect(urls.join(' '), 'ведём сразу в анкету, а не на главную').toContain(
+    '/start?role=specialist',
+  );
+  expect(urls.join(' '), 'билет едет вместе с адресом').toContain(`tg=${encodeURIComponent(code)}`);
 
-  // Повторный заход — тот же аккаунт и сразу кабинет, без развилки.
-  await page.goto(`/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID, 'lev'))}`);
-  await expect(page).toHaveURL(/\/me\/creator\/projects/, { timeout: 20_000 });
+  // Аккаунта всё ещё нет: билет сам по себе ничего не привязывает.
+  const api = await pwRequest.newContext({
+    baseURL: API,
+    extraHTTPHeaders: {
+      Authorization: `Bearer ${process.env.E2E_BOT_SECRET ?? 'stand-bot-shared-secret'}`,
+    },
+  });
+  expect((await api.get(`/api/v1/bot/users/by-telegram/${fresh}?bot=creator`)).status()).toBe(404);
+
+  // А вот человек зарегистрировался в браузере — и телеграм
+  // привязался сам, без возврата в бот.
+  const browser = await context.newPage();
+  await browser.goto(`/start?role=specialist&tg=${encodeURIComponent(code)}`);
+  const email = `tg-ticket-${Date.now()}@example.com`;
+  const claimed = browser.waitForResponse(
+    (r) => r.url().includes('/me/telegram/claim') && r.request().method() === 'POST',
+  );
+  await browser.evaluate(
+    async ([mail, base]) => {
+      // Регистрируем тем же запросом, что и форма: проверяем привязку,
+      // а не мастер профиля — у него свои специи.
+      const res = await fetch(`${base}/auth/register`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email: mail,
+          password: 'PrMarket!2026-tg',
+          kind: 'specialist',
+          display_name: 'Из телеграма',
+        }),
+      });
+      const body = await res.json();
+      const store = {
+        access_token: body.tokens.access_token,
+        refresh_token: body.tokens.refresh_token,
+        kind: 'specialist',
+      };
+      localStorage.setItem('marketpclce.auth.v1', JSON.stringify(store));
+      // Тот же путь, которым это делает приложение: билет лежит в
+      // sessionStorage, гасится сразу после появления сессии.
+      await fetch(`${base}/me/telegram/claim`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${body.tokens.access_token}`,
+        },
+        body: JSON.stringify({ code: sessionStorage.getItem('prmarket.tg.claim') }),
+      });
+    },
+    [email, `${API}/api/v1`] as const,
+  );
+  await claimed.catch(() => undefined);
+
+  const who = await api.get(`/api/v1/bot/users/by-telegram/${fresh}?bot=creator`);
+  expect(who.status(), 'телеграм привязался к свежему аккаунту сам').toBe(200);
+  await api.dispose();
+  psql(`DELETE FROM users WHERE email = '${email}';`);
 });
 
 test('кнопка из сообщения приводит на нужный экран, а чужой адрес — нет', async ({ page }) => {

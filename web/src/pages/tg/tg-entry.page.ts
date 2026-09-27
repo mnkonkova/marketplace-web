@@ -2,8 +2,10 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
+import { TelegramApi } from '@entities/telegram/api/telegram.api';
 import { parseApiError } from '@shared/api/api-error';
 import {
   initData,
@@ -49,20 +51,36 @@ import {
             <a class="btn primary" href="/login">Войти на сайте</a>
           }
           @case ('fork') {
+            <!-- Регистрации здесь нет намеренно (решение владельца от
+                 27 сентября).
+                 Аккаунт заводится на сайте: там анкета, категории и
+                 портфолио — без них в проект всё равно не позовут, а
+                 заполнять их в окне Telegram неудобно. Но главное
+                 другое: «я новый» нажимали и те, у кого аккаунт давно
+                 есть, и телеграм привязывался к пустому дублю. Второй
+                 раз развилку такому человеку уже не покажут — телеграм
+                 стал знакомым, — и разбирать это приходилось руками в
+                 базе. -->
             <h1>Первый раз здесь?</h1>
             <p class="muted">
-              Мы не нашли аккаунт, привязанный к этому телеграму. Если он у вас уже есть — войдите,
-              и телеграм привяжется к нему. Заводить второй не нужно: проекты и история остались бы
-              в первом.
+              Мы не нашли аккаунт, привязанный к этому телеграму. Если он у вас есть — войдите, и
+              телеграм привяжется к нему. Если нет — анкета заполняется на сайте, откроем её в
+              браузере.
             </p>
             <div class="acts">
-              <button type="button" class="btn primary" [disabled]="busy()" (click)="createNew()">
-                Я здесь впервые
-              </button>
-              <button type="button" class="btn" (click)="state.set('login')">
+              <button type="button" class="btn primary" (click)="state.set('login')">
                 У меня есть аккаунт
               </button>
+              <button type="button" class="btn" [disabled]="busy()" (click)="registerOnSite()">
+                Я здесь впервые
+              </button>
             </div>
+            <p class="muted">
+              Входите через Яндекс?
+              <button type="button" class="linky" (click)="state.set('yandex')">
+                Пароля у вас нет — вот что делать
+              </button>
+            </p>
           }
           @case ('yandex') {
             <!-- Вход через Яндекс внутри мини-аппа невозможен: он
@@ -71,14 +89,24 @@ import {
                  он короткий и работает. -->
             <h1>Вы входите через Яндекс</h1>
             <p class="muted">
-              Пароля у такого аккаунта нет, и спрашивать его здесь бессмысленно. Привязать телеграм
-              можно из кабинета — это три шага и одна ссылка:
+              Пароля у такого аккаунта нет, и спрашивать его здесь бессмысленно. Есть два пути, оба
+              короткие.
             </p>
+            <p class="muted"><b>Привязать из кабинета</b> — ничего не заводя:</p>
             <ol class="steps">
               <li>откройте сайт в браузере и войдите через Яндекс;</li>
               <li>в любом своём проекте нажмите «Получать уведомления в Telegram»;</li>
               <li>перейдите по ссылке — она приведёт сюда и всё свяжет.</li>
             </ol>
+            <!-- Второй путь называем прямо: «Забыли пароль» у аккаунта
+                 из Яндекса звучит странно, но работает именно он —
+                 старого пароля там не спрашивают, а почта уже
+                 подтверждена. -->
+            <p class="muted">
+              <b>Или завести пароль</b>: на сайте в окне входа нажмите «Забыли пароль?» — придёт
+              письмо на вашу почту из Яндекса. Старый пароль там не спрашивают, потому что его и
+              нет. После этого сюда можно входить почтой и паролем.
+            </p>
             <div class="acts">
               <button type="button" class="btn primary" (click)="openSite()">
                 Открыть сайт в браузере
@@ -259,6 +287,10 @@ export class TgEntryPage implements OnInit {
 
   private readonly route = inject(ActivatedRoute);
 
+  private readonly telegram = inject(TelegramApi);
+
+  private readonly msg = inject(NzMessageService);
+
   public readonly state = signal<'loading' | 'outside' | 'fork' | 'login' | 'yandex' | 'error'>(
     'loading',
   );
@@ -271,8 +303,46 @@ export class TgEntryPage implements OnInit {
 
   public password = '';
 
-  /** Какой бот привёл. От него зависит роль нового человека. */
+  /** Какой бот привёл. От него зависит роль в анкете. */
   private bot: 'creator' | 'client' = 'creator';
+
+  /**
+   * «Я здесь впервые» — регистрация в браузере, но телеграм
+   * привязывается сам.
+   *
+   * Берём у сервера одноразовый билет (он проверяет подпись Telegram)
+   * и кладём его в адрес анкеты. Браузер погасит его сразу после
+   * регистрации, и возвращаться в бот человеку не придётся — он уже
+   * получил, зачем приходил, и половина бы не вернулась.
+   *
+   * Билет не выдался — всё равно открываем анкету: зарегистрироваться
+   * важнее, чем привязать бота, а привязку потом сделает кнопка в
+   * проекте.
+   */
+  public registerOnSite(): void {
+    this.busy.set(true);
+    this.telegram.linkTicket(this.bot, initData()).subscribe({
+      next: (res) => {
+        this.busy.set(false);
+        this.openSite(`${this.registerPath}&tg=${encodeURIComponent(res.code)}`);
+      },
+      error: () => {
+        this.busy.set(false);
+        this.openSite(this.registerPath);
+      },
+    });
+  }
+
+  /**
+   * Куда ведёт регистрация.
+   *
+   * Мастер профиля, а не главная: роль уже известна по боту, и
+   * спрашивать её второй раз незачем. Страница публичная — человек
+   * приходит на неё незарегистрированным, там же и заводит аккаунт.
+   */
+  public get registerPath(): string {
+    return this.bot === 'creator' ? '/start?role=specialist' : '/start?role=client';
+  }
 
   public async ngOnInit(): Promise<void> {
     const param =
@@ -293,19 +363,19 @@ export class TgEntryPage implements OnInit {
     this.enter({});
   }
 
-  public createNew(): void {
-    this.enter({ create: true });
-  }
-
   /**
-   * Открыть сайт в браузере.
+   * Открыть страницу сайта в браузере.
    *
-   * Через openLink самого Telegram: обычный переход внутри webview
-   * оставил бы человека в мини-аппе без его собственной шапки, а
-   * вход через Яндекс всё равно уводит наружу.
+   * Через openLink самого Telegram: переход внутри webview оставил бы
+   * человека в мини-аппе без его собственной шапки, а регистрация и
+   * вход через Яндекс всё равно уводят наружу.
+   *
+   * Ведём сразу в нужное место — в анкету, а не на главную: человек
+   * пришёл регистрироваться, и искать кнопку на витрине его
+   * заставлять незачем.
    */
-  public openSite(): void {
-    const url = window.location.origin;
+  public openSite(path = ''): void {
+    const url = window.location.origin + path;
     const tg = (window as unknown as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } })
       .Telegram?.WebApp;
     try {
@@ -323,7 +393,7 @@ export class TgEntryPage implements OnInit {
     this.enter({ login: this.login.trim(), password: this.password });
   }
 
-  private enter(extra: { create?: boolean; login?: string; password?: string }): void {
+  private enter(extra: { login?: string; password?: string }): void {
     this.busy.set(true);
     this.auth.loginWithTelegram({ bot: this.bot, init_data: initData(), ...extra }).subscribe({
       next: () => {

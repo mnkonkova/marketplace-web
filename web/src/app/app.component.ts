@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
 import { NavHistoryService } from '@shared/nav/nav-history.service';
+import { captureTelegramTicket } from '@shared/lib/telegram-claim';
 import { initTelegramApp } from '@shared/lib/telegram-webapp';
 
 @Component({
@@ -29,6 +30,11 @@ export class AppComponent {
   private readonly location = inject(Location);
 
   public constructor() {
+    // Билет привязки телеграма, приехавший из мини-аппа в адресе
+    // анкеты. Снимаем ДО первой навигации: роутер вычистит query, и
+    // после него брать будет неоткуда.
+    captureTelegramTicket();
+
     // Мини-апп Telegram. Вне его вызов не делает ничего: те же экраны
     // открывают в обычном браузере, и ветвиться на каждом значит
     // однажды забыть. Здесь — потому что это свойство ВСЕГО
