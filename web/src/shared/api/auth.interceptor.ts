@@ -76,6 +76,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     // главной, и прежний переход на несуществующий '/login' просто падал
     // на главную, попутно затирая from_page. Уводим на главную явно и
     // кладём адрес, с которого выбило, чтобы после входа вернуть туда же.
+    //
+    // Кроме мини-аппа: внутри Telegram главной страницы сайта нет —
+    // человек увидел бы витрину вместо своего кабинета и не понял бы,
+    // куда делся бот. Там вход живёт на /tg, туда и возвращаем.
+    if (fromPath.startsWith('/tg')) {
+      return throwError(() => err);
+    }
     if (fromPath !== '/' && !fromPath.startsWith('/start')) {
       void router.navigate(['/'], { queryParams: { from_page: fromPath } });
     }

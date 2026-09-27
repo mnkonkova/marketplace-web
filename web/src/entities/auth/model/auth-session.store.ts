@@ -191,6 +191,39 @@ export class AuthSessionStore {
       );
   }
 
+  /**
+   * Вход из мини-аппа Telegram.
+   *
+   * Подпись проверяет сервер нашим же токеном бота — строку отдаём
+   * СЫРОЙ, как её дал Telegram. Три сценария одной ручкой: знакомый
+   * телеграм (вход), login+password («у меня уже есть аккаунт») и
+   * create=true («я новый»). Без последних двух незнакомый телеграм
+   * получает 404 — молча заводить человеку второй аккаунт нельзя, у
+   * него уже может быть наш с проектами.
+   */
+  public loginWithTelegram(payload: {
+    bot: 'creator' | 'client';
+    init_data: string;
+    create?: boolean;
+    login?: string;
+    password?: string;
+  }): Observable<{ isNew: boolean; kind: string }> {
+    return this.http
+      .post<{ user_id: string; tokens: TokenPair; is_new?: boolean; kind?: string }>(
+        `${this.api}/auth/telegram/miniapp`,
+        payload,
+      )
+      .pipe(
+        map((res) => {
+          // Роль берём из ответа: у существующего аккаунта она своя, и
+          // бот, в который человек написал, её не отменяет.
+          this.save(res.tokens, res.kind);
+          this.fetchMe().subscribe({ error: () => undefined });
+          return { isNew: !!res.is_new, kind: res.kind ?? '' };
+        }),
+      );
+  }
+
   public register(payload: RegisterPayload): Observable<{ user_id: string; tokens: TokenPair }> {
     return this.http
       .post<{ user_id: string; tokens: TokenPair }>(`${this.api}/auth/register`, payload)
