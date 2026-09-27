@@ -132,7 +132,10 @@ test('незнакомый телеграм спрашивает, новый ч�
   await expect(page.getByRole('heading', { name: 'Первый раз здесь?' })).toBeVisible({
     timeout: 20_000,
   });
-  await expect(page.getByRole('button', { name: 'У меня есть аккаунт' })).toBeVisible();
+  // Главный путь — браузер: там работают все способы входа сразу,
+  // включая Яндекс, у которого пароля не бывает.
+  await expect(page.getByRole('button', { name: 'Войти на сайте' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Я здесь впервые' })).toBeVisible();
 });
 
 test('на экране входа видно каждую кнопку и каждую подпись', async ({ page }) => {
@@ -162,14 +165,14 @@ test('на экране входа видно каждую кнопку и ка�
       return { color: own.color, bg };
     });
 
-  for (const name of ['Я здесь впервые', 'У меня есть аккаунт']) {
+  for (const name of ['Я здесь впервые', 'Войти на сайте']) {
     const { color, bg } = await contrast(page.getByRole('button', { name }));
     expect(color, `${name}: текст сливается с подложкой`).not.toBe(bg);
   }
 
   // И на втором шаге — подписи полей: они тоже красились «как
   // родитель» и были невидимы.
-  await page.getByRole('button', { name: 'У меня есть аккаунт' }).click();
+  await page.getByRole('button', { name: /войдите прямо здесь по паролю/ }).click();
   await expect(page.getByText('Почта или телефон')).toBeVisible();
   await expect(page.getByText('Пароль', { exact: true })).toBeVisible();
   const back = await contrast(page.getByRole('button', { name: 'Назад' }));
@@ -181,7 +184,7 @@ test('тому, кто входит через Яндекс, объясняют 
   await page.goto(
     `/tg/creator?dev_init_data=${encodeURIComponent(signInitData(tgUserID + 22, 'nobody3'))}`,
   );
-  await page.getByRole('button', { name: 'У меня есть аккаунт' }).click();
+  await page.getByRole('button', { name: /войдите прямо здесь по паролю/ }).click();
 
   // У аккаунта, заведённого через Яндекс, пароля нет вовсе: экран
   // спросил бы его и не принял ничего, а человек решил бы, что

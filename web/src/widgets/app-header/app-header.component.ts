@@ -128,6 +128,7 @@ export class AppHeaderComponent implements OnInit {
 
   public ngOnInit(): void {
     this.syncActiveNavFromUrl();
+    this.openAuthIfAsked();
     // Шапка живёт внутри layout'ов, а те пересоздаются на каждом
     // переходе: без отписки подписки копятся вместе с мёртвыми копиями
     // компонента.
@@ -162,6 +163,31 @@ export class AppHeaderComponent implements OnInit {
     void this.router.navigateByUrl('/').then((ok) => {
       if (ok) window.scrollTo({ top: 0, behavior: 'smooth' });
     });
+  }
+
+  /**
+   * Открыть окно входа, если об этом попросили адресом (`?auth=login`).
+   *
+   * Отдельной страницы входа у нас нет — вход живёт окном на главной.
+   * Но ссылку «войдите вот тут» приходится давать: из мини-аппа
+   * Telegram, из письма, из бота. Без этого человек попадает на
+   * витрину и ищет кнопку глазами, а половина не находит.
+   *
+   * Параметр из адреса убираем сразу: иначе окно всплывёт снова при
+   * возврате назад по истории.
+   */
+  private openAuthIfAsked(): void {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth') !== 'login') return;
+    if (this.auth.isLoggedIn()) return;
+    params.delete('auth');
+    const rest = params.toString();
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash,
+    );
+    this.openAuth(0);
   }
 
   public openAuth(initialTab: 0 | 1 = 0): void {
