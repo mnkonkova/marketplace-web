@@ -18,6 +18,15 @@ interface TelegramWebApp {
     notificationOccurred?: (type: string) => void;
     selectionChanged?: () => void;
   };
+  // Кнопка «назад» в шапке самого Telegram. Своей у мини-аппа нет, а
+  // жест «назад» в webview работает не везде: без неё человек уходит
+  // вглубь и выбирается закрытием окна.
+  BackButton?: {
+    show?: () => void;
+    hide?: () => void;
+    onClick?: (cb: () => void) => void;
+    offClick?: (cb: () => void) => void;
+  };
 }
 
 function webApp(): TelegramWebApp | null {
@@ -69,11 +78,17 @@ export function tgReady(): void {
 }
 
 /**
- * Загрузить скрипт Telegram один раз.
+ * Загрузить скрипт Telegram, если его почему-то нет.
  *
- * Не в index.html: он нужен ровно на одной странице, а тянуть внешний
- * скрипт на каждый заход в каталог — лишний запрос всем, кто не из
- * Telegram.
+ * Обычно он уже подключён из index.html: мини-апп — это не одна
+ * страница входа, а весь кабинет, и вибрация, разворот на весь лист и
+ * кнопка «назад» нужны на каждом экране. Скрипт крошечный, отдаётся с
+ * CDN Telegram и кешируется всеми, кто хоть раз открывал любой
+ * мини-апп.
+ *
+ * Функция остаётся на случай, когда index.html не успел (или запрос к
+ * telegram.org не прошёл): экран входа без неё показал бы «это вход из
+ * Telegram» человеку, который как раз из Telegram и пришёл.
  */
 export function loadTelegramScript(): Promise<void> {
   const SRC = 'https://telegram.org/js/telegram-web-app.js';
@@ -136,4 +151,92 @@ export function tgHapticSelection(): void {
   } catch {
     /* старый клиент — молча */
   }
+}
+
+// ── запуск внутри мини-аппа ────────────────────────────────────────
+
+/** Экраны, с которых «назад» некуда: это корни кабинетов. */
+const ROOT_SCREENS = ['/me/projects', '/me/creator/projects', '/admin', '/tg'];
+
+/**
+ * Подготовить приложение к жизни внутри Telegram.
+ *
+ * Зовётся один раз при старте. Вне мини-аппа не делает ничего — и это
+ * важнее, чем кажется: те же экраны открывают в обычном браузере, и
+ * ветвиться на каждом из них значит однажды забыть.
+ *
+ * Что делает:
+ *   • говорит Telegram, что экран готов, и разворачивает окно;
+ *   • вешает на <body> класс tg-app — по нему прячется шапка сайта:
+ *     внутри Telegram своё меню сверху, и второе поверх него читается
+ *     как чужая страница;
+ *   • включает тактильный отклик на нажатия — централизованно, а не
+ *     на каждой кнопке;
+ *   • показывает кнопку «назад» Telegram везде, кроме корней.
+ */
+export function initTelegramApp(onBack: () => void): (url: string) => void {
+  if (!isTelegramWebApp()) return () => undefined;
+  tgReady();
+  document.body.classList.add('tg-app');
+  installTapHaptics();
+  return installBackButton(onBack);
+}
+
+/**
+ * Отклик на нажатие — одним слушателем на документ.
+ *
+ * Не директивой на каждой кнопке: кнопок сотни, новая появляется
+ * каждую неделю, и та, о которой забыли, молча отличается от
+ * соседних. Слушатель ловит всплытие и сам решает, что было нажато.
+ */
+function installTapHaptics(): void {
+  document.addEventListener(
+    'click',
+    (e) => {
+      const el = (e.target as HTMLElement | null)?.closest?.('button, a, [role="tab"], .c, .dc');
+      if (!el) return;
+      // Вкладки и клетки плана — «переключение», у него свой,
+      // более тихий отклик.
+      const selection = el.matches('[role="tab"], .ptabs button, .dc, .c');
+      if (selection) {
+        tgHapticSelection();
+        return;
+      }
+      // Действия, меняющие мир, отзываются заметнее обычных: по
+      // ним человек понимает, что нажал не «посмотреть».
+      const strong = el.matches('.btn.primary, .btn.danger, [type="submit"]');
+      tgHaptic(strong ? 'medium' : 'light');
+    },
+    // Перехватываем на всплытии и пассивно: отклик не должен ни
+    // задерживать обработчик кнопки, ни мешать прокрутке.
+    { passive: true },
+  );
+}
+
+/**
+ * Кнопка «назад» Telegram. Возвращает функцию «пересчитать по адресу»
+ * — её зовут на каждую навигацию.
+ *
+ * Возвращаем, а не храним в модуле: экспортируемая переменная,
+ * которую кто-то переприсваивает, — это скрытое состояние, и в
+ * тестах она живёт между прогонами.
+ */
+function installBackButton(onBack: () => void): (url: string) => void {
+  const btn = webApp()?.BackButton;
+  if (!btn) return () => undefined;
+  try {
+    btn.onClick?.(onBack);
+  } catch {
+    return () => undefined;
+  }
+  return (url: string) => {
+    const path = (url || '/').split('?')[0];
+    const root = ROOT_SCREENS.some((r) => path === r || path === r + '/');
+    try {
+      if (root) btn.hide?.();
+      else btn.show?.();
+    } catch {
+      /* старый клиент — молча */
+    }
+  };
 }

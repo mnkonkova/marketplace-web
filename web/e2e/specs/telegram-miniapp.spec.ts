@@ -124,6 +124,24 @@ test('«я здесь впервые» заводит креатора и уво
   await expect(page).toHaveURL(/\/me\/creator\/projects/, { timeout: 20_000 });
 });
 
+test('кнопка из сообщения приводит на нужный экран, а чужой адрес — нет', async ({ page }) => {
+  test.skip(!BOT_TOKEN, 'TELEGRAM_CREATOR_BOT_TOKEN стенда не найден — подпись не собрать');
+  const init = encodeURIComponent(signInitData(tgUserID, 'lev'));
+
+  // Так выглядит переход по кнопке «Открыть» из сообщения бота:
+  // сессии в мини-аппе ещё нет, её выдаёт /tg, а `to` говорит, куда
+  // идти дальше. Приводить человека на список проектов после кнопки
+  // «ваш ролик приняли» значит заставить его искать то, о чём ему
+  // только что написали.
+  await page.goto(`/tg/creator?dev_init_data=${init}&to=%2Fme%2Fcreator%2Finvitations`);
+  await expect(page).toHaveURL(/\/me\/creator\/invitations/, { timeout: 20_000 });
+
+  // А чужой адрес игнорируется молча: человек попадает в свой
+  // кабинет, а не туда, куда его звала ссылка.
+  await page.goto(`/tg/creator?dev_init_data=${init}&to=https%3A%2F%2Fevil.example%2Fme`);
+  await expect(page).toHaveURL(/\/me\/creator\/projects/, { timeout: 20_000 });
+});
+
 test('подделанная подпись не пускает', async ({ page }) => {
   const fake = signInitData(tgUserID + 1, 'lev').replace(
     /hash=[0-9a-f]+/,
@@ -157,6 +175,58 @@ test('ручки бота закрыты общим секретом', async () 
   expect(unknown.status(), await unknown.text()).toBe(404);
   await api.dispose();
   await withSecret.dispose();
+});
+
+/**
+ * Кабинет внутри мини-аппа.
+ *
+ * Это не отдельный экран, а те же кабинеты — и разница видна только
+ * тем, что внутри Telegram у них нет нашей шапки (сверху уже есть
+ * шапка бота, и вторая под ней читается как чужая страница) и нет
+ * кнопки «подключить бота» (человек уже в Telegram).
+ *
+ * Проверяем именно это: признак мини-аппа доезжает до КАЖДОГО экрана,
+ * а не только до страницы входа. Ошибка тут тихая — кабинет выглядит
+ * рабочим, просто чужим.
+ */
+test.describe('кабинет внутри мини-аппа', () => {
+  let box: Sandbox;
+
+  test.beforeAll(async () => {
+    box = await createSandbox('tgapp', { shape: 'empty', ownCreator: true, ownClient: true });
+  });
+
+  test.afterAll(() => dropSandbox(box));
+
+  test('шапка сайта спрятана, кнопка подключения не предлагается', async ({ context, page }) => {
+    await context.addInitScript(
+      ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
+      [AUTH_KEY, box.sessions.creator] as const,
+    );
+    // dev_init_data — подстановка для стенда: настоящий Telegram
+    // локальный адрес не откроет, а проверять экран как-то надо.
+    await page.goto(
+      `/me/creator/projects/${box.projectId}?dev_init_data=${encodeURIComponent('user=%7B%22id%22%3A1%7D&hash=z')}`,
+    );
+
+    await expect(page.locator('body.tg-app')).toHaveCount(1, { timeout: 20_000 });
+    await expect(page.locator('app-header')).toBeHidden();
+    // Кнопки подключения внутри Telegram нет вовсе: привязка случилась
+    // на входе, и предлагать её второй раз незачем.
+    await expect(page.getByRole('button', { name: 'Получать уведомления в Telegram' })).toHaveCount(
+      0,
+    );
+  });
+
+  test('в обычном браузере тот же экран с шапкой', async ({ context, page }) => {
+    await context.addInitScript(
+      ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
+      [AUTH_KEY, box.sessions.creator] as const,
+    );
+    await page.goto(`/me/creator/projects/${box.projectId}`);
+    await expect(page.locator('app-header')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('body.tg-app')).toHaveCount(0);
+  });
 });
 
 /**
