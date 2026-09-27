@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 
 /** Пункт полосы разделов под шапкой: подпись и адрес. */
-export interface SotkaNavItem {
+export interface PrMarketNavItem {
   title: string;
   link: string;
   /** Открыт сейчас. Считает страница: у неё есть адрес, у полосы — нет. */
@@ -13,7 +13,7 @@ export interface SotkaNavItem {
 }
 
 /**
- * Верхняя полоса кабинетов «Сотки» — перенос шапки из макета.
+ * Верхняя полоса кабинетов «PrMarket» — перенос шапки из макета.
  *
  * Без названия площадки слева: кабинет открывают по ссылке из бота или
  * из письма и работают в нём, а не «заходят на сайт». Место в шапке
@@ -32,14 +32,14 @@ export interface SotkaNavItem {
  * перерисовка макета.
  */
 @Component({
-  selector: 'app-sotka-top',
+  selector: 'app-prmarket-top',
   standalone: true,
   imports: [CommonModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './sotka-top.component.html',
-  styleUrl: './sotka-top.component.scss',
+  templateUrl: './prmarket-top.component.html',
+  styleUrl: './prmarket-top.component.scss',
 })
-export class SotkaTopComponent {
+export class PrMarketTopComponent {
   private readonly auth = inject(AuthSessionStore);
 
   private readonly router = inject(Router);
@@ -51,7 +51,7 @@ export class SotkaTopComponent {
   public readonly subtitle = input('');
 
   /** Разделы текущего кабинета. Пусто — полосы нет вовсе. */
-  public readonly nav = input<readonly SotkaNavItem[]>([]);
+  public readonly nav = input<readonly PrMarketNavItem[]>([]);
 
   /**
    * Период проекта: подпись и доля пройденного.

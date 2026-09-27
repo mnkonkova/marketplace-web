@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 /**
- * Портрет человека в кабинетах «Сотки».
+ * Портрет человека в кабинетах «PrMarket».
  *
  * В макете аватарки рисуются генератором — там людей нет, и лицо надо
  * было откуда-то взять. У нас люди настоящие: если человек поставил
@@ -14,7 +14,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
  * цвета — иначе взгляд не связывает три строки в одного человека.
  */
 @Component({
-  selector: 'app-sotka-ava',
+  selector: 'app-prmarket-ava',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -78,7 +78,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
     `,
   ],
 })
-export class SotkaAvaComponent {
+export class PrMarketAvaComponent {
   public readonly name = input('');
 
   public readonly src = input<string | undefined>(undefined);

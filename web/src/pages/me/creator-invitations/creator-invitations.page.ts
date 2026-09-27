@@ -11,7 +11,7 @@ import { PortfolioItem } from '@entities/specialist/model/specialist.types';
 import { plural } from '@shared/lib/format';
 import { parseApiError } from '@shared/api/api-error';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { SotkaNavItem, SotkaTopComponent } from '@widgets/sotka-top/sotka-top.component';
+import { PrMarketNavItem, PrMarketTopComponent } from '@widgets/prmarket-top/prmarket-top.component';
 
 /**
  * «Заявки» креатора: что предлагают снять и чем на это ответить.
@@ -31,7 +31,7 @@ import { SotkaNavItem, SotkaTopComponent } from '@widgets/sotka-top/sotka-top.co
 @Component({
   selector: 'app-creator-invitations-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppHeaderComponent, SotkaTopComponent],
+  imports: [CommonModule, FormsModule, AppHeaderComponent, PrMarketTopComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-invitations.page.html',
   styleUrl: './creator-invitations.page.scss',
@@ -83,7 +83,7 @@ export class CreatorInvitationsPage {
     });
   }
 
-  public readonly nav = computed<readonly SotkaNavItem[]>(() => [
+  public readonly nav = computed<readonly PrMarketNavItem[]>(() => [
     { title: 'Мои проекты', link: '/me/creator/projects' },
     { title: 'Заявки', link: '/me/creator/invitations', current: true },
   ]);

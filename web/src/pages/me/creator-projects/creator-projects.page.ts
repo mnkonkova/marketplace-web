@@ -9,7 +9,7 @@ import { daysLeft } from '@entities/publication/lib/publication-status';
 import { plural } from '@shared/lib/format';
 import { parseApiError } from '@shared/api/api-error';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { SotkaNavItem, SotkaTopComponent } from '@widgets/sotka-top/sotka-top.component';
+import { PrMarketNavItem, PrMarketTopComponent } from '@widgets/prmarket-top/prmarket-top.component';
 
 // «Мои проекты» креатора: проекты, где он в действующем составе, со
 // счётчиками только по своим выкладкам. До этой ручки на страницу выкладок
@@ -22,7 +22,7 @@ import { SotkaNavItem, SotkaTopComponent } from '@widgets/sotka-top/sotka-top.co
 @Component({
   selector: 'app-creator-projects-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, AppHeaderComponent, SotkaTopComponent],
+  imports: [CommonModule, RouterLink, AppHeaderComponent, PrMarketTopComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-projects.page.html',
   styleUrl: './creator-projects.page.scss',
@@ -74,7 +74,7 @@ export class CreatorProjectsPage {
   });
 
   /** Полоса разделов кабинета: в списке открыт он сам. */
-  public readonly nav = computed<readonly SotkaNavItem[]>(() => [
+  public readonly nav = computed<readonly PrMarketNavItem[]>(() => [
     { title: 'Мои проекты', link: '/me/creator/projects', current: true },
     // Заявки — соседний раздел того же кабинета: рассылка приходит в
     // бот, но ответить на неё надо здесь, и найти это место человек

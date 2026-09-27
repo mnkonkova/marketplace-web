@@ -57,9 +57,9 @@ import { ProjectCommentsComponent } from '@widgets/project-comments/project-comm
 import { TelegramLinkComponent } from '@features/telegram-link/telegram-link.component';
 import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
 import type { SeriesPoint } from '@shared/lib/chart-series';
-import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
-import { SotkaTopComponent, SotkaNavItem } from '@widgets/sotka-top/sotka-top.component';
-import { SotkaTabbarComponent, SotkaTab } from '@widgets/sotka-tabbar/sotka-tabbar.component';
+import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
+import { PrMarketTopComponent, PrMarketNavItem } from '@widgets/prmarket-top/prmarket-top.component';
+import { PrMarketTabbarComponent, PrMarketTab } from '@widgets/prmarket-tabbar/prmarket-tabbar.component';
 import type { OrderEstimate } from '@entities/order/model/order.types';
 import { OrderApi } from '@entities/order/api/order.api';
 import type { ProjectAccount } from '@entities/publication/model/publication.types';
@@ -109,9 +109,9 @@ const TABS: readonly ClientTab[] = ['summary', 'videos', 'calendar', 'money', 'a
     ProjectCommentsComponent,
     TelegramLinkComponent,
     LineChartComponent,
-    SotkaAvaComponent,
-    SotkaTopComponent,
-    SotkaTabbarComponent,
+    PrMarketAvaComponent,
+    PrMarketTopComponent,
+    PrMarketTabbarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './client-turnkey-project.component.html',
@@ -178,7 +178,7 @@ export class ClientTurnkeyProjectComponent {
    * на телефоне в него заходят раз в жизни. Проход к ним стоит строкой
    * в сводке (.only-phone), а не шестой вкладкой шириной в палец.
    */
-  public readonly phoneTabs = computed<SotkaTab[]>(() => [
+  public readonly phoneTabs = computed<PrMarketTab[]>(() => [
     { key: 'summary', title: 'Сводка', icon: 'chart' },
     { key: 'videos', title: 'Ролики', icon: 'grid', badge: 0 },
     { key: 'calendar', title: 'Календарь', icon: 'cal' },
@@ -209,7 +209,7 @@ export class ClientTurnkeyProjectComponent {
     return parts.join(' · ');
   });
 
-  public readonly nav = computed<SotkaNavItem[]>(() => [
+  public readonly nav = computed<PrMarketNavItem[]>(() => [
     { title: 'Все проекты', link: '/me/projects' },
     { title: this.title(), link: `/me/projects/${this.project().id}`, current: true },
   ]);

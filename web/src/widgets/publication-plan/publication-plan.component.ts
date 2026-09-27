@@ -20,7 +20,7 @@ import {
   SchedulePublicationsDialogComponent,
 } from '@features/schedule-publications/schedule-publications.dialog';
 import { parseApiError } from '@shared/api/api-error';
-import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
+import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
 import { SheetComponent } from '@shared/ui/sheet/sheet.component';
 import { isTouchDevice } from '@shared/lib/touch';
 
@@ -70,13 +70,13 @@ const WEEKEND = new Set([0, 6]);
  * вышел, и «перенос» переписал бы историю периода задним числом. Это
  * правило держит сервер (409 publication_started), а не гашёная кнопка.
  *
- * Разметка перенесена из макета ~/tmp/sotka-cabinets.html, блок «План
+ * Разметка перенесена из макета ~/tmp/prmarket-cabinets.html, блок «План
  * выкладок».
  */
 @Component({
   selector: 'app-publication-plan',
   standalone: true,
-  imports: [CommonModule, FormsModule, SotkaAvaComponent, SheetComponent],
+  imports: [CommonModule, FormsModule, PrMarketAvaComponent, SheetComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './publication-plan.component.html',
   styleUrl: './publication-plan.component.scss',

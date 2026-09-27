@@ -42,7 +42,7 @@
         <img class="frame" [src]="url" alt="" />
       }
       <span class="who">
-        <app-sotka-ava [name]="creatorName() || 'Креатор'" [size]="56" />
+        <app-prmarket-ava [name]="creatorName() || 'Креатор'" [size]="56" />
         <b>{{ creatorName() || 'Креатор' }}</b>
         @if (watchOn(); as where) {
           <i class="where">смотреть в {{ where }}</i>
@@ -182,7 +182,7 @@
     <div class="list">
       @for (p of returned(); track p.id) {
         <div class="row">
-          <app-sotka-ava [name]="p.creator_name || 'Креатор'" [size]="28" />
+          <app-prmarket-ava [name]="p.creator_name || 'Креатор'" [size]="28" />
           <div class="grow">
             <div class="t">{{ p.creator_name || 'Креатор' }}</div>
             @if (p.review?.comment) {

@@ -14,7 +14,7 @@
   @for (g of groups(); track g.person.user_id) {
     <div class="pl-group">
       <button type="button" class="pl-head" (click)="toggle(g.person.user_id)">
-        <app-sotka-ava [name]="g.person.display_name" [size]="28" />
+        <app-prmarket-ava [name]="g.person.display_name" [size]="28" />
         <span class="grow">
           <b>{{ g.person.display_name }}</b>
           <span class="muted small">

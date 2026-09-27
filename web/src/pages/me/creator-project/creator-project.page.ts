@@ -64,8 +64,8 @@ import { plural } from '@shared/lib/format';
 import { ProjectAccountsComponent } from '@widgets/project-accounts/project-accounts.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { SotkaTopComponent, SotkaNavItem } from '@widgets/sotka-top/sotka-top.component';
-import { SotkaTabbarComponent, SotkaTab } from '@widgets/sotka-tabbar/sotka-tabbar.component';
+import { PrMarketTopComponent, PrMarketNavItem } from '@widgets/prmarket-top/prmarket-top.component';
+import { PrMarketTabbarComponent, PrMarketTab } from '@widgets/prmarket-tabbar/prmarket-tabbar.component';
 import { LADDER_STEP, LadderVideo, ladderState, shortViews } from '@entities/billing/lib/ladder';
 import { videosInPeriod } from '@entities/billing/lib/creator-highlights';
 
@@ -102,8 +102,8 @@ const SUGGEST_FOLD_AT = 3;
     ProjectAccountsComponent,
     ProjectCommentsComponent,
     AppHeaderComponent,
-    SotkaTopComponent,
-    SotkaTabbarComponent,
+    PrMarketTopComponent,
+    PrMarketTabbarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creator-project.page.html',
@@ -399,7 +399,7 @@ export class CreatorProjectPage {
    */
   public readonly section = signal('money');
 
-  public readonly phoneTabs: readonly SotkaTab[] = [
+  public readonly phoneTabs: readonly PrMarketTab[] = [
     { key: 'money', title: 'Деньги', icon: 'coin' },
     { key: 'posts', title: 'Выкладки', icon: 'cal' },
     { key: 'brief', title: 'Задание', icon: 'doc' },
@@ -412,7 +412,7 @@ export class CreatorProjectPage {
 
   public readonly ladderStep = LADDER_STEP;
 
-  public readonly nav = computed<SotkaNavItem[]>(() => [
+  public readonly nav = computed<PrMarketNavItem[]>(() => [
     { title: 'Мои проекты', link: '/me/creator/projects' },
     {
       title: this.card()?.title ?? 'Проект',

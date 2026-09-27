@@ -1,5 +1,5 @@
-// Тач-слой кабинетов «Сотки» — перенос из раздела «TOUCH» макета
-// ~/tmp/sotka-cabinets.html.
+// Тач-слой кабинетов «PrMarket» — перенос из раздела «TOUCH» макета
+// ~/tmp/prmarket-cabinets.html.
 //
 // Это не «то же самое, но уже»: на телефоне меняется способ работы.
 // Разделы уезжают вниз, в зону большого пальца; таблицы превращаются в
@@ -15,7 +15,7 @@
 @use 'touch' as touch;
 
 @media (max-width: bp.$touch) {
-  .sotka {
+  .prmarket {
     .only-phone {
       display: block;
     }
@@ -121,7 +121,7 @@
     // Место под полосу разделов — только там, где полоса есть: на
     // списке проектов её нет, и пустые 96 px внизу читались как
     // «страница не догрузилась».
-    &:has(app-sotka-tabbar) {
+    &:has(app-prmarket-tabbar) {
       main {
         padding-bottom: calc(96px + env(safe-area-inset-bottom));
       }
@@ -305,7 +305,7 @@
     // ── вкладки ──────────────────────────────────────────
     //
     // Верхний ряд вкладок на телефоне не рисуется вовсе: те же разделы
-    // стоят внизу полосой (widgets/sotka-tabbar). Два переключателя
+    // стоят внизу полосой (widgets/prmarket-tabbar). Два переключателя
     // одного и того же на одном экране — это вопрос «а эти куда?».
     .ptabs {
       display: none;
@@ -551,13 +551,13 @@
 
   // Кнопки внутри листов и окон кабинета.
   //
-  // Лист рисуется в оверлее ng-zorro, вне .sotka, и правила кабинета до
+  // Лист рисуется в оверлее ng-zorro, вне .prmarket, и правила кабинета до
   // него не достают: «Сохранить» и «Отмена» в листе «Добавить аккаунт»
   // оставались квадратными наклейками из темы antd и ниже соседних
   // кнопок. Условие по тому, что на экране: открыт кабинет — значит и
   // лист над ним кабинетный.
-  body:has(.sotka) .ant-drawer .ant-btn,
-  body:has(.sotka) .ant-modal .ant-btn,
+  body:has(.prmarket) .ant-drawer .ant-btn,
+  body:has(.prmarket) .ant-modal .ant-btn,
   body:has(.crm-shell) .ant-drawer .ant-btn,
   body:has(.crm-shell) .ant-modal .ant-btn {
     min-height: touch.$tap;

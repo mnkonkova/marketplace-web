@@ -1,6 +1,6 @@
-<div class="sotka" [attr.data-sec]="section()">
+<div class="prmarket" [attr.data-sec]="section()">
   @if (chrome()) {
-    <app-sotka-top
+    <app-prmarket-top
       [title]="project().title"
       [subtitle]="subtitleLine()"
       [nav]="nav()"
@@ -205,7 +205,7 @@
                           <tr>
                             <td class="head">
                               <span class="crlink">
-                                <app-sotka-ava [name]="c.person.display_name" [size]="28" />
+                                <app-prmarket-ava [name]="c.person.display_name" [size]="28" />
                                 <span>{{ c.person.display_name }}</span>
                               </span>
                             </td>
@@ -381,7 +381,7 @@
                           <span class="n" [class.want]="r.is_preferred" [attr.aria-hidden]="true">
                             {{ r.is_preferred ? '★' : '·' }}
                           </span>
-                          <app-sotka-ava [name]="r.creator_name || 'Креатор'" [size]="28" />
+                          <app-prmarket-ava [name]="r.creator_name || 'Креатор'" [size]="28" />
                           <div class="grow">
                             <div class="t">
                               {{ r.creator_name || 'Креатор' }}
@@ -477,7 +477,7 @@
                         <span class="n" [class.want]="c.is_preferred" [attr.aria-hidden]="true">
                           {{ c.is_preferred ? '★' : '·' }}
                         </span>
-                        <app-sotka-ava [name]="c.creator_name || 'Креатор'" [size]="28" />
+                        <app-prmarket-ava [name]="c.creator_name || 'Креатор'" [size]="28" />
                         <div class="grow">
                           <div class="t">
                             {{ c.creator_name || 'Креатор' }}
@@ -535,7 +535,7 @@
                 <div class="list">
                   @for (c of crew(); track c.user_id) {
                     <div class="row">
-                      <app-sotka-ava [name]="c.display_name" [size]="28" />
+                      <app-prmarket-ava [name]="c.display_name" [size]="28" />
                       <div class="grow">
                         <div class="t">{{ c.display_name }}</div>
                         <div class="muted small">в проекте с {{ c.added_at | date: 'dd.MM' }}</div>
@@ -796,7 +796,7 @@
                           <tr>
                             <td class="head">
                               <span class="crlink">
-                                <app-sotka-ava
+                                <app-prmarket-ava
                                   [name]="r.a.creator_name || 'Без имени'"
                                   [src]="r.a.creator_avatar_url"
                                   [size]="24"
@@ -970,5 +970,5 @@
     </div>
   </main>
 
-  <app-sotka-tabbar [tabs]="phoneTabs()" [current]="section()" (pick)="setSection($event)" />
+  <app-prmarket-tabbar [tabs]="phoneTabs()" [current]="section()" (pick)="setSection($event)" />
 </div>

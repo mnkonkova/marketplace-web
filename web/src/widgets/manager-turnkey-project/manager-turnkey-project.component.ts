@@ -92,9 +92,9 @@ import { ProjectAutopingComponent } from '@widgets/project-autoping/project-auto
 import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.component';
 import { ProjectLinksComponent } from '@widgets/project-links/project-links.component';
 import { PublicationPlanComponent } from '@widgets/publication-plan/publication-plan.component';
-import { SotkaAvaComponent } from '@shared/ui/sotka-ava/sotka-ava.component';
-import { SotkaTopComponent, SotkaNavItem } from '@widgets/sotka-top/sotka-top.component';
-import { SotkaTabbarComponent, SotkaTab } from '@widgets/sotka-tabbar/sotka-tabbar.component';
+import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
+import { PrMarketTopComponent, PrMarketNavItem } from '@widgets/prmarket-top/prmarket-top.component';
+import { PrMarketTabbarComponent, PrMarketTab } from '@widgets/prmarket-tabbar/prmarket-tabbar.component';
 import { groupDigits } from '@entities/billing/lib/money';
 import { periodRange } from '@entities/billing/lib/period';
 import type { BillingPeriod, ProjectPeriod } from '@entities/billing/model/billing.types';
@@ -145,9 +145,9 @@ import { isTouchDevice } from '@shared/lib/touch';
     ProjectStatsComponent,
     ProjectLinksComponent,
     PublicationPlanComponent,
-    SotkaAvaComponent,
-    SotkaTopComponent,
-    SotkaTabbarComponent,
+    PrMarketAvaComponent,
+    PrMarketTopComponent,
+    PrMarketTabbarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './manager-turnkey-project.component.html',
@@ -1102,9 +1102,9 @@ export class ManagerTurnkeyProjectComponent {
    * вида нет, открывала бы пустой экран. Виноватым при этом выглядел бы
    * не список вкладок, а вёрстка.
    */
-  public readonly phoneTabs = computed<SotkaTab[]>(() => {
+  public readonly phoneTabs = computed<PrMarketTab[]>(() => {
     const b = this.blocks();
-    const tabs: SotkaTab[] = [
+    const tabs: PrMarketTab[] = [
       { key: 'alerts', title: 'Горит', icon: 'bell', badge: this.alerts().length },
     ];
     if (b.publications) {
@@ -1138,7 +1138,7 @@ export class ManagerTurnkeyProjectComponent {
       ).length,
   );
 
-  public readonly nav = computed<SotkaNavItem[]>(() => [
+  public readonly nav = computed<PrMarketNavItem[]>(() => [
     { title: 'Мои проекты', link: '/manager/projects' },
     { title: this.project().title, link: `/manager/projects/${this.project().id}`, current: true },
   ]);

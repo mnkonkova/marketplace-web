@@ -1,8 +1,8 @@
 <!-- Шапка сайта над кабинетом — см. список проектов. -->
 <app-header />
 
-<div class="sotka" [attr.data-sec]="section()">
-  <app-sotka-top
+<div class="prmarket" [attr.data-sec]="section()">
+  <app-prmarket-top
     [showWho]="false"
     [title]="card()?.title || 'Проект'"
     [subtitle]="card()?.manager ? 'менеджер: ' + card()!.manager!.display_name : ''"
@@ -581,7 +581,7 @@
   <!-- На телефоне страница показывается по разделу за раз: одним
        свитком она не прокручивается. На десктопе полосы нет, и разделы
        стоят подряд — так в макете. -->
-  <app-sotka-tabbar [tabs]="phoneTabs" [current]="section()" (pick)="section.set($event)" />
+  <app-prmarket-tabbar [tabs]="phoneTabs" [current]="section()" (pick)="section.set($event)" />
 </div>
 
 <!-- ── модалка сдачи ролика ─────────────────────────────────
@@ -589,7 +589,7 @@
      под ними. Обязательные пункты блокируют отправку — так же, как их
      блокирует сервер, чтобы не отправлять заведомо отклонённый запрос. -->
 @if (submitFor(); as pub) {
-<div class="sotka">
+<div class="prmarket">
   <div class="ovl on" (click)="closeSubmit()">
     <div class="modal" (click)="$event.stopPropagation()">
       <div class="modal-hd">
@@ -737,7 +737,7 @@
      Дату ставит менеджер, креатор её не меняет — только просит. Пока
      просьба висит, выкладка не считается просроченной. -->
 @if (dateFor(); as pub) {
-<div class="sotka">
+<div class="prmarket">
   <div class="ovl on" (click)="closeDateRequest()">
     <div class="modal" (click)="$event.stopPropagation()">
       <div class="modal-hd">
@@ -794,7 +794,7 @@
      правило про оклад — без него человек побоится нажать, и будет прав:
      в чужих системах такое обычно наказывается. -->
 @if (addOpen()) {
-<div class="sotka">
+<div class="prmarket">
   <div class="ovl on" (click)="closeAddPublication()">
     <div class="modal" (click)="$event.stopPropagation()">
       <div class="modal-hd">
