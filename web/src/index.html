@@ -14,6 +14,29 @@
          из браузера. Вне Telegram объект остаётся пустым, и всё, что
          на него опирается, само превращается в no-op. -->
     <script async src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Подпись мини-аппа снимаем ДО старта приложения.
+         Telegram кладёт её во фрагмент адреса (#tgWebAppData=…), а
+         роутер Angular переписывает адрес на первой же навигации и
+         перекодирует фрагмент. Скрипт выше загружается асинхронно и
+         читает уже испорченную строку: подпись в ней не сходится, а
+         `user` приезжает в процентах и не разбирается как JSON —
+         человек видит «данные Telegram не разобрались» и ничего
+         поделать не может.
+         Пять строк здесь дешевле блокирующего внешнего скрипта в
+         <head>, который иначе пришлось бы ждать каждому, кто зашёл с
+         обычного браузера. -->
+    <script>
+      (function () {
+        try {
+          var src = window.location.hash || window.location.search || '';
+          var m = /[?#&]tgWebAppData=([^&]*)/.exec(src);
+          if (m && m[1]) window.__tgInitData = decodeURIComponent(m[1]);
+        } catch (e) {
+          /* адрес без фрагмента — обычный заход */
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090c" />
     <meta

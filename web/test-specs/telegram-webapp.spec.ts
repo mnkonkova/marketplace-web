@@ -47,6 +47,17 @@ describe('telegram-webapp', () => {
     expect(initData()).toBe(raw);
   });
 
+  it('строка, снятая до старта приложения, важнее объекта Telegram', () => {
+    // Роутер переписывает адрес на первой навигации и перекодирует
+    // фрагмент; асинхронный скрипт Telegram успевает прочитать уже
+    // испорченную строку. Целая — та, что снята в index.html.
+    const w = window as unknown as { __tgInitData?: string };
+    w.__tgInitData = 'user=%7B%22id%22%3A1%7D&hash=real';
+    g.Telegram = { WebApp: { initData: 'user=%257B%2522id%2522%253A1%257D&hash=broken' } };
+    expect(initData()).toBe('user=%7B%22id%22%3A1%7D&hash=real');
+    delete w.__tgInitData;
+  });
+
   it('dev_init_data работает только как подстановка для стенда', () => {
     history.replaceState(null, '', `${window.location.pathname}?dev_init_data=user%3D1%26hash%3Dz`);
     expect(initData()).toBe('user=1&hash=z');

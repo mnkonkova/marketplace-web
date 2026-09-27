@@ -58,8 +58,19 @@ export function isTelegramWebApp(): boolean {
  * строку и войти нельзя.
  */
 export function initData(): string {
+  // Сперва — строка, снятая из адреса в index.html ДО старта
+  // приложения. Она заведомо целая: роутер Angular переписывает адрес
+  // на первой навигации и перекодирует фрагмент, а скрипт Telegram
+  // грузится асинхронно и успевает прочитать уже испорченную. Тогда
+  // подпись не сходится, `user` приезжает в процентах — и человек
+  // видит «данные не разобрались», не сделав ничего плохого.
+  const captured = (window as unknown as { __tgInitData?: string }).__tgInitData;
+  if (captured) return captured;
   const real = webApp()?.initData;
   if (real) return real;
+  // Подстановка для стенда: настоящий Telegram локальный адрес не
+  // откроет, а проверять экран как-то надо. Подпись всё равно
+  // проверяет сервер — войти по произвольной строке нельзя.
   const dev = new URLSearchParams(window.location.search).get('dev_init_data');
   return dev ?? '';
 }
