@@ -9,6 +9,10 @@ import type { CandidateStatus, Order } from '../model/order.types';
 export const CANDIDATE_STATUS_LABEL: Record<CandidateStatus, string> = {
   reserve: 'В резерве',
   invited: 'Ждём ответа',
+  // «Откликнулся» — это не «согласился»: человек прислал работу, а
+  // берёт его в проект менеджер. Разница существенная: из двадцати
+  // откликнувшихся в состав попадут двое.
+  responded: 'Откликнулся',
   accepted: 'Взял заявку',
   declined: 'Отказался',
   expired: 'Не ответил',
@@ -18,7 +22,7 @@ export const CANDIDATE_STATUS_LABEL: Record<CandidateStatus, string> = {
 export function candidateTone(status: CandidateStatus): 'ok' | 'no' | 'wait' | '' {
   if (status === 'accepted') return 'ok';
   if (status === 'declined' || status === 'expired') return 'no';
-  if (status === 'invited') return 'wait';
+  if (status === 'invited' || status === 'responded') return 'wait';
   return '';
 }
 

@@ -317,3 +317,12 @@
   padding-top: 16px;
   border-top: 1px solid var(--line);
 }
+
+// Приложенная работа в отклике: ссылок бывает несколько (файл и
+// ролики из портфолио), и списком в столбик они занимали бы пол-строки.
+.resp-work {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 2px;
+}

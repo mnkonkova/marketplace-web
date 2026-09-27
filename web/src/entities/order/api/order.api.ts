@@ -10,7 +10,9 @@ import {
   OrderBrief,
   OrderEstimate,
   OrderLimit,
+  OrderResponse,
   OrderTerms,
+  ResponseMode,
 } from '../model/order.types';
 
 interface ListResp<T> {
@@ -47,6 +49,10 @@ export class OrderApi {
     videos_count: number;
     creator_ids: string[];
     brief?: OrderBrief;
+    // Потолок в копейках, который заказчику показали на баре. Едет в
+    // сообщение менеджеру: разговор начинается с той суммы, которую
+    // человек видел.
+    ceiling?: number;
   }): Observable<{ order: Order; busy_creators?: string[] }> {
     return this.http.post<{ order: Order; busy_creators?: string[] }>(
       `${this.api}/me/orders`,
@@ -138,6 +144,64 @@ export class OrderApi {
     return this.http.post<Order>(`${this.api}/me/creator/invitations/${orderId}/respond`, {
       accept,
     });
+  }
+
+  // Отклик на рассылку — это не «согласен», а работа: файл или свои
+  // ролики. Место в составе не занимает: состав из откликнувшихся
+  // собирает менеджер, и до этого момента у человека нет ни проекта,
+  // ни сроков.
+  public respondWithWork(
+    orderId: string,
+    body: {
+      mode: ResponseMode;
+      file_url?: string;
+      portfolio_items?: string[];
+      note?: string;
+    },
+  ): Observable<OrderResponse> {
+    return this.http.post<OrderResponse>(
+      `${this.api}/me/creator/invitations/${orderId}/respond`,
+      body,
+    );
+  }
+
+  // Ссылка на загрузку пробы работы. Ключ ложится под orders/, а не в
+  // портфолио: потолок в двадцать видео не должен мешать ответить на
+  // заявку.
+  public workSampleUploadUrl(
+    contentType: string,
+    sizeBytes: number,
+  ): Observable<{ upload_url: string; public_url: string; key: string; expires_in: number }> {
+    return this.http.post<{
+      upload_url: string;
+      public_url: string;
+      key: string;
+      expires_in: number;
+    }>(`${this.api}/me/creator/uploads/work-sample`, {
+      content_type: contentType,
+      size_bytes: sizeBytes,
+    });
+  }
+
+  // Кто откликнулся на заявку — экран менеджера, с которого собирается
+  // состав.
+  public orderResponses(orderId: string): Observable<ListResp<OrderResponse>> {
+    return this.http.get<ListResp<OrderResponse>>(
+      `${this.api}/manager/orders/${orderId}/responses`,
+    );
+  }
+
+  // Утвердить состав и объём. Добавленные получают задание проекта —
+  // договор, ТЗ и чеклист, — поэтому материалы должны быть на месте ДО
+  // финализации.
+  public finalizeOrder(
+    orderId: string,
+    body: { creator_ids: string[]; monthly_plan?: number },
+  ): Observable<{ order: Order; added: string[] }> {
+    return this.http.post<{ order: Order; added: string[] }>(
+      `${this.api}/manager/orders/${orderId}/finalize`,
+      body,
+    );
   }
 
   // Своя занятость на months месяцев вперёд (1–24, по умолчанию 12).

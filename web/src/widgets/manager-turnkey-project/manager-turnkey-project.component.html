@@ -358,6 +358,83 @@
                 </div>
               </div>
 
+              <!-- Кто согласен. Стоит ПЕРВЫМ из блоков заявки: это
+                   экран шага «собрать состав», и с него менеджер
+                   набирает людей. Заявка ушла рассылкой всем известным
+                   креаторам, ответили те, кому задача подошла, — а
+                   список «кого хотел заказчик» ниже отвечает на другой
+                   вопрос и состав не определяет. -->
+              @if (order(); as o) {
+                @if (responses().length) {
+                  <div class="span-12 panel ranks">
+                    <div class="panel-h">
+                      <h2>Согласны на заявку ({{ openResponses().length }})</h2>
+                      <span class="sub">
+                        отмеченные заказчиком — сверху; «Взять в проект» отправит человеку договор,
+                        ТЗ и чеклист, поэтому материалы заведите раньше
+                      </span>
+                    </div>
+
+                    <div class="list">
+                      @for (r of responses(); track r.creator_user_id) {
+                        <div class="row rnk" [class.ok]="r.in_crew">
+                          <span class="n" [class.want]="r.is_preferred" [attr.aria-hidden]="true">
+                            {{ r.is_preferred ? '★' : '·' }}
+                          </span>
+                          <app-sotka-ava [name]="r.creator_name || 'Креатор'" [size]="28" />
+                          <div class="grow">
+                            <div class="t">
+                              {{ r.creator_name || 'Креатор' }}
+                              @if (r.is_preferred) {
+                                <span class="want-tag">хочет особенно</span>
+                              }
+                            </div>
+                            <div class="muted small">
+                              {{ responseLabel(r) }} · {{ r.created_at | date: 'd MMM, HH:mm' }}
+                              @if (r.note) {
+                                — {{ r.note }}
+                              }
+                            </div>
+                            @if (r.file_url || r.items?.length) {
+                              <div class="muted small resp-work">
+                                @if (r.file_url) {
+                                  <a [href]="r.file_url" target="_blank" rel="noopener">
+                                    Смотреть присланный ролик
+                                  </a>
+                                }
+                                @for (it of r.items ?? []; track it.id) {
+                                  <a
+                                    [href]="it.video_url || it.preview_url"
+                                    target="_blank"
+                                    rel="noopener"
+                                  >
+                                    {{ it.title || 'Ролик из портфолио' }}
+                                  </a>
+                                }
+                              </div>
+                            }
+                          </div>
+                          @if (r.in_crew) {
+                            <span class="tag">в составе</span>
+                          } @else if (r.mode !== 'decline') {
+                            <button
+                              type="button"
+                              class="btn sm"
+                              [disabled]="takingID() === r.creator_user_id"
+                              (click)="takeIntoProject(r)"
+                            >
+                              Взять в проект
+                            </button>
+                          } @else {
+                            <span class="tag">отказался</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+
               <!-- Очередь приглашений. Стоит НАД составом, потому что
                объясняет его: состав — это результат очереди, а не
                отдельный список. Заказа может не быть вовсе (проект

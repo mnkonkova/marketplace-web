@@ -15,7 +15,53 @@ export type OrderStatus =
   | 'paid'
   | 'cancelled';
 
-export type CandidateStatus = 'reserve' | 'invited' | 'accepted' | 'declined' | 'expired';
+// responded — креатор откликнулся на рассылку: прислал файл или указал
+// свои ролики. Это НЕ «согласился»: согласие подтверждает менеджер,
+// когда добавляет человека в состав.
+export type CandidateStatus =
+  | 'reserve'
+  | 'invited'
+  | 'responded'
+  | 'accepted'
+  | 'declined'
+  | 'expired';
+
+// Как креатор ответил на рассылку.
+//
+//   attach         — приложил файл в кабинете;
+//   upload         — прислал файл в бот, и он лёг ещё и в портфолио;
+//   from_portfolio — показал уже загруженные ролики;
+//   decline        — отказался. Это тоже ответ: «сказал нет» и «молчит»
+//                    для менеджера разные вещи.
+export type ResponseMode = 'attach' | 'upload' | 'from_portfolio' | 'decline';
+
+// Ролик из портфолио, приложенный к отклику.
+export interface OrderResponseItem {
+  id: string;
+  title: string;
+  video_url?: string;
+  preview_url?: string;
+  thumbnail_url?: string;
+}
+
+// Отклик креатора — как его видит менеджер, собирая состав.
+export interface OrderResponse {
+  order_id: string;
+  creator_user_id: string;
+  creator_name?: string;
+  avatar_url?: string;
+  // Заказчик отметил этого человека «хочу особенно». Из двадцати
+  // согласных начинают с тех, кого просили.
+  is_preferred: boolean;
+  // Уже в составе проекта: без этого менеджер жмёт «Взять в проект»
+  // второй раз и получает отказ вместо ответа.
+  in_crew: boolean;
+  mode: ResponseMode;
+  file_url?: string;
+  note?: string;
+  items?: OrderResponseItem[];
+  created_at: string;
+}
 
 export interface OrderCandidate {
   order_id: string;
@@ -66,6 +112,19 @@ export interface Invitation {
   status: CandidateStatus;
   invited_at?: string;
   expires_at?: string;
+  // Заказчик отметил именно вас. Приписка в том же приглашении, а не
+  // отдельное письмо: два сообщения об одной заявке выглядят
+  // беспорядком.
+  is_preferred?: boolean;
+  // Когда заявка ушла рассылкой. Отличает «позвали лично» от «пришло
+  // вместе со всеми» — это разные разговоры.
+  broadcast_at?: string;
+  // О чём заявка. Без них приглашение — это «30 роликов в октябре», и
+  // решать по нему нечего.
+  title?: string;
+  brief?: string;
+  // Уже ответил, и вот как. Пусто — ещё нет.
+  responded?: ResponseMode;
 }
 
 // Отметка занятости в месяце. Приходят ТОЛЬКО отмеченные месяцы:

@@ -1,0 +1,164 @@
+<app-header />
+
+<div class="sotka">
+  <app-sotka-top title="Заявки" [subtitle]="subtitle()" [nav]="nav()" [showWho]="false" />
+
+  <main>
+    <div class="role">
+      <div class="span-12 pf-head">
+        <div>
+          <div class="label">Кабинет креатора</div>
+          <h1>Заявки</h1>
+        </div>
+        @if (waiting(); as n) {
+        <div class="pf-head-r"><span class="pill warn">ждут ответа: {{ n }}</span></div>
+        }
+      </div>
+
+      <div class="span-12 panel">
+        <div class="panel-h">
+          <h2>Что предлагают снять</h2>
+          <!-- Говорим прямо, как это устроено: отклик не занимает
+               место и ничего не обещает. Иначе человек ждёт проекта,
+               а приходит тишина — и это выглядит обманом, хотя
+               обмана не было. -->
+          <span class="sub">
+            заявка уходит всем креаторам — состав из откликнувшихся собирает менеджер
+          </span>
+        </div>
+
+        @if (loading()) {
+        <p class="muted">Загружаем заявки…</p>
+        } @else if (!items().length) {
+        <p class="muted">
+          Заявок пока нет. Как появится — напишем: заявку видят все креаторы, и ответить можно
+          роликом под задачу или тем, что уже снято.
+        </p>
+        } @else {
+        <div class="invites">
+          @for (iv of items(); track iv.order_id) {
+          <div class="inv-card" [class.answered]="!!iv.responded">
+            <div class="inv-h">
+              <div>
+                <div class="nm">
+                  {{ iv.title || 'Заявка на ролики' }} @if (iv.is_preferred) {
+                  <!-- Единственное, что заказчик сказал о людях. Но и
+                             это не обещание места. -->
+                  <span class="pill ok">хотят особенно вас</span>
+                  }
+                </div>
+                <div class="ms">{{ monthTitle(iv) }} · {{ iv.videos_count }} роликов на месяц</div>
+              </div>
+              <div class="inv-h-r">
+                @if (iv.responded) {
+                <span class="pill neu">{{ answerLabel(iv) }}</span>
+                } @else if (openID() !== iv.order_id) {
+                <button type="button" class="btn primary sm" (click)="open(iv)">Ответить</button>
+                }
+              </div>
+            </div>
+
+            @if (iv.brief) {
+            <p class="brief">{{ iv.brief }}</p>
+            } @if (openID() === iv.order_id) {
+            <div class="answer">
+              <div class="ways">
+                <button
+                  type="button"
+                  class="way"
+                  [class.on]="mode() === 'attach'"
+                  (click)="choose('attach')"
+                >
+                  <b>Прислать ролик</b>
+                  <span>снял под эту задачу — загружу файл</span>
+                </button>
+                <button
+                  type="button"
+                  class="way"
+                  [class.on]="mode() === 'from_portfolio'"
+                  (click)="choose('from_portfolio')"
+                >
+                  <b>Отправить из моих</b>
+                  <span>показать уже снятое из портфолио</span>
+                </button>
+                <button
+                  type="button"
+                  class="way"
+                  [class.on]="mode() === 'decline'"
+                  (click)="choose('decline')"
+                >
+                  <b>Не в этот раз</b>
+                  <span>отказ ни на что не влияет</span>
+                </button>
+              </div>
+
+              @if (mode() === 'attach') {
+              <label class="file">
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime"
+                  [disabled]="busy()"
+                  (change)="onFile($event, iv)"
+                />
+                <span class="btn sm">Выбрать файл</span>
+                <span class="ms">mp4 или mov, до 50 МБ</span>
+              </label>
+              @if (uploading()) {
+              <p class="ms">Загружаем…</p>
+              } } @if (mode() === 'from_portfolio') { @if (!portfolio().length) {
+              <p class="muted">
+                В портфолио пока нет роликов. Загрузите их в профиле — или пришлите файл прямо сюда.
+              </p>
+              } @else {
+              <div class="pf-grid">
+                @for (it of portfolio(); track it.id) {
+                <button
+                  type="button"
+                  class="pf-item"
+                  [class.on]="isPicked(it.id)"
+                  (click)="togglePick(it.id)"
+                >
+                  @if (it.thumbnail_url) {
+                  <img [src]="it.thumbnail_url" alt="" />
+                  } @else {
+                  <span class="pf-blank">видео</span>
+                  }
+                  <span class="pf-t">{{ it.title || 'Без названия' }}</span>
+                </button>
+                }
+              </div>
+              <button
+                type="button"
+                class="btn primary sm"
+                [disabled]="busy() || !picked().size"
+                (click)="sendPortfolio(iv)"
+              >
+                Отправить выбранное
+              </button>
+              } } @if (mode() === 'decline') {
+              <button type="button" class="btn sm" [disabled]="busy()" (click)="decline(iv)">
+                Отказаться от заявки
+              </button>
+              } @if (mode() && mode() !== 'decline') {
+              <label class="note">
+                <span class="label">Пара слов менеджеру</span>
+                <textarea
+                  rows="2"
+                  maxlength="1000"
+                  placeholder="например: снимал похожее в июле, могу повторить формат"
+                  [(ngModel)]="note"
+                ></textarea>
+              </label>
+              }
+
+              <button type="button" class="btn quiet sm" (click)="close()">Закрыть</button>
+            </div>
+            }
+          </div>
+          }
+        </div>
+        }
+      </div>
+    </div>
+  </main>
+</div>

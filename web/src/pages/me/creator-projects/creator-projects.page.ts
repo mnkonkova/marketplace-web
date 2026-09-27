@@ -76,6 +76,10 @@ export class CreatorProjectsPage {
   /** Полоса разделов кабинета: в списке открыт он сам. */
   public readonly nav = computed<readonly SotkaNavItem[]>(() => [
     { title: 'Мои проекты', link: '/me/creator/projects', current: true },
+    // Заявки — соседний раздел того же кабинета: рассылка приходит в
+    // бот, но ответить на неё надо здесь, и найти это место человек
+    // должен без ссылки из сообщения.
+    { title: 'Заявки', link: '/me/creator/invitations' },
   ]);
 
   /**

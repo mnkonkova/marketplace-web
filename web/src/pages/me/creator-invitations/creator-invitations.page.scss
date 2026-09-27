@@ -1,0 +1,178 @@
+// Словарь кабинета («Сотка») лежит в shared/scss: .sotka, .role,
+// .panel, .pill, .btn. Здесь только то, чего нет больше нигде, —
+// карточка заявки и выбор способа ответа.
+
+.invites {
+  display: grid;
+  gap: 12px;
+}
+
+.inv-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+
+  // Отвеченная заявка не исчезает: человек должен видеть, что ответ
+  // ушёл, — но и внимания больше не просит.
+  &.answered {
+    opacity: 0.72;
+  }
+}
+
+.inv-h {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  .nm {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-weight: 600;
+  }
+
+  .inv-h-r {
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+}
+
+.brief {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.answer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+// Три способа ответа — равнозначными карточками, а не списком с
+// «главной» кнопкой: какой из них главный, знает только сам человек.
+.ways {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  width: 100%;
+
+  .way {
+    display: grid;
+    gap: 2px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+
+    b {
+      font-size: 13.5px;
+    }
+
+    span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    &.on {
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
+  }
+}
+
+.file {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+
+  input {
+    display: none;
+  }
+}
+
+.note {
+  display: block;
+  width: 100%;
+
+  textarea {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: inherit;
+    font: inherit;
+    resize: vertical;
+  }
+}
+
+// Плитки портфолио — квадратами и плотно: выбирают глазами, по кадру,
+// а не по названию.
+.pf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  width: 100%;
+
+  .pf-item {
+    position: relative;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--bg);
+    cursor: pointer;
+    aspect-ratio: 1;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .pf-blank {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+      color: var(--muted-2);
+      font-size: 12px;
+    }
+
+    .pf-t {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      padding: 12px 6px 4px;
+      background: linear-gradient(to top, rgb(0 0 0 / 70%), transparent);
+      color: #fff;
+      font-size: 11px;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &.on {
+      border-color: var(--accent);
+    }
+  }
+}

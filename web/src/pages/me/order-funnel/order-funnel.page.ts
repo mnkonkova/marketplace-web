@@ -440,6 +440,11 @@ export class OrderFunnelPage implements OnInit {
         videos_count: this.videos(),
         creator_ids: this.picked(),
         brief: this.brief,
+        // Потолок, который человек ВИДЕЛ на баре. Сервер его не
+        // пересчитывает: менеджеру нужно знать не «сколько вышло бы
+        // сейчас», а с каким числом в голове нажали «Отправить», —
+        // иначе разговор начнётся с чужой суммы.
+        ceiling: this.ceiling(),
       })
       .subscribe({
         next: (res) => {

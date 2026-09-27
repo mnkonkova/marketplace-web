@@ -114,6 +114,17 @@ export const routes: Routes = [
     loadComponent: () =>
       import('@pages/me/creator-projects/creator-projects.page').then((m) => m.CreatorProjectsPage),
   },
+  // Заявки «под ключ»: что предлагают снять и чем на это ответить.
+  // Приглашение больше не именное — заявка уходит рассылкой всем
+  // креаторам, — поэтому это список, а не письмо с одной кнопкой.
+  {
+    path: 'me/creator/invitations',
+    canActivate: [requireRole('specialist', 'admin')],
+    loadComponent: () =>
+      import('@pages/me/creator-invitations/creator-invitations.page').then(
+        (m) => m.CreatorInvitationsPage,
+      ),
+  },
   // Проект глазами креатора: его выкладки, чеклист и цифры по его роликам.
   // Отдельный маршрут от /me/projects/:id — там взгляд заказчика, и данные
   // приходят из других ручек (/me/creator/...).

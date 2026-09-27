@@ -42,7 +42,7 @@ import type {
 } from '@entities/publication/model/publication.types';
 import { OrderApi } from '@entities/order/api/order.api';
 import { CANDIDATE_STATUS_LABEL, candidateTone, freeSlots } from '@entities/order/lib/order-status';
-import type { Order, OrderCandidate } from '@entities/order/model/order.types';
+import type { Order, OrderCandidate, OrderResponse } from '@entities/order/model/order.types';
 import { ProjectApi } from '@entities/project/api/project.api';
 import type {
   ProjectEvent,
@@ -237,14 +237,26 @@ export class ManagerTurnkeyProjectComponent {
   public readonly orderBusy = signal(false);
 
   /**
-   * Очередь по приоритету.
+   * Кого хочет заказчик — и только это.
    *
-   * Сортируем сами, хотя сервер и отдаёт ORDER BY priority: порядок строк
-   * здесь — это порядок приглашений, и если он однажды приедет другим,
-   * экран должен остаться правым, а не молча показать «позвали не того».
+   * В кандидатах заявки лежат ДВА разных списка. Первый — отмеченные
+   * заказчиком: «хочу особенно этих». Второй — все, кому ушла рассылка,
+   * а она уходит каждому известному креатору, и это десятки строк,
+   * про которые заказчик ничего не говорил. Показать их вперемешку
+   * значит утопить ответ на вопрос «кого он хотел» в списке рассылки.
+   *
+   * Поэтому здесь остаются отмеченные и те, кто уже как-то ответил:
+   * отклик, отказ и согласие — это события, про которые менеджеру надо
+   * знать. Молчащий получатель рассылки события не создал.
+   *
+   * Сортируем сами, хотя сервер и отдаёт ORDER BY priority: порядок
+   * строк здесь — порядок, в котором заказчик их отмечал, и если он
+   * однажды приедет другим, экран должен остаться правым.
    */
   public readonly queue = computed<OrderCandidate[]>(() =>
-    [...(this.order()?.candidates ?? [])].sort((a, b) => a.priority - b.priority),
+    (this.order()?.candidates ?? [])
+      .filter((c) => c.is_preferred || c.status !== 'reserve')
+      .sort((a, b) => a.priority - b.priority),
   );
 
   public readonly orderFreeSlots = computed(() => {
@@ -359,8 +371,78 @@ export class ManagerTurnkeyProjectComponent {
 
   private loadOrder(id: string): void {
     this.orderApi.managerProjectOrder(id).subscribe({
-      next: (o) => this.order.set(o),
+      next: (o) => {
+        this.order.set(o);
+        this.loadResponses(o.id);
+      },
       error: () => this.order.set(null),
+    });
+  }
+
+  /**
+   * Кто откликнулся на заявку.
+   *
+   * Это главный экран шага «собрать состав»: приглашение ушло ВСЕМ
+   * известным креаторам, и ответили те, кому задача подошла. Очередь
+   * приглашений отвечала на другой вопрос — «до кого дошло», — и
+   * состав по ней собирался из тех, кто просто был первым в списке.
+   */
+  public readonly responses = signal<OrderResponse[]>([]);
+
+  private loadResponses(orderID: string): void {
+    this.orderApi.orderResponses(orderID).subscribe({
+      next: (r) => this.responses.set(r.items ?? []),
+      // Молча: блок откликов просто не появится. Состав при этом
+      // добавляется кнопкой «Добавить креатора» как раньше.
+      error: () => this.responses.set([]),
+    });
+  }
+
+  /** Кого ещё не взяли в проект: из них и собирают состав. */
+  public readonly openResponses = computed(() => this.responses().filter((r) => !r.in_crew));
+
+  /** Кого сейчас берём в проект: по нему же и запирается кнопка. */
+  public readonly takingID = signal('');
+
+  public responseLabel(r: OrderResponse): string {
+    switch (r.mode) {
+      case 'attach':
+      case 'upload':
+        return 'прислал ролик';
+      case 'from_portfolio':
+        return 'показал свои ролики';
+      default:
+        return 'отказался';
+    }
+  }
+
+  /**
+   * Взять откликнувшегося в проект.
+   *
+   * Через финализацию заявки, а не прямым добавлением в состав: вместе
+   * с составом человеку уходит задание проекта — договор, ТЗ и
+   * чеклист, — и заявка при этом переходит в «утверждена». Отсюда и
+   * предупреждение в шапке блока: материалы должны быть на месте ДО
+   * того, как берут первого человека, иначе он не получит ничего и
+   * узнает о задании, открыв вкладку.
+   */
+  public takeIntoProject(r: OrderResponse): void {
+    const o = this.order();
+    if (!o || this.takingID()) return;
+    this.takingID.set(r.creator_user_id);
+    this.orderApi.finalizeOrder(o.id, { creator_ids: [r.creator_user_id] }).subscribe({
+      next: () => {
+        this.takingID.set('');
+        this.msg.success(`${r.creator_name || 'Креатор'} в составе — задание ушло ему`);
+        // Перечитываем и состав, и заявку: у человека меняется и то и
+        // другое, а список откликов должен показать его как взятого.
+        this.reloadCrew();
+        this.loadOrder(this.project().id);
+      },
+      error: (e) => {
+        this.takingID.set('');
+        this.msg.error(parseApiError(e, 'Не удалось взять в проект.').message);
+      },
     });
   }
 
@@ -1545,16 +1627,21 @@ export class ManagerTurnkeyProjectComponent {
     return names.join(', ');
   }
 
+  /** Перечитать состав: он меняется и руками, и финализацией заявки. */
+  private reloadCrew(): void {
+    this.api.managerCreators(this.project().id).subscribe({
+      next: (r) => this.crew.set(r.items),
+      error: () => this.crew.set([]),
+    });
+  }
+
   private load(id: string): void {
     this.loadOrder(id);
     this.api.managerMonthRequest(id).subscribe({
       next: (r) => this.monthRequest.set(r.request),
       error: () => this.monthRequest.set(null),
     });
-    this.api.managerCreators(id).subscribe({
-      next: (r) => this.crew.set(r.items),
-      error: () => this.crew.set([]),
-    });
+    this.reloadCrew();
     this.api.managerList(id).subscribe({
       next: (r) => this.publications.set(r.items),
       error: () => this.publications.set([]),
