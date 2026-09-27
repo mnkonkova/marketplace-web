@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap, map } from 'rxjs';
 import { ProjectCartStore } from '@features/project-cart/model/project-cart.store';
 import { API_URL } from '@shared/api/api-url.token';
+import { clearTelegramTicket, pendingTelegramTicket } from '@shared/lib/telegram-claim';
 import { AuthSession, LoginPayload, MeUser, RegisterPayload, TokenPair } from './auth.types';
 
 const STORAGE_KEY = 'marketpclce.auth.v1';
@@ -113,6 +114,28 @@ export class AuthSessionStore {
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     this.session.set(next);
+    this.claimTelegram();
+  }
+
+  /**
+   * Погасить билет привязки телеграма, если он приехал в адресе.
+   *
+   * Здесь, а не на экране регистрации: аккаунт заводят по-разному —
+   * формой, через Яндекс, по ссылке-приглашению, — и ловить каждый
+   * путь отдельно значит однажды пропустить. Сессия появилась ровно в
+   * одном месте, в save.
+   *
+   * Молча и без ретраев: привязка не случилась — человек нажмёт
+   * кнопку в проекте, и это рабочий путь, а не поломка. Кричать о ней
+   * посреди регистрации — пугать на ровном месте.
+   */
+  private claimTelegram(): void {
+    const code = pendingTelegramTicket();
+    if (!code) return;
+    clearTelegramTicket();
+    this.http.post(`${this.api}/me/telegram/claim`, { code }).subscribe({
+      error: () => undefined,
+    });
   }
 
   // fetchMe — подгрузить /me и сохранить флаги CRM + kind в сессию.
@@ -209,10 +232,12 @@ export class AuthSessionStore {
     password?: string;
   }): Observable<{ isNew: boolean; kind: string }> {
     return this.http
-      .post<{ user_id: string; tokens: TokenPair; is_new?: boolean; kind?: string }>(
-        `${this.api}/auth/telegram/miniapp`,
-        payload,
-      )
+      .post<{
+        user_id: string;
+        tokens: TokenPair;
+        is_new?: boolean;
+        kind?: string;
+      }>(`${this.api}/auth/telegram/miniapp`, payload)
       .pipe(
         map((res) => {
           // Роль берём из ответа: у существующего аккаунта она своя, и

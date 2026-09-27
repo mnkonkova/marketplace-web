@@ -495,3 +495,54 @@
     }
   }
 }
+
+// ── выпадашки на телефоне: нижним листом ────────────────────────
+//
+// ng-zorro раскрывает список в наложении (CDK overlay) и ставит его
+// «под полем». На телефоне это выглядит поломкой: список повисает
+// поверх соседних фильтров, у части строк не хватает высоты под
+// палец, а если поле у нижнего края — половина вариантов уезжает за
+// экран. В мини-аппе Telegram к этому добавляется своя шапка: места
+// сверху меньше, и наложение чаще открывается вверх, накрывая то, что
+// человек только что читал.
+//
+// Поэтому на узком экране список становится тем, чем он и должен быть
+// на телефоне, — листом снизу: во всю ширину, у нижнего края, со
+// строками в палец высотой. Так ведут себя родные списки и в iOS, и в
+// Android, и в самом Telegram.
+//
+// Через :has, потому что классов у самой панели наложения нет — они
+// на её содержимом. Браузеры Telegram (Chrome 105+ на Android,
+// WKWebView с iOS 15.4) это понимают; где не понимают, остаётся
+// прежнее поведение — не сломанное, просто менее удобное.
+@media (max-width: bp.$touch) {
+  .cdk-overlay-container:has(.ant-select-dropdown:not(.ant-select-dropdown-hidden))::before {
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 45%);
+    content: '';
+  }
+
+  .cdk-overlay-pane:has(.ant-select-dropdown) {
+    position: fixed !important;
+    inset: auto 0 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    transform: none !important;
+  }
+
+  .ant-select-dropdown {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 60dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 18px 18px 0 0;
+
+    .ant-select-item {
+      display: flex;
+      align-items: center;
+      min-height: touch.$tap;
+      font-size: 15px;
+    }
+  }
+}
