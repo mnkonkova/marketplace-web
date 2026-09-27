@@ -103,65 +103,87 @@ import {
   `,
   styles: [
     `
+      /* Цвета берём у самого Telegram, а не у сайта.
+         Экран живёт внутри его окна, и тема там своя — светлая или
+         тёмная по настройке человека, а не по нашей. Смешение двух
+         словарей и дало то, что было видно: заголовок белый, а текст
+         кнопки — цвета «чернил» светлой темы, то есть невидимый на
+         чёрном. Запасные значения — на случай, когда переменных нет
+         (старый клиент или наш же браузер на стенде). */
+      :host {
+        --tg-bg: var(--tg-theme-bg-color, #ffffff);
+        --tg-text: var(--tg-theme-text-color, #14161a);
+        --tg-hint: var(--tg-theme-hint-color, #6b7280);
+        --tg-btn: var(--tg-theme-button-color, #2f3fc8);
+        --tg-btn-text: var(--tg-theme-button-text-color, #ffffff);
+        --tg-field: var(--tg-theme-secondary-bg-color, #f1f3f6);
+      }
+
       .tg-app {
         display: grid;
         place-items: center;
         min-height: 100dvh;
         padding: 24px 16px;
-        background: var(--bg, #fff);
-        color: var(--ink, #14161a);
+        background: var(--tg-bg);
+        color: var(--tg-text);
         font-family: inherit;
       }
 
       .card {
+        display: grid;
         width: 100%;
         max-width: 420px;
-        display: grid;
         gap: 12px;
       }
 
       h1 {
         margin: 0;
+        color: var(--tg-text);
         font-size: 20px;
       }
 
       .muted {
         margin: 0;
-        color: var(--muted, #6b7280);
+        color: var(--tg-hint);
         font-size: 14px;
         line-height: 1.5;
       }
 
       .fld {
         display: grid;
-        gap: 4px;
+        color: var(--tg-hint);
         font-size: 13px;
+        gap: 4px;
       }
 
       .fld input {
-        padding: 10px 12px;
-        border: 1px solid var(--line, #e5e7eb);
+        padding: 12px;
+        border: 1px solid transparent;
         border-radius: 10px;
+        background: var(--tg-field);
+        color: var(--tg-text);
         font: inherit;
       }
 
       .acts {
         display: grid;
-        gap: 8px;
         margin-top: 4px;
+        gap: 8px;
       }
 
       /* Кнопки во весь лист: палец в мини-аппе целится хуже курсора, а
-         места здесь достаточно. */
+         места здесь достаточно. Цвет текста задан явно — «inherit» и
+         приводил к невидимой надписи. */
       .btn {
         display: block;
         width: 100%;
-        padding: 12px 16px;
-        border: 1px solid var(--line, #e5e7eb);
+        padding: 13px 16px;
+        border: 1px solid color-mix(in srgb, var(--tg-hint) 45%, transparent);
         border-radius: 12px;
         background: transparent;
-        color: inherit;
+        color: var(--tg-text);
         font: inherit;
+        font-weight: 500;
         text-align: center;
         text-decoration: none;
         cursor: pointer;
@@ -169,8 +191,12 @@ import {
 
       .btn.primary {
         border-color: transparent;
-        background: var(--accent, #6a4cff);
-        color: #fff;
+        background: var(--tg-btn);
+        color: var(--tg-btn-text);
+      }
+
+      .btn[disabled] {
+        opacity: 0.5;
       }
     `,
   ],
@@ -270,7 +296,15 @@ export class TgEntryPage implements OnInit {
       void this.router.navigate(['/admin'], { replaceUrl: true });
       return;
     }
-    if (roles.includes('specialist') || roles.includes('manager')) {
+    // Менеджер — в проекты, которые он ВЕДЁТ: это его работа, а
+    // «мои проекты» у него про другое (там он креатор, если вообще
+    // числится в составе). Канбан в мини-аппе исключён решением
+    // владельца — он не работает пальцем, — поэтому список.
+    if (roles.includes('manager')) {
+      void this.router.navigate(['/manager/projects'], { replaceUrl: true });
+      return;
+    }
+    if (roles.includes('specialist')) {
       void this.router.navigate(['/me/creator/projects'], { replaceUrl: true });
       return;
     }
