@@ -5,6 +5,7 @@ import { filter } from 'rxjs';
 
 import { NavHistoryService } from '@shared/nav/nav-history.service';
 import { captureTelegramTicket } from '@shared/lib/telegram-claim';
+import { trackKeyboardInset } from '@shared/lib/keyboard-inset';
 import { initTelegramApp } from '@shared/lib/telegram-webapp';
 
 @Component({
@@ -34,6 +35,11 @@ export class AppComponent {
     // анкеты. Снимаем ДО первой навигации: роутер вычистит query, и
     // после него брать будет неоткуда.
     captureTelegramTicket();
+
+    // Высота экранной клавиатуры — в CSS-переменную. Свойство всего
+    // приложения, как и мини-апп ниже: формы в нижних шторках есть на
+    // половине экранов, и ветвиться на каждой значит однажды забыть.
+    trackKeyboardInset();
 
     // Мини-апп Telegram. Вне его вызов не делает ничего: те же экраны
     // открывают в обычном браузере, и ветвиться на каждом значит

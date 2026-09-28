@@ -22,7 +22,7 @@ import {
 import { parseApiError } from '@shared/api/api-error';
 import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
 import { SheetComponent } from '@shared/ui/sheet/sheet.component';
-import { isTouchDevice } from '@shared/lib/touch';
+import { isTouchDevice, prefersSheet } from '@shared/lib/touch';
 
 /** Клетка плана: один креатор в один день. */
 interface Cell {
@@ -563,7 +563,9 @@ export class PublicationPlanComponent {
     // и то же: календарь месяца, заготовки расписания и срок черновика.
     // Шторка не ради вида: окно по центру на телефоне открывается далеко
     // от большого пальца, а закрывается крестиком в углу.
-    if (this.touch) {
+    // Ширина, а не только устройство ввода: окно с календарём месяца в
+    // узкое окно браузера не помещается так же, как в телефон.
+    if (prefersSheet()) {
       this.drawer
         .create<SchedulePublicationsDialogComponent, SchedulePublicationsData, unknown>({
           nzTitle: 'Проставить даты выкладок',

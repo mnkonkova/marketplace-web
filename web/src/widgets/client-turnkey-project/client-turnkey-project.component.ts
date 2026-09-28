@@ -58,8 +58,14 @@ import { TelegramLinkComponent } from '@features/telegram-link/telegram-link.com
 import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
 import type { SeriesPoint } from '@shared/lib/chart-series';
 import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
-import { PrMarketTopComponent, PrMarketNavItem } from '@widgets/prmarket-top/prmarket-top.component';
-import { PrMarketTabbarComponent, PrMarketTab } from '@widgets/prmarket-tabbar/prmarket-tabbar.component';
+import {
+  PrMarketTopComponent,
+  PrMarketNavItem,
+} from '@widgets/prmarket-top/prmarket-top.component';
+import {
+  PrMarketTabbarComponent,
+  PrMarketTab,
+} from '@widgets/prmarket-tabbar/prmarket-tabbar.component';
 import type { OrderEstimate } from '@entities/order/model/order.types';
 import { OrderApi } from '@entities/order/api/order.api';
 import type { ProjectAccount } from '@entities/publication/model/publication.types';
@@ -254,11 +260,16 @@ export class ClientTurnkeyProjectComponent {
   /**
    * Цена ПРОСМОТРА: сервер считает тысячу, делим только для показа.
    *
-   * Источников два, и это не запасной вариант, а два разных проекта. У
-   * проекта с креаторами счёт складывается из начислений людям — цену
-   * тысячи считает денежная ручка. У проекта без креаторов людей нет,
-   * начислений не бывает, и в её итогах честный ноль; но проект стоит
-   * денег, и сколько — назвал менеджер одним числом. По нему цену
+   * Источников два, и это не запасной вариант, а два разных проекта.
+   *
+   * У проекта с креаторами счёт складывается из строк начисления, а
+   * каждая строка — фикс за вышедшие ролики плюс хвост по просмотрам
+   * сверх порога плюс KPI по подписчикам (бэк, calc.go). Цену тысячи
+   * по ним считает денежная ручка.
+   *
+   * У проекта без креаторов ни фикса за ролик, ни ступеней в условиях
+   * нет — складывать нечего, и в её итогах честный ноль; но проект
+   * стоит денег, и сколько, назвал менеджер одним числом. По нему цену
    * тысячи считает отчёт (publications.fillCost) — тот же, из которого
    * взяты просмотры рядом, и то же число, что видит менеджер у себя.
    *

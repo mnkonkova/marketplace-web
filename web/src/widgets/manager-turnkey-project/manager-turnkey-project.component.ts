@@ -117,7 +117,7 @@ import {
   AddCreatorDialogComponent,
   AddCreatorDialogData,
 } from '@features/project-creators/add-creator.dialog';
-import { isTouchDevice } from '@shared/lib/touch';
+import { isTouchDevice, prefersSheet } from '@shared/lib/touch';
 
 /**
  * Проект «креаторы под ключ» глазами менеджера.
@@ -1614,7 +1614,9 @@ export class ManagerTurnkeyProjectComponent {
       this.msg.success('Креатор добавлен в состав.');
       this.load(this.project().id);
     };
-    if (this.touch) {
+    // Ширина, а не только устройство ввода: в узкое окно браузера окно
+    // на 520 px не помещается так же, как в телефон.
+    if (prefersSheet()) {
       this.drawer
         .create<AddCreatorDialogComponent, AddCreatorDialogData, unknown>({
           nzTitle: 'Добавить креатора',
