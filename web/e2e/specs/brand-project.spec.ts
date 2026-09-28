@@ -388,3 +388,89 @@ test.describe('заказчик', () => {
     await expect(page.getByRole('heading', { name: 'Команда периода' })).toHaveCount(0);
   });
 });
+
+/**
+ * Цена просмотра у заказчика — главный вопрос к такому проекту, и
+ * именно на него у него стоял прочерк.
+ *
+ * Считается она у заказчика из НАЧИСЛЕНИЙ: счёт складывается из работы
+ * людей. У проекта без креаторов людей нет, начислений не бывает — и
+ * денежная ручка честно отдаёт ноль. Но проект стоит денег, и сколько
+ * именно, назвал менеджер одним числом: по нему цену тысячи считает
+ * отчёт, и ту же цифру видит у себя менеджер. Заказчику показывали
+ * «—» на обоих экранах сразу: и в карточке проекта, и колонкой в
+ * списке.
+ *
+ * Проект здесь свой и НЕ тестовый: сводка `/me/overview`, из которой
+ * живёт список, тестовые проекты не показывает вовсе.
+ */
+test.describe('заказчик: цена просмотра', () => {
+  let cpvId = '';
+
+  test.beforeAll(async () => {
+    const project = await callAs(box.manager, 'post', '/api/v1/manager/projects', {
+      kind: 'brand_turnkey',
+      title: `Бренд СПВ ${box.tag} (e2e-sandbox)`,
+      client_user_id: box.client.userId,
+    });
+    cpvId = project.id as string;
+
+    const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const batch = await callAs(
+      box.manager,
+      'post',
+      `/api/v1/manager/projects/${cpvId}/publications/batch`,
+      { dates: [yesterday] },
+    );
+    const pubId = batch.items[0].id as string;
+    await callAs(box.manager, 'put', `/api/v1/manager/publications/${pubId}/links/tiktok`, {
+      url: `https://www.tiktok.com/@brandcpv/video/71${Date.now() % 100000}`,
+    });
+    seedPublicationStats(pubId);
+
+    // Столько стоит проект за период — то самое одно число.
+    await callAs(box.manager, 'put', `/api/v1/manager/projects/${cpvId}/billing`, {
+      project_cost: 100000 * 100,
+      salary_per_month: 0,
+      rate_per_1000_views: 0,
+      rate_per_1000_views_over: 0,
+      bonus_views_threshold: 0,
+    });
+  });
+
+  test.afterAll(() => {
+    if (cpvId) dropProject(cpvId);
+  });
+
+  test.beforeEach(async ({ page }) => signIn(page, 'client'));
+
+  test('в карточке проекта цена просмотра посчитана, а не прочерк', async ({ page }) => {
+    await page.goto(`/me/projects/${cpvId}`);
+    await expect(page.locator('app-client-turnkey-project')).toBeVisible({ timeout: 20_000 });
+
+    const card = page.locator('.panel', { hasText: 'Цена просмотра · CPV' });
+    await expect(card).toBeVisible({ timeout: 20_000 });
+    const value = card.locator('.kpi .v');
+    await expect(value, 'прочерк значит «не посчитали»').not.toHaveText('—');
+    // Рубли с копейками: цена ПРОСМОТРА, а не тысячи.
+    await expect(value).toHaveText(/^\d+,\d{2} ₽$/);
+    // И под ней — та же цифра тысячей, чтобы её можно было проверить.
+    await expect(card).toContainText('тысяча просмотров');
+  });
+
+  test('в списке проектов цена просмотра тоже есть', async ({ page }) => {
+    await page.goto('/me/projects');
+    await expect(page.locator('.prmarket').first()).toBeVisible({ timeout: 20_000 });
+
+    // Крупное число в шапке — «Цена просмотра · CPV» за всё время.
+    // Прочерк на его месте и был жалобой.
+    const hero = page.locator('.pf-hero > div', { hasText: 'CPV' }).first();
+    await expect(hero).toBeVisible({ timeout: 20_000 });
+    await expect(hero.locator('.v')).toHaveText(/\d+,\d+\s*₽/);
+
+    // И колонка в строке проекта — то же число, посчитанное сервером
+    // по этому проекту, а не по всем сразу.
+    const cell = page.locator('[data-label="CPV"]').first();
+    await expect(cell).toHaveText(/\d+,\d+\s*₽/);
+  });
+});

@@ -96,7 +96,7 @@
                 <div class="kpi">
                   <div class="v num">{{ cpv() || '—' }}</div>
                 </div>
-                @if (billing()?.totals?.cost_per_1000; as cpm) {
+                @if (cpm(); as cpm) {
                   <div class="kpi-note muted">тысяча просмотров — {{ money(cpm) }}</div>
                 }
               </div>
