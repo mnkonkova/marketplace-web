@@ -278,6 +278,82 @@ test.describe('менеджер', () => {
   });
 });
 
+/**
+ * Стоимость проекта, у которого ещё не вышло ни одного ролика.
+ *
+ * Свой проект, а не общий: у того ролики вышли, периоды есть, и
+ * денежная ручка отвечает нормально — то есть ровно то состояние, в
+ * котором поломки не было.
+ *
+ * А была она такая. Условия проекта карточка читает из GET /billing, и
+ * эта ручка у проекта без периодов отвечает 404 no_periods — теряя
+ * вместе с несуществующим периодом условия, которые от периода не
+ * зависят вовсе. Поле «Сколько стоит проект» стояло пустым при
+ * записанной сумме; человек читал это как «не сохранилось» и жал
+ * «Сохранить» поверх пустого — уходил ноль, сумма стиралась молча, с
+ * зелёной плашкой «Стоимость проекта сохранена», а СПВ не появлялся
+ * никогда.
+ */
+test.describe('менеджер: стоимость до первого ролика', () => {
+  let freshId = '';
+
+  test.beforeAll(async () => {
+    const project = await callAs(box.manager, 'post', '/api/v1/manager/projects', {
+      kind: 'brand_turnkey',
+      title: `Бренд без роликов ${box.tag} (e2e-sandbox)`,
+      client_user_id: box.client.userId,
+      is_test: true,
+    });
+    freshId = project.id as string;
+    // Сумму называет менеджер — она есть до любых роликов.
+    await callAs(box.manager, 'put', `/api/v1/manager/projects/${freshId}/billing`, {
+      project_cost: 100000 * 100,
+      salary_per_month: 0,
+      rate_per_1000_views: 0,
+      rate_per_1000_views_over: 0,
+      bonus_views_threshold: 0,
+    });
+  });
+
+  test.afterAll(() => {
+    if (freshId) dropProject(freshId);
+  });
+
+  test.beforeEach(async ({ page }) => signIn(page, 'manager'));
+
+  test('записанная сумма видна в поле, и пустое «Сохранить» её не стирает', async ({ page }) => {
+    const sent: string[] = [];
+    page.on('request', (r) => {
+      if (r.method() === 'PUT' && r.url().includes('/billing')) sent.push(r.postData() ?? '');
+    });
+
+    await page.goto(`/manager/projects/${freshId}`);
+    const input = page.locator('[data-test="project-cost"]');
+    await expect(input).toBeVisible({ timeout: 20_000 });
+    await expect(input, 'сумма на месте, хотя периодов ещё нет').toHaveValue('100000');
+
+    // СПВ здесь честно нет: делить не на что, и экран это объясняет.
+    await expect(page.locator('[data-test="project-cpv"]')).toHaveCount(0);
+    await expect(
+      page.getByText('СПВ появится, когда будут и стоимость, и просмотры'),
+    ).toBeVisible();
+
+    // Человек стёр поле и нажал «Сохранить» — ноль улететь не должен.
+    await input.fill('');
+    await page.locator('[data-test="project-cost-save"]').click();
+    await page.waitForTimeout(1200);
+    for (const body of sent) {
+      expect(body, 'ноль стёр бы записанную стоимость').not.toContain('"project_cost":0');
+    }
+
+    // И запись пережила нажатие: перечитываем страницу, а не сигнал.
+    await page.reload();
+    await expect(page.locator('[data-test="project-cost"]')).toHaveValue('100000', {
+      timeout: 20_000,
+    });
+  });
+});
+
 test.describe('заказчик', () => {
   test.beforeEach(async ({ page }) => signIn(page, 'client'));
 

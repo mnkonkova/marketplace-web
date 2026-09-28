@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
 import type { Payment, PaymentStatus } from '@entities/billing/model/billing.types';
@@ -13,6 +13,7 @@ import type { ProjectFullView, ProjectKind } from '@entities/project/model/proje
 import { ManagerTurnkeyProjectComponent } from '@widgets/manager-turnkey-project/manager-turnkey-project.component';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzDrawerService } from 'ng-zorro-antd/drawer';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 /**
@@ -56,12 +57,23 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
     };
   }
 
+  /** Спай сообщений последнего setup: по нему видно отказы формы. */
+  let msg: jasmine.SpyObj<NzMessageService>;
+
+  /** Спай записи условий последнего setup: по нему видно, что ушло. */
+  let saveTerms: jasmine.Spy;
+
   function setup(
     items: Publication[],
     payments: Payment[] = [],
     kind: ProjectKind = 'creators_turnkey',
+    // Деньги отдельным аргументом: у проекта без креаторов стоимость
+    // приходит отчётом, а денежная ручка может ответить отказом — и
+    // проверять это надо именно в паре.
+    money: { report?: unknown; billingFails?: boolean } = {},
   ) {
     TestBed.resetTestingModule();
+    msg = jasmine.createSpyObj<NzMessageService>('msg', ['success', 'error', 'info', 'warning']);
     const api = jasmine.createSpyObj<PublicationApi>('api', [
       'managerList',
       'managerCreators',
@@ -80,7 +92,7 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
 
     // Цифры проекта и список периодов карточка тянет при загрузке:
     // без заглушек эффект падает на первом же рендере.
-    api.managerReport.and.returnValue(of(null) as never);
+    api.managerReport.and.returnValue(of(money.report ?? null) as never);
     // Настройки проекта: в карточке ими управляется тумблер «черновик
     // до выкладки», и читаются они тем же заходом.
     api.managerProjectSettings.and.returnValue(of(null) as never);
@@ -97,9 +109,18 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
     const billing = jasmine.createSpyObj<BillingApi>('billing', [
       'managerBilling',
       'managerPeriods',
+      'managerSaveTerms',
     ]);
-    billing.managerBilling.and.returnValue(of({ payments }) as never);
+    // 404 no_periods — обычное состояние проекта, у которого ещё не
+    // вышло ни одного ролика: периодов нет, и отсчитывать не от чего.
+    billing.managerBilling.and.returnValue(
+      money.billingFails
+        ? (throwError(() => ({ status: 404, error: { error: 'no_periods' } })) as never)
+        : (of({ payments }) as never),
+    );
     billing.managerPeriods.and.returnValue(of({ items: [] }) as never);
+    billing.managerSaveTerms.and.returnValue(of({ project_cost: 0 }) as never);
+    saveTerms = billing.managerSaveTerms;
 
     TestBed.configureTestingModule({
       providers: [
@@ -125,6 +146,7 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
         { provide: BillingApi, useValue: billing },
         { provide: NzModalService, useValue: jasmine.createSpyObj('modal', ['create', 'confirm']) },
         { provide: NzDrawerService, useValue: jasmine.createSpyObj('drawer', ['create']) },
+        { provide: NzMessageService, useValue: msg },
       ],
     });
     TestBed.overrideComponent(ManagerTurnkeyProjectComponent, { set: { template: '' } });
@@ -262,5 +284,61 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
 
     cmp.terms.set({ project_cost: 5_000_000 } as never);
     expect(cmp.costRubles()).toBe('50000');
+  });
+
+  /**
+   * Стоимость проекта у вида без креаторов и денежная ручка, которой
+   * ещё нечего считать.
+   *
+   * Условия приезжают из GET /billing, а та у проекта, где не вышло ни
+   * одного ролика, отвечает 404 no_periods — и вместе с несуществующим
+   * периодом теряет условия, которые от периода не зависят вовсе. Поле
+   * стояло пустым при записанной сумме; человек читал это как «не
+   * сохранилось» и жал «Сохранить» поверх пустого — уходил ноль,
+   * сумма стиралась, плашка говорила «Стоимость проекта сохранена», а
+   * СПВ не появлялся никогда.
+   */
+  describe('стоимость, когда периодов ещё нет', () => {
+    const report = { cost: 18_000_000, views: 2_292_000, cost_per_1000: 7853 };
+
+    it('поле показывает записанную сумму, хотя денежная ручка отказала', () => {
+      const cmp = setup([], [], 'brand_turnkey', { billingFails: true, report });
+
+      expect(cmp.terms()).withContext('условий нет — ручка ответила отказом').toBeNull();
+      // Но сумма есть: её отдаёт отчёт, он же считает по ней СПВ.
+      expect(cmp.costRubles()).toBe('180000');
+      expect(cmp.costPer1000()).toBe(7853);
+    });
+
+    it('«Сохранить» поверх пустого поля не стирает записанную сумму', () => {
+      const cmp = setup([], [], 'brand_turnkey', { billingFails: true, report });
+      cmp.costDraft = '';
+
+      cmp.saveCost();
+
+      expect(saveTerms).toHaveBeenCalled();
+      const body = saveTerms.calls.mostRecent().args[1] as { project_cost: number };
+      expect(body.project_cost).withContext('ноль стёр бы стоимость и унёс СПВ').toBe(18_000_000);
+    });
+
+    it('пустое поле у проекта без записанной суммы — отказ, а не ноль', () => {
+      const cmp = setup([], [], 'brand_turnkey', { billingFails: true });
+      cmp.costDraft = '';
+
+      cmp.saveCost();
+
+      expect(saveTerms).not.toHaveBeenCalled();
+      expect(msg.error).toHaveBeenCalled();
+    });
+
+    it('введённое число уходит как есть', () => {
+      const cmp = setup([], [], 'brand_turnkey', { billingFails: true, report });
+      cmp.costDraft = '250000';
+
+      cmp.saveCost();
+
+      const body = saveTerms.calls.mostRecent().args[1] as { project_cost: number };
+      expect(body.project_cost).toBe(25_000_000);
+    });
   });
 });

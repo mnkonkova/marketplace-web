@@ -93,8 +93,14 @@ import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.comp
 import { ProjectLinksComponent } from '@widgets/project-links/project-links.component';
 import { PublicationPlanComponent } from '@widgets/publication-plan/publication-plan.component';
 import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
-import { PrMarketTopComponent, PrMarketNavItem } from '@widgets/prmarket-top/prmarket-top.component';
-import { PrMarketTabbarComponent, PrMarketTab } from '@widgets/prmarket-tabbar/prmarket-tabbar.component';
+import {
+  PrMarketTopComponent,
+  PrMarketNavItem,
+} from '@widgets/prmarket-top/prmarket-top.component';
+import {
+  PrMarketTabbarComponent,
+  PrMarketTab,
+} from '@widgets/prmarket-tabbar/prmarket-tabbar.component';
 import { groupDigits } from '@entities/billing/lib/money';
 import { periodRange } from '@entities/billing/lib/period';
 import type { BillingPeriod, ProjectPeriod } from '@entities/billing/model/billing.types';
@@ -511,9 +517,21 @@ export class ManagerTurnkeyProjectComponent {
    *
    * Отдельным computed, а не записью в costDraft из подписки: условия
    * приезжают асинхронно, и присвоение затёрло бы уже начатый ввод.
+   *
+   * Два источника, и второй не запасной, а основной для этого вида
+   * проекта. Условия приезжают из GET /billing, а та ручка у проекта,
+   * где ещё не вышло ни одного ролика, отвечает 404 no_periods — и
+   * вместе с несуществующим периодом теряет условия, которые от
+   * периода не зависят вовсе. Поле стояло пустым при записанной
+   * сумме, человек читал это как «не сохранилось», жал «Сохранить»
+   * поверх пустого — и сумма стиралась молча, с зелёной плашкой
+   * «Стоимость проекта сохранена». СПВ при этом не появлялся никогда.
+   *
+   * Отчёт отдаёт ту же сумму и от периодов не зависит: он же считает
+   * по ней СПВ.
    */
   public readonly costRubles = computed(() => {
-    const kop = this.terms()?.project_cost ?? 0;
+    const kop = this.terms()?.project_cost ?? this.report()?.cost ?? 0;
     return kop > 0 ? String(Math.round(kop / 100)) : '';
   });
 
@@ -539,6 +557,14 @@ export class ManagerTurnkeyProjectComponent {
   public saveCost(): void {
     if (this.costBusy()) return;
     const raw = (this.costDraft || this.costRubles()).replace(/\s/g, '');
+    // Пустое поле — не «ноль рублей». Ноль здесь означает «сумму не
+    // назвали»: он стирает записанную стоимость и уносит с собой СПВ.
+    // Отправлять его по нажатию на «Сохранить» при пустом поле значит
+    // терять данные там, где человек ничего не вводил.
+    if (!raw) {
+      this.msg.error('Впишите сумму: пустое поле стёрло бы записанную стоимость.');
+      return;
+    }
     const rubles = Number(raw);
     if (!Number.isFinite(rubles) || rubles < 0) {
       this.msg.error('Стоимость — число в рублях, не меньше нуля.');
