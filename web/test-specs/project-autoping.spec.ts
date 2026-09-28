@@ -30,7 +30,7 @@ describe('ProjectAutopingComponent', () => {
     };
   }
 
-  function setup(loaded: ReminderPrefs | null = prefs()) {
+  function setup(loaded: ReminderPrefs | null = prefs(), crew = true) {
     TestBed.resetTestingModule();
     const api = jasmine.createSpyObj<PublicationApi>('pubApi', [
       'managerAutoping',
@@ -40,8 +40,7 @@ describe('ProjectAutopingComponent', () => {
       loaded ? (of(loaded) as never) : (throwError(() => ({ status: 500 })) as never),
     );
     api.managerSaveAutoping.and.callFake(
-      (_id: string, patch: Partial<ReminderPrefs>) =>
-        of({ ...prefs(), ...patch }) as never,
+      (_id: string, patch: Partial<ReminderPrefs>) => of({ ...prefs(), ...patch }) as never,
     );
     const msg = jasmine.createSpyObj<NzMessageService>('msg', ['error']);
     TestBed.configureTestingModule({
@@ -55,19 +54,33 @@ describe('ProjectAutopingComponent', () => {
     TestBed.overrideComponent(ProjectAutopingComponent, { set: { template: '' } });
     const fixture = TestBed.createComponent(ProjectAutopingComponent);
     fixture.componentRef.setInput('projectId', 'pr1');
+    fixture.componentRef.setInput('crew', crew);
     fixture.detectChanges();
     return { cmp: fixture.componentInstance, api, msg };
   }
 
   it('видов пять, и «накануне» стоит первым — им пользуются чаще', () => {
     const { cmp } = setup();
-    expect(cmp.rows.map((r) => r.field)).toEqual([
+    expect(cmp.rows().map((r) => r.field)).toEqual([
       'day_before',
       'due_today',
       'overdue',
       'incomplete',
       'manager_digest',
     ]);
+  });
+
+  /**
+   * Проект без креаторов: остаётся один тумблер.
+   *
+   * Четыре из пяти обещают письмо КРЕАТОРУ, а бэк такие напоминания у
+   * проекта без состава не отправляет вовсе: ни в личку (некому), ни в
+   * чат (шестьдесят «просрочка» за одно утро по одному проекту). Их
+   * единственный след — дневная сводка менеджерам.
+   */
+  it('у проекта без креаторов остаётся только сводка менеджерам', () => {
+    const { cmp } = setup(prefs(), false);
+    expect(cmp.rows().map((r) => r.field)).toEqual(['manager_digest']);
   });
 
   it('проект, где ничего не трогали, пингуется — кроме «накануне»', () => {

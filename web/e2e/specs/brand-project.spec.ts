@@ -102,6 +102,158 @@ test.describe('менеджер', () => {
     ).toHaveCount(0);
   });
 
+  /**
+   * Даты. Главная поломка вида: проставить их было НЕЧЕМ.
+   *
+   * План выкладок строится сеткой «креатор × день», и пустой состав он
+   * закрывал надписью «сначала соберите состав» — правильной у проекта
+   * с креаторами и тупиковой здесь, где состава не будет никогда. Окно
+   * «Проставить пачкой» спрашивало «Кому», считало «люди × дни» (ноль
+   * при нуле людей, кнопка выключена) и на отправке отвечало «Выберите
+   * хотя бы одного креатора». При этом сервер такие пачки принимал с
+   * самого начала: у выкладки такого проекта владельца нет вовсе.
+   */
+  test('ставит даты пачкой, не выбирая креаторов', async ({ page }) => {
+    await page.goto(`/manager/projects/${brandId}`);
+    const plan = page.locator('.sec-plan');
+    await expect(plan).toBeVisible({ timeout: 20_000 });
+
+    // Не «соберите состав»: собирать его здесь не из кого и не будут.
+    await expect(plan, 'тупиковая надпись про состав ушла').not.toContainText(
+      'сначала соберите состав',
+    );
+    // Вместо строки человека — строка проекта: ролик принадлежит
+    // проекту, и сетка остаётся сеткой.
+    await expect(plan).toContainText('Ролики проекта');
+
+    await plan.getByRole('button', { name: 'Проставить пачкой' }).click();
+    const dialog = page.locator('.ant-modal-content');
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+    // Вопроса «Кому» нет вовсе, а не пустой список под ним: пустой
+    // список читается как «состав ещё не подъехал».
+    await expect(dialog, 'выбирать некого — и не спрашиваем').not.toContainText('Кому');
+    await expect(dialog).toContainText('Ролики выходят с аккаунтов бренда');
+    // Черновик сдаёт креатор, а принимает менеджер: здесь его некому
+    // сдавать, и второй срок был бы датой, к которой никто не должен.
+    await expect(dialog).not.toContainText('Этап согласования черновика');
+
+    // Отмечаем свободный день следующего месяца: текущий может быть
+    // почти прожит, а прошедшие дни в календаре выключены.
+    await dialog.getByRole('button', { name: 'Вперёд' }).click();
+    const day = dialog.locator('.dc:not(.pad):not(.past):not(.set)').nth(9);
+    await day.click();
+
+    // Счётчик считает ДАТЫ, а не «люди × дни»: людей ноль, старая
+    // формула давала ноль, и кнопка оставалась выключенной. Смотрим
+    // само число, а не строку целиком: «0 новых · 1 уже в плане» тоже
+    // содержит единицу.
+    await expect(dialog.locator('.summarybar b'), 'добавится одна выкладка').toHaveText('1');
+
+    await dialog.getByRole('button', { name: /Создать выкладки|Добавить даты/ }).click();
+    await expect(dialog).toBeHidden({ timeout: 15_000 });
+
+    // Дата доехала до сервера, а не только до экрана: перезагружаем и
+    // ищем её в плане.
+    await page.reload();
+    await expect(page.locator('.sec-plan')).toBeVisible({ timeout: 20_000 });
+    const planned = await callAs(
+      box.manager,
+      'get',
+      `/api/v1/manager/projects/${brandId}/publications`,
+    );
+    const rows = (planned.items ?? []) as { creator_user_id?: string; status: string }[];
+    expect(rows.length, 'выкладок стало больше').toBeGreaterThan(1);
+    expect(
+      rows.every((p) => !p.creator_user_id),
+      'владельца у выкладок такого проекта нет',
+    ).toBe(true);
+  });
+
+  /**
+   * Одна дата, а не пачка. Живой месяц правится по одной клетке:
+   * перенесли съёмку, добавили ролик. Ручка `POST .../publications`
+   * отказывала на пустом creator_user_id ещё до чтения вида проекта —
+   * «Нужны creator_user_id и due_date», 400, — хотя репозиторий за ней
+   * умел вставлять выкладку без владельца с самого начала.
+   */
+  test('ставит одну дату прямо в сетке плана', async ({ page }) => {
+    await page.goto(`/manager/projects/${brandId}`);
+    const plan = page.locator('.sec-plan');
+    await expect(plan).toBeVisible({ timeout: 20_000 });
+
+    // Следующий месяц: в текущем свободных дней впереди может не
+    // остаться вовсе, а выкладку задним числом сервер не заводит.
+    await plan.getByRole('button', { name: 'Следующий месяц' }).click();
+    // Первая ячейка строки — название, дальше дни по порядку.
+    await plan.locator('.grid-plan tbody tr td').nth(20).locator('button.c').click();
+
+    const before = await callAs(
+      box.manager,
+      'get',
+      `/api/v1/manager/projects/${brandId}/publications`,
+    );
+    // Строка правки под сеткой, а не клетка: подпись у клетки та же
+    // самая («свободно, поставить выкладку»), и по имени они неотличимы.
+    const edit = plan.locator('.edit');
+    await expect(edit, 'строка правки открылась').toBeVisible();
+    await edit.getByRole('button', { name: 'Поставить выкладку' }).click();
+
+    // Ждём сервер, а не всплывашку: она живёт три секунды и ловится
+    // гонкой.
+    await expect
+      .poll(
+        async () => {
+          const now = await callAs(
+            box.manager,
+            'get',
+            `/api/v1/manager/projects/${brandId}/publications`,
+          );
+          return ((now.items ?? []) as unknown[]).length;
+        },
+        { message: 'выкладка завелась', timeout: 15_000 },
+      )
+      .toBeGreaterThan(((before.items ?? []) as unknown[]).length);
+  });
+
+  /**
+   * Ссылки. Блок группирует ролики по людям и при пустом составе
+   * говорил «Состав пуст — ссылок пока неоткуда взяться». Ролики при
+   * этом выходят, и адрес им ставит менеджер руками: группа здесь
+   * одна — сам проект.
+   */
+  test('ставит ссылку на ролик проекта', async ({ page }) => {
+    await page.goto(`/manager/projects/${brandId}`);
+    const links = page.locator('.sec-links');
+    await expect(links).toBeVisible({ timeout: 20_000 });
+
+    await expect(links, 'тупиковая надпись про состав ушла').not.toContainText('Состав пуст');
+    await expect(links).toContainText('Ролики проекта');
+    // Площадки ролика на месте — значит по ним и правят адрес.
+    await expect(links.locator('.pl-plats').first()).toBeVisible();
+  });
+
+  /**
+   * Автопинги. Четыре тумблера из пяти обещали письмо КРЕАТОРУ — а бэк
+   * такие напоминания у проекта без состава не отправляет вовсе: ни в
+   * личку (некому), ни в чат (шестьдесят «просрочка» за одно утро по
+   * одному проекту). Их единственный след — дневная сводка менеджерам,
+   * и она здесь единственный тумблер, который на что-то влияет.
+   */
+  test('в автопингах остаётся только сводка менеджерам', async ({ page }) => {
+    await page.goto(`/manager/projects/${brandId}`);
+    const ping = page.locator('.ping-block');
+    await expect(ping).toBeVisible({ timeout: 20_000 });
+
+    await expect(ping.locator('.switchrow')).toHaveCount(1);
+    await expect(ping).toContainText('Сводка в чат менеджеров');
+    // Не «выключены», а отсутствуют: выключенный тумблер обещает, что
+    // его можно включить.
+    await expect(ping, 'обещаний написать креатору не осталось').not.toContainText(
+      'Креатору в бот',
+    );
+  });
+
   test('называет стоимость проекта и видит цену тысячи просмотров', async ({ page }) => {
     await page.goto(`/manager/projects/${brandId}`);
     const input = page.locator('[data-test="project-cost"]');

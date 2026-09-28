@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -27,6 +35,20 @@ import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.compo
  * Пустая площадка тоже правится: креатор прислал ссылку в переписку, и
  * перенести её — дело одной строки, а не просьбы «сдай ещё раз».
  */
+
+/**
+ * Единственная группа у проекта без креаторов.
+ *
+ * Спрашивают тут всегда про человека — «что там у Ани», — а когда людей
+ * нет, спрашивают про проект. Пустой user_id — то же «никто», что лежит
+ * у таких выкладок в базе.
+ */
+const PROJECT_GROUP: ProjectPerson = {
+  user_id: '',
+  display_name: 'Ролики проекта',
+  added_at: '',
+};
+
 @Component({
   selector: 'app-project-links',
   standalone: true,
@@ -41,6 +63,16 @@ export class ProjectLinksComponent {
   private readonly msg = inject(NzMessageService);
 
   public readonly creators = input<readonly ProjectPerson[]>([]);
+
+  /**
+   * В проекте работают люди со стороны.
+   *
+   * Ссылки группируются по людям, и у проекта без состава группировать
+   * было не по кому: блок говорил «Состав пуст — ссылок пока неоткуда
+   * взяться», хотя ролики выходят с аккаунтов бренда и адрес им
+   * ставит менеджер руками. Там группа одна — сам проект.
+   */
+  public readonly crew = input<boolean>(true);
 
   public readonly publications = input<readonly Publication[]>([]);
 
@@ -69,12 +101,11 @@ export class ProjectLinksComponent {
    */
   public readonly groups = computed(() => {
     const live = this.publications().filter((p) => p.status !== 'cancelled');
-    return this.creators().map((person) => {
+    const owners = this.crew() ? this.creators() : [PROJECT_GROUP];
+    return owners.map((person) => {
       const mine = live
-        .filter((p) => p.creator_user_id === person.user_id)
-        .sort((a, b) =>
-          (b.published_at ?? b.due_date).localeCompare(a.published_at ?? a.due_date),
-        );
+        .filter((p) => (p.creator_user_id || '') === person.user_id)
+        .sort((a, b) => (b.published_at ?? b.due_date).localeCompare(a.published_at ?? a.due_date));
       return {
         person,
         pubs: mine,

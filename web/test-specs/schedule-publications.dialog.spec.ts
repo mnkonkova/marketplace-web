@@ -26,7 +26,7 @@ describe('SchedulePublicationsDialogComponent', () => {
   // их не трогает — тест не должен зависеть от сегодняшнего числа.
   const FUTURE = new Date(new Date().getFullYear() + 1, 0, 1);
 
-  function setup(draftRequired = false, existing: ScheduledPublication[] = []) {
+  function setup(draftRequired = false, existing: ScheduledPublication[] = [], crew = true) {
     TestBed.resetTestingModule();
     api = jasmine.createSpyObj<PublicationApi>('api', [
       'managerCreateBatch',
@@ -50,6 +50,7 @@ describe('SchedulePublicationsDialogComponent', () => {
         { user_id: 'u1', display_name: 'Анастасия' },
         { user_id: 'u2', display_name: 'Андрей' },
       ],
+      crew,
       draftRequired,
       existing,
     };
@@ -272,6 +273,7 @@ describe('SchedulePublicationsDialogComponent', () => {
             useValue: {
               projectID: 'pr1',
               creators: [{ user_id: 'u1', display_name: 'Анастасия' }],
+              crew: true,
               draftRequired: false,
               existing: [],
             } as SchedulePublicationsData,
@@ -314,6 +316,60 @@ describe('SchedulePublicationsDialogComponent', () => {
       cmp.create();
 
       expect(api.managerSaveProjectSettings).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Проект без креаторов: даты ставятся, людей не спрашивают.
+   *
+   * Это была не косметика, а тупик. Счётчик считал «люди × дни», при
+   * нуле людей давал ноль, кнопка оставалась выключенной, а если до
+   * отправки всё же доходило — окно отвечало «Выберите хотя бы одного
+   * креатора». Единственный способ проставить такому проекту даты был
+   * закрыт, хотя сервер такие пачки принимает с самого начала.
+   */
+  describe('проект без креаторов', () => {
+    it('считает даты, а не «люди × дни»', () => {
+      const cmp = setup(false, [], false);
+      cmp.toggleDay(jan(3));
+      cmp.toggleDay(jan(5));
+
+      expect(cmp.toCreate()).toBe(2);
+    });
+
+    it('шлёт пустой список людей, а не выдуманного человека', () => {
+      const cmp = setup(false, [], false);
+      cmp.toggleDay(jan(3));
+
+      cmp.create();
+
+      expect(api.managerCreateBatch).toHaveBeenCalledWith('pr1', {
+        // Пустой список — это и есть признак, по которому сервер
+        // отличает пачку на проект от пачки людям. Внутренний ключ
+        // ряда (пустая строка) туда уехать не должен.
+        creator_user_ids: [],
+        dates: [jan(3)],
+        draft_lead_days: 0,
+      });
+    });
+
+    it('не требует выбрать креатора', () => {
+      const cmp = setup(false, [], false);
+      cmp.toggleDay(jan(3));
+
+      cmp.create();
+
+      expect(api.managerCreateBatch).toHaveBeenCalled();
+    });
+
+    it('стоящие даты узнаёт по выкладкам без владельца', () => {
+      // У таких выкладок бэк не отдаёт creator_user_id вовсе, и ключом
+      // в карте плана идёт пустая строка. Иначе окно открылось бы с
+      // «0 уже в плане» и предложило завести дату второй раз.
+      const cmp = setup(false, [{ due_date: jan(3), status: 'planned' } as never], false);
+
+      expect(cmp.isLocked(jan(3))).toBeTrue();
+      expect(cmp.toCreate()).toBe(0);
     });
   });
 });

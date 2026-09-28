@@ -832,7 +832,7 @@
   <app-project-checklist [projectId]="projectID()" />
 }
 @if (blocks().autoping && shows('crew')) {
-  <app-project-autoping [projectId]="projectID()" />
+  <app-project-autoping [projectId]="projectID()" [crew]="blocks().crew" />
 }
 
 @if (closeFor(); as pub) {

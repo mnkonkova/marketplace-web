@@ -7,10 +7,28 @@ import { Material, MaterialAudience, MaterialKind } from '../model/publication.t
 // разделение делаем мы.
 
 export const MATERIAL_KIND_LABEL: Record<MaterialKind, string> = {
+  contract: 'Договор',
   doc: 'Документ',
   video: 'Видео',
   link: 'Ссылка',
 };
+
+// Что человек считает документом: то, на основании чего он работает и
+// получает деньги.
+//
+// Пока это только договор. «Документ» (doc) сюда НЕ входит, хотя по
+// названию просится: этим видом кладут бренд-гайды, сценарии и
+// обучение — то есть ровно материалы для съёмки. Затащить их в «Мои
+// документы» значило бы утопить в них единственное, ради чего этот
+// список существует. Список, а не одно значение, — потому что вид у
+// договора не последний: появится отдельный вид для ТЗ или акта,
+// правка будет здесь и на бэке (CreatorDocuments), а не в четырёх
+// шаблонах.
+export const DOCUMENT_KINDS: readonly MaterialKind[] = ['contract'];
+
+export function isDocument(m: Material): boolean {
+  return DOCUMENT_KINDS.includes(m.kind);
+}
 
 export const MATERIAL_AUDIENCE_LABEL: Record<MaterialAudience, string> = {
   creators: 'Материалы для креаторов',

@@ -946,6 +946,10 @@ export class ProjectPublicationsComponent {
         user_id: c.user_id,
         display_name: c.display_name,
       })),
+      // Есть ли в проекте люди со стороны — по виду проекта, а не по
+      // длине списка: пустой состав у проекта с креаторами значит «ещё
+      // никого не добавили», и спрашивать «кому» там правильно.
+      crew: this.blocks().crew,
       // Признака draft_required в DTO проекта нет — спрашиваем всегда:
       // бэк учтёт значение только если этап черновика включён.
       draftRequired: true,

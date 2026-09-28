@@ -1,7 +1,11 @@
 <div class="panel-h">
   <h2>План выкладок</h2>
   <span class="sub">
-    клетка — выкладка; колокольчик — напомнить в бот за день до срока
+    @if (crew()) {
+      клетка — выкладка; колокольчик — напомнить в бот за день до срока
+    } @else {
+      клетка — выкладка; ролики выходят с аккаунтов бренда, напоминать некому
+    }
     @if (lastOfPeriod()) {
       · обведённая — последняя выкладка периода
     }
@@ -19,7 +23,13 @@
   <button type="button" class="btn sm dark push" (click)="openSchedule()">Проставить пачкой</button>
 </div>
 
-@if (!creators().length) {
+<!-- Пустой состав бывает двух разных смыслов, и надпись у них разная.
+     У проекта с креаторами это «ещё никого не добавили» — план и правда
+     собирать не из кого. У проекта без креаторов состава не будет
+     никогда, и та же надпись была тупиком: даты проставить нечем, хотя
+     ролики выходят и заказчик их видит. Там план строится по одному
+     ряду — ряду проекта. -->
+@if (crew() && !creators().length) {
   <p class="muted">В проекте пока нет креаторов — сначала соберите состав.</p>
 } @else {
   <!-- СЕТКА. На телефоне её нет: двадцать один столбец в 390 px не
@@ -46,7 +56,9 @@
           <tr>
             <td class="name">
               <span class="crlink">
-                <app-prmarket-ava [name]="row.person.display_name" [size]="24" />
+                @if (crew()) {
+                  <app-prmarket-ava [name]="row.person.display_name" [size]="24" />
+                }
                 <span class="nm">
                   <span>{{ row.person.display_name }}</span>
                   <!-- «Сколько он обычно даёт» — медиана, а не среднее:
@@ -90,17 +102,23 @@
             <td>
               <!-- Колокольчик — не пинг: он говорит, писать ли этому
                    человеку КАЖДЫЙ раз накануне срока. Разовое «напомни
-                   сейчас» живёт в тревогах и в ленте на телефоне. -->
-              <button
-                type="button"
-                class="bell"
-                [attr.aria-pressed]="bellOn(row)"
-                [class.on]="bellOn(row)"
-                (click)="toggleBell(row)"
-                title="Напоминать в бот за день до срока"
-              >
-                {{ bellOn(row) ? 'напомнить ✓' : 'напомнить' }}
-              </button>
+                   сейчас» живёт в тревогах и в ленте на телефоне.
+
+                   У проекта без креаторов его нет вовсе, а не выключен:
+                   выключенный тумблер обещает, что кому-то можно
+                   написать. -->
+              @if (crew()) {
+                <button
+                  type="button"
+                  class="bell"
+                  [attr.aria-pressed]="bellOn(row)"
+                  [class.on]="bellOn(row)"
+                  (click)="toggleBell(row)"
+                  title="Напоминать в бот за день до срока"
+                >
+                  {{ bellOn(row) ? 'напомнить ✓' : 'напомнить' }}
+                </button>
+              }
             </td>
           </tr>
         }
@@ -113,7 +131,9 @@
     @for (row of rows(); track row.person.user_id) {
       <div class="feed-row">
         <div class="feed-who">
-          <app-prmarket-ava [name]="row.person.display_name" [size]="42" />
+          @if (crew()) {
+            <app-prmarket-ava [name]="row.person.display_name" [size]="42" />
+          }
           <div class="grow">
             <div class="t">{{ row.person.display_name }}</div>
             <div class="muted small">
@@ -126,17 +146,19 @@
               }
             </div>
           </div>
-          <button
-            type="button"
-            class="bell"
-            [attr.aria-pressed]="bellOn(row)"
-            [class.on]="bellOn(row)"
-            (click)="toggleBell(row)"
-            title="Напоминать в бот за день до срока"
-          >
-            {{ bellOn(row) ? '✓ напомню' : 'напомнить' }}
-          </button>
-          <button type="button" class="btn sm" (click)="remind(row)">Пинг</button>
+          @if (crew()) {
+            <button
+              type="button"
+              class="bell"
+              [attr.aria-pressed]="bellOn(row)"
+              [class.on]="bellOn(row)"
+              (click)="toggleBell(row)"
+              title="Напоминать в бот за день до срока"
+            >
+              {{ bellOn(row) ? '✓ напомню' : 'напомнить' }}
+            </button>
+            <button type="button" class="btn sm" (click)="remind(row)">Пинг</button>
+          }
         </div>
         <div class="feed-days">
           @for (c of row.cells; track c.date) {
@@ -192,7 +214,7 @@
       <app-sheet
         [open]="true"
         [title]="sel.creator.display_name + ' · ' + human(sel.cell.date)"
-        note="Правка плана видна креатору сразу и уходит в бот."
+        [note]="editNote"
         (closed)="close()"
       >
         <div class="edit in-sheet">
@@ -206,7 +228,7 @@
       <div class="edit">
         <b>{{ sel.creator.display_name }} · {{ human(sel.cell.date) }}</b>
         <ng-container [ngTemplateOutlet]="editTpl" [ngTemplateOutletContext]="{ $implicit: sel }" />
-        <span class="faint edit-note">Правка плана видна креатору сразу и уходит в бот.</span>
+        <span class="faint edit-note">{{ editNote }}</span>
       </div>
     }
   }
@@ -248,10 +270,13 @@
       </button>
       <!-- Разовый пинг по этой выкладке. Колокольчик в строке — про
            «каждый раз накануне», а здесь менеджер дёргает по одной,
-           глядя на конкретный день. -->
-      <button type="button" class="btn sm" [disabled]="busy()" (click)="remindPicked()">
-        Напомнить
-      </button>
+           глядя на конкретный день. Там, где ролик принадлежит
+           проекту, напоминать некому — кнопки нет. -->
+      @if (crew()) {
+        <button type="button" class="btn sm" [disabled]="busy()" (click)="remindPicked()">
+          Напомнить
+        </button>
+      }
       <button type="button" class="btn sm" [disabled]="busy()" (click)="cancel()">
         Снять с плана
       </button>

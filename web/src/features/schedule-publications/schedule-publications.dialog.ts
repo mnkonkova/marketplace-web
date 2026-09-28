@@ -25,6 +25,17 @@ export interface ScheduledPublication {
 export interface SchedulePublicationsData {
   projectID: string;
   creators: ScheduleCreator[];
+  /**
+   * В проекте работают люди со стороны.
+   *
+   * Не выводится из пустого списка креаторов: пустой состав у проекта
+   * с креаторами значит «ещё никого не добавили», и тогда спрашивать
+   * «кому» правильно. У проекта без креаторов спрашивать некого
+   * никогда — ролик принадлежит проекту, — и вопрос «Кому» вместе с
+   * проверкой «выберите хотя бы одного» закрывал единственный способ
+   * проставить такому проекту даты.
+   */
+  crew: boolean;
   // У проекта включён этап согласования черновика: тогда имеет смысл
   // спрашивать, за сколько дней до выкладки сдавать черновик.
   draftRequired: boolean;
@@ -94,22 +105,29 @@ function key(d: Date): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form class="crm-page form" (submit)="$event.preventDefault(); create()">
-      <p class="lbl">Кому</p>
-      <div class="pickchips crew">
-        @for (c of data.creators; track c.user_id) {
-          <button
-            type="button"
-            class="pick"
-            [class.on]="isPicked(c.user_id)"
-            (click)="togglePicked(c.user_id)"
-          >
-            <span class="av a2">{{ c.display_name.charAt(0) }}</span>
-            {{ c.display_name }}
-          </button>
-        } @empty {
-          <p class="hint">В проекте нет креаторов — сначала добавьте состав.</p>
-        }
-      </div>
+      @if (data.crew) {
+        <p class="lbl">Кому</p>
+        <div class="pickchips crew">
+          @for (c of data.creators; track c.user_id) {
+            <button
+              type="button"
+              class="pick"
+              [class.on]="isPicked(c.user_id)"
+              (click)="togglePicked(c.user_id)"
+            >
+              <span class="av a2">{{ c.display_name.charAt(0) }}</span>
+              {{ c.display_name }}
+            </button>
+          } @empty {
+            <p class="hint">В проекте нет креаторов — сначала добавьте состав.</p>
+          }
+        </div>
+      } @else {
+        <p class="hint">
+          Ролики выходят с аккаунтов бренда — выбирать некого. Отметьте дни, и выкладки встанут на
+          сам проект.
+        </p>
+      }
 
       <div class="monthbar">
         <p class="lbl">Дни выкладки — {{ monthTitle() }}</p>
@@ -162,38 +180,43 @@ function key(d: Date): string {
            заранее в настройках, куда за ним отдельно идти. Настройка при
            этом проектная: выключили — у новых выкладок останется одна
            дата, уже проставленные сроки не стираются. -->
-      <div class="switchrow">
-        <span class="tx">
-          <b>Этап согласования черновика</b>
-          <span>
-            @if (draftOn()) {
-              Два срока: сдать черновик за {{ draftLeadDays }}
-              {{ draftLeadDays === 1 ? 'день' : 'дня' }} до выкладки и выложить. Бот пингует по
-              первому.
-            } @else {
-              Один срок — дата выкладки. Уже проставленные сроки черновика останутся как есть.
-            }
+      <!-- Черновик сдаёт креатор, а принимает менеджер. У проекта, где
+           ролики выходят с аккаунтов бренда, сдавать его некому, и
+           второй срок был бы датой, к которой никто ничего не должен. -->
+      @if (data.crew) {
+        <div class="switchrow">
+          <span class="tx">
+            <b>Этап согласования черновика</b>
+            <span>
+              @if (draftOn()) {
+                Два срока: сдать черновик за {{ draftLeadDays }}
+                {{ draftLeadDays === 1 ? 'день' : 'дня' }} до выкладки и выложить. Бот пингует по
+                первому.
+              } @else {
+                Один срок — дата выкладки. Уже проставленные сроки черновика останутся как есть.
+              }
+            </span>
           </span>
-        </span>
-        @if (draftOn()) {
-          <input
-            class="lead"
-            type="number"
-            min="0"
-            max="30"
-            [(ngModel)]="draftLeadDays"
-            name="lead"
-          />
-        }
-        <button
-          type="button"
-          class="sw"
-          [class.on]="draftOn()"
-          [attr.aria-pressed]="draftOn()"
-          (click)="toggleDraft()"
-          aria-label="Этап согласования черновика"
-        ></button>
-      </div>
+          @if (draftOn()) {
+            <input
+              class="lead"
+              type="number"
+              min="0"
+              max="30"
+              [(ngModel)]="draftLeadDays"
+              name="lead"
+            />
+          }
+          <button
+            type="button"
+            class="sw"
+            [class.on]="draftOn()"
+            [attr.aria-pressed]="draftOn()"
+            (click)="toggleDraft()"
+            aria-label="Этап согласования черновика"
+          ></button>
+        </div>
+      }
 
       <!-- Считаем то, что добавится, а не «люди × дни»: почти всё в этом
            произведении уже стоит в плане, и обещать 60 там, где заведётся
@@ -204,7 +227,7 @@ function key(d: Date): string {
         @if (alreadySet()) {
           <span class="muted">· {{ alreadySet() }} уже в плане</span>
         }
-        @if (!picked().size) {
+        @if (data.crew && !picked().size) {
           <span class="muted">— отметьте, кому ставим даты</span>
         } @else if (!days().size) {
           <span class="muted">— отметьте дни в календаре</span>
@@ -320,7 +343,9 @@ export class SchedulePublicationsDialogComponent {
         if (p.status === 'cancelled') continue;
         const day = p.due_date.slice(0, 10);
         const set = out.get(day) ?? new Set<string>();
-        set.add(p.creator_user_id);
+        // У проекта без креаторов владельца нет: ключом идёт та же
+        // пустая строка, что и в picked() ниже.
+        set.add(p.creator_user_id ?? '');
         out.set(day, set);
       }
       return out;
@@ -364,8 +389,13 @@ export class SchedulePublicationsDialogComponent {
   public constructor() {
     // Открываемся на текущем плане: отмечены те, кому уже проставлены
     // даты, и сами даты. Плана нет — всё пусто, как и было.
-    const creators = new Set<string>();
-    for (const ids of this.scheduled.values()) for (const id of ids) creators.add(id);
+    // У проекта без креаторов отмечать некого, но считать надо: ряд
+    // один, и это ряд проекта. Пустая строка — тот же «никто», что
+    // лежит в базе у таких выкладок.
+    const creators = new Set<string>(this.data.crew ? [] : ['']);
+    if (this.data.crew) {
+      for (const ids of this.scheduled.values()) for (const id of ids) creators.add(id);
+    }
     this.picked.set(creators);
     this.days.set(new Set(this.scheduled.keys()));
     // И на том месяце, где план начинается: открывать сентябрь, когда
@@ -526,7 +556,7 @@ export class SchedulePublicationsDialogComponent {
   }
 
   public create(): void {
-    if (!this.picked().size) {
+    if (this.data.crew && !this.picked().size) {
       this.msg.error('Выберите хотя бы одного креатора.');
       return;
     }
@@ -542,7 +572,11 @@ export class SchedulePublicationsDialogComponent {
     // пропускает сам, и список дат в запросе остаётся тем же планом,
     // который менеджер видит на экране.
     const req: BatchRequest = {
-      creator_user_ids: [...this.picked()],
+      // Список людей у проекта без креаторов пуст, и это не забытое
+      // поле: сервер по нему и отличает «пачку на проект» от «пачки
+      // людям» (см. CreateBatch → HasCrew). Пустая строка из picked()
+      // туда не едет — это наш внутренний ключ ряда, а не uuid.
+      creator_user_ids: this.data.crew ? [...this.picked()] : [],
       dates: [...this.days()].sort(),
       draft_lead_days: this.draftOn() ? Number(this.draftLeadDays) || 0 : 0,
     };

@@ -76,3 +76,47 @@ test('данные проекта запрашиваются по одному �
   expect(calls.get('calendar'), 'календарь').toBe(1);
   expect(calls.get('notifications'), 'настройки уведомлений').toBe(1);
 });
+
+/**
+ * Карточка проекта на телефоне: страница не уезжает вбок.
+ *
+ * Жалоба звучала как «в роликах футер уходит», и футер был ни при чём.
+ * Полоса разделов внизу прибита к ЭКРАНУ (position: fixed) и шириной с
+ * экран, а страница на вкладке «Ролики» была шире экрана на 175 px:
+ * ряд из пяти площадок с цифрами не переносился, распирал карточку
+ * ролика, а за ней и весь документ. Стоило отвести палец вправо — и
+ * полоса кончалась там, где кончался экран, то есть «уходила».
+ *
+ * Поэтому проверка не про футер, а про то, из-за чего он уезжал:
+ * горизонтальной прокрутки у документа быть не должно НИ НА ОДНОЙ
+ * вкладке. Проверяем все четыре: сломать ширину может любая, а заметно
+ * это только на той, где сломали.
+ */
+test.describe('на телефоне', () => {
+  const PHONE = { width: 390, height: 844 };
+
+  test('ни один раздел не уводит страницу вбок, и полоса разделов на месте', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto(`/me/projects/${box.projectId}`);
+    await expect(page.locator('app-client-turnkey-project')).toBeVisible({ timeout: 20_000 });
+
+    // Полоса разделов — единственная навигация на телефоне: наверху
+    // вкладки спрятаны словарём (_prmarket-touch.scss).
+    const bar = page.locator('app-prmarket-tabbar');
+    await expect(bar, 'полоса разделов нарисована').toBeVisible();
+
+    for (const name of ['Сводка', 'Ролики', 'Календарь', 'Деньги']) {
+      await bar.locator('button', { hasText: name }).click();
+      // Ждём саму вкладку, а не таймер: раздел рисуется по клику, и
+      // мерить ширину недорисованного значит мерить не то.
+      await expect(bar.locator(`button[aria-current="page"]`)).toContainText(name);
+      await page.waitForTimeout(300);
+
+      const room = await page.evaluate(() => {
+        const de = document.documentElement;
+        return { scroll: de.scrollWidth, client: de.clientWidth };
+      });
+      expect(room.scroll, `раздел «${name}» помещается в экран`).toBeLessThanOrEqual(room.client);
+    }
+  });
+});

@@ -52,6 +52,53 @@ a.prj {
   color: var(--crit);
 }
 
+// ── мои документы ───────────────────────────────────────────────
+//
+// Список, а не плитки: документов немного, и читают их глазами сверху
+// вниз — «где мой договор по этому проекту». Договор выделен рамкой:
+// он один на проект и ищут чаще всего именно его.
+.docs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.doc {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.doc.contract {
+  border-color: var(--accent);
+}
+
+.doc .k {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.doc a {
+  font-weight: 600;
+}
+
+.doc .pr {
+  margin-left: auto;
+  font-size: 12.5px;
+  text-align: right;
+}
+
 // На телефоне строка разворачивается в столбик: шапки колонок там нет
 // (словарь её прячет), и «2 из 29» рядом с названием осталось бы числом
 // без вопроса. Подпись берём из того же data-label, что стоит в ячейке.
@@ -76,5 +123,23 @@ a.prj {
     display: inline-block;
     min-height: 40px;
     line-height: 40px;
+  }
+
+  // Название проекта уходит под ссылку: в одну строку с ней на 390 px
+  // помещается только многоточие, а проект здесь и есть ответ на
+  // вопрос «какой из договоров мой сейчас».
+  .doc {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .doc .pr {
+    flex: 1 0 100%;
+    margin-left: 0;
+    text-align: left;
+  }
+
+  .doc a {
+    min-height: 32px;
   }
 }

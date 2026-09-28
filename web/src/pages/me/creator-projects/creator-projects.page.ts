@@ -4,7 +4,8 @@ import { RouterLink } from '@angular/router';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { PublicationApi } from '@entities/publication/api/publication.api';
-import { CreatorProject } from '@entities/publication/model/publication.types';
+import { CreatorDocument, CreatorProject } from '@entities/publication/model/publication.types';
+import { MATERIAL_KIND_LABEL } from '@entities/publication/lib/materials';
 import { daysLeft } from '@entities/publication/lib/publication-status';
 import { plural } from '@shared/lib/format';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
@@ -42,6 +43,20 @@ export class CreatorProjectsPage {
 
   public readonly items = signal<CreatorProject[]>([]);
 
+  /**
+   * Мои документы: договоры по всем проектам.
+   *
+   * Отдельно от материалов проекта, и не случайно. Материалы отвечают
+   * на вопрос «как снимать» и живут в карточке проекта, рядом с
+   * чек-листом. Документ отвечает на другой вопрос — «на каких
+   * условиях я работаю», — и человек ищет его не в момент съёмки, а
+   * когда подписывает, выставляет счёт или спорит. Помнить, в каком
+   * из восьми проектов лежал договор, он при этом не обязан.
+   */
+  public readonly docs = signal<CreatorDocument[]>([]);
+
+  public readonly kindLabel = MATERIAL_KIND_LABEL;
+
   public constructor() {
     this.api.creatorProjects().subscribe({
       next: (r) => {
@@ -52,6 +67,13 @@ export class CreatorProjectsPage {
         this.loading.set(false);
         this.msg.error(parseApiError(e, 'Не удалось загрузить проекты.').message);
       },
+    });
+    // Молча при отказе: документы — не то, ради чего человек открыл
+    // кабинет, и красная плашка поверх списка проектов сообщала бы о
+    // поломке там, где её не видно.
+    this.api.creatorDocuments().subscribe({
+      next: (r) => this.docs.set(r.items),
+      error: () => this.docs.set([]),
     });
   }
 

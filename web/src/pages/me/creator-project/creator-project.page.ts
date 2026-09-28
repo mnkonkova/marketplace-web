@@ -50,6 +50,7 @@ import {
 import { formatMoney, groupDigits } from '@entities/billing/lib/money';
 import { periodTitle } from '@entities/billing/lib/period';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
+import { MATERIAL_KIND_LABEL, isDocument } from '@entities/publication/lib/materials';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { CreatorAvailabilityComponent } from '@widgets/creator-availability/creator-availability.component';
 import { TelegramLinkComponent } from '@features/telegram-link/telegram-link.component';
@@ -64,8 +65,14 @@ import { plural } from '@shared/lib/format';
 import { ProjectAccountsComponent } from '@widgets/project-accounts/project-accounts.component';
 import { ProjectCommentsComponent } from '@widgets/project-comments/project-comments.component';
 import { AppHeaderComponent } from '@widgets/app-header/app-header.component';
-import { PrMarketTopComponent, PrMarketNavItem } from '@widgets/prmarket-top/prmarket-top.component';
-import { PrMarketTabbarComponent, PrMarketTab } from '@widgets/prmarket-tabbar/prmarket-tabbar.component';
+import {
+  PrMarketTopComponent,
+  PrMarketNavItem,
+} from '@widgets/prmarket-top/prmarket-top.component';
+import {
+  PrMarketTabbarComponent,
+  PrMarketTab,
+} from '@widgets/prmarket-tabbar/prmarket-tabbar.component';
 import { LADDER_STEP, LadderVideo, ladderState, shortViews } from '@entities/billing/lib/ladder';
 import { videosInPeriod } from '@entities/billing/lib/creator-highlights';
 
@@ -326,6 +333,21 @@ export class CreatorProjectPage {
 
   /** Материалы проекта: бренд-гайд, обучение, ссылки на аккаунты. */
   public readonly materials = signal<Material[]>([]);
+
+  /**
+   * Документы отдельно от материалов.
+   *
+   * Одной лентой чипов они лежали вперемешку, и договор ничем не
+   * отличался от двадцать третьего референса. Ищут их в разные
+   * моменты и по разным поводам: материалы — когда снимают, документы
+   * — когда подписывают или выставляют счёт. Порядок бэк уже отдаёт
+   * правильный (договор первым), делить остаётся по виду.
+   */
+  public readonly documents = computed(() => this.materials().filter(isDocument));
+
+  public readonly workMaterials = computed(() => this.materials().filter((m) => !isDocument(m)));
+
+  public readonly kindLabel = MATERIAL_KIND_LABEL;
 
   /** Свой профиль специалиста. null — не загрузился, блок не показываем. */
   public readonly profile = signal<MeProfile | null>(null);

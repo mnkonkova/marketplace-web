@@ -53,6 +53,19 @@ interface Row {
 const WEEKEND = new Set([0, 6]);
 
 /**
+ * Единственный ряд плана у проекта без креаторов.
+ *
+ * Не человек и не заглушка вместо человека: ролик такого проекта
+ * принадлежит проекту, и подпись говорит именно это. Пустой user_id —
+ * то же самое «никто», которое лежит в базе.
+ */
+const PROJECT_ROW: ProjectPerson = {
+  user_id: '',
+  display_name: 'Ролики проекта',
+  added_at: '',
+};
+
+/**
  * План выкладок: креаторы по строкам, дни по столбцам.
  *
  * Сетка, а не список, потому что менеджер решает здесь две задачи сразу:
@@ -93,6 +106,18 @@ export class PublicationPlanComponent {
   public readonly projectId = input.required<string>();
 
   public readonly creators = input<readonly ProjectPerson[]>([]);
+
+  /**
+   * В проекте работают люди со стороны.
+   *
+   * Не то же самое, что «список креаторов пуст». Пустой состав у
+   * проекта с креаторами значит «ещё никого не добавили», и план там
+   * честно говорит «сначала соберите состав». У проекта без креаторов
+   * состава не будет никогда: ролики выходят с аккаунтов бренда, и та
+   * же надпись превращалась в тупик — даты проставить было НЕЧЕМ,
+   * хотя и сервер, и заказчиков кабинет такой проект давно умеют.
+   */
+  public readonly crew = input<boolean>(true);
 
   public readonly publications = input<readonly Publication[]>([]);
 
@@ -180,15 +205,38 @@ export class PublicationPlanComponent {
     return days.length ? days[days.length - 1] : '';
   });
 
+  /**
+   * Чьи это выкладки — ключ, по которому строится строка плана.
+   *
+   * У проекта без креаторов владельца нет вовсе (бэк не отдаёт поле), и
+   * все выкладки складываются в одну строку проекта. Пустая строка как
+   * ключ, а не выдуманный uuid: она и на сервере пустая.
+   */
+  private ownerOf(p: Publication): string {
+    return p.creator_user_id || '';
+  }
+
+  /**
+   * По кому строки плана: люди — или сам проект, если людей не бывает.
+   *
+   * Сетка «кто × день» без «кто» не вырождается в ничто: остаётся
+   * ровно один ряд — ряд проекта. Так менеджер видит месяц теми же
+   * глазами, что и у проекта с составом, и правит его теми же
+   * клетками.
+   */
+  public readonly owners = computed<readonly ProjectPerson[]>(() =>
+    this.crew() ? this.creators() : [PROJECT_ROW],
+  );
+
   public readonly rows = computed<Row[]>(() => {
     const today = this.dayKey(new Date());
     const byKey = new Map<string, Publication>();
     for (const p of this.publications()) {
       if (p.status === 'cancelled') continue;
-      byKey.set(`${p.creator_user_id}|${p.due_date.slice(0, 10)}`, p);
+      byKey.set(`${this.ownerOf(p)}|${p.due_date.slice(0, 10)}`, p);
     }
 
-    return this.creators().map((person) => {
+    return this.owners().map((person) => {
       const cells = this.days().map<Cell>((d) => {
         const pub = byKey.get(`${person.user_id}|${d.date}`);
         return {
@@ -204,7 +252,7 @@ export class PublicationPlanComponent {
         };
       });
       const mine = this.publications().filter(
-        (p) => p.creator_user_id === person.user_id && p.status !== 'cancelled',
+        (p) => this.ownerOf(p) === person.user_id && p.status !== 'cancelled',
       );
       return {
         person,
@@ -266,6 +314,20 @@ export class PublicationPlanComponent {
   /** Сегодня, ГГГГ-ММ-ДД: нижняя граница для полей даты. */
   public readonly today = this.dayKey(new Date());
 
+  /**
+   * Подпись под правкой клетки: кого эта правка касается.
+   *
+   * У проекта без креаторов «видна креатору сразу и уходит в бот» —
+   * обещание, которое некому выполнить: адресата у поштучного письма
+   * нет, и напоминания по такой выкладке складываются в дневную
+   * сводку менеджерам (см. RunReminders на бэке).
+   */
+  public get editNote(): string {
+    return this.crew()
+      ? 'Правка плана видна креатору сразу и уходит в бот.'
+      : 'Ролики выходят с аккаунтов бренда: личных напоминаний по ним нет, срыв срока попадёт в дневную сводку менеджерам.';
+  }
+
   public pick(person: ProjectPerson, cell: Cell): void {
     const cur = this.picked();
     if (cur && cur.creator.user_id === person.user_id && cur.cell.date === cell.date) {
@@ -316,7 +378,9 @@ export class PublicationPlanComponent {
     }
     this.run(
       this.api.managerAddPublication(this.projectId(), p.creator.user_id, day),
-      `Поставили выкладку ${p.creator.display_name} на ${this.human(day)}.`,
+      this.crew()
+        ? `Поставили выкладку ${p.creator.display_name} на ${this.human(day)}.`
+        : `Поставили выкладку на ${this.human(day)}.`,
     );
   }
 
@@ -487,6 +551,7 @@ export class PublicationPlanComponent {
         user_id: c.user_id,
         display_name: c.display_name,
       })),
+      crew: this.crew(),
       draftRequired: true,
       existing: this.publications().map((p) => ({
         creator_user_id: p.creator_user_id,

@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { FormsModule } from '@angular/forms';
@@ -28,13 +36,26 @@ export class ProjectAutopingComponent {
 
   public readonly projectId = input.required<string>();
 
+  /**
+   * В проекте работают люди со стороны.
+   *
+   * Четыре тумблера из пяти обещают письмо КРЕАТОРУ, и у проекта без
+   * состава это обещание пустое: бэк такие напоминания не отправляет
+   * вовсе — ни в личку (некому), ни в чат (шестьдесят «просрочка» за
+   * одно утро по одному проекту). Их единственный след — строка в
+   * дневной сводке менеджерам, и она здесь единственный тумблер,
+   * который на что-то влияет. Показывать остальные четыре значило бы
+   * предлагать включить то, чего не будет.
+   */
+  public readonly crew = input<boolean>(true);
+
   public readonly prefs = signal<ReminderPrefs | null>(null);
 
   public readonly busy = signal<PingField | null>(null);
 
   // Тексты из макета: под каждым тумблером — то, что реально придёт
   // человеку в бот, а не название поля.
-  public readonly rows: { field: PingField; title: string; note: string }[] = [
+  private readonly allRows: { field: PingField; title: string; note: string }[] = [
     {
       field: 'day_before',
       title: 'Креатору в бот — накануне срока',
@@ -61,6 +82,15 @@ export class ProjectAutopingComponent {
       note: 'Раз в день: что горит и по кому. Креаторы этот чат не видят.',
     },
   ];
+
+  /**
+   * Тумблеры, которые на этом проекте что-то меняют.
+   *
+   * У проекта без креаторов остаётся один — сводка менеджерам.
+   */
+  public readonly rows = computed(() =>
+    this.crew() ? this.allRows : this.allRows.filter((r) => r.field === 'manager_digest'),
+  );
 
   public constructor() {
     effect(() => {

@@ -113,6 +113,7 @@
         <app-publication-plan
           [projectId]="project().id"
           [creators]="crew()"
+          [crew]="blocks().crew"
           [publications]="publications()"
           [periodStart]="period()?.starts_on ?? ''"
           [periodEnd]="period()?.ends_on ?? ''"
@@ -124,7 +125,7 @@
              в плане включают напоминание поимённо, а эти тумблеры — на
              весь проект, и это один и тот же разговор. Держать их в
              разных местах значит править одно, не видя другого. -->
-        <app-project-autoping [projectId]="project().id" />
+        <app-project-autoping [projectId]="project().id" [crew]="blocks().crew" />
 
         <!-- Тумблер «этап согласования черновика» отсюда убран.
              Спрашивать его на странице проекта незачем: решение это
@@ -142,6 +143,7 @@
       <div class="span-12 panel sec sec-links">
         <app-project-links
           [creators]="crew()"
+          [crew]="blocks().crew"
           [publications]="publications()"
           (changed)="reload()"
         />

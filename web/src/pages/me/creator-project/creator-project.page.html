@@ -512,10 +512,26 @@
                 {{ item.text }}
               </span>
             </div>
-            } } } @if (materials().length) {
+            } } }
+            <!-- МОИ ДОКУМЕНТЫ этого проекта. Одной лентой чипов договор
+                 лежал двадцать третьим по счёту и ничем не отличался
+                 от референса. Ищут их в разные моменты: материалы —
+                 когда снимают, документы — когда подписывают или
+                 выставляют счёт. -->
+            @if (documents().length) {
+            <div class="label section-h">Мои документы</div>
+            <ul class="docs">
+              @for (d of documents(); track d.id) {
+              <li class="doc" [class.contract]="d.kind === 'contract'">
+                <span class="k">{{ kindLabel[d.kind] }}</span>
+                <a [href]="d.url" target="_blank" rel="noopener">{{ d.title }}</a>
+              </li>
+              }
+            </ul>
+            } @if (workMaterials().length) {
             <div class="label section-h">Материалы</div>
             <div class="chips">
-              @for (m of materials(); track m.id) {
+              @for (m of workMaterials(); track m.id) {
               <a class="btn sm" [href]="m.url" target="_blank" rel="noopener">{{ m.title }}</a>
               }
             </div>

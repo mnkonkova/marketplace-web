@@ -71,7 +71,13 @@ export class ProjectMaterialsComponent {
 
   public readonly audienceNote = MATERIAL_AUDIENCE_NOTE;
 
-  public readonly kinds: readonly MaterialKind[] = ['doc', 'video', 'link'];
+  // Договор — первым: его прикладывают чаще прочего, и он единственный
+  // вид, который дальше живёт отдельной жизнью — уходит в «Мои
+  // документы» креатора и показывается там первым. База и API знают
+  // его с самого начала (миграция 00071), а выбрать его в форме было
+  // нельзя — договор приходилось класть «документом» и терять всё, что
+  // отдельный вид даёт.
+  public readonly kinds: readonly MaterialKind[] = ['contract', 'doc', 'video', 'link'];
 
   public readonly items = signal<Material[]>([]);
 
@@ -154,7 +160,9 @@ export class ProjectMaterialsComponent {
     // сама. Отказываем только когда это и не ссылка вовсе.
     const link = withScheme(url);
     if (!link) {
-      this.msg.error('Это не похоже на ссылку — нужен адрес вида vk.com/... или https://vk.com/...');
+      this.msg.error(
+        'Это не похоже на ссылку — нужен адрес вида vk.com/... или https://vk.com/...',
+      );
       return;
     }
     this.busy.set(true);

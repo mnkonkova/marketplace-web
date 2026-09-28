@@ -465,7 +465,11 @@ export interface ProjectAccountsResponse {
 
 export type MaterialAudience = 'creators' | 'client';
 
-export type MaterialKind = 'doc' | 'video' | 'link';
+// Договор стоит рядом с документом, а не внутри него: он отдаётся
+// первым в списке, выделяется в кабинете креатора и попадает в «Мои
+// документы». Материал с названием «Договор» ни одного из трёх
+// свойств не даёт — искать его подстрокой значит однажды не найти.
+export type MaterialKind = 'doc' | 'video' | 'link' | 'contract';
 
 export interface Material {
   id: string;
@@ -477,6 +481,18 @@ export interface Material {
   sort_order: number;
   created_by: string;
   created_at: string;
+}
+
+/**
+ * Документ креатора: тот же материал, но названный проектом.
+ *
+ * «Мои документы» отвечают на вопрос «на каких условиях я работаю», а
+ * материалы проекта — на «как снимать». Поэтому список один на все
+ * проекты: договор ищут, когда подписывают или выставляют счёт, и
+ * помнить, в каком проекте он лежал, человек не обязан.
+ */
+export interface CreatorDocument extends Material {
+  project_title: string;
 }
 
 export interface MaterialInput {

@@ -19,6 +19,7 @@ import {
   CreatorProjectCard,
   DateRequest,
   LinkSuggestion,
+  CreatorDocument,
   Material,
   MaterialInput,
   MonthRequest,
@@ -89,6 +90,16 @@ export class PublicationApi {
     return this.http.get<ListResp<Material>>(
       `${this.api}/me/creator/projects/${projectId}/materials`,
     );
+  }
+
+  /**
+   * Мои документы — договоры по всем действующим проектам разом.
+   *
+   * Отдельная ручка, а не обход проектов по одному: список нужен на
+   * входе в кабинет, а проектов у человека бывает восемь.
+   */
+  public creatorDocuments(): Observable<ListResp<CreatorDocument>> {
+    return this.http.get<ListResp<CreatorDocument>>(`${this.api}/me/creator/documents`);
   }
 
   // Сдать ролик ссылками. Можно сдать не все площадки — остальные дошлём
