@@ -569,14 +569,39 @@ export class CreatorProjectPage {
   }
 
   /**
-   * Три месяца подряд: прошлый, текущий, следующий.
+   * Месяц, вокруг которого рисуются календари.
+   *
+   * Не «сегодня», и это решение владельца продукта (30 сентября 2026).
+   * Тридцатого сентября окно «прошлый-текущий-следующий» давало
+   * август, сентябрь, октябрь, а выкладки стояли в октябре — до работы
+   * надо было пролистать два пустых месяца, и на телефоне это два
+   * экрана прокрутки вслепую.
+   *
+   * Поэтому опорный месяц — тот, где стоит ПЕРВАЯ НЕСДАННАЯ выкладка:
+   * именно её человек и пришёл посмотреть. Ограничение снизу — текущий
+   * месяц: тянуть окно назад к просроченной работе прошлого периода
+   * незачем, она и так первой строкой в списке. Несданных нет вовсе —
+   * опора остаётся на сегодня, как было.
+   */
+  private readonly anchorMonth = computed(() => {
+    const now = new Date();
+    const open = this.ordered().find((p) => p.status === 'planned' || p.status === 'partial');
+    if (!open) return now;
+    const [y, m] = open.due_date.slice(0, 10).split('-').map(Number);
+    const at = new Date(y, m - 1, 1);
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return at < thisMonth ? thisMonth : at;
+  });
+
+  /**
+   * Три месяца подряд: перед опорным, опорный и следующий.
    *
    * Ровно как в макете, и это не украшение: выкладки живут по месяцам, и
    * человеку надо видеть, что было, что идёт и что уже назначено дальше,
    * — иначе «свободных дней в сентябре» он не найдёт.
    */
   public readonly months = computed(() => {
-    const now = new Date();
+    const now = this.anchorMonth();
     const names = [
       'Январь',
       'Февраль',
@@ -591,7 +616,9 @@ export class CreatorProjectPage {
       'Ноябрь',
       'Декабрь',
     ];
-    const todayKey = this.dayKey(now);
+    // «Сегодня» — настоящее сегодня, а не опорный месяц: подсветка
+    // текущего дня не должна ехать вместе с окном.
+    const todayKey = this.dayKey(new Date());
     const byDate = new Map<string, Publication[]>();
     for (const p of this.ordered()) {
       const k = p.due_date.slice(0, 10);
