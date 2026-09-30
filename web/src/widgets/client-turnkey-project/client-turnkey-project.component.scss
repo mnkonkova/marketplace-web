@@ -164,6 +164,17 @@ td.cov {
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
+
+  // Стрелки месяца жмут чаще всего на этом экране, а были 38 px в
+  // ширину — по два пикселя не дотягивали до пальца.
+  @media (max-width: bp.$touch) {
+    gap: 12px;
+
+    .btn.sm {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
 }
 
 .day-head {
@@ -348,5 +359,17 @@ input + .smeta-l {
   button.on {
     border-color: var(--accent);
     color: var(--ink);
+  }
+
+  // На телефоне переключатель глубины графика был 27 px высотой —
+  // попасть в него пальцем можно было только со второго раза.
+  @media (max-width: bp.$touch) {
+    gap: 8px;
+
+    button {
+      min-height: 44px;
+      padding: 4px 16px;
+      font-size: 13px;
+    }
   }
 }

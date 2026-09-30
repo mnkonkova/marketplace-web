@@ -230,8 +230,12 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 36px;
-    height: 36px;
+    // 44 px — не круглое число из воздуха: это минимальная зона, в
+    // которую попадает палец. Бургер на телефоне — единственная
+    // навигация на каждом экране, и 36 px здесь мы мерили руками:
+    // промахивались.
+    width: 44px;
+    height: 44px;
     padding: 0;
     border: 1px solid var(--border);
     border-radius: 8px;

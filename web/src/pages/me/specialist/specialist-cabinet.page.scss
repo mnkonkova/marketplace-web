@@ -1,3 +1,5 @@
+@use 'breakpoints' as bp;
+
 .specialist-cabinet {
   max-width: 900px;
   margin: 24px auto;
@@ -35,8 +37,28 @@
 
 .picker {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
+
+  // Выпадашка тянется, но не распирает: с жёсткими 320 px рядом с
+  // кнопкой строка не влезала в телефон, и кнопка уезжала за край.
+  .where {
+    flex: 1 1 260px;
+    min-width: 0;
+    max-width: 420px;
+  }
+
+  button {
+    flex: none;
+  }
+
+  // Кнопка формы на телефоне — с полноценной зоной нажатия.
+  @media (max-width: bp.$touch) {
+    button {
+      min-height: 44px;
+    }
+  }
 }
 
 .cards {

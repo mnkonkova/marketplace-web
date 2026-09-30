@@ -301,6 +301,9 @@
 
 .result-card__cta {
   margin-top: auto;
+  // 44 px — минимальная зона нажатия. Главное действие витрины стояло
+  // на 36 px, и на телефоне в него попадали не с первого раза.
+  min-height: 44px;
   padding: 10px 14px;
   border: 0;
   border-radius: 10px;
