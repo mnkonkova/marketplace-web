@@ -207,7 +207,11 @@
                           <tr>
                             <td class="head">
                               <span class="crlink">
-                                <app-prmarket-ava [name]="c.person.display_name" [size]="28" />
+                                <app-prmarket-ava
+                                  [name]="c.person.display_name"
+                                  [src]="c.person.avatar_url"
+                                  [size]="28"
+                                />
                                 <span>{{ c.person.display_name }}</span>
                               </span>
                             </td>
@@ -537,7 +541,7 @@
                 <div class="list">
                   @for (c of crew(); track c.user_id) {
                     <div class="row">
-                      <app-prmarket-ava [name]="c.display_name" [size]="28" />
+                      <app-prmarket-ava [name]="c.display_name" [src]="c.avatar_url" [size]="28" />
                       <div class="grow">
                         <div class="t">{{ c.display_name }}</div>
                         <div class="muted small">в проекте с {{ c.added_at | date: 'dd.MM' }}</div>

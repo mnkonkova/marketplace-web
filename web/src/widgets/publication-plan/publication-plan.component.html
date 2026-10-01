@@ -57,7 +57,11 @@
             <td class="name">
               <span class="crlink">
                 @if (crew()) {
-                  <app-prmarket-ava [name]="row.person.display_name" [size]="24" />
+                  <app-prmarket-ava
+                    [name]="row.person.display_name"
+                    [src]="row.person.avatar_url"
+                    [size]="24"
+                  />
                 }
                 <span class="nm">
                   <span>{{ row.person.display_name }}</span>
@@ -132,7 +136,11 @@
       <div class="feed-row">
         <div class="feed-who">
           @if (crew()) {
-            <app-prmarket-ava [name]="row.person.display_name" [size]="42" />
+            <app-prmarket-ava
+              [name]="row.person.display_name"
+              [src]="row.person.avatar_url"
+              [size]="42"
+            />
           }
           <div class="grow">
             <div class="t">{{ row.person.display_name }}</div>
