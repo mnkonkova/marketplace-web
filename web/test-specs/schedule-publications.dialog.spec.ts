@@ -350,6 +350,7 @@ describe('SchedulePublicationsDialogComponent', () => {
         creator_user_ids: [],
         dates: [jan(3)],
         draft_lead_days: 0,
+        per_day: 1,
       });
     });
 
@@ -370,6 +371,80 @@ describe('SchedulePublicationsDialogComponent', () => {
 
       expect(cmp.isLocked(jan(3))).toBeTrue();
       expect(cmp.toCreate()).toBe(0);
+    });
+  });
+
+  /**
+   * Сколько роликов в каждый день.
+   *
+   * День съёмки один, роликов из него выходит несколько, и раньше это
+   * было невыразимо: уникальность стояла по паре «креатор и день».
+   * Главное свойство числа — это ЦЕЛЬ, а не прибавка: повторная
+   * отправка той же формы приводит план к заданному числу и ничего не
+   * добавляет (сервер гасит уже стоящие места тем же ON CONFLICT,
+   * которым гасит двойной клик).
+   */
+  describe('роликов в день', () => {
+    it('число уезжает в запрос', () => {
+      const cmp = setup();
+      cmp.togglePicked('u1');
+      cmp.toggleDay(jan(5));
+      cmp.setPerDay(3);
+
+      cmp.create();
+
+      const [, req] = api.managerCreateBatch.calls.mostRecent().args;
+      expect(req.per_day).toBe(3);
+    });
+
+    it('счётчик считает места в дне, а не дни', () => {
+      const cmp = setup();
+      cmp.togglePicked('u1');
+      cmp.toggleDay(jan(5));
+      cmp.toggleDay(jan(7));
+      cmp.setPerDay(3);
+      expect(cmp.toCreate()).withContext('два дня по три ролика').toBe(6);
+    });
+
+    /**
+     * Уже стоящее вычитается по МЕСТАМ: в дне с одним роликом при цели в
+     * три добавятся два, а не три и не ноль.
+     */
+    it('добавится разница между целью и тем, что уже стоит', () => {
+      const cmp = setup(false, [
+        { creator_user_id: 'u1', due_date: jan(5), status: 'planned' },
+        { creator_user_id: 'u1', due_date: jan(5), status: 'planned' },
+      ]);
+      cmp.setPerDay(3);
+      expect(cmp.toCreate()).withContext('в дне два ролика из трёх').toBe(1);
+
+      cmp.setPerDay(2);
+      expect(cmp.toCreate()).withContext('план уже приведён к двум').toBe(0);
+    });
+
+    /** Отменённая освобождает место в дне — ровно как на сервере. */
+    it('отменённые места не занимают', () => {
+      const cmp = setup(false, [{ creator_user_id: 'u1', due_date: jan(5), status: 'cancelled' }]);
+      // Отмечаем руками: отменённая выкладка в текущий план не входит,
+      // и окно на ней не открывается — ни днём, ни человеком.
+      cmp.togglePicked('u1');
+      cmp.toggleDay(jan(5));
+      cmp.setPerDay(1);
+      expect(cmp.toCreate()).toBe(1);
+    });
+
+    /**
+     * Потолок тот же, что в базе и в сервисе. Отказ после нажатия
+     * читается как сбой, а не как потолок, поэтому не даём ввести.
+     */
+    it('больше десяти и меньше одного ввести нельзя', () => {
+      const cmp = setup();
+      cmp.setPerDay(99);
+      expect(cmp.perDay()).toBe(10);
+      cmp.setPerDay(0);
+      expect(cmp.perDay()).toBe(1);
+      cmp.setPerDay(-4);
+      expect(cmp.perDay()).toBe(1);
     });
   });
 });

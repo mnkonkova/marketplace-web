@@ -30,6 +30,7 @@ import {
   SubmittedLink,
   VideoRow,
 } from '@entities/publication/model/publication.types';
+import { collectErrorLabel } from '@entities/publication/lib/collect-error';
 import {
   PLATFORM_LABEL,
   PLATFORM_SHORT,
@@ -415,12 +416,14 @@ export class ProjectPublicationsComponent {
 
   public readonly gridRows = computed(() => {
     const days = this.gridDays();
-    const byCreator = new Map<string, Map<string, Publication>>();
+    // Список на день, а не одна выкладка: в одном дне съёмки роликов
+    // бывает несколько, и клетка обязана это показать — иначе второй
+    // ролик не виден нигде, хотя в отчёт он попадает.
+    const byCreator = new Map<string, Map<string, Publication[]>>();
     for (const p of this.ordered()) {
       const day = p.due_date.slice(0, 10);
-      const mine = byCreator.get(p.creator_user_id) ?? new Map<string, Publication>();
-      // В один день у креатора выкладка одна: уникальность держит база.
-      mine.set(day, p);
+      const mine = byCreator.get(p.creator_user_id) ?? new Map<string, Publication[]>();
+      mine.set(day, [...(mine.get(day) ?? []), p]);
       byCreator.set(p.creator_user_id, mine);
     }
     return this.creators().map((c) => ({
@@ -430,24 +433,46 @@ export class ProjectPublicationsComponent {
       avatar: c.avatar,
       burning: c.burning,
       cells: days.map((day) => {
-        const p = byCreator.get(c.user_id)?.get(day);
-        if (!p) return { day, state: '' as const, title: '', mark: '' };
-        const state = p.overdue
-          ? ('late' as const)
-          : p.status === 'done'
-            ? ('done' as const)
-            : p.status === 'partial'
-              ? ('partial' as const)
-              : ('planned' as const);
-        const mark =
-          state === 'done' ? '✓' : state === 'late' ? '!' : state === 'partial' ? '½' : '';
+        const pubs = byCreator.get(c.user_id)?.get(day) ?? [];
+        if (!pubs.length) return { day, state: '' as const, title: '', mark: '' };
+        const stateOf = (p: Publication) =>
+          p.overdue
+            ? ('late' as const)
+            : p.status === 'done'
+              ? ('done' as const)
+              : p.status === 'partial'
+                ? ('partial' as const)
+                : ('planned' as const);
+        // Состояние клетки — самое тревожное из роликов дня: день с
+        // просроченным роликом должен читаться как проблемный, даже
+        // если рядом два вышедших.
+        const alarm = { late: 3, planned: 2, partial: 1, done: 0 };
+        const state = pubs
+          .map(stateOf)
+          .reduce((worst, s) => (alarm[s] > alarm[worst] ? s : worst));
         const label = {
           done: 'вышел на всех площадках',
           late: 'просрочен',
           partial: 'вышел не везде',
           planned: 'в плане',
-        }[state];
-        return { day, state, title: `${c.display_name}, ${this.dayLabel(day)} — ${label}`, mark };
+        };
+        // Число вместо значка, когда роликов несколько: значок говорил
+        // бы про один из них, и про какой — неизвестно.
+        const mark =
+          pubs.length > 1
+            ? String(pubs.length)
+            : state === 'done'
+              ? '✓'
+              : state === 'late'
+                ? '!'
+                : state === 'partial'
+                  ? '½'
+                  : '';
+        const what =
+          pubs.length > 1
+            ? `${pubs.length} ролика: ${pubs.map((p) => label[stateOf(p)]).join(', ')}`
+            : label[state];
+        return { day, state, title: `${c.display_name}, ${this.dayLabel(day)} — ${what}`, mark };
       }),
     }));
   });
@@ -1005,6 +1030,46 @@ export class ProjectPublicationsComponent {
     });
   }
 
+  /**
+   * Идёт обход площадок прямо сейчас.
+   *
+   * Нужен один — на весь блок статистики: обход уходит пачкой, и
+   * показывать его по каждой строке значило бы обещать, что строки
+   * обновляются по отдельности.
+   */
+  public readonly statsRefreshing = signal(false);
+
+  /**
+   * Обновить просмотры по заходу в карточку.
+   *
+   * Отчёт показываем сразу, не дожидаясь обхода: цифры, пусть и
+   * вчерашние, лучше пустого экрана. Пока обход идёт, блок статистики
+   * помечен загрузкой, и когда цифры приходят — перечитываем отчёт.
+   *
+   * Кого обходить, решает сервер по возрасту ролика, поэтому звать это
+   * на каждом открытии безопасно: свежее своего шага он не трогает.
+   * Ошибки молчаливые намеренно — обновление не то действие, ради
+   * которого человек сюда пришёл, и красная плашка поверх живого
+   * отчёта говорила бы, что сломан он.
+   */
+  private refreshStats(id: string): void {
+    this.statsRefreshing.set(true);
+    this.pubApi.managerRefreshStats(id).subscribe({
+      next: (r) => {
+        this.statsRefreshing.set(false);
+        if (!r.saved) return;
+        this.pubApi.managerReport(id).subscribe({
+          next: (fresh) => this.report.set(fresh),
+          error: () => undefined,
+        });
+      },
+      error: () => this.statsRefreshing.set(false),
+    });
+  }
+
+  /** Подпись вместо нуля: почему по ссылке нет цифр. */
+  public readonly collectErrorLabel = collectErrorLabel;
+
   private reloadPublications(): void {
     this.loadPublications(this.projectID());
   }
@@ -1028,7 +1093,10 @@ export class ProjectPublicationsComponent {
       error: () => this.pubs.set([]),
     });
     this.pubApi.managerReport(id).subscribe({
-      next: (r) => this.report.set(r),
+      next: (r) => {
+        this.report.set(r);
+        this.refreshStats(id);
+      },
       error: () => this.report.set(null),
     });
     this.pubApi.managerProjectSettings(id).subscribe({

@@ -439,9 +439,19 @@
                           [href]="l.url"
                           target="_blank"
                           rel="noopener"
-                          [title]="platformLabel[p]"
+                          [title]="
+                            collectIssue(pub, p)
+                              ? platformLabel[p] + ' · ' + collectIssue(pub, p)
+                              : platformLabel[p]
+                          "
                           >{{ platformShort[p] }}@if (viewsOf(pub, p); as v) {
                           <b class="v">{{ digits(v) }}</b>
+                          } @else if (collectIssue(pub, p)) {
+                          <!-- Значок площадки без числа читается как «ноль
+                               просмотров». Это не ноль: цифр нет потому,
+                               что собрать их не вышло, и причина — в
+                               подсказке. -->
+                          <b class="v nd-mark">{{ collectIssue(pub, p) }}</b>
                           }</a
                         >
                         } @else {
@@ -842,9 +852,17 @@
           nzPlaceHolder="Сегодня или позже"
           [nzDisabledDate]="disabledAddDates"
         />
-        @if (addTaken(); as taken) {
+        @if (dayIsFull()) {
         <p class="taken">
-          На {{ taken.due_date | date: 'd MMMM' }} у вас уже есть выкладка — выберите другой день.
+          На этот день уже стоит {{ maxPerDay }} роликов — больше в один день не ставим.
+        </p>
+        } @else if (addSameDay()) {
+        <!-- Не отказ, а факт: ролик встанет в этот же день следующим.
+             Сказать это надо здесь, иначе человек решит, что промахнулся
+             датой, и уйдёт искать свободный день, которого не требуется. -->
+        <p class="sub" style="margin-top: 10px">
+          На этот день у вас уже {{ addSameDay() }} {{ plural(addSameDay(), 'ролик', 'ролика',
+          'роликов') }} — этот добавится к ним.
         </p>
         } @if (!noChecklist()) {
         <!-- Чеклист у проекта подключён: сдавать этот ролик придётся по

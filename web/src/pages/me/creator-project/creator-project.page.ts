@@ -44,9 +44,11 @@ import {
 import {
   isDisabledDay,
   isSelfAdded,
-  takenOn,
+  countOn,
+  MAX_PER_DAY,
   ymdLocal,
 } from '@entities/publication/lib/extra-publication';
+import { collectErrorLabel } from '@entities/publication/lib/collect-error';
 import { formatMoney, groupDigits } from '@entities/billing/lib/money';
 import { periodTitle } from '@entities/billing/lib/period';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
@@ -653,12 +655,20 @@ export class CreatorProjectPage {
     });
   });
 
-  /** Состояние дня в календаре: вышел, просрочен, в плане, назначен. */
+  /**
+   * Состояние дня в календаре: вышел, просрочен, в плане, назначен.
+   *
+   * Из нескольких роликов дня побеждает САМЫЙ ТРЕВОЖНЫЙ, а не самый
+   * готовый. В одном дне съёмки роликов бывает несколько, и день, где
+   * первый вышел, а второй просрочен, — это день, в который надо
+   * смотреть; зелёная точка на этом месте говорила бы обратное.
+   */
   private dayState(pubs: Publication[], date: string, today: string): string {
     if (!pubs.length) return '';
-    if (pubs.some((p) => p.status === 'done' || p.status === 'closed_manually')) return 'd';
     if (pubs.some((p) => p.overdue)) return 'l';
-    if (date < today) return 'l';
+    if (date < today && pubs.some((p) => p.status !== 'done' && p.status !== 'closed_manually'))
+      return 'l';
+    if (pubs.some((p) => p.status === 'done' || p.status === 'closed_manually')) return 'd';
     return 'p';
   }
 
@@ -1015,6 +1025,22 @@ export class CreatorProjectPage {
     return row ? row.views : null;
   }
 
+  /**
+   * Почему по этой площадке нет цифры.
+   *
+   * Пусто — цифра есть либо её ещё не собирали. Непусто значит «мы
+   * спросили, и нам отказали»: площадка не собирается, ролик удалён.
+   * Без этой подписи значок площадки без числа читается как «ролик
+   * никто не посмотрел» — то есть как работа креатора, хотя это наша.
+   */
+  public collectIssue(pub: Publication, platform: Platform): string {
+    const row = this.report()?.videos_table.find(
+      (r) => r.publication_id === pub.id && r.platform === platform,
+    );
+    if (!row?.collect_error || row.views) return '';
+    return collectErrorLabel(row.collect_error);
+  }
+
   // ---- сдача ссылок ----
 
   public readonly submitFor = signal<Publication | null>(null);
@@ -1344,22 +1370,28 @@ export class CreatorProjectPage {
   public readonly disabledAddDates = (current: Date): boolean => isDisabledDay(current);
 
   /**
-   * Своя выкладка на выбранный день уже есть.
+   * Сколько своих роликов уже стоит на выбранный день.
    *
-   * Сервер ответит тем же (409 day_taken), но сказать это можно сразу и
-   * прямо в окне: список своих выкладок у страницы уже загружен.
+   * Не запрет, а предупреждение: второй ролик в тот же день — это норма
+   * (день съёмки один, роликов из него выходит несколько), и сервер
+   * поставит его следующим номером. Запрет один — когда места в дне
+   * кончились, и о нём лучше сказать до нажатия.
    */
-  public readonly addTaken = computed(() => {
+  public readonly addSameDay = computed(() => {
     const d = this.addDate();
-    return d ? takenOn(this.items(), ymdLocal(d)) : null;
+    return d ? countOn(this.items(), ymdLocal(d)) : 0;
   });
+
+  public readonly dayIsFull = computed(() => this.addSameDay() >= MAX_PER_DAY);
+
+  public readonly maxPerDay = MAX_PER_DAY;
 
   /** Сколько в чеклисте обязательных пунктов — их не обойти при сдаче. */
   public readonly requiredItems = computed(
     () => this.checklist().filter((i) => i.is_required).length,
   );
 
-  public readonly canAdd = computed(() => !!this.addDate() && !this.addTaken());
+  public readonly canAdd = computed(() => !!this.addDate() && !this.dayIsFull());
 
   public openAddPublication(): void {
     this.addDate.set(null);

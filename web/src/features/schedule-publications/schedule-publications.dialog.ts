@@ -218,9 +218,41 @@ function key(d: Date): string {
         </div>
       }
 
-      <!-- Считаем то, что добавится, а не «люди × дни»: почти всё в этом
-           произведении уже стоит в плане, и обещать 60 там, где заведётся
-           4, значит соврать про объём работы. -->
+      <!-- Роликов в день. День съёмки один, роликов из него выходит
+           несколько, и раньше это было невыразимо: уникальность стояла
+           по паре «креатор и день», и менеджер разносил ролики по
+           соседним датам, к работе отношения не имевшим. Отчёт потом
+           считал выработку по этим выдуманным дням.
+
+           Рядом с черновиком, а не в календаре: это свойство всей
+           пачки, как и срок черновика, а не отдельного дня. -->
+      <div class="switchrow">
+        <span class="tx">
+          <b>Роликов в каждый день</b>
+          <span>
+            @if (perDay() === 1) {
+              Один ролик в день. Поставьте больше, если в один съёмочный день выходит несколько.
+            } @else {
+              По {{ perDay() }} ролика в каждый отмеченный день. Это цель, а не прибавка: повторная
+              отправка приведёт план к этому числу и ничего не продублирует.
+            }
+          </span>
+        </span>
+        <input
+          class="lead"
+          type="number"
+          min="1"
+          max="10"
+          [ngModel]="perDay()"
+          (ngModelChange)="setPerDay($event)"
+          name="perday"
+          aria-label="Роликов в каждый день"
+        />
+      </div>
+
+      <!-- Считаем то, что добавится, а не «люди × дни × ролики»: почти
+           всё в этом произведении уже стоит в плане, и обещать 60 там,
+           где заведётся 4, значит соврать про объём работы. -->
       <div class="summarybar">
         <b>{{ toCreate() }}</b>
         <span class="muted">{{ toCreate() === 1 ? 'новая выкладка' : 'новых выкладок' }}</span>
@@ -332,21 +364,29 @@ export class SchedulePublicationsDialogComponent {
   public readonly weekdays = WEEKDAYS;
 
   /**
-   * Что уже стоит в плане: дата → кто на неё назначен.
+   * Что уже стоит в плане: дата → владелец → СКОЛЬКО роликов.
    *
-   * Отменённые не в счёт — их дата свободна, и ставить её заново можно.
+   * Счётчик, а не просто «назначен»: в одном дне роликов бывает
+   * несколько, и ответ на вопрос «сколько ещё добавится» — это разница
+   * между заданным числом и тем, что уже стоит. Пока здесь было
+   * множество, любой второй ролик в дне был невидим, и окно обещало
+   * добавить ноль там, где добавило бы два.
+   *
+   * Отменённые не в счёт — их место в дне свободно, и ставить его
+   * заново можно.
    */
-  private readonly scheduled = new Map<string, Set<string>>(
+  private readonly scheduled = new Map<string, Map<string, number>>(
     (() => {
-      const out = new Map<string, Set<string>>();
+      const out = new Map<string, Map<string, number>>();
       for (const p of panelData<SchedulePublicationsData>().existing ?? []) {
         if (p.status === 'cancelled') continue;
         const day = p.due_date.slice(0, 10);
-        const set = out.get(day) ?? new Set<string>();
+        const byOwner = out.get(day) ?? new Map<string, number>();
         // У проекта без креаторов владельца нет: ключом идёт та же
         // пустая строка, что и в picked() ниже.
-        set.add(p.creator_user_id ?? '');
-        out.set(day, set);
+        const owner = p.creator_user_id ?? '';
+        byOwner.set(owner, (byOwner.get(owner) ?? 0) + 1);
+        out.set(day, byOwner);
       }
       return out;
     })(),
@@ -383,6 +423,29 @@ export class SchedulePublicationsDialogComponent {
 
   public draftLeadDays = 2;
 
+  /**
+   * Сколько роликов ставить на каждый отмеченный день.
+   *
+   * Сигналом, а не обычным полем: от него считается «сколько добавится»,
+   * и обычное поле не перерисовывало бы этот счётчик.
+   *
+   * Число — ЦЕЛЬ, а не прибавка. Повторная отправка той же формы
+   * приводит план к заданному числу и ничего не добавляет: сервер
+   * гасит уже стоящие места тем же ON CONFLICT, которым гасит двойной
+   * клик. Поэтому «3» означает «в каждом из этих дней три ролика», а не
+   * «добавить по три к тому, что есть».
+   */
+  public readonly perDay = signal(1);
+
+  public setPerDay(v: number | string): void {
+    const n = Math.trunc(Number(v));
+    if (!Number.isFinite(n)) return;
+    // Потолок тот же, что в базе (CHECK day_slot BETWEEN 1 AND 10) и в
+    // сервисе: десять роликов в день — это уже опечатка в поле, и
+    // отказывать после отправки хуже, чем не дать ввести.
+    this.perDay.set(Math.min(Math.max(n, 1), 10));
+  }
+
   /** Какой месяц показан в календаре. Проект живёт дольше одного. */
   private readonly cursor = signal(startOfMonth(new Date()));
 
@@ -394,7 +457,8 @@ export class SchedulePublicationsDialogComponent {
     // лежит в базе у таких выкладок.
     const creators = new Set<string>(this.data.crew ? [] : ['']);
     if (this.data.crew) {
-      for (const ids of this.scheduled.values()) for (const id of ids) creators.add(id);
+      for (const byOwner of this.scheduled.values())
+        for (const id of byOwner.keys()) creators.add(id);
     }
     this.picked.set(creators);
     this.days.set(new Set(this.scheduled.keys()));
@@ -452,7 +516,7 @@ export class SchedulePublicationsDialogComponent {
     return out;
   });
 
-  public readonly total = computed(() => this.picked().size * this.days().size);
+  public readonly total = computed(() => this.picked().size * this.days().size * this.perDay());
 
   /**
    * Сколько выкладок реально добавится.
@@ -464,9 +528,14 @@ export class SchedulePublicationsDialogComponent {
    */
   public readonly toCreate = computed(() => {
     let n = 0;
+    const perDay = this.perDay();
     for (const day of this.days()) {
       const already = this.scheduled.get(day);
-      for (const id of this.picked()) if (!already?.has(id)) n += 1;
+      for (const id of this.picked()) {
+        // Разница, а не «есть или нет»: в дне, где стоит один ролик, при
+        // цели в три добавятся два.
+        n += Math.max(perDay - (already?.get(id) ?? 0), 0);
+      }
     }
     return n;
   });
@@ -490,7 +559,8 @@ export class SchedulePublicationsDialogComponent {
   public isPartial(date: string): boolean {
     const already = this.scheduled.get(date);
     if (!already) return false;
-    for (const id of this.picked()) if (!already.has(id)) return true;
+    const perDay = this.perDay();
+    for (const id of this.picked()) if ((already.get(id) ?? 0) < perDay) return true;
     return false;
   }
 
@@ -579,6 +649,7 @@ export class SchedulePublicationsDialogComponent {
       creator_user_ids: this.data.crew ? [...this.picked()] : [],
       dates: [...this.days()].sort(),
       draft_lead_days: this.draftOn() ? Number(this.draftLeadDays) || 0 : 0,
+      per_day: this.perDay(),
     };
     this.busy.set(true);
     this.api.managerCreateBatch(this.data.projectID, req).subscribe({

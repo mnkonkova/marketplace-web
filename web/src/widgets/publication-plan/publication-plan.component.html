@@ -89,15 +89,26 @@
                   [attr.aria-label]="c.hint"
                   (click)="pick(row.person, c)"
                 >
-                  @switch (c.state) {
-                    @case ('d') {
-                      ✓
-                    }
-                    @case ('l') {
-                      !
-                    }
-                    @case ('r') {
-                      ?
+                  <!-- Цифра, а не значок, когда роликов в дне несколько:
+                       значок говорил бы про один из них, и про какой —
+                       неизвестно. Цвет при этом остаётся по самому
+                       тревожному: день с просроченным роликом должен
+                       быть виден как проблемный, даже если рядом два
+                       вышедших. Что именно в дне — в подсказке и в
+                       списке по нажатию. -->
+                  @if (c.pubs.length > 1) {
+                    {{ c.pubs.length }}
+                  } @else {
+                    @switch (c.state) {
+                      @case ('d') {
+                        ✓
+                      }
+                      @case ('l') {
+                        !
+                      }
+                      @case ('r') {
+                        ?
+                      }
                     }
                   }
                 </button>
@@ -183,6 +194,9 @@
                 (click)="pick(row.person, c)"
               >
                 {{ c.day }}
+                @if (c.pubs.length > 1) {
+                  <sup class="cnt">{{ c.pubs.length }}</sup>
+                }
               </button>
             }
           }
@@ -219,12 +233,7 @@
          остаётся строкой под таблицей — чтобы видеть соседние дни, пока
          выбираешь новый. -->
     @if (touch) {
-      <app-sheet
-        [open]="true"
-        [title]="sel.creator.display_name + ' · ' + human(sel.cell.date)"
-        [note]="editNote"
-        (closed)="close()"
-      >
+      <app-sheet [open]="true" [title]="cellTitle(sel)" [note]="editNote" (closed)="close()">
         <div class="edit in-sheet">
           <ng-container
             [ngTemplateOutlet]="editTpl"
@@ -234,7 +243,7 @@
       </app-sheet>
     } @else {
       <div class="edit">
-        <b>{{ sel.creator.display_name }} · {{ human(sel.cell.date) }}</b>
+        <b>{{ cellTitle(sel) }}</b>
         <ng-container [ngTemplateOutlet]="editTpl" [ngTemplateOutletContext]="{ $implicit: sel }" />
         <span class="faint edit-note">{{ editNote }}</span>
       </div>
@@ -243,9 +252,103 @@
 }
 
 <!-- Что можно сделать с клеткой. Один шаблон на лист и на строку:
-     две копии разошлись бы на первой же правке. -->
+     две копии разошлись бы на первой же правке.
+
+     Три состояния, и они про разные вопросы. Пустой день — «поставить
+     выкладку». День с одним роликом — сразу действия по нему: список из
+     одного пункта это лишний шаг на пути к кнопке «Перенести». День с
+     несколькими — сперва «какой из них», потому что переносят и снимают
+     конкретный ролик, а не день. -->
 <ng-template #editTpl let-sel>
-  @if (!sel.cell.pub) {
+  @if (pickedPub(); as pub) {
+    @if (sel.cell.pubs.length > 1) {
+      <button type="button" class="btn sm back" (click)="backToDay()">
+        ← все {{ sel.cell.pubs.length }} ролика дня
+      </button>
+      <b class="which">Ролик {{ pub.day_slot || 1 }}</b>
+    }
+    @if (pub.status === 'planned' && !pub.links.length) {
+      <label class="move">
+        Перенести на
+        <input type="date" [(ngModel)]="moveTo" [min]="today" />
+      </label>
+      @if (pub.pending_date_request; as req) {
+        <span class="muted req-note">
+          Креатор просит перенести на {{ human(req.requested_date) }}
+          @if (req.reason) {
+            — «{{ req.reason }}»
+          }
+        </span>
+      }
+      <div class="sheet-acts">
+        <button type="button" class="btn sm dark" [disabled]="busy()" (click)="move()">
+          Перенести
+        </button>
+        <!-- Разовый пинг по этой выкладке. Колокольчик в строке — про
+             «каждый раз накануне», а здесь менеджер дёргает по одной,
+             глядя на конкретный день. Там, где ролик принадлежит
+             проекту, напоминать некому — кнопки нет. -->
+        @if (crew()) {
+          <button type="button" class="btn sm" [disabled]="busy()" (click)="remindPicked()">
+            Напомнить
+          </button>
+        }
+        <button type="button" class="btn sm" [disabled]="busy()" (click)="cancel()">
+          Снять с плана
+        </button>
+        <!-- Второй ролик в тот же день. Кнопка здесь, а не только в
+             списке дня: когда ролик в дне один, списка не показываем, и
+             добраться до «ещё одного» было бы нечем. -->
+        @if (sel.cell.date >= today) {
+          <button type="button" class="btn sm" [disabled]="busy()" (click)="addMore()">
+            + ролик в этот день
+          </button>
+        }
+        <button type="button" class="btn sm" (click)="close()">Закрыть</button>
+      </div>
+    } @else {
+      <span class="muted grow"> По этой выкладке уже сдавали ссылки — дату у неё не двигают. </span>
+      <div class="sheet-acts">
+        <button type="button" class="btn sm dark" (click)="openReview()">Открыть проверку</button>
+        @if (sel.cell.date >= today) {
+          <button type="button" class="btn sm" [disabled]="busy()" (click)="addMore()">
+            + ролик в этот день
+          </button>
+        }
+        <button type="button" class="btn sm" (click)="close()">Закрыть</button>
+      </div>
+    }
+  } @else if (sel.cell.pubs.length) {
+    <!-- Список дня. Состояние у каждого своё: день съёмки один, а
+         судьба роликов из него расходится — один вышел, второй
+         просрочен, третий на проверке. -->
+    <ul class="day-list">
+      @for (p of sel.cell.pubs; track p.id; let i = $index) {
+        <li>
+          <button type="button" class="dl" (click)="pickPub(p)">
+            <span
+              class="c"
+              [class.d]="stateOfPub(p) === 'd'"
+              [class.p]="stateOfPub(p) === 'p'"
+              [class.l]="stateOfPub(p) === 'l'"
+              [class.r]="stateOfPub(p) === 'r'"
+              aria-hidden="true"
+            ></span>
+            <span class="grow">{{ pubLabel(p, i) }}</span>
+            <span class="faint">правка →</span>
+          </button>
+        </li>
+      }
+    </ul>
+    <div class="sheet-acts">
+      @if (sel.cell.date >= today) {
+        <button type="button" class="btn sm dark" [disabled]="busy()" (click)="addMore()">
+          + ролик в этот день
+        </button>
+      }
+      <button type="button" class="btn sm" (click)="close()">Закрыть</button>
+    </div>
+  } @else {
     @if (sel.cell.date < today) {
       <span class="muted grow">Этот день уже прошёл — ставим на сегодня или вперёд.</span>
     }
@@ -257,43 +360,6 @@
       <button type="button" class="btn sm dark" [disabled]="busy()" (click)="add()">
         Поставить выкладку
       </button>
-      <button type="button" class="btn sm" (click)="close()">Закрыть</button>
-    </div>
-  } @else if (sel.cell.pub.status === 'planned' && !sel.cell.pub.links.length) {
-    <label class="move">
-      Перенести на
-      <input type="date" [(ngModel)]="moveTo" [min]="today" />
-    </label>
-    @if (sel.cell.pub.pending_date_request; as req) {
-      <span class="muted req-note">
-        Креатор просит перенести на {{ human(req.requested_date) }}
-        @if (req.reason) {
-          — «{{ req.reason }}»
-        }
-      </span>
-    }
-    <div class="sheet-acts">
-      <button type="button" class="btn sm dark" [disabled]="busy()" (click)="move()">
-        Перенести
-      </button>
-      <!-- Разовый пинг по этой выкладке. Колокольчик в строке — про
-           «каждый раз накануне», а здесь менеджер дёргает по одной,
-           глядя на конкретный день. Там, где ролик принадлежит
-           проекту, напоминать некому — кнопки нет. -->
-      @if (crew()) {
-        <button type="button" class="btn sm" [disabled]="busy()" (click)="remindPicked()">
-          Напомнить
-        </button>
-      }
-      <button type="button" class="btn sm" [disabled]="busy()" (click)="cancel()">
-        Снять с плана
-      </button>
-      <button type="button" class="btn sm" (click)="close()">Закрыть</button>
-    </div>
-  } @else {
-    <span class="muted grow"> По этой выкладке уже сдавали ссылки — дату у неё не двигают. </span>
-    <div class="sheet-acts">
-      <button type="button" class="btn sm dark" (click)="openReview()">Открыть проверку</button>
       <button type="button" class="btn sm" (click)="close()">Закрыть</button>
     </div>
   }

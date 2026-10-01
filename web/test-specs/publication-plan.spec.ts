@@ -147,14 +147,14 @@ describe('PublicationPlanComponent: правка плана по одной кл
   it('отменённая выкладка не занимает клетку', () => {
     const { cmp } = setup([pub({ due_date: `${MONTH}-07`, status: 'cancelled' })]);
     expect(cellOn(cmp, '07').state).toBe('');
-    expect(cellOn(cmp, '07').pub).toBeUndefined();
+    expect(cellOn(cmp, '07').pubs).toEqual([]);
   });
 
   it('пустая клетка ставит выкладку этому креатору на этот день', () => {
     const { cmp, api } = setup();
     // Месяц сетки — сентябрь 2026, и день выбираем заведомо будущий:
     // на прошедший сервер всё равно ответит отказом.
-    const future = cmp.rows()[0].cells.find((c) => !c.pub && c.date >= cmp.today)!;
+    const future = cmp.rows()[0].cells.find((c) => !c.pubs.length && c.date >= cmp.today)!;
     expect(future).withContext('в следующем месяце есть свободный день').toBeDefined();
     cmp.pick(person(), future);
     cmp.add();
@@ -411,5 +411,172 @@ describe('PublicationPlanComponent: колокольчик «напомнить 
   it('без медианы подписи нет вовсе', () => {
     const { cmp } = setup([person()]);
     expect(cmp.medianLabel(cmp.rows()[0])).toBe('');
+  });
+});
+
+/**
+ * Несколько роликов в один день.
+ *
+ * День съёмки один, роликов из него выходит несколько — и до этого план
+ * такого сказать не умел: в клетке лежала одна выкладка, и второй ролик
+ * того же дня не был виден нигде, хотя в отчёт попадал. Менеджер
+ * разносил ролики по соседним датам, к работе отношения не имевшим, и
+ * выработка считалась по этим выдуманным дням.
+ *
+ * Здесь проверяется то, за что отвечает клетка: сколько роликов она
+ * показывает, какое из состояний выбирает и как из неё добраться до
+ * конкретного ролика.
+ */
+describe('PublicationPlanComponent: несколько роликов в день', () => {
+  function monthShift(by: number): string {
+    const d = new Date();
+    const m = new Date(d.getFullYear(), d.getMonth() + by, 1);
+    return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  const MONTH = monthShift(1);
+  const DAY = `${MONTH}-10`;
+
+  function person(): ProjectPerson {
+    return { user_id: 'c1', display_name: 'Аня Ким', added_at: '2026-09-01T00:00:00Z' };
+  }
+
+  function pub(over: Partial<Publication> = {}): Publication {
+    return {
+      id: 'p1',
+      project_id: 'pr1',
+      creator_user_id: 'c1',
+      due_date: DAY,
+      status: 'planned',
+      created_at: '2026-09-01T00:00:00Z',
+      updated_at: '2026-09-01T00:00:00Z',
+      links: [],
+      overdue: false,
+      views: 0,
+      likes: 0,
+      comments: 0,
+      ...over,
+    } as Publication;
+  }
+
+  let api: jasmine.SpyObj<PublicationApi>;
+
+  function setup(pubs: Publication[]) {
+    TestBed.resetTestingModule();
+    api = jasmine.createSpyObj<PublicationApi>('pubApi', [
+      'managerAddPublication',
+      'managerMoveDueDate',
+      'managerCancelPublication',
+      'managerRemind',
+      'managerSetCreatorReminder',
+    ]);
+    api.managerAddPublication.and.returnValue(of(pub()) as never);
+    api.managerMoveDueDate.and.returnValue(of(pub()) as never);
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PublicationApi, useValue: api },
+        {
+          provide: NzMessageService,
+          useValue: jasmine.createSpyObj('msg', ['success', 'error', 'info']),
+        },
+        { provide: NzModalService, useValue: jasmine.createSpyObj('modal', ['confirm', 'create']) },
+      ],
+    });
+    TestBed.overrideComponent(PublicationPlanComponent, { set: { template: '' } });
+    const fixture = TestBed.createComponent(PublicationPlanComponent);
+    fixture.componentRef.setInput('projectId', 'pr1');
+    fixture.componentRef.setInput('creators', [person()]);
+    fixture.componentRef.setInput('publications', pubs);
+    fixture.detectChanges();
+    const cmp = fixture.componentInstance;
+    cmp.month.set(MONTH);
+    return cmp;
+  }
+
+  function cell(cmp: PublicationPlanComponent) {
+    return cmp.rows()[0].cells.find((c) => c.date === DAY)!;
+  }
+
+  it('все ролики дня лежат в одной клетке, по номеру в дне', () => {
+    const cmp = setup([
+      pub({ id: 'b', day_slot: 2 }),
+      pub({ id: 'a', day_slot: 1 }),
+      pub({ id: 'c', day_slot: 3 }),
+    ]);
+    expect(cell(cmp).pubs.map((p) => p.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  /**
+   * Самое тревожное из состояний, а не первое по порядку.
+   *
+   * День, в котором один ролик вышел, а второй просрочен, — это день, в
+   * который надо смотреть. Галочка на этом месте говорила бы обратное.
+   */
+  it('клетка показывает самое тревожное состояние дня', () => {
+    const cmp = setup([
+      pub({ id: 'a', day_slot: 1, status: 'done' }),
+      pub({ id: 'b', day_slot: 2, overdue: true }),
+    ]);
+    expect(cell(cmp).state).toBe('l');
+  });
+
+  it('в подсказке перечислены все ролики дня', () => {
+    const cmp = setup([
+      pub({ id: 'a', day_slot: 1, status: 'done' }),
+      pub({ id: 'b', day_slot: 2 }),
+    ]);
+    expect(cell(cmp).hint).toContain('2 ролика');
+    expect(cell(cmp).hint).toContain('вышел');
+    expect(cell(cmp).hint).toContain('в плане');
+  });
+
+  /**
+   * Один ролик — сразу действия по нему: список из одного пункта это
+   * лишний шаг на пути к кнопке «Перенести».
+   */
+  it('день с одним роликом открывается прямо на нём', () => {
+    const cmp = setup([pub({ id: 'a', day_slot: 1 })]);
+    cmp.pick(person(), cell(cmp));
+    expect(cmp.pickedPub()?.id).toBe('a');
+  });
+
+  it('день с несколькими открывается списком, а ролик выбирают из него', () => {
+    const cmp = setup([pub({ id: 'a', day_slot: 1 }), pub({ id: 'b', day_slot: 2 })]);
+    const c = cell(cmp);
+    cmp.pick(person(), c);
+    expect(cmp.pickedPub()).withContext('сперва спрашиваем, какой из роликов').toBeNull();
+
+    cmp.pickPub(c.pubs[1]);
+    expect(cmp.pickedPub()?.id).toBe('b');
+
+    cmp.backToDay();
+    expect(cmp.pickedPub()).toBeNull();
+  });
+
+  /** Перенос и снятие относятся к ВЫБРАННОМУ ролику, а не к дню. */
+  it('перенос двигает выбранный ролик, а не первый в дне', () => {
+    const cmp = setup([pub({ id: 'a', day_slot: 1 }), pub({ id: 'b', day_slot: 2 })]);
+    const c = cell(cmp);
+    cmp.pick(person(), c);
+    cmp.pickPub(c.pubs[1]);
+    cmp.moveTo = `${MONTH}-12`;
+    cmp.move();
+    expect(api.managerMoveDueDate).toHaveBeenCalledWith('b', `${MONTH}-12`);
+  });
+
+  /** Номер в дне ставит сервер — мы просим ещё один ролик на ту же дату. */
+  it('добавляет ещё один ролик в тот же день', () => {
+    const cmp = setup([pub({ id: 'a', day_slot: 1 })]);
+    cmp.pick(person(), cell(cmp));
+    cmp.addMore();
+    expect(api.managerAddPublication).toHaveBeenCalledWith('pr1', 'c1', DAY);
+  });
+
+  it('подпись клетки говорит, сколько в дне роликов', () => {
+    const cmp = setup([pub({ id: 'a', day_slot: 1 }), pub({ id: 'b', day_slot: 2 })]);
+    cmp.pick(person(), cell(cmp));
+    expect(cmp.cellTitle(cmp.picked()!)).toContain('2 ролика');
   });
 });

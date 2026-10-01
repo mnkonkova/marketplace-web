@@ -28,7 +28,14 @@ import { isTouchDevice, prefersSheet } from '@shared/lib/touch';
 interface Cell {
   date: string;
   day: number;
-  /** '' пусто · p в плане · d вышел · l просрочен · r на проверке */
+  /**
+   * Состояние клетки — САМОЕ ТРЕВОЖНОЕ из роликов этого дня.
+   *
+   * '' пусто · p в плане · d вышел · l просрочен · r на проверке.
+   * В дне роликов бывает несколько, и показывать надо то, что требует
+   * внимания: день с просроченным и вышедшим роликом — это день, в
+   * который надо смотреть, а галочка сказала бы обратное.
+   */
   state: '' | 'p' | 'd' | 'l' | 'r';
   today: boolean;
   weekend: boolean;
@@ -36,7 +43,14 @@ interface Cell {
   periodEnd: boolean;
   /** Последняя выкладка периода — ею период и кончается по работе. */
   lastOfPeriod: boolean;
-  pub?: Publication;
+  /**
+   * Все ролики этого дня, по номеру в дне.
+   *
+   * Список, а не один ролик: пока здесь лежала одна выкладка, второй
+   * ролик того же дня не был виден в плане вообще — ни клеткой, ни
+   * цифрой, — хотя на сервере он есть и в отчёт попадает.
+   */
+  pubs: Publication[];
   hint: string;
 }
 
@@ -230,25 +244,35 @@ export class PublicationPlanComponent {
 
   public readonly rows = computed<Row[]>(() => {
     const today = this.dayKey(new Date());
-    const byKey = new Map<string, Publication>();
+    const byKey = new Map<string, Publication[]>();
     for (const p of this.publications()) {
       if (p.status === 'cancelled') continue;
-      byKey.set(`${this.ownerOf(p)}|${p.due_date.slice(0, 10)}`, p);
+      const key = `${this.ownerOf(p)}|${p.due_date.slice(0, 10)}`;
+      const list = byKey.get(key) ?? [];
+      list.push(p);
+      byKey.set(key, list);
+    }
+    // Внутри дня — по номеру: это порядок, в котором ролики заводили, и
+    // он же порядок, в котором их видно в списке дня. Без сортировки
+    // «Ролик 2» мог оказаться первым, и ссылаться на него голосом
+    // («сними второй») стало бы нельзя.
+    for (const list of byKey.values()) {
+      list.sort((a, b) => (a.day_slot ?? 1) - (b.day_slot ?? 1));
     }
 
     return this.owners().map((person) => {
       const cells = this.days().map<Cell>((d) => {
-        const pub = byKey.get(`${person.user_id}|${d.date}`);
+        const pubs = byKey.get(`${person.user_id}|${d.date}`) ?? [];
         return {
           date: d.date,
           day: d.num,
-          state: this.stateOf(pub),
+          state: this.stateOf(pubs),
           today: d.date === today,
           weekend: d.weekend,
           periodEnd: d.periodEnd,
-          lastOfPeriod: !!pub && d.date === this.lastOfPeriod(),
-          pub,
-          hint: this.hintOf(person.display_name, d.date, pub),
+          lastOfPeriod: pubs.length > 0 && d.date === this.lastOfPeriod(),
+          pubs,
+          hint: this.hintOf(person.display_name, d.date, pubs),
         };
       });
       const mine = this.publications().filter(
@@ -267,37 +291,73 @@ export class PublicationPlanComponent {
     });
   });
 
-  /** Состояние выкладки словом — для подсказки клетки. */
-  private stateWord(pub: Publication): string {
+  /** Состояние выкладки словом — для подсказки клетки и списка дня. */
+  public stateWord(pub: Publication): string {
     if (pub.status === 'done') return 'вышел';
     if (pub.status === 'closed_manually') return 'закрыт вручную';
     if (pub.overdue) return 'просрочен';
     return pub.links.length ? 'сдан, ждёт проверки' : 'в плане';
   }
 
-  private stateOf(pub?: Publication): Cell['state'] {
-    if (!pub) return '';
+  /** Состояние одного ролика. */
+  public stateOfPub(pub: Publication): Exclude<Cell['state'], ''> {
     if (pub.status === 'done' || pub.status === 'closed_manually') return 'd';
     if (pub.review && pub.review.status !== 'accepted' && pub.links.length) return 'r';
     if (pub.overdue) return 'l';
     return 'p';
   }
 
-  private hintOf(name: string, date: string, pub?: Publication): string {
+  /**
+   * Порядок тревожности состояний: просрочка важнее проверки, проверка
+   * важнее плана, план важнее готового.
+   *
+   * По нему клетка выбирает, что показать за весь день. Числом, а не
+   * сравнением по месту в массиве: порядок — это решение, и оно должно
+   * читаться одной строкой.
+   */
+  private static readonly ALARM: Record<Exclude<Cell['state'], ''>, number> = {
+    l: 3,
+    r: 2,
+    p: 1,
+    d: 0,
+  };
+
+  private stateOf(pubs: readonly Publication[]): Cell['state'] {
+    let worst: Cell['state'] = '';
+    for (const p of pubs) {
+      const s = this.stateOfPub(p);
+      if (worst === '' || PublicationPlanComponent.ALARM[s] > PublicationPlanComponent.ALARM[worst])
+        worst = s;
+    }
+    return worst;
+  }
+
+  private hintOf(name: string, date: string, pubs: readonly Publication[]): string {
     const when = `${date.slice(8, 10)}.${date.slice(5, 7)}`;
     const tail = date === this.lastOfPeriod() ? ' · последняя выкладка периода' : '';
-    if (!pub) return `${name}, ${when} — свободно, поставить выкладку`;
-    if (tail) return `${name}, ${when} — ${this.stateWord(pub)}${tail}`;
-    if (pub.status === 'done') return `${name}, ${when} — вышел`;
-    if (pub.status === 'closed_manually') return `${name}, ${when} — закрыт вручную`;
-    if (pub.overdue) return `${name}, ${when} — просрочен`;
-    if (pub.links.length) return `${name}, ${when} — сдан, ждёт проверки`;
-    return `${name}, ${when} — в плане`;
+    if (!pubs.length) return `${name}, ${when} — свободно, поставить выкладку`;
+    // Несколько роликов в дне: перечисляем состояния, иначе подсказка
+    // про «просрочен» молчала бы о том, что рядом два вышедших.
+    if (pubs.length > 1) {
+      const words = pubs.map((p, i) => `${i + 1}) ${this.stateWord(p)}`).join(', ');
+      return `${name}, ${when} — ${pubs.length} ролика: ${words}${tail}`;
+    }
+    return `${name}, ${when} — ${this.stateWord(pubs[0])}${tail}`;
   }
 
   // ---- выбранная клетка ----
 
   public readonly picked = signal<{ creator: ProjectPerson; cell: Cell } | null>(null);
+
+  /**
+   * Какой ролик дня правим. null — показываем список дня.
+   *
+   * Отдельно от picked, потому что это два разных вопроса: «какой день»
+   * выбирают клеткой, «какой ролик в нём» — списком. Когда в дне ролик
+   * один, список не нужен и ставится сразу он: лишний шаг на пути к
+   * кнопке «Перенести» — это тот же план, только медленнее.
+   */
+  public readonly pickedPub = signal<Publication | null>(null);
 
   /** Куда переносим: дата в поле правки. */
   public moveTo = '';
@@ -332,11 +392,29 @@ export class PublicationPlanComponent {
     const cur = this.picked();
     if (cur && cur.creator.user_id === person.user_id && cur.cell.date === cell.date) {
       this.picked.set(null);
+      this.pickedPub.set(null);
       return;
     }
     this.picked.set({ creator: person, cell });
+    this.pickedPub.set(cell.pubs.length === 1 ? cell.pubs[0] : null);
     this.moveTo = cell.date;
     this.addOn = cell.date < this.today ? this.today : cell.date;
+  }
+
+  /** Открыть правку одного ролика из списка дня. */
+  public pickPub(pub: Publication): void {
+    this.pickedPub.set(pub);
+    this.moveTo = pub.due_date.slice(0, 10);
+  }
+
+  /** Вернуться из правки ролика к списку дня. */
+  public backToDay(): void {
+    this.pickedPub.set(null);
+  }
+
+  /** Подпись ролика в списке дня: «Ролик 2 · в плане». */
+  public pubLabel(pub: Publication, index: number): string {
+    return `Ролик ${pub.day_slot ?? index + 1} · ${this.stateWord(pub)}`;
   }
 
   /**
@@ -349,13 +427,15 @@ export class PublicationPlanComponent {
    */
   public pickFree(row: Row): void {
     const free =
-      row.cells.find((c) => !c.pub && c.date >= this.today) ?? row.cells[row.cells.length - 1];
+      row.cells.find((c) => !c.pubs.length && c.date >= this.today) ??
+      row.cells[row.cells.length - 1];
     this.pick(row.person, free);
     this.addOn = free.date < this.today ? this.today : free.date;
   }
 
   public close(): void {
     this.picked.set(null);
+    this.pickedPub.set(null);
   }
 
   public shiftMonth(delta: number): void {
@@ -363,6 +443,7 @@ export class PublicationPlanComponent {
     const d = new Date(y, m - 1 + delta, 1);
     this.month.set(this.monthKey(d));
     this.picked.set(null);
+    this.pickedPub.set(null);
   }
 
   // ---- действия ----
@@ -384,16 +465,45 @@ export class PublicationPlanComponent {
     );
   }
 
+  /**
+   * Добавить в этот день ещё один ролик.
+   *
+   * Отдельно от add(): там дату выбирают полем, здесь она уже выбрана
+   * клеткой, и поле было бы вопросом с единственным ответом. Номер в
+   * дне ставит сервер — первый свободный.
+   */
+  public addMore(): void {
+    const p = this.picked();
+    if (!p || this.busy()) return;
+    const day = p.cell.date;
+    if (day < this.today) {
+      this.msg.error('Этот день уже прошёл — ролики ставят на сегодня или вперёд.');
+      return;
+    }
+    this.run(
+      this.api.managerAddPublication(this.projectId(), p.creator.user_id, day),
+      `Добавили ещё один ролик на ${this.human(day)}.`,
+    );
+  }
+
+  /** Подпись выбранной клетки: кто, когда и сколько там роликов. */
+  public cellTitle(sel: { creator: ProjectPerson; cell: Cell }): string {
+    const head = `${sel.creator.display_name} · ${this.human(sel.cell.date)}`;
+    const n = sel.cell.pubs.length;
+    return n > 1 ? `${head} · ${n} ролика` : head;
+  }
+
   /** Перенести плановую выкладку на другой день. */
   public move(): void {
+    const pub = this.pickedPub();
     const p = this.picked();
-    if (!p?.cell.pub || this.busy()) return;
+    if (!p || !pub || this.busy()) return;
     if (!this.moveTo || this.moveTo === p.cell.date) {
       this.msg.error('Выберите новую дату — переносить на ту же нечего.');
       return;
     }
     this.run(
-      this.api.managerMoveDueDate(p.cell.pub.id, this.moveTo),
+      this.api.managerMoveDueDate(pub.id, this.moveTo),
       `Перенесли на ${this.human(this.moveTo)}.`,
     );
   }
@@ -401,8 +511,8 @@ export class PublicationPlanComponent {
   /** Снять выкладку с плана. Причина обязательна: по ней видно дыру. */
   public cancel(): void {
     const p = this.picked();
-    const pub = p?.cell.pub;
-    if (!pub || this.busy()) return;
+    const pub = this.pickedPub();
+    if (!p || !pub || this.busy()) return;
     this.modal.confirm({
       nzTitle: 'Снять выкладку с плана?',
       nzContent:
@@ -516,7 +626,7 @@ export class PublicationPlanComponent {
    */
   public remindPicked(): void {
     const sel = this.picked();
-    const pub = sel?.cell.pub;
+    const pub = this.pickedPub();
     if (!sel || !pub) return;
     this.busy.set(true);
     this.api.managerRemind(pub.id).subscribe({
@@ -539,7 +649,7 @@ export class PublicationPlanComponent {
   }
 
   public openReview(): void {
-    const pub = this.picked()?.cell.pub;
+    const pub = this.pickedPub();
     if (pub) this.review.emit(pub.id);
   }
 
@@ -621,6 +731,7 @@ export class PublicationPlanComponent {
       next: () => {
         this.busy.set(false);
         this.picked.set(null);
+        this.pickedPub.set(null);
         this.msg.success(ok);
         this.changed.emit();
       },

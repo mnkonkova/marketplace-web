@@ -32,6 +32,7 @@ import {
   ProjectPerson,
   Publication,
   PublicationReport,
+  RefreshStats,
   ReminderPrefs,
   ReminderPrefsPatch,
   ReviewDecision,
@@ -82,6 +83,14 @@ export class PublicationApi {
 
   public creatorReport(projectId: string): Observable<PublicationReport> {
     return this.http.get<PublicationReport>(`${this.api}/me/creator/projects/${projectId}/report`);
+  }
+
+  /** То же обновление в кабинете креатора: цифры он читает теми же глазами. */
+  public creatorRefreshStats(projectId: string): Observable<RefreshStats> {
+    return this.http.post<RefreshStats>(
+      `${this.api}/me/creator/projects/${projectId}/report/refresh`,
+      {},
+    );
   }
 
   // Бэк отдаёт креатору только материалы своей аудитории — фильтровать
@@ -243,6 +252,27 @@ export class PublicationApi {
 
   public managerReport(projectId: string): Observable<PublicationReport> {
     return this.http.get<PublicationReport>(`${this.api}/manager/projects/${projectId}/report`);
+  }
+
+  /**
+   * Обновить просмотры по проекту прямо сейчас.
+   *
+   * Зовётся при открытии карточки: человек смотрит на цифры, и у
+   * свежего ролика они обязаны быть сегодняшними. Сервер сам решает,
+   * кого обходить, — по затухающему расписанию первых суток ролика
+   * (минута, пять, десять, полчаса, час, шесть часов), поэтому
+   * перезагрузка страницы кредитов у поставщика не стоит.
+   *
+   * `refreshed` — сколько ссылок обошли, `saved` — по скольким пришли
+   * цифры. Ноль в первом означает «и так свежие», а не отказ. 503
+   * collector_not_set — сбор не настроен; это состояние стенда, и
+   * показывать его как поломку не нужно.
+   */
+  public managerRefreshStats(projectId: string): Observable<RefreshStats> {
+    return this.http.post<RefreshStats>(
+      `${this.api}/manager/projects/${projectId}/report/refresh`,
+      {},
+    );
   }
 
   // Выгрузка тянется запросом, а не ссылкой в <a href>: ручка закрыта
