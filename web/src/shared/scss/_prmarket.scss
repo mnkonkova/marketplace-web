@@ -378,8 +378,16 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
       font-weight: 500;
       color: var(--muted);
 
+      // Три способа сказать «этот выбран», и словарь обязан знать все
+      // три: вкладка помечается aria-selected, ссылка — aria-current,
+      // а переключатель из обычных кнопок (role="group") — aria-pressed.
+      // Последний знали не все: окно сводки у заказчика («Неделя ·
+      // Месяц · Квартал») ставило aria-pressed, подсветки не получало,
+      // и на экране все три сегмента выглядели одинаково — выбранный
+      // было не отличить вовсе.
       &[aria-selected='true'],
-      &[aria-current='page'] {
+      &[aria-current='page'],
+      &[aria-pressed='true'] {
         background: var(--ink);
         color: var(--ground);
         text-decoration: none;

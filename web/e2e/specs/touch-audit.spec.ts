@@ -65,13 +65,10 @@ async function reachable(page: Page, screen: string): Promise<void> {
         .trim()
         .replace(/\s+/g, ' ')
         .slice(0, 26);
-      // Тумблер — исключение, и оно объяснимо. Правило про 40 px
-      // написано для КВАДРАТНЫХ целей: иконка, стрелка, клетка. Рельса
-      // тумблера после увеличения 66×33 — в неё попадают уверенно, а
-      // растягивать её до 40 по высоте значит нарисовать на телефоне
-      // переключатель размером с кнопку. Ширину при этом проверяем:
-      // узкая рельса исключением не считается.
-      if (e.classList.contains('ant-switch') && r.width >= 60 && r.height >= 30) return;
+      // Тумблер меряется своей меркой — см. switches ниже. Правило про
+      // 40 px написано для КВАДРАТНЫХ целей: иконка, стрелка, клетка;
+      // у рельсы важнее, что она крупнее заводской.
+      if (e.classList.contains('ant-switch')) return;
       // Целиком за экраном — это закрытая выехавшая панель (сайдбар
       // CRM), а не поломка: её открывают кнопкой «Разделы». Ловим
       // только то, что торчит наружу ЧАСТЬЮ — такое видно и манит
@@ -84,12 +81,39 @@ async function reachable(page: Page, screen: string): Promise<void> {
         small.push(`«${label}» ${Math.round(r.width)}×${Math.round(r.height)}`);
       }
     });
-    return { scroll: de.scrollWidth, client: de.clientWidth, offscreen, small };
+    // Тумблеры: заводские 44×22 на телефоне не нажимаются, и
+    // увеличение — решение владельца продукта. Держим его числом,
+    // иначе первая же правка темы вернёт ng-zorro'шный размер молча.
+    const switches: string[] = [];
+    document.querySelectorAll('.ant-switch').forEach((el) => {
+      const e = el as HTMLElement;
+      const r = e.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      if (r.width < 56 || r.height < 30) {
+        switches.push(`тумблер ${Math.round(r.width)}×${Math.round(r.height)}`);
+        return;
+      }
+      // И не вылезает за свою строку: увеличивать трансформацией —
+      // ровно та ошибка, из-за которой половина кружка оказывалась
+      // снаружи карточки.
+      const row = e.closest('.switchrow, label, div') as HTMLElement | null;
+      if (row && row !== e) {
+        const rr = row.getBoundingClientRect();
+        if (r.left < rr.left - 1 || r.right > rr.right + 1) {
+          switches.push(
+            `тумблер вылез за строку: ${Math.round(r.left)}..${Math.round(r.right)} при ${Math.round(rr.left)}..${Math.round(rr.right)}`,
+          );
+        }
+      }
+    });
+
+    return { scroll: de.scrollWidth, client: de.clientWidth, offscreen, small, switches };
   }, TAP);
 
   expect(res.scroll, `${screen}: страница не шире экрана`).toBeLessThanOrEqual(res.client);
   expect(res.offscreen, `${screen}: кнопки за краем экрана`).toEqual([]);
   expect(res.small, `${screen}: кнопки мельче ${TAP}px`).toEqual([]);
+  expect(res.switches, `${screen}: тумблеры тач-размера и в своих границах`).toEqual([]);
 }
 
 test('кабинет заказчика на телефоне', async ({ page }) => {

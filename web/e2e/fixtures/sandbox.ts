@@ -275,6 +275,27 @@ export function ymd(value: number | Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+/**
+ * Недавний день, но ОБЯЗАТЕЛЬНО этого месяца.
+ *
+ * Посев ставил вышедший ролик «вчера», и первого числа вчера — это уже
+ * прошлый месяц. Календарь заказчика, окно простановки дат и шапка
+ * проекта смотрят на ТЕКУЩИЙ месяц, и раз в месяц семь специй падали
+ * разом: «мир обязан поставить выкладку в текущем месяце», «посеянный
+ * ролик уже вышел», «нет свободного дня». Поломки при этом не было —
+ * кончался месяц.
+ *
+ * Поэтому: вчера, но не раньше первого числа. На первое число ролик
+ * садится на сегодня — он всё равно «вышел», цифры по нему сеются
+ * отдельно (seedPublicationStats).
+ */
+export function recentThisMonth(daysAgo = 1): string {
+  const now = new Date();
+  const back = dayAt(-daysAgo);
+  const first = new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0, 0);
+  return ymd(back < first ? dayAt(0) : back);
+}
+
 /** Текущий месяц ГГГГ-ММ по местному календарю. */
 export function ym(value: number | Date = 0): string {
   return ymd(value).slice(0, 7);
@@ -466,7 +487,7 @@ async function fillStats(box: Sandbox): Promise<void> {
     box.manager,
     'post',
     `/api/v1/manager/projects/${box.projectId}/publications/batch`,
-    { creator_user_ids: [box.creator.userId], dates: [ymd(-1)] },
+    { creator_user_ids: [box.creator.userId], dates: [recentThisMonth()] },
   );
   const pubId = batch.items[0].id as string;
   box.publicationId = pubId;
@@ -516,6 +537,11 @@ async function fillCrew(box: Sandbox): Promise<void> {
     return pubId;
   };
 
+  // Здесь нужны три РАЗНЫХ дня, а не «обязательно этот месяц»: форма
+  // про раскладку денег между людьми, и границы месяца ей безразличны.
+  // Первого числа трёх прошедших дней внутри месяца не существует —
+  // recentThisMonth() схлопнул бы их в один, и вторая пачка не создала
+  // бы ничего (на день у креатора одна выкладка).
   await submit(box.creator, ymd(-3), 'a1', 200_000);
   await submit(box.creator, ymd(-2), 'a2', 200_000);
   box.publicationId = await submit(second, ymd(-1), 'b1', 3_000_000);

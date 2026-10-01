@@ -61,6 +61,19 @@
   }
 }
 
+// Шапка карточки на телефоне: подпись под заголовком, а не сбоку.
+//
+// Рядом их разводит justify-content: space-between, и на 390 px
+// заголовок ломается на две строки, а подпись жмётся к правому краю
+// вторым столбиком — читается как два разных блока, слипшихся боками.
+@media (max-width: bp.$touch) {
+  .specialist-cabinet .panel > header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

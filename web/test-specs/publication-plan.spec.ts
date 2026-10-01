@@ -25,7 +25,23 @@ import { PublicationPlanComponent } from '@widgets/publication-plan/publication-
  * а сетка просто не предлагает того, чего делать нельзя.
  */
 describe('PublicationPlanComponent: правка плана по одной клетке', () => {
-  const MONTH = '2026-09';
+  /**
+   * Месяц сетки — ОТНОСИТЕЛЬНЫЙ, а не прибитый к сентябрю 2026.
+   *
+   * Прибитый протух молча: первого октября в сентябрьской сетке не
+   * осталось ни одного БУДУЩЕГО дня, и проверка «пустая клетка ставит
+   * выкладку» упала на поиске такой клетки — не потому, что сломалась
+   * постановка, а потому, что кончился месяц. Правило простое: где
+   * нужен свободный день впереди — следующий месяц, где нужен
+   * прошедший — прошлый.
+   */
+  function monthShift(by: number): string {
+    const d = new Date();
+    const m = new Date(d.getFullYear(), d.getMonth() + by, 1);
+    return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  const MONTH = monthShift(1);
 
   function person(over: Partial<ProjectPerson> = {}): ProjectPerson {
     return {
@@ -139,6 +155,7 @@ describe('PublicationPlanComponent: правка плана по одной кл
     // Месяц сетки — сентябрь 2026, и день выбираем заведомо будущий:
     // на прошедший сервер всё равно ответит отказом.
     const future = cmp.rows()[0].cells.find((c) => !c.pub && c.date >= cmp.today)!;
+    expect(future).withContext('в следующем месяце есть свободный день').toBeDefined();
     cmp.pick(person(), future);
     cmp.add();
     expect(api.managerAddPublication).toHaveBeenCalledWith('pr1', 'c1', future.date);
@@ -151,9 +168,13 @@ describe('PublicationPlanComponent: правка плана по одной кл
    */
   it('по клетке в прошлом день подставляется сегодняшний', () => {
     const { cmp } = setup();
+    // Прошлый месяц: в нём любая клетка заведомо позади, какое бы
+    // сегодня ни было число.
+    cmp.month.set(monthShift(-1));
     const past = cmp.rows()[0].cells[0];
+    expect(past.date < cmp.today).toBeTrue();
     cmp.pick(person(), past);
-    expect(past.date < cmp.today ? cmp.addOn : 'n/a').toBe(cmp.today);
+    expect(cmp.addOn).toBe(cmp.today);
   });
 
   it('перенос уходит на сервер новой датой', () => {

@@ -1086,11 +1086,6 @@ export class ClientTurnkeyProjectComponent {
 
   public readonly prevTitle = computed(() => periodTitle(this.prevDue()?.period));
 
-  public readonly prevRange = computed(() => {
-    const p = this.prevDue()?.period;
-    return p ? periodRange(p) : '';
-  });
-
   /** «по состоянию на 14 октября» — когда снят срез прошлого периода. */
   public readonly prevSnapshot = computed(() => snapshotNote(this.prevDue()?.period));
 

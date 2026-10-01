@@ -520,7 +520,12 @@
                   <div class="grow">
                     <span class="pill warn">не оплачен</span>
                     <h2 class="due-h">К оплате за прошлый период</h2>
-                    <div class="muted">{{ prevTitle() }} · {{ prevRange() }}</div>
+                    <!-- Только заголовок: периодRange уже внутри него
+                         (billing/lib/period.ts → periodTitle), и вторым
+                         слагаемым даты печатались дважды — «Период 1 ·
+                         17 августа — 16 сентября · 17 августа — 16
+                         сентября». -->
+                    <div class="muted">{{ prevTitle() }}</div>
                     @if (prevSnapshot(); as note) {
                       <div class="muted small due-note">{{ note }}</div>
                     }

@@ -1,6 +1,12 @@
 <section class="acc-block">
   <div class="acc-head">
-    <h2>@if (isCreator()) { Мои аккаунты } @else { Аккаунты, с которых выходят ролики }</h2>
+    <h2>
+      @if (isCreator()) {
+        Мои аккаунты
+      } @else {
+        Аккаунты, с которых выходят ролики
+      }
+    </h2>
   </div>
   <p class="note">
     @if (isManager()) {
@@ -27,7 +33,9 @@
     @for (g of groups(); track g.id) {
       <div class="acc-group">
         <div class="acc-group-hd">
-          <b>{{ g.title }}</b>
+          @if (g.title) {
+            <b>{{ g.title }}</b>
+          }
           @if (canEdit()) {
             <button nz-button nzSize="small" type="button" (click)="startAdd(g.id)">
               Добавить аккаунт
@@ -161,7 +169,9 @@
        раскрытая в середине длинного списка, она уезжала за край. -->
   <form class="acc-form" (submit)="$event.preventDefault(); save()">
     @if (ownerName(); as who) {
-      <p class="f wide owner">Аккаунт: <b>{{ who }}</b></p>
+      <p class="f wide owner">
+        Аккаунт: <b>{{ who }}</b>
+      </p>
     }
     <label class="f">
       <span>Площадка</span>

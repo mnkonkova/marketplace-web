@@ -196,7 +196,14 @@ DELETE FROM video_stat_daily WHERE link_id IN
 -- подменяем, дату обязаны положить тем же посевом: без неё у ролика нет
 -- возраста, а на возрасте стоит и «зрелый» (14 дней), и шкала ступеней
 -- у креатора, которая без даты считала бы ролик невышедшим.
-UPDATE publication_links SET published_at = now() - interval '1 day'
+--
+-- «Вчера», но не раньше первого числа: календарь заказчика и шапка
+-- проекта считают ТЕКУЩИЙ месяц, и первого числа вчерашний ролик
+-- оказывался в прошлом — экран пустел, а специи падали на ровном
+-- месте раз в месяц.
+UPDATE publication_links
+   SET published_at = GREATEST(now() - interval '1 day',
+                               date_trunc('month', now()) + interval '11 hours')
 WHERE publication_id = '${publicationId}';
 
 INSERT INTO video_stat_daily (link_id, stat_date, views, likes, comments, collected_at)
