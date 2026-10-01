@@ -41,14 +41,16 @@
 
     <div class="header-actions">
       @if (isLoggedIn()) {
-        @if (showManagerCabinet()) {
-          <a routerLink="/manager" class="link" [class.is-active]="activeNav() === 'manager'">
-            Менеджер
-          </a>
-        }
-        @if (showAdminCabinet()) {
-          <a routerLink="/admin" class="link" [class.is-active]="activeNav() === 'admin'">
-            Админ
+        <!-- Один вход в рабочий кабинет вместо двух. «Менеджер» и
+             «Админ» стояли рядом и читались как два продукта, хотя за
+             ними один экран с разным объёмом прав. -->
+        @if (showStaffCabinet()) {
+          <a
+            [routerLink]="staffCabinetLink()"
+            class="link"
+            [class.is-active]="activeNav() === 'admin' || activeNav() === 'manager'"
+          >
+            Админка
           </a>
         }
         <!-- Свои проекты креатор открывает каждый день, а кабинет —
@@ -144,24 +146,16 @@
         Все специалисты
       </a>
       @if (isLoggedIn()) {
-        @if (showManagerCabinet()) {
+        <!-- Один вход в рабочий кабинет вместо двух, как и на широком
+             экране: «Менеджер» и «Админ» читались как два продукта. -->
+        @if (showStaffCabinet()) {
           <a
-            routerLink="/manager"
+            [routerLink]="staffCabinetLink()"
             class="mobile-nav-item"
-            [class.is-active]="activeNav() === 'manager'"
+            [class.is-active]="activeNav() === 'admin' || activeNav() === 'manager'"
             (click)="closeMenu()"
           >
-            Менеджер
-          </a>
-        }
-        @if (showAdminCabinet()) {
-          <a
-            routerLink="/admin"
-            class="mobile-nav-item"
-            [class.is-active]="activeNav() === 'admin'"
-            (click)="closeMenu()"
-          >
-            Админ
+            Админка
           </a>
         }
         @if (showCreatorProjects()) {

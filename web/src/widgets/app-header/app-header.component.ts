@@ -60,9 +60,26 @@ export class AppHeaderComponent implements OnInit {
   // специалистом. Поэтому пункты шапки считаются по НАЛИЧИЮ роли, а не
   // по одной derived-строке: иначе менеджер-креатор видел только CRM, а
   // свои выкладки открыть было неоткуда.
-  public readonly showManagerCabinet = computed(() => this.auth.roles().includes('manager'));
+  /**
+   * Вход в рабочий кабинет — ОДНОЙ ссылкой, а не двумя.
+   *
+   * Раньше их было две: «Менеджер» (/manager) и «Админ» (/admin), и у
+   * того, кто и менеджер и админ, в шапке стояли обе. Это выглядело как
+   * два разных продукта, хотя за ними один и тот же экран — различается
+   * только объём прав, и внутри он сам выбирает, что показать. Кабинет
+   * теперь и называется одинаково: «Админка».
+   *
+   * Админу ведём в /admin: там он видит всё. Менеджеру — в /manager:
+   * свои проекты и входящие.
+   */
+  public readonly showStaffCabinet = computed(() => {
+    const r = this.auth.roles();
+    return r.includes('admin') || r.includes('manager');
+  });
 
-  public readonly showAdminCabinet = computed(() => this.auth.roles().includes('admin'));
+  public readonly staffCabinetLink = computed(() =>
+    this.auth.roles().includes('admin') ? '/admin' : '/manager',
+  );
 
   public readonly showSpecialistCabinet = computed(() => {
     const r = this.auth.roles();
