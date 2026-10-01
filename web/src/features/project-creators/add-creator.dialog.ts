@@ -19,6 +19,7 @@ import {
 import { API_URL } from '@shared/api/api-url.token';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import { parseApiError } from '@shared/api/api-error';
+import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
 
 interface CreatorSearchItem {
   user_id: string;
@@ -26,6 +27,8 @@ interface CreatorSearchItem {
   phone?: string;
   display_name?: string;
   kind: string;
+  /** Лицо в списке: состав набирают, узнавая людей, а не читая почты. */
+  avatar_url?: string;
   /**
    * Сколько просмотров человек обычно даёт за ролик. Медиана, а не
    * среднее. Приходит только у тех, кто роликов сдал достаточно, чтобы
@@ -44,17 +47,19 @@ export interface AddCreatorDialogData {
 @Component({
   selector: 'app-add-creator-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzSelectModule, NzButtonModule],
+  imports: [CommonModule, FormsModule, NzSelectModule, NzButtonModule, PrMarketAvaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form class="form" (submit)="$event.preventDefault(); submit()">
-      <label>Найти креатора (email / телефон / имя)</label>
+      <label>Найти креатора (имя / email / телефон / id)</label>
       <nz-select
         [(ngModel)]="creatorID"
         name="c"
-        nzPlaceHolder="Введите email, имя или телефон"
+        nzPlaceHolder="Имя, почта, телефон или id"
         nzShowSearch
         nzServerSearch
+        nzDropdownClassName="cand-dd"
+        [nzOptionHeightPx]="optionHeight"
         [nzShowArrow]="false"
         [nzFilterOption]="dontFilter"
         (nzOnSearch)="onSearch($event)"
@@ -63,8 +68,20 @@ export interface AddCreatorDialogData {
           candidates().length ? 'Нет совпадений' : 'Начните печатать (мин 2 символа)'
         "
       >
+        <!-- Своя разметка строки, а не одна подпись: человека узнают в
+             лицо, и аватарка отвечает на «тот ли это» быстрее, чем
+             почта. Подпись при этом остаётся — по ней ng-zorro рисует
+             выбранное и по ней же читает экранный диктор. -->
         @for (u of candidates(); track u.user_id) {
-          <nz-option [nzValue]="u.user_id" [nzLabel]="formatLabel(u)"></nz-option>
+          <nz-option [nzValue]="u.user_id" [nzLabel]="formatLabel(u)" nzCustomContent>
+            <span class="cand">
+              <app-prmarket-ava [name]="nameOf(u)" [src]="u.avatar_url" [size]="28" />
+              <span class="cand-t">
+                <b>{{ nameOf(u) }}</b>
+                <small>{{ subtitle(u) }}</small>
+              </span>
+            </span>
+          </nz-option>
         }
       </nz-select>
 
@@ -101,6 +118,27 @@ export interface AddCreatorDialogData {
         gap: 8px;
         margin-top: 16px;
       }
+      .cand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        /* Строка выше одной текстовой: в неё помещается лицо, и
+           попасть по ней пальцем становится возможно. */
+        padding: 2px 0;
+      }
+      .cand-t {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        line-height: 1.25;
+      }
+      .cand-t small {
+        color: var(--text-muted);
+        font-size: 11.5px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
     `,
   ],
 })
@@ -131,6 +169,17 @@ export class AddCreatorDialogComponent {
   public creatorID = '';
 
   public readonly dontFilter = () => true;
+
+  /**
+   * Высота строки списка.
+   *
+   * Список виртуализирован: ng-zorro раскладывает строки по
+   * фиксированной мерке и ею же режет содержимое, сколько ни задавай
+   * высоту в стилях. В строке у нас лицо и две подписи — имя и
+   * «почта · медиана», — и в стандартные 32 px вторая не помещалась,
+   * обрезаясь ровно посередине.
+   */
+  public readonly optionHeight = 48;
 
   private readonly q$ = new Subject<string>();
 
@@ -166,8 +215,29 @@ export class AddCreatorDialogComponent {
    * обычно даёт, и список из одних почт — это выбор вслепую.
    */
   public formatLabel(u: CreatorSearchItem): string {
-    const parts = [u.display_name, u.email, u.phone].filter(Boolean) as string[];
+    const parts = [this.nameOf(u), this.subtitle(u)].filter(Boolean);
+    return parts.join(' · ');
+  }
+
+  /** Как человека зовут. Без имени — почта, без почты — начало id. */
+  public nameOf(u: CreatorSearchItem): string {
+    return u.display_name || u.email || u.phone || u.user_id.slice(0, 8);
+  }
+
+  /**
+   * Вторая строка: по чему его узнают и сколько он обычно даёт.
+   *
+   * Медиана здесь не украшение: креатора выбирают по тому, сколько он
+   * обычно даёт, и список из одних почт — это выбор вслепую.
+   */
+  public subtitle(u: CreatorSearchItem): string {
+    const parts: string[] = [];
+    if (u.display_name && u.email) parts.push(u.email);
+    if (u.phone) parts.push(u.phone);
     if (u.median) parts.push(`медиана ${this.shortViews(u.median.views)}`);
+    // Когда опознать больше нечем — начало идентификатора: по нему
+    // сюда и пришли, если искали по нему.
+    if (!parts.length) parts.push(u.user_id.slice(0, 8));
     return parts.join(' · ');
   }
 
