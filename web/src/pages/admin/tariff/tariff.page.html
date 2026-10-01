@@ -74,7 +74,11 @@
             {{ r.updated_at ? (r.updated_at | date: 'dd.MM.yyyy') : '—' }}
           </td>
           <td class="r">
-            <button type="button" class="btn sm" (click)="toggleProject(r.project_id)">
+            <!-- Белая, а не залитая: это не главное действие строки, а
+                 вход в правку. Залитая читалась как «нажми меня», и на
+                 экране из шести одинаковых тёмных кнопок было непонятно,
+                 какая из них что делает. -->
+            <button type="button" class="btn sm ghost" (click)="toggleProject(r.project_id)">
               {{ openProject() === r.project_id ? 'Свернуть' : 'Править' }}
             </button>
           </td>
@@ -396,12 +400,13 @@
       <span></span>
     </div>
     @for (st of draft.steps; track $index) {
-    <div class="step-row">
+    <div class="step-row" [class.bad]="stepProblem($index)">
       <input
         class="inp"
         type="number"
         min="0"
         step="1000"
+        placeholder="от скольких"
         [(ngModel)]="st.fromViews"
         [name]="'from' + $index"
       />
@@ -415,6 +420,12 @@
         [name]="'cfee' + $index"
       />
       <button class="btn quiet sm" type="button" (click)="removeStep($index)">Убрать</button>
+      <!-- Что именно не так с этой строкой. Сервер отказ формулирует
+           верно, но не говорит, какая из ступеней виновата: всплывашка
+           гаснет, а строки на вид одинаковые. -->
+      @if (stepProblem($index); as problem) {
+      <span class="step-bad">{{ problem }}</span>
+      }
     </div>
     }
   </div>

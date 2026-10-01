@@ -32,18 +32,40 @@
   </div>
 
   <!-- Два правила счёта, и смешивать их в одном периоде нельзя:
-       непустая лесенка на сервере отменяет ставку за тысячу. -->
-  <div class="tr-mode">
-    <span class="lbl">Дальше считаем</span>
-    <div class="segbar" aria-label="Как считать сверх фикса">
-      <button type="button" [attr.aria-selected]="mode() === 'steps'" (click)="setMode('steps')">
-        ступенями
+       непустая лесенка на сервере отменяет ставку за тысячу.
+
+       Двумя отдельными кнопками, а не полоской-переключателем. Полоска
+       жила в словаре кабинета (.prmarket), а тариф рисуется в админке
+       (.crm-page) — стилей она там не получала вовсе: на экране стояли
+       две одинаковые рамки, и какая из них выбрана, было не видно. Да и
+       выбор это не «настройка в строке», а развилка, от которой зависит
+       весь дальнейший счёт: ей нужно место и объяснение под каждым
+       вариантом. -->
+  <fieldset class="tr-mode">
+    <legend class="lbl">Дальше считаем</legend>
+    <div class="modes">
+      <button
+        type="button"
+        class="mode"
+        [class.on]="mode() === 'steps'"
+        [attr.aria-pressed]="mode() === 'steps'"
+        (click)="setMode('steps')"
+      >
+        <b>Ступенями</b>
+        <span>Цена периода растёт порогами просмотров</span>
       </button>
-      <button type="button" [attr.aria-selected]="mode() === 'rate'" (click)="setMode('rate')">
-        за тысячу просмотров
+      <button
+        type="button"
+        class="mode"
+        [class.on]="mode() === 'rate'"
+        [attr.aria-pressed]="mode() === 'rate'"
+        (click)="setMode('rate')"
+      >
+        <b>За тысячу просмотров</b>
+        <span>Линейно, без порогов за период</span>
       </button>
     </div>
-  </div>
+  </fieldset>
 
   @if (mode() === 'rate') {
     <div class="tr-fix">

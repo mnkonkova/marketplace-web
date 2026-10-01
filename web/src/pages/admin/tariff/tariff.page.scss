@@ -181,6 +181,23 @@
   grid-template-columns: 1fr 1fr 1fr auto;
   gap: 10px;
   align-items: center;
+
+  // Строка, с которой прайс не выпустится. Подсвечиваем её саму, а не
+  // только пишем всплывашку: отказ сервера называет причину верно
+  // («две ступени с одним порогом»), но не говорит, какая из строк
+  // виновата, — а на вид они одинаковые.
+  &.bad {
+    .inp:first-child {
+      border-color: var(--crit, #e5484d);
+    }
+  }
+}
+
+.step-bad {
+  grid-column: 1 / -1;
+  margin-top: -4px;
+  font-size: 12px;
+  color: var(--crit, #e5484d);
 }
 
 .steps-head span {

@@ -75,7 +75,13 @@ interface Draft {
 
 /** Ступень в форме: рубли и просмотры, как их вводит человек. */
 interface DraftStep {
-  fromViews: number;
+  // Пусто у новой ступени: порог обязан ввести человек.
+  //
+  // Раньше новая вставала с нулём, и это был не «пустой ввод», а
+  // настоящее значение — причём то самое, которое у прайса уже занято
+  // нижней ступенью. Сервер отвечал «две ступени с одним порогом», и
+  // прайс переставал сохраняться ЦЕЛИКОМ: ни добавить, ни убрать.
+  fromViews: number | null;
   clientFee: number;
   // Пусто — «как у заказчика»: то же правило, что у остальных
   // креаторских полей.
@@ -243,8 +249,26 @@ export class AdminTariffPage implements OnInit {
    * которого админ не вводил, окажется в счёте заказчика.
    */
   public addStep(): void {
-    this.draft.steps = [...this.draft.steps, { fromViews: 0, clientFee: 0, creatorFee: null }];
+    this.draft.steps = [...this.draft.steps, { fromViews: null, clientFee: 0, creatorFee: null }];
   }
+
+  /**
+   * Что не так с этой ступенью: пусто — всё в порядке.
+   *
+   * Проверяем в форме, а не только на сервере. Сервер отказ формулирует
+   * верно («две ступени с одним порогом»), но не говорит, КАКИЕ именно,
+   * — всплывашка гаснет, а строки остаются одинаковыми на вид.
+   */
+  public stepProblem(i: number): string {
+    const st = this.draft.steps[i];
+    if (st.fromViews === null || Number.isNaN(st.fromViews)) return 'не задан порог';
+    const same = this.draft.steps.filter((o) => o.fromViews === st.fromViews).length;
+    return same > 1 ? 'такой порог уже есть' : '';
+  }
+
+  /** Есть ли в лесенке строки, с которыми прайс не выпустится. */
+  public readonly stepsBroken = (): boolean =>
+    this.draft.steps.some((_, i) => this.stepProblem(i) !== '');
 
   public removeStep(i: number): void {
     this.draft.steps = this.draft.steps.filter((_, idx) => idx !== i);
@@ -264,6 +288,13 @@ export class AdminTariffPage implements OnInit {
     const d = this.draft;
     if (!d.body.trim()) {
       this.msg.error('Текст условий обязателен — с ним соглашается заказчик.');
+      return;
+    }
+    // Ломаную лесенку не отправляем вовсе: сервер на неё отвечает
+    // отказом, а на экране остаются одинаковые на вид строки, и
+    // непонятно, какую править.
+    if (this.stepsBroken()) {
+      this.msg.error('Поправьте пороги ступеней — они отмечены в таблице.');
       return;
     }
     this.saving.set(true);
@@ -290,9 +321,9 @@ export class AdminTariffPage implements OnInit {
         // правила «берём последнюю взятую ступень», и отдавать его на
         // усмотрение порядка строк в форме нельзя.
         steps: [...d.steps]
-          .sort((a, b) => a.fromViews - b.fromViews)
+          .sort((a, b) => (a.fromViews ?? 0) - (b.fromViews ?? 0))
           .map((st) => ({
-            from_views: Math.max(0, Math.round(st.fromViews)),
+            from_views: Math.max(0, Math.round(st.fromViews ?? 0)),
             client_fee: fromRubles(st.clientFee),
             creator_fee: st.creatorFee === null ? null : fromRubles(st.creatorFee),
           })),

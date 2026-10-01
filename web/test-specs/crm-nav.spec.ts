@@ -133,7 +133,11 @@ describe('crmNavLocate', () => {
     const here = crmNavLocate('admin', '/admin/tariff');
     expect(here?.group.title).toBe('Креаторы');
     expect(here?.item.label).toBe('Прайс');
+    // Кабинет у обеих ролей называется одинаково: «Кабинет менеджера»
+    // и «Админка» читались как два разных продукта, хотя это один экран
+    // с разным объёмом прав.
     expect(crmRootLabel('admin')).toBe('Админка');
+    expect(crmRootLabel('manager')).toBe('Админка');
   });
 
   it('раздела нет в дереве — путь не выдумывается', () => {

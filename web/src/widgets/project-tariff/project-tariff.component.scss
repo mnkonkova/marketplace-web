@@ -226,20 +226,70 @@
 }
 
 .tr-mode {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
+  border: 0;
+  padding: 0;
+  margin: 0 0 14px;
 
   .lbl {
-    font-size: 12.5px;
-    font-weight: 500;
+    padding: 0;
+    margin-bottom: 6px;
+  }
+
+  // Две карточки вместо полоски-переключателя. Выбранная залита, а не
+  // «чуть другая»: от этой развилки зависит весь дальнейший счёт, и
+  // угадывать, какая из них сейчас действует, человек не должен.
+  .modes {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .mode {
+    flex: 1 1 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 10px 14px;
+    min-height: 56px;
+    border: 1px solid var(--line-2, #23272e);
+    border-radius: 10px;
+    background: var(--bg-elevated, #fff);
+    color: var(--text, #e9edf2);
+    text-align: left;
+    cursor: pointer;
+    transition: 0.14s;
+
+    b {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    span {
+      font-size: 12px;
+      color: var(--muted, #98a1ad);
+    }
+
+    &:hover {
+      border-color: var(--line-3, #2d323a);
+    }
+
+    &.on {
+      background: var(--ink, #15171a);
+      border-color: var(--ink, #15171a);
+      color: var(--ground, #fff);
+
+      span {
+        color: var(--ground, #fff);
+        opacity: 0.75;
+      }
+    }
   }
 }
 
+
 @media (max-width: bp.$touch) {
-  .tr-mode .segbar button {
-    min-height: 44px;
+  .tr-mode .mode {
+    min-height: 56px;
   }
 }

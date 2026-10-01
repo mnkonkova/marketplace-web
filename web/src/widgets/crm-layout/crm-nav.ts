@@ -109,9 +109,16 @@ export function crmNavGroups(role: CrmRole): CrmNavGroup[] {
   return role === 'admin' ? ADMIN_GROUPS : MANAGER_GROUPS;
 }
 
-/** Как называется корень пути в крошках. */
-export function crmRootLabel(role: CrmRole): string {
-  return role === 'admin' ? 'Админка' : 'Кабинет менеджера';
+/**
+ * Как называется корень пути в крошках.
+ *
+ * Одинаково у обеих ролей, и это решение владельца: «Кабинет менеджера»
+ * и «Админка» читались как два разных продукта, хотя это один и тот же
+ * экран с разным объёмом прав. Разницу между ролями говорит подпись под
+ * именем, а не название всего кабинета.
+ */
+export function crmRootLabel(_role: CrmRole): string {
+  return 'Админка';
 }
 
 /**

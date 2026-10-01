@@ -16,7 +16,13 @@ import { PublicationApi } from '@entities/publication/api/publication.api';
 import { ReminderPrefs } from '@entities/publication/model/publication.types';
 import { parseApiError } from '@shared/api/api-error';
 
-type PingField = 'day_before' | 'due_today' | 'overdue' | 'incomplete' | 'manager_digest';
+type PingField =
+  | 'day_before'
+  | 'due_today'
+  | 'overdue'
+  | 'incomplete'
+  | 'low_views'
+  | 'manager_digest';
 
 // Автопинг проекта: по выключателю на каждый вид напоминания.
 // Выключенное напоминание не откладывается — оно не отправляется вовсе;
@@ -75,6 +81,11 @@ export class ProjectAutopingComponent {
       field: 'incomplete',
       title: 'Креатору в бот — не хватает площадок',
       note: 'Ролик вышел, но собраны не все ссылки — напомнить через сутки',
+    },
+    {
+      field: 'low_views',
+      title: 'Креатору в бот — ролик вышел, а просмотров нет',
+      note: 'Через двое суток после выхода, если набралось меньше сотни. Один раз на ролик.',
     },
     {
       field: 'manager_digest',

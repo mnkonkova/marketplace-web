@@ -91,9 +91,15 @@ export class CrmLayoutComponent implements OnInit {
 
   public readonly homeLink = computed(() => (this.role() === 'admin' ? '/admin' : '/manager'));
 
-  /** Подпись под именем: чей это экран и что он видит. */
+  /**
+   * Подпись под именем: чей это экран и что он видит.
+   *
+   * Кабинет у обеих ролей называется одинаково — «Админка», — а разницу
+   * в правах говорит именно эта строка: админ видит всё, менеджер
+   * только своё.
+   */
   public readonly roleNote = computed(() =>
-    this.role() === 'admin' ? 'Админ · видит всё' : 'Менеджер',
+    this.role() === 'admin' ? 'Админка · видит всё' : 'Админка · свои проекты',
   );
 
   public readonly actions = this.shell.actions;
