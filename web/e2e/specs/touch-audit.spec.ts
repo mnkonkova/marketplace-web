@@ -136,3 +136,63 @@ test('карточка проекта у менеджера на телефон�
     await reachable(page, `менеджер / проект › ${t}`);
   }
 });
+
+/**
+ * Подвала на тач-ширине нет — ни в кабинете, ни на витрине.
+ *
+ * Решение владельца продукта (1 октября 2026), и спека нужна именно
+ * потому, что это решение, а не поломка: прочитав жалобу «футер
+ * уходит» как про подвал, я его однажды уже вернул. Речь была про
+ * нижнюю полосу кнопок.
+ *
+ * Проверяем и обратную сторону: на широком экране подвал на месте.
+ * Правило — про ширину, а не про удаление блока.
+ */
+test.describe('подвал поддержки', () => {
+  const SCREENS = ['/me/projects', '/', '/privacy', '/terms'];
+
+  test('на тач-ширине его нет нигде, и хвоста от него не остаётся', async ({ page }) => {
+    await signIn(page, box.sessions.client);
+    for (const url of SCREENS) {
+      await page.goto(url);
+      await page.waitForTimeout(500);
+      const res = await page.evaluate(() => {
+        const host = document.querySelector('app-support-footer') as HTMLElement | null;
+        const de = document.documentElement;
+        let lowest = 0;
+        document.querySelectorAll('body *').forEach((el) => {
+          const e = el as HTMLElement;
+          const b = e.getBoundingClientRect();
+          if (b.height > 0 && getComputedStyle(e).position !== 'fixed') {
+            lowest = Math.max(lowest, b.bottom + window.scrollY);
+          }
+        });
+        return {
+          height: host ? Math.round(host.getBoundingClientRect().height) : 0,
+          tail: Math.round(de.scrollHeight - lowest),
+        };
+      });
+      expect(res.height, `${url}: подвала на телефоне нет`).toBe(0);
+      // Спрятан :host, а не его содержимое: пустая строка в потоке
+      // оставила бы под экраном зазор, который читается как недогруз.
+      expect(res.tail, `${url}: пустого хвоста под страницей нет`).toBeLessThanOrEqual(2);
+    }
+  });
+
+  test('на широком экране подвал на месте', async ({ page }) => {
+    await signIn(page, box.sessions.client);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    for (const url of SCREENS) {
+      await page.goto(url);
+      const footer = page.locator('app-support-footer footer');
+      await expect(footer, `${url}: подвал на десктопе`).toBeVisible({ timeout: 15_000 });
+    }
+  });
+
+  // Про документы отдельной проверки здесь нет намеренно: ссылки на
+  // соглашение и политику стоят там, где человек под ними
+  // подписывается — в окне входа, в окне регистрации заказчика и в
+  // анкете (features/auth, features/client-register,
+  // pages/onboarding). Это другая проверка и другой экран, а не
+  // свойство подвала.
+});
