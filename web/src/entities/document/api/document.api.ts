@@ -88,8 +88,15 @@ export class DocumentApi {
 
   // ---- мои документы ----
 
-  public myDocuments(): Observable<ListResp<MyDocument>> {
-    return this.http.get<ListResp<MyDocument>>(`${this.api}/me/documents`);
+  /**
+   * projectId — только документы этого проекта; без него — по всем.
+   * personalOnly — только выданное лично, без договоров из материалов.
+   */
+  public myDocuments(projectId = '', personalOnly = false): Observable<ListResp<MyDocument>> {
+    const params: Record<string, string> = {};
+    if (projectId) params['project_id'] = projectId;
+    if (personalOnly) params['source'] = 'personal';
+    return this.http.get<ListResp<MyDocument>>(`${this.api}/me/documents`, { params });
   }
 
   public markOpened(id: string): Observable<{ opened_at: string }> {

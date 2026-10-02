@@ -20,6 +20,7 @@ import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { BillingApi } from '@entities/billing/api/billing.api';
 import {
   Accrual,
+  CreatorSubscribers,
   Payment,
   PaymentKind,
   PeriodTotals,
@@ -705,13 +706,31 @@ export class ProjectBillingComponent {
 
   // ---- подписчики (менеджер) ----
   //
-  // Сборщика подписчиков в продукте нет: ни один воркер по ним не ходит.
-  // Ставка объявлена в прайсе, а число за период вписывает менеджер — тот
-  // же порядок, что у переходов по UTM. Считает деньги по этому числу
+  // Прирост снимает обход аккаунтов: срез аудитории на входе в период,
+  // срез в конце, разница. Ручная правка остаётся сверху — это решение
+  // менеджера по спорному случаю (аккаунт отдали поздно, часть роста не
+  // от проекта, площадка соврала). Считает деньги по итоговому числу
   // сервер: в браузере тариф не считается никогда.
 
-  /** KPI по подписчикам объявлен в условиях проекта. */
-  public readonly subsOn = computed(() => (this.terms()?.subscriber_rate ?? 0) > 0);
+  /**
+   * Доплата за подписчиков объявлена в условиях проекта.
+   *
+   * Любой из двух форм: цена за одного или ступени прироста. По одной
+   * ставке блок пропадал бы у проектов, где цена задана лесенкой, — то
+   * есть ровно там, где подписчики стоят дороже всего.
+   */
+  public readonly subsOn = computed(() => {
+    const t = this.terms();
+    return (t?.subscriber_rate ?? 0) > 0 || (t?.subscriber_steps?.length ?? 0) > 0;
+  });
+
+  /** Снятое обходом и ручные правки по каждому креатору периода. */
+  public readonly subs = signal<CreatorSubscribers[]>([]);
+
+  /** Что известно про подписчиков этого креатора. */
+  public subsOf(creatorId: string): CreatorSubscribers | undefined {
+    return this.subs().find((c) => c.creator_user_id === creatorId);
+  }
 
   public readonly editingSubs = signal<string | null>(null);
 
@@ -720,6 +739,31 @@ export class ProjectBillingComponent {
   public openSubs(creatorId: string): void {
     this.subsValue = this.accruals().find((a) => a.creator_user_id === creatorId)?.subscribers ?? 0;
     this.editingSubs.set(creatorId);
+  }
+
+  /**
+   * Вернуть снятое обходом.
+   *
+   * Отдельным действием, а не «впишите ноль»: ноль — это объявленное
+   * «роста не было», и платить по нему тоже решение. Различать их обязан
+   * интерфейс, а не догадка сервера.
+   */
+  public dropSubs(creatorId: string): void {
+    const seq = this.selectedSeq();
+    if (seq === null) return;
+    this.busy.set(`subs:${creatorId}`);
+    this.api.managerDropSubscribers(this.projectId(), creatorId, seq).subscribe({
+      next: () => {
+        this.busy.set(null);
+        this.editingSubs.set(null);
+        this.reload();
+        this.msg.success('Вернули число, снятое обходом');
+      },
+      error: (e) => {
+        this.busy.set(null);
+        this.msg.error(parseApiError(e, 'Не удалось вернуть снятое число.').message);
+      },
+    });
   }
 
   public cancelSubs(): void {
@@ -772,6 +816,20 @@ export class ProjectBillingComponent {
     this.load(this.projectId(), this.role(), this.period());
   }
 
+  /**
+   * Подписчики — своим запросом рядом с остальным.
+   *
+   * Молча пустой список при ошибке: доплата за подписчиков есть не у
+   * всех проектов, и ронять экран денег из-за неё нельзя — суммы в нём
+   * уже посчитаны сервером и верны.
+   */
+  private loadSubs(id: string, period: number | null): void {
+    this.api.managerSubscribers(id, period ?? undefined).subscribe({
+      next: (r) => this.subs.set(r.items ?? []),
+      error: () => this.subs.set([]),
+    });
+  }
+
   private loadPeriods(id: string): void {
     this.api.managerPeriods(id).subscribe({
       next: (r) => this.periods.set(r.items ?? []),
@@ -782,6 +840,9 @@ export class ProjectBillingComponent {
 
   private load(id: string, role: BillingRole, period: number | null): void {
     const seq = period ?? undefined;
+    // Только менеджеру: заказчику список правок ни к чему, а ручка
+    // менеджерская и ответила бы ему отказом.
+    if (role === 'manager') this.loadSubs(id, period);
     const req =
       role === 'manager' ? this.api.managerBilling(id, seq) : this.api.clientBilling(id, seq);
     req.subscribe({

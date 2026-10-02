@@ -148,11 +148,44 @@ describe('документы', () => {
       return { fixture, cmp: fixture.componentInstance, api };
     }
 
-    it('в карточке проекта — только документы этого проекта', () => {
+    it('в карточке проекта — просит у сервера только этот проект', () => {
+      const { fixture, api } = setup([doc()]);
+      fixture.componentRef.setInput('projectId', 'pr1');
+      fixture.detectChanges();
+      expect(api.myDocuments).toHaveBeenCalledOnceWith('pr1', false);
+    });
+
+    it('рядом со списком материалов — только выданное лично, без дубля договора', () => {
+      const { fixture, cmp, api } = setup([doc(), doc({ id: 'm1', source: 'project' })]);
+      fixture.componentRef.setInput('personalOnly', true);
+      fixture.detectChanges();
+      expect(api.myDocuments).toHaveBeenCalledOnceWith('', true);
+      // И на клиенте тоже: старый API параметр source пропустит.
+      expect(cmp.items().map((d) => d.id)).toEqual(['d1']);
+    });
+
+    it('API без фильтра по проекту — чужой проект в карточку не попадает', () => {
       const { fixture, cmp } = setup([doc(), doc({ id: 'd2', project_id: 'pr2' })]);
       fixture.componentRef.setInput('projectId', 'pr1');
       fixture.detectChanges();
       expect(cmp.items().map((d) => d.id)).toEqual(['d1']);
+    });
+
+    it('страница обновила данные — список перезагружается', () => {
+      const { fixture, api } = setup([doc()]);
+      fixture.detectChanges();
+      fixture.componentRef.setInput('refresh', 1);
+      fixture.detectChanges();
+      expect(api.myDocuments).toHaveBeenCalledTimes(2);
+    });
+
+    it('правый клик — меню, а не открытие; средний — открытие', () => {
+      const { fixture, cmp, api } = setup([doc()]);
+      fixture.detectChanges();
+      cmp.aux(new MouseEvent('auxclick', { button: 2 }), cmp.items()[0]);
+      expect(api.markOpened).not.toHaveBeenCalled();
+      cmp.aux(new MouseEvent('auxclick', { button: 1 }), cmp.items()[0]);
+      expect(api.markOpened).toHaveBeenCalledOnceWith('d1');
     });
 
     it('личный документ отмечается открытым один раз', () => {

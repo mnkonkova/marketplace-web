@@ -1,15 +1,19 @@
 @if (items().length) {
-  <div class="panel" data-test="creator-docs">
-    <div class="panel-h">
-      <h2>Мои документы</h2>
-      <span class="sub">
-        {{
-          showProject()
-            ? 'договоры и акты по всем проектам, свежие сверху'
-            : 'договоры и акты проекта'
-        }}
-      </span>
-    </div>
+  <div [class.panel]="framed()" data-test="creator-docs">
+    @if (framed()) {
+      <div class="panel-h">
+        <h2>Мои документы</h2>
+        <span class="sub">
+          {{
+            showProject()
+              ? 'договоры и акты по всем проектам, свежие сверху'
+              : 'договоры и акты проекта'
+          }}
+        </span>
+      </div>
+    } @else {
+      <div class="label section-h">Мои документы</div>
+    }
     <ul class="docs">
       @for (d of items(); track d.id) {
         <li class="doc" [class.contract]="d.kind === 'contract'">
@@ -20,7 +24,7 @@
               target="_blank"
               rel="noopener"
               (click)="opened(d)"
-              (auxclick)="opened(d)"
+              (auxclick)="aux($event, d)"
               >{{ d.title }}</a
             >
             @if (d.source === 'personal' && !d.opened_at) {

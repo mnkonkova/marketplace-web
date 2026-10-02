@@ -770,11 +770,23 @@ export interface OverviewMoney {
  * ним в тарифе объявлен. Тот же порядок, что у переходов по UTM.
  */
 export interface CreatorSubscribers {
+  project_id?: string;
   creator_user_id: string;
   creator_name?: string;
   period_start: string;
+  // По этому числу считается доплата: вписанное рукой, если оно есть,
+  // иначе снятое обходом.
   subscribers: number;
-  updated_at: string;
+  // Что намерил обход: разница крайних срезов аудитории за период по всем
+  // аккаунтам человека, прикреплённым к проекту. Приходит всегда, даже
+  // когда сверху лежит ручная правка, — иначе непонятно, от чего
+  // менеджер отступил.
+  measured: number;
+  // Число перебито рукой. Тогда subscribers — вписанное, а measured
+  // показывает намеренное.
+  manual: boolean;
+  // Когда правили руками. Пусто у снятого обходом.
+  updated_at?: string;
 }
 
 export interface OverviewProject {

@@ -178,7 +178,7 @@
   <!-- Условия, оплата и итог периода. Начислений креаторам здесь нет и не
        будет: это не данные заказчика, и бэк их ему не отдаёт. -->
 
-  <app-my-documents [projectId]="p.id" [showProject]="false" />
+  <app-my-documents [projectId]="p.id" [showProject]="false" [personalOnly]="true" />
   <app-project-materials [projectId]="p.id" role="client" />
 
   <!-- Клиентская ветка переписки. Ни переписки менеджера с креаторами,

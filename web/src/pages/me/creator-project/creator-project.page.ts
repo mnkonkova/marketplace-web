@@ -51,7 +51,8 @@ import {
 import { formatMoney, groupDigits } from '@entities/billing/lib/money';
 import { periodTitle } from '@entities/billing/lib/period';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
-import { MATERIAL_KIND_LABEL, isDocument } from '@entities/publication/lib/materials';
+import { isDocument } from '@entities/publication/lib/materials';
+import { MyDocumentsComponent } from '@widgets/my-documents/my-documents.component';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { CreatorAvailabilityComponent } from '@widgets/creator-availability/creator-availability.component';
 import {
@@ -99,6 +100,7 @@ const SUGGEST_FOLD_AT = 3;
   selector: 'app-creator-project-page',
   standalone: true,
   imports: [
+    MyDocumentsComponent,
     CreatorVideosComponent,
     CommonModule,
     FormsModule,
@@ -188,6 +190,16 @@ export class CreatorProjectPage {
 
   public toggleSuggest(): void {
     this.suggestExpanded.update((v) => !v);
+  }
+
+  /**
+   * Раздел из адреса (?sec=brief) — для ссылок извне: «Открыть» в боте о
+   * выданном документе ведёт в «Задание», где документы и стоят. Без
+   * этого телефон открывался на «Деньгах», и документа там не было.
+   */
+  private sectionFromUrl(): string {
+    const sec = this.route.snapshot?.queryParamMap?.get('sec') ?? '';
+    return this.phoneTabs.some((t) => t.key === sec) ? sec : 'money';
   }
 
   private loadSuggestions(projectId: string): void {
@@ -341,19 +353,15 @@ export class CreatorProjectPage {
   public readonly materials = signal<Material[]>([]);
 
   /**
-   * Документы отдельно от материалов.
+   * Материалы без документов.
    *
    * Одной лентой чипов они лежали вперемешку, и договор ничем не
    * отличался от двадцать третьего референса. Ищут их в разные
    * моменты и по разным поводам: материалы — когда снимают, документы
-   * — когда подписывают или выставляют счёт. Порядок бэк уже отдаёт
-   * правильный (договор первым), делить остаётся по виду.
+   * — когда подписывают или выставляют счёт. Документы показывает
+   * «Мои документы» (app-my-documents) вместе с выданными лично.
    */
-  public readonly documents = computed(() => this.materials().filter(isDocument));
-
   public readonly workMaterials = computed(() => this.materials().filter((m) => !isDocument(m)));
-
-  public readonly kindLabel = MATERIAL_KIND_LABEL;
 
   /** Свой профиль специалиста. null — не загрузился, блок не показываем. */
   public readonly profile = signal<MeProfile | null>(null);
@@ -416,6 +424,13 @@ export class CreatorProjectPage {
   // это один разговор: сколько мне за это будет → что для этого надо
   // сдать → по каким правилам → и с кем поговорить, если что.
 
+  public readonly phoneTabs: readonly PrMarketTab[] = [
+    { key: 'money', title: 'Деньги', icon: 'coin' },
+    { key: 'posts', title: 'Выкладки', icon: 'cal' },
+    { key: 'brief', title: 'Задание', icon: 'doc' },
+    { key: 'talk', title: 'Переписка', icon: 'chat' },
+  ];
+
   /**
    * Открытый раздел НА ТЕЛЕФОНЕ.
    *
@@ -424,15 +439,13 @@ export class CreatorProjectPage {
    * прокручивает, поэтому разделы показываются по одному; переключает их
    * нижняя полоса, а прячет — тач-слой по data-sec. Десктоп про этот
    * сигнал просто не знает.
+   *
+   * Объявлен после phoneTabs: начальный раздел сверяется с их ключами.
    */
-  public readonly section = signal('money');
+  public readonly section = signal(this.sectionFromUrl());
 
-  public readonly phoneTabs: readonly PrMarketTab[] = [
-    { key: 'money', title: 'Деньги', icon: 'coin' },
-    { key: 'posts', title: 'Выкладки', icon: 'cal' },
-    { key: 'brief', title: 'Задание', icon: 'doc' },
-    { key: 'talk', title: 'Переписка', icon: 'chat' },
-  ];
+  /** Перезагрузить «Мои документы» вместе с остальными данными страницы. */
+  public readonly docsRefresh = signal(0);
 
   public readonly digits = groupDigits;
 
@@ -1556,6 +1569,7 @@ export class CreatorProjectPage {
       next: (r) => this.materials.set(r.items),
       error: () => this.materials.set([]),
     });
+    if (quiet) this.docsRefresh.update((n) => n + 1);
     this.loadSuggestions(id);
     // Аккаунты проекта: по ним считается, каких площадок не хватает.
     // Молча: блок «Мои аккаунты» рисует себя сам и сам же скажет о сбое.

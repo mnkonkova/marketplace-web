@@ -49,9 +49,15 @@ describe('ProjectBillingComponent: конвейер периода', () => {
     const api = jasmine.createSpyObj<BillingApi>('billingApi', [
       'managerBilling',
       'managerPeriods',
+      // Подписчики грузятся рядом с остальным: экран показывает и
+      // снятое обходом, и ручную правку. Без заглушки компонент падает
+      // на undefined — и падает ВСЯ сюита конвейера, а не блок
+      // подписчиков: загрузка идёт одним методом.
+      'managerSubscribers',
     ]);
     api.managerBilling.and.returnValue(of(billing as ProjectBilling));
     api.managerPeriods.and.returnValue(of({ items: [] } as never) as never);
+    api.managerSubscribers.and.returnValue(of({ items: [] } as never) as never);
 
     TestBed.configureTestingModule({
       providers: [

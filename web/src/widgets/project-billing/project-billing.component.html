@@ -155,7 +155,7 @@
               <b>{{ money(t.subscriber_bonus) }}</b>
               <span class="d">
                 {{ t.subscribers | number }}
-                {{ plural(t.subscribers ?? 0, 'подписчик', 'подписчика', 'подписчиков') }} — вписано
+                {{ plural(t.subscribers ?? 0, 'подписчик', 'подписчика', 'подписчиков') }} за период
                 руками
               </span>
             </div>
@@ -551,12 +551,15 @@
       @if (subsOn()) {
         <h3 class="sub">Подписчики за период</h3>
         <p class="note">
-          Сборщика подписчиков у нас нет — число сводит менеджер руками. Ставка объявлена в прайсе,
-          и по ней считает сервер: в суммах выше это отдельная строка, а не часть бонуса за
-          просмотры.
+          Прирост снимает обход аккаунтов: срез аудитории на входе в период, срез в конце, разница.
+          Считается по человеку и по тем соцсетям, что прикреплены к проекту; аккаунт, прикреплённый
+          посреди периода, считается с момента прикрепления. Своё число можно вписать — оно сильнее
+          снятого. По итоговому считает сервер: в суммах выше это отдельная строка, а не часть
+          бонуса за просмотры.
         </p>
         <ul class="utms">
           @for (a of accruals(); track a.id) {
+            @let s = subsOf(a.creator_user_id);
             <li>
               <span class="nm">{{ who(a) }}</span>
               <span class="clicks">
@@ -565,19 +568,37 @@
                 @if (a.subscriber_bonus) {
                   · {{ money(a.subscriber_bonus) }}
                 }
+                <!-- Откуда число. Без этого «вписать своё» — выстрел в
+                     темноте: на экране не видно, правил ли его кто-то и
+                     от чего человек отступил. -->
+                @if (s?.manual) {
+                  <em class="src">вписано вручную; обход намерил {{ s!.measured | number }}</em>
+                } @else if (s) {
+                  <em class="src">снято обходом</em>
+                }
               </span>
               <button class="linkish" type="button" (click)="openSubs(a.creator_user_id)">
                 изменить
               </button>
+              @if (s?.manual) {
+                <button
+                  class="linkish"
+                  type="button"
+                  [disabled]="busy() === 'subs:' + a.creator_user_id"
+                  (click)="dropSubs(a.creator_user_id)"
+                >
+                  вернуть снятое
+                </button>
+              }
             </li>
           } @empty {
-            <li class="empty">Креаторов в периоде нет — вписывать подписчиков некому.</li>
+            <li class="empty">Креаторов в периоде нет — считать подписчиков некому.</li>
           }
         </ul>
         @if (editingSubs(); as creatorId) {
           <form class="edit" (submit)="$event.preventDefault(); saveSubs()">
             <label class="fld">
-              <span>Подписчиков за период</span>
+              <span>Своё число за период</span>
               <input nz-input type="number" min="0" [(ngModel)]="subsValue" name="subs" />
             </label>
             <div class="edit-actions">

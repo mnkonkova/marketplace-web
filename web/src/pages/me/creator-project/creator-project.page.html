@@ -508,22 +508,19 @@
               </span>
             </div>
             } } }
-            <!-- МОИ ДОКУМЕНТЫ этого проекта. Одной лентой чипов договор
-                 лежал двадцать третьим по счёту и ничем не отличался
-                 от референса. Ищут их в разные моменты: материалы —
-                 когда снимают, документы — когда подписывают или
-                 выставляют счёт. -->
-            @if (documents().length) {
-            <div class="label section-h">Мои документы</div>
-            <ul class="docs">
-              @for (d of documents(); track d.id) {
-              <li class="doc" [class.contract]="d.kind === 'contract'">
-                <span class="k">{{ kindLabel[d.kind] }}</span>
-                <a [href]="d.url" target="_blank" rel="noopener">{{ d.title }}</a>
-              </li>
-              }
-            </ul>
-            } @if (workMaterials().length) {
+            <!-- МОИ ДОКУМЕНТЫ этого проекта: выданное лично и договор из
+                 материалов. Одной лентой чипов договор лежал двадцать
+                 третьим по счёту и ничем не отличался от референса. Ищут
+                 их в разные моменты: материалы — когда снимают,
+                 документы — когда подписывают или выставляют счёт. Сюда
+                 же ведёт «Открыть» из бота о выданном документе. -->
+            <app-my-documents
+              [projectId]="projectId()"
+              [showProject]="false"
+              [framed]="false"
+              [refresh]="docsRefresh()"
+            />
+            @if (workMaterials().length) {
             <div class="label section-h">Материалы</div>
             <div class="chips">
               @for (m of workMaterials(); track m.id) {

@@ -192,6 +192,36 @@ export class BillingApi {
    * объявляет прайс, а число за период вводит менеджер — ровно так же,
    * как заведены переходы по UTM. Деньги от этого числа считает сервер.
    */
+  /**
+   * Прирост подписчиков по каждому креатору периода.
+   *
+   * Отдельным запросом, а не полем начисления: начисление — это счёт, в
+   * нём лежит число, по которому посчитали. Экрану нужно ещё и то, что
+   * НАМЕРИЛ обход, и был ли счёт перебит рукой, — иначе «вписать своё»
+   * это выстрел в темноте.
+   */
+  public managerSubscribers(
+    projectId: string,
+    period?: number,
+  ): Observable<{ items?: CreatorSubscribers[] }> {
+    const q = period === undefined ? '' : `?period=${period}`;
+    return this.http.get<{ items?: CreatorSubscribers[] }>(
+      `${this.api}/manager/projects/${projectId}/subscribers${q}`,
+    );
+  }
+
+  /** Убрать ручную правку: считаем снова по снятому обходом. */
+  public managerDropSubscribers(
+    projectId: string,
+    creatorId: string,
+    period?: number,
+  ): Observable<CreatorSubscribers> {
+    const q = period === undefined ? '' : `?period=${period}`;
+    return this.http.delete<CreatorSubscribers>(
+      `${this.api}/manager/projects/${projectId}/creators/${creatorId}/subscribers${q}`,
+    );
+  }
+
   public managerSaveSubscribers(
     projectId: string,
     creatorId: string,
