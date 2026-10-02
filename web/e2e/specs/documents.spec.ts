@@ -1,7 +1,6 @@
 import { test, expect, devices, type Browser, type Page } from '@playwright/test';
 import { AUTH_KEY } from '../fixtures/world';
 import { callAs, createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
-import { openClientTab } from '../fixtures/ui';
 
 /**
  * Документы: путь от шаблона в админке до «открыт» у менеджера.
@@ -43,7 +42,7 @@ async function signIn(page: Page, role: 'admin' | 'manager' | 'creator' | 'clien
  * Телефон с касаниями, а не просто узкое окно: шторку виджеты выбирают
  * по поддержке касаний (isTouchDevice), как настоящий телефон.
  */
-async function phone(browser: Browser, role: 'admin' | 'manager'): Promise<Page> {
+async function phone(browser: Browser, role: 'admin' | 'manager' | 'creator'): Promise<Page> {
   const ctx = await browser.newContext({ ...devices['iPhone 13'] });
   await ctx.addInitScript(
     ([key, s]) => window.localStorage.setItem(key as string, JSON.stringify(s)),
@@ -128,6 +127,28 @@ test.describe.serial('путь документа', () => {
     await ctx.close();
   });
 
+  // Сюда ведёт «Открыть» из бота о выданном документе: без документа на
+  // этой странице он навсегда остался бы у менеджера «не открыт».
+  test('выданный документ — и в карточке проекта креатора', async ({ page }) => {
+    await signIn(page, 'creator');
+    await page.goto(`/me/creator/projects/${box.projectId}`);
+    await expect(page.locator('app-my-documents').getByRole('link', { name: title })).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  // На телефоне карточка открывается на «Деньгах», а документы — в
+  // «Задании»: ссылка из бота (?focus=documents) ведёт сразу туда — и
+  // стирается из адреса, чтобы перезагрузка не прыгала обратно.
+  test('на телефоне ссылка из бота открывает «Задание» с документом', async ({ browser }) => {
+    const page = await phone(browser, 'creator');
+    await page.goto(`/me/creator/projects/${box.projectId}?focus=documents`);
+    await expect(page.locator('app-my-documents').getByRole('link', { name: title })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page).not.toHaveURL(/focus=/);
+  });
+
   /**
    * Заказчик проекта «под ключ» — у него своя карточка с вкладками, и
    * документ обязан быть в ней: выданный и недостижимый документ навсегда
@@ -143,8 +164,8 @@ test.describe.serial('путь документа', () => {
     });
 
     await signIn(page, 'client');
-    await page.goto(`/me/projects/${box.projectId}`);
-    await openClientTab(page, 'Документы');
+    // Как из бота: сразу на вкладке с документами, без поиска вкладки.
+    await page.goto(`/me/projects/${box.projectId}?focus=documents`);
     const mine = page.locator('app-my-documents');
     const link = mine.getByRole('link', { name: clientTitle });
     await expect(link).toBeVisible({ timeout: 15_000 });

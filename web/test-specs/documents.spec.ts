@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { DocumentApi } from '@entities/document/api/document.api';
 import type {
@@ -169,6 +169,15 @@ describe('документы', () => {
       fixture.componentRef.setInput('projectId', 'pr1');
       fixture.detectChanges();
       expect(cmp.items().map((d) => d.id)).toEqual(['d1']);
+    });
+
+    it('сбой загрузки — странице сообщают, чтобы договор не пропал молча', () => {
+      const { fixture, cmp, api } = setup([]);
+      api.myDocuments.and.returnValue(throwError(() => new Error('500')));
+      const seen: boolean[] = [];
+      cmp.loadFailed.subscribe((v) => seen.push(v));
+      fixture.detectChanges();
+      expect(seen).toEqual([true]);
     });
 
     it('страница обновила данные — список перезагружается', () => {

@@ -519,6 +519,7 @@
               [showProject]="false"
               [framed]="false"
               [refresh]="docsRefresh()"
+              (loadFailed)="docsFailed.set($event)"
             />
             @if (workMaterials().length) {
             <div class="label section-h">Материалы</div>

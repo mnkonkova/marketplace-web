@@ -193,13 +193,26 @@ export class CreatorProjectPage {
   }
 
   /**
-   * Раздел из адреса (?sec=brief) — для ссылок извне: «Открыть» в боте о
-   * выданном документе ведёт в «Задание», где документы и стоят. Без
-   * этого телефон открывался на «Деньгах», и документа там не было.
+   * Начальный раздел — по ссылке извне.
+   *
+   * «Открыть» в боте о выданном документе ведёт с ?focus=documents: без
+   * этого телефон открывался на «Деньгах», а документы стоят в «Задании».
+   * Что значит «документы» на этой странице, решает она, а не бот.
+   *
+   * Параметр одноразовый и стирается из адреса, как ?tab= у заказчика:
+   * иначе после перезагрузки страница снова прыгала бы в «Задание», куда
+   * бы человек ни ушёл.
    */
-  private sectionFromUrl(): string {
-    const sec = this.route.snapshot?.queryParamMap?.get('sec') ?? '';
-    return this.phoneTabs.some((t) => t.key === sec) ? sec : 'money';
+  private sectionFromLink(): string {
+    const focus = this.route.snapshot?.queryParamMap?.get('focus');
+    if (!focus) return 'money';
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { focus: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    return focus === 'documents' ? 'brief' : 'money';
   }
 
   private loadSuggestions(projectId: string): void {
@@ -359,9 +372,12 @@ export class CreatorProjectPage {
    * отличался от двадцать третьего референса. Ищут их в разные
    * моменты и по разным поводам: материалы — когда снимают, документы
    * — когда подписывают или выставляют счёт. Документы показывает
-   * «Мои документы» (app-my-documents) вместе с выданными лично.
+   * «Мои документы» (app-my-documents) вместе с выданными лично; если
+   * они не загрузились, договор остаётся здесь (см. docsFailed).
    */
-  public readonly workMaterials = computed(() => this.materials().filter((m) => !isDocument(m)));
+  public readonly workMaterials = computed(() =>
+    this.docsFailed() ? this.materials() : this.materials().filter((m) => !isDocument(m)),
+  );
 
   /** Свой профиль специалиста. null — не загрузился, блок не показываем. */
   public readonly profile = signal<MeProfile | null>(null);
@@ -440,12 +456,24 @@ export class CreatorProjectPage {
    * нижняя полоса, а прячет — тач-слой по data-sec. Десктоп про этот
    * сигнал просто не знает.
    *
-   * Объявлен после phoneTabs: начальный раздел сверяется с их ключами.
    */
-  public readonly section = signal(this.sectionFromUrl());
+  public readonly section = signal(this.sectionFromLink());
 
-  /** Перезагрузить «Мои документы» вместе с остальными данными страницы. */
+  /**
+   * Перезагрузить «Мои документы»: только когда в материалах поменялся
+   * набор договоров. Правка ссылки или добавленная выкладка документов
+   * не меняют, и гонять за ними запрос незачем.
+   */
   public readonly docsRefresh = signal(0);
+
+  private docsKey = '';
+
+  /**
+   * «Мои документы» не загрузились. Договор из материалов тогда
+   * показываем среди материалов: в карточке его больше негде найти, а
+   * пропасть молча из-за сбоя одного запроса он не должен.
+   */
+  public readonly docsFailed = signal(false);
 
   public readonly digits = groupDigits;
 
@@ -1566,10 +1594,17 @@ export class CreatorProjectPage {
       },
     });
     this.api.creatorMaterials(id).subscribe({
-      next: (r) => this.materials.set(r.items),
+      next: (r) => {
+        this.materials.set(r.items);
+        const key = r.items
+          .filter(isDocument)
+          .map((m) => m.id)
+          .join();
+        if (quiet && key !== this.docsKey) this.docsRefresh.update((n) => n + 1);
+        this.docsKey = key;
+      },
       error: () => this.materials.set([]),
     });
-    if (quiet) this.docsRefresh.update((n) => n + 1);
     this.loadSuggestions(id);
     // Аккаунты проекта: по ним считается, каких площадок не хватает.
     // Молча: блок «Мои аккаунты» рисует себя сам и сам же скажет о сбое.

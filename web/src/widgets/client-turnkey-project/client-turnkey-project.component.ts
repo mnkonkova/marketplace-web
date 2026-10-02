@@ -822,12 +822,20 @@ export class ClientTurnkeyProjectComponent {
     // обещают, раздел приезжает в `?tab=` — страница его читает и
     // СТИРАЕТ из адреса: дальше ссылка снова про проект целиком, как
     // и задумано выше. from_page при этом остаётся: merge.
-    const wanted = this.route.snapshot.queryParamMap.get('tab');
+    //
+    // ?focus=documents — то же «откройся на нужном», но по смыслу, а не
+    // по ключу вкладки: так зовёт бот о выданном документе, и где у этой
+    // страницы документы, решает она.
+    const params = this.route.snapshot.queryParamMap;
+    const tab = params.get('tab');
+    const wanted = params.get('focus') === 'documents' ? 'access' : tab;
     if (wanted && TABS.includes(wanted as ClientTab)) {
       this.tab.set(wanted as ClientTab);
+    }
+    if (tab || params.has('focus')) {
       void this.router.navigate([], {
         relativeTo: this.route,
-        queryParams: { tab: null },
+        queryParams: { tab: null, focus: null },
         queryParamsHandling: 'merge',
         replaceUrl: true,
       });

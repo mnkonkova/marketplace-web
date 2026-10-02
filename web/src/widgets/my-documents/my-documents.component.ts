@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   untracked,
 } from '@angular/core';
@@ -62,14 +63,23 @@ export class MyDocumentsComponent {
    */
   public readonly refresh = input(0);
 
+  /**
+   * Загрузка не удалась (true) или удалась (false). Странице, которая
+   * убрала договоры из своих материалов в расчёте на этот список, —
+   * чтобы вернуть их туда, а не потерять молча.
+   */
+  public readonly loadFailed = output<boolean>();
+
   public readonly kindLabel = DOC_KIND_LABEL;
 
   private readonly all = signal<MyDocument[]>([]);
 
   // Сервер уже отфильтровал по проекту и источнику. Повтор здесь —
-  // страховка на выкатку: API без этих параметров их молча пропустит и
-  // отдаст документы всех проектов, а подписи проекта у строк в
-  // карточке нет — чужой договор выглядел бы своим.
+  // временная страховка на выкатку: API без этих параметров их молча
+  // пропустит и отдаст документы всех проектов, а подписи проекта у
+  // строк в карточке нет — чужой договор выглядел бы своим. Убрать (и
+  // вернуть all()), когда на проде API с project_id и source у
+  // /me/documents.
   public readonly items = computed(() => {
     const id = this.projectId();
     const personal = this.personalOnly();
@@ -88,8 +98,16 @@ export class MyDocumentsComponent {
       const seq = ++this.loadSeq;
       untracked(() =>
         this.api.myDocuments(id, personal).subscribe({
-          next: (r) => seq === this.loadSeq && this.all.set(r.items ?? []),
-          error: () => seq === this.loadSeq && this.all.set([]),
+          next: (r) => {
+            if (seq !== this.loadSeq) return;
+            this.all.set(r.items ?? []);
+            this.loadFailed.emit(false);
+          },
+          error: () => {
+            if (seq !== this.loadSeq) return;
+            this.all.set([]);
+            this.loadFailed.emit(true);
+          },
         }),
       );
     });

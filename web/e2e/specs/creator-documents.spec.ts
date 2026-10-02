@@ -95,20 +95,14 @@ test('в карточке проекта договор стоит отдель�
 test('чужой договор не отдаётся: список строится по своим проектам', async () => {
   // Проверяем ручкой, а не экраном: «не показано» на экране бывает и
   // когда запрос упал, а утечка здесь — это чужие условия работы.
-  const mine = await callAs(box.creator, 'get', '/api/v1/me/creator/documents');
+  const mine = await callAs(box.creator, 'get', '/api/v1/me/documents');
   const titles = ((mine.items ?? []) as { title: string }[]).map((m) => m.title);
   expect(titles, 'свой договор на месте').toContain(contract);
 
   // Заказчик того же проекта в состав не входит — значит и документов
   // креаторов у него нет. 403 или пустой список: важно, что не чужой
   // договор.
-  const foreign = await callAs(
-    box.client,
-    'get',
-    '/api/v1/me/creator/documents',
-    undefined,
-    [200, 403],
-  );
+  const foreign = await callAs(box.client, 'get', '/api/v1/me/documents', undefined, [200, 403]);
   const foreignTitles = (((foreign ?? {}).items ?? []) as { title: string }[]).map((m) => m.title);
   expect(foreignTitles, 'чужому договор не отдаём').not.toContain(contract);
 });
