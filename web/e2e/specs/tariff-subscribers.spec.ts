@@ -26,10 +26,22 @@ test.beforeAll(async () => {
 
 test.afterAll(() => dropSandbox(box));
 
+/**
+ * Лесенка подписчиков живёт ВНУТРИ «Дополнительно», лесенка просмотров —
+ * выше и снаружи. Адресуем через <details>, а не через `.last()`:
+ * последняя таблица на странице — та, которая успела нарисоваться, и
+ * клик по «+ ступень» успевал уехать в чужую лесенку.
+ */
+const subsBlock = (page: import('@playwright/test').Page) =>
+  page.locator('app-project-tariff details');
+
 /** Тариф проекта правят из реестра админа: строка проекта → «Править». */
-async function openProjectTariff(page: import('@playwright/test').Page): Promise<void> {
+async function openProjectTariff(
+  page: import('@playwright/test').Page,
+  sb: Sandbox = box,
+): Promise<void> {
   await page.goto('/admin/tariff');
-  const row = page.locator('tbody tr', { hasText: box.title });
+  const row = page.locator('tbody tr', { hasText: sb.title });
   await expect(row.first(), 'проект песочницы в реестре тарифов').toBeVisible({ timeout: 20_000 });
   await row.first().getByRole('button', { name: 'Править' }).click();
   await expect(page.locator('app-project-tariff')).toBeVisible();
@@ -62,14 +74,10 @@ test('ступени по подписчикам сохраняются и во�
   await expect(page.getByText('Подписчик: платит заказчик, ₽')).toHaveCount(0);
 
   // Пустая лесенка так и сказано — пустая, а не «доплата ноль».
-  const table = page.locator('app-project-tariff table.tr-tbl').last();
+  const table = subsBlock(page).locator('table.tr-tbl');
   await expect(table).toContainText('Порогов нет');
 
-  const addStep = page
-    .locator('app-project-tariff')
-    .getByRole('button', { name: '+ ступень' })
-    .last();
-  await addStep.click();
+  await subsBlock(page).getByRole('button', { name: '+ ступень' }).click();
   const row = table.locator('tbody tr').first();
   await row.locator('input').nth(0).fill('10000');
   await row.locator('input').nth(1).fill('50000');
@@ -86,48 +94,63 @@ test('ступени по подписчикам сохраняются и во�
     again.getByRole('button', { name: /Ступенями/ }),
     'форма открылась на той форме цены, которая сохранена',
   ).toHaveAttribute('aria-pressed', 'true');
-  const savedRow = page.locator('app-project-tariff table.tr-tbl').last().locator('tbody tr');
+  const savedRow = subsBlock(page).locator('table.tr-tbl tbody tr');
   await expect(savedRow.locator('input').nth(0)).toHaveValue('10000');
   await expect(savedRow.locator('input').nth(1)).toHaveValue('50000');
   await expect(savedRow.locator('input').nth(2)).toHaveValue('30000');
 });
 
-test('нулевой порог ступени подписчиков не даёт сохранить и объясняет, что не так', async ({
-  context,
-  page,
-}) => {
-  await context.addInitScript(
-    ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
-    [AUTH_KEY, box.sessions.admin] as const,
-  );
-  await openProjectTariff(page);
+/**
+ * Своя песочница: первый тест сохраняет лесенку, и проект после него уже
+ * на ступенях. Этот тест проверяет, что битая лесенка НЕ сохраняется, —
+ * то есть опирается на чистое состояние, которого в общей песочнице
+ * после соседа не осталось бы.
+ */
+test.describe('отказ', () => {
+  let bad: Sandbox;
 
-  const subs = page.locator('app-project-tariff fieldset.tr-subs');
-  await subs.getByRole('button', { name: /Ступенями/ }).click();
-  await page
-    .locator('app-project-tariff')
-    .getByRole('button', { name: '+ ступень' })
-    .last()
-    .click();
+  test.beforeAll(async () => {
+    bad = await createSandbox('subsbad', { isTest: false });
+  });
 
-  const row = page.locator('app-project-tariff table.tr-tbl').last().locator('tbody tr').first();
-  await row.locator('input').nth(0).fill('0');
-  await row.locator('input').nth(1).fill('50000');
+  test.afterAll(() => dropSandbox(bad));
 
-  // Объяснение стоит рядом со своими полями, а не над «Сохранить»: там
-  // не видно, к какой из двух лесенок оно относится.
-  await expect(page.locator('app-project-tariff .tr-bad').last()).toContainText('подписчиков');
+  test('нулевой порог ступени подписчиков не даёт сохранить и объясняет, что не так', async ({
+    context,
+    page,
+  }) => {
+    await context.addInitScript(
+      ([key, session]) => window.localStorage.setItem(key as string, JSON.stringify(session)),
+      [AUTH_KEY, bad.sessions.admin] as const,
+    );
+    await openProjectTariff(page, bad);
 
-  // И на сервер это не уезжает вовсе: отказ приходил бы всплывашкой,
-  // которая гаснет, не показав виноватую строку.
-  //
-  // Проверяем кругом, а не отсутствием всплывашки: «всплывашки нет»
-  // проходит мгновенно и при любом поведении. Открываем заново — если
-  // битая лесенка всё же уехала, форма вернётся на ступенях.
-  await page.locator('app-project-tariff').getByRole('button', { name: 'Сохранить' }).click();
-  await openProjectTariff(page);
-  await expect(
-    page.locator('app-project-tariff fieldset.tr-subs').getByRole('button', { name: /За одного/ }),
-    'ничего не сохранилось — форма открылась на прежней форме цены',
-  ).toHaveAttribute('aria-pressed', 'true');
+    const subs = page.locator('app-project-tariff fieldset.tr-subs');
+    await subs.getByRole('button', { name: /Ступенями/ }).click();
+    // Ждём пустую лесенку: без этого «+ ступень» успевал уехать в
+    // лесенку просмотров, пока вторая таблица ещё не нарисовалась.
+    await expect(subsBlock(page).locator('table.tr-tbl')).toContainText('Порогов нет');
+    await subsBlock(page).getByRole('button', { name: '+ ступень' }).click();
+
+    const row = subsBlock(page).locator('table.tr-tbl tbody tr').first();
+    await row.locator('input').nth(0).fill('0');
+    await row.locator('input').nth(1).fill('50000');
+
+    // Объяснение стоит рядом со своими полями, а не над «Сохранить»: там
+    // не видно, к какой из двух лесенок оно относится.
+    await expect(subsBlock(page).locator('.tr-bad')).toContainText('подписчиков');
+
+    // И сохранить нельзя вовсе: кнопка не нажимается, пока лесенка
+    // битая. Это сильнее отказа с сервера — отказ приходил бы
+    // всплывашкой, которая гаснет, не показав виноватую строку.
+    const save = page
+      .locator('app-project-tariff')
+      .getByRole('button', { name: 'Сохранить тариф' });
+    await expect(save, 'с нулевым порогом сохранять нечего').toBeDisabled();
+
+    // Поправили порог — метка ушла, кнопка вернулась.
+    await row.locator('input').nth(0).fill('10000');
+    await expect(subsBlock(page).locator('.tr-bad')).toHaveCount(0);
+    await expect(save).toBeEnabled();
+  });
 });
