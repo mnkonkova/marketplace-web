@@ -1,0 +1,248 @@
+@use 'touch' as touch;
+
+// Блок живёт на странице тарифа (CRM): словарь .btn/.inp/.muted оттуда,
+// здесь — раскладка карточек и формы. Цвета — токенами: у CRM есть
+// тёмная схема.
+:host {
+  display: block;
+}
+
+.dt-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .sub {
+    max-width: 64ch;
+    margin: 4px 0 0;
+    color: var(--text-muted, var(--muted));
+    font-size: 13px;
+  }
+}
+
+.dt-filter {
+  display: flex;
+  gap: 6px;
+  margin: 16px 0 12px;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border: 1px solid var(--border, var(--line));
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text, var(--ink));
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  button.on {
+    border-color: var(--text, var(--ink));
+    background: var(--text, var(--ink));
+    color: var(--bg, var(--surface));
+  }
+
+  .cnt {
+    font-size: 11px;
+    opacity: 0.7;
+  }
+}
+
+.dt-form-wrap {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border, var(--line));
+  border-radius: 12px;
+  background: var(--bg-elevated, var(--surface-2));
+
+  h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+  }
+}
+
+.dt-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+
+  .f {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .lbl {
+    color: var(--text-muted, var(--muted));
+    font-size: 12px;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  button {
+    padding: 5px 12px;
+    border: 1px solid var(--border, var(--line));
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text, var(--ink));
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  button.on {
+    border-color: var(--accent);
+    background: var(--accent-dim, var(--accent-soft));
+    color: var(--text, var(--ink));
+  }
+}
+
+.dt-form-ft {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dt-empty {
+  margin: 8px 0;
+}
+
+.dt-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border, var(--line));
+  border-radius: 12px;
+  background: var(--bg-elevated, var(--surface));
+
+  &.archived {
+    opacity: 0.7;
+  }
+
+  .title {
+    font-size: 15px;
+  }
+}
+
+.dt-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+
+  .kind {
+    padding: 1px 8px;
+    border-radius: 6px;
+    background: var(--accent-dim, var(--accent-soft));
+    color: var(--text, var(--ink));
+    font-weight: 600;
+  }
+
+  .aud,
+  .arch {
+    color: var(--text-muted, var(--muted));
+  }
+}
+
+.cur,
+.dt-history li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12.5px;
+
+  .ver {
+    flex: none;
+    font-family: var(--crm-mono, var(--mono, monospace));
+    font-weight: 600;
+  }
+
+  .muted {
+    flex: none;
+  }
+
+  .url {
+    overflow: hidden;
+    min-width: 0;
+    color: var(--accent);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.dt-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.dt-history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border, var(--line));
+  list-style: none;
+
+  li {
+    flex-wrap: wrap;
+  }
+
+  .note {
+    flex-basis: 100%;
+    color: var(--text-muted, var(--muted));
+  }
+}
+
+@include touch.phone {
+  .dt-head .btn {
+    width: 100%;
+    min-height: touch.$tap;
+  }
+
+  .dt-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dt-filter button,
+  .chips button {
+    min-height: touch.$tap-sm;
+  }
+
+  .dt-acts .btn {
+    min-height: touch.$tap-sm;
+  }
+
+  .dt-form-ft .btn {
+    flex: 1;
+    min-height: touch.$tap;
+  }
+}

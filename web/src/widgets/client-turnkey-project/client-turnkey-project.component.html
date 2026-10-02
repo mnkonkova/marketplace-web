@@ -216,7 +216,7 @@
                 (click)="setTab('access')"
               >
                 <div class="grow">
-                  <div class="t">Доступы к аккаунтам и уведомления в боте</div>
+                  <div class="t">Документы, доступы к аккаунтам и уведомления в боте</div>
                   <div class="muted small">логины, пароли и что слать в Telegram</div>
                 </div>
                 <span class="chev">›</span>
@@ -797,6 +797,10 @@
       @if (tab() === 'access') {
         <div class="span-12">
           <div class="subgrid">
+            <!-- Документы от менеджера — договор, акт сверки — первыми:
+                 выданный документ ждёт ответа, доступы — справочник. Блока
+                 нет, пока документов нет. -->
+            <app-my-documents class="span-12" [projectId]="project().id" [showProject]="false" />
             <div class="span-6 panel">
               <div class="panel-h">
                 <h2>Аккаунты, с которых выходят ролики</h2>

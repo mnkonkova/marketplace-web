@@ -92,6 +92,7 @@ import { ProjectReviewComponent } from '@widgets/project-review/project-review.c
 import { ProjectAutopingComponent } from '@widgets/project-autoping/project-autoping.component';
 import { PublicationPlanComponent } from '@widgets/publication-plan/publication-plan.component';
 import { VideoMatrixComponent } from '@widgets/video-matrix/video-matrix.component';
+import { ProjectDocumentsComponent } from '@widgets/project-documents/project-documents.component';
 import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
 import {
   PrMarketTopComponent,
@@ -150,6 +151,7 @@ import { isTouchDevice, prefersSheet } from '@shared/lib/touch';
     ProjectAutopingComponent,
     PublicationPlanComponent,
     VideoMatrixComponent,
+    ProjectDocumentsComponent,
     PrMarketAvaComponent,
     PrMarketTopComponent,
     PrMarketTabbarComponent,
@@ -1133,7 +1135,7 @@ export class ManagerTurnkeyProjectComponent {
 
   private sectionFromUrl(): string {
     const sec = this.route.snapshot.queryParamMap.get('sec');
-    return sec && /^(alerts|plan|links|review|team|pay|talk)$/.test(sec) ? sec : 'alerts';
+    return sec && /^(alerts|plan|links|review|team|pay|docs|talk)$/.test(sec) ? sec : 'alerts';
   }
 
   /**
@@ -1173,6 +1175,12 @@ export class ManagerTurnkeyProjectComponent {
     return tabs;
   });
 
+  /** Имя заказчика проекта — кому выдать документ «заказчику». */
+  public readonly clientName = computed(() => {
+    const c = this.project().client;
+    return c?.display_name || c?.email || '';
+  });
+
   /**
    * Вкладки на десктопе — те же, что внизу на телефоне, плюс переписка.
    * На телефоне ей места нет (шесть целей — предел для пальца), а на
@@ -1181,6 +1189,7 @@ export class ManagerTurnkeyProjectComponent {
    */
   public readonly deskTabs = computed<PrMarketTab[]>(() => {
     const tabs = [...this.phoneTabs()];
+    tabs.push({ key: 'docs', title: 'Документы', icon: 'doc' });
     if (this.blocks().internalComments) {
       tabs.push({ key: 'talk', title: 'Переписка', icon: 'chat' });
     }
@@ -1383,7 +1392,9 @@ export class ManagerTurnkeyProjectComponent {
       out.set(
         c.user_id,
         t.totals
-          .filter((p) => p.links > 0)
+          // measured, а не links: площадка, где сборщик отказал по всем
+          // ссылкам, — не «ноль просмотров», а неизвестность.
+          .filter((p) => p.measured > 0)
           .sort((a, b) => b.views - a.views)
           .map((p) => ({
             platform: p.platform,

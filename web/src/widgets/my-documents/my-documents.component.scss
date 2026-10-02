@@ -1,0 +1,93 @@
+@use 'touch' as touch;
+
+// Словарь кабинета (.prmarket) даёт .panel, .panel-h, .muted.
+:host {
+  display: block;
+}
+
+.docs {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.doc {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+
+  &:first-child {
+    border-top: 0;
+  }
+
+  .k {
+    flex: none;
+    padding: 1px 7px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+
+  &.contract .k {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+
+  .body {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    min-width: 0;
+
+    a {
+      color: var(--accent);
+      font-weight: 500;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  // «Новый» — личный документ, который ещё не открывали.
+  .new {
+    padding: 0 6px;
+    border-radius: 6px;
+    background: var(--warn-soft);
+    color: var(--warn);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .note {
+    flex-basis: 100%;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  .pr {
+    flex: none;
+    font-size: 12px;
+  }
+}
+
+@include touch.phone {
+  .doc {
+    flex-wrap: wrap;
+
+    .pr {
+      flex-basis: 100%;
+    }
+
+    .body a {
+      display: inline-flex;
+      align-items: center;
+      min-height: touch.$tap-sm;
+    }
+  }
+}

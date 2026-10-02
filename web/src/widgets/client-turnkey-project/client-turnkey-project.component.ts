@@ -57,6 +57,7 @@ import { ProjectCommentsComponent } from '@widgets/project-comments/project-comm
 import { TelegramLinkComponent } from '@features/telegram-link/telegram-link.component';
 import { LineChartComponent } from '@shared/ui/line-chart/line-chart.component';
 import type { SeriesPoint } from '@shared/lib/chart-series';
+import { MyDocumentsComponent } from '@widgets/my-documents/my-documents.component';
 import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
 import {
   PrMarketTopComponent,
@@ -109,6 +110,7 @@ const TABS: readonly ClientTab[] = ['summary', 'videos', 'calendar', 'money', 'a
   selector: 'app-client-turnkey-project',
   standalone: true,
   imports: [
+    MyDocumentsComponent,
     CommonModule,
     FormsModule,
     RouterLink,
@@ -167,7 +169,7 @@ export class ClientTurnkeyProjectComponent {
     { key: 'videos', title: 'Ролики' },
     { key: 'calendar', title: 'Календарь' },
     { key: 'money', title: 'Деньги' },
-    { key: 'access', title: 'Доступы и бот' },
+    { key: 'access', title: 'Документы и доступы' },
     // Вкладка подписана именем: к менеджеру идут как к человеку, и
     // «Ирина» видно раньше, чем прочитан заголовок внутри.
     { key: 'chat', title: this.managerName() || 'Менеджер' },
@@ -180,7 +182,7 @@ export class ClientTurnkeyProjectComponent {
   /**
    * Разделы на телефоне: пять мест нижней полосы.
    *
-   * «Доступы и бот» в полосу не влезли — это справочник, а не работа, и
+   * «Документы и доступы» в полосу не влезли — это справочник, а не работа, и
    * на телефоне в него заходят раз в жизни. Проход к ним стоит строкой
    * в сводке (.only-phone), а не шестой вкладкой шириной в палец.
    */

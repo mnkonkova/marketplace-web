@@ -82,6 +82,10 @@ const ADMIN_GROUPS: CrmNavGroup[] = [
     title: 'Креаторы',
     items: [
       { label: 'Прайс', link: '/admin/tariff', icon: 'price' },
+      // Шаблоны договоров, актов и NDA — сразу под прайсом: и то, и другое —
+      // условия, с которых начинается работа, и правятся они одинаково:
+      // новой версией, не задним числом.
+      { label: 'Документы', link: '/admin/documents', icon: 'doc' },
       { label: 'Чеклисты', link: '/admin/checklists', icon: 'check', counter: 'checklists' },
     ],
   },

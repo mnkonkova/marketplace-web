@@ -1,0 +1,279 @@
+<div class="panel-h">
+  <h2>Документы</h2>
+  <button type="button" class="btn sm dark pd-new" (click)="open()">Выдать документ</button>
+</div>
+<p class="muted pd-note">
+  Договоры, акты и NDA — конкретному человеку. Адресат получит сообщение в бот, подписанное пришлёт
+  в переписку проекта.
+</p>
+
+@if (formOpen() && !touch) {
+  <div class="pd-form-wrap">
+    <ng-container [ngTemplateOutlet]="formTpl" />
+  </div>
+}
+
+@if (loading()) {
+  <p class="muted">Загружаем…</p>
+} @else if (!items().length) {
+  <p class="muted pd-empty">Документов ещё не выдавали.</p>
+} @else {
+  <!-- Десктоп — таблица; телефон — карточки (ниже). -->
+  <div class="pd-table">
+    <table class="pd">
+      <thead>
+        <tr>
+          <th scope="col">Документ</th>
+          <th scope="col">Кому</th>
+          <th scope="col">Выдал</th>
+          <th scope="col">Статус</th>
+          <th scope="col"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of items(); track d.id) {
+          <tr [class.revoked]="!!d.revoked_at">
+            <td>
+              <span class="kind">{{ kindLabel[d.kind] }}</span>
+              <a class="ttl" [href]="d.url" target="_blank" rel="noopener">{{ d.title }}</a>
+              <small class="muted">{{ sourceLabel(d) }}</small>
+            </td>
+            <td>
+              {{ d.recipient_name || 'Без имени' }}
+              <small class="muted">{{ d.audience === 'client' ? 'заказчик' : 'креатор' }}</small>
+            </td>
+            <td>
+              {{ d.sent_by_name || '—' }}
+              <small class="muted">{{ d.sent_at | date: 'd MMM, HH:mm' }}</small>
+            </td>
+            <td>
+              @if (d.revoked_at) {
+                <span class="st off">отозван {{ d.revoked_at | date: 'd MMM' }}</span>
+              } @else if (d.opened_at) {
+                <span class="st ok">открыт {{ d.opened_at | date: 'd MMM' }}</span>
+              } @else {
+                <span class="st">не открыт</span>
+              }
+            </td>
+            <td class="act">
+              @if (d.revoked_at) {
+                <button
+                  type="button"
+                  class="btn sm"
+                  [disabled]="busy()"
+                  (click)="setRevoked(d, false)"
+                >
+                  Вернуть
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="btn sm quiet"
+                  [disabled]="busy()"
+                  (click)="setRevoked(d, true)"
+                >
+                  Отозвать
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <ul class="pd-cards">
+    @for (d of items(); track d.id) {
+      <li class="pd-card" [class.revoked]="!!d.revoked_at">
+        <div class="pd-card-h">
+          <span class="kind">{{ kindLabel[d.kind] }}</span>
+          @if (d.revoked_at) {
+            <span class="st off">отозван</span>
+          } @else if (d.opened_at) {
+            <span class="st ok">открыт {{ d.opened_at | date: 'd MMM' }}</span>
+          } @else {
+            <span class="st">не открыт</span>
+          }
+        </div>
+        <a class="ttl" [href]="d.url" target="_blank" rel="noopener">{{ d.title }}</a>
+        <small class="muted">
+          {{ d.recipient_name || 'Без имени' }} · {{ sourceLabel(d) }} ·
+          {{ d.sent_at | date: 'd MMM' }}
+        </small>
+        @if (d.revoked_at) {
+          <button type="button" class="btn sm" [disabled]="busy()" (click)="setRevoked(d, false)">
+            Вернуть
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="btn sm quiet"
+            [disabled]="busy()"
+            (click)="setRevoked(d, true)"
+          >
+            Отозвать
+          </button>
+        }
+      </li>
+    }
+  </ul>
+}
+
+@if (touch && formOpen()) {
+  <app-sheet [open]="true" title="Выдать документ" [note]="projectTitle()" (closed)="close()">
+    <ng-container [ngTemplateOutlet]="formTpl" />
+  </app-sheet>
+}
+
+<ng-template #formTpl>
+  <form class="pd-form" (submit)="$event.preventDefault(); send()">
+    <div class="f">
+      <span class="lbl">Кому</span>
+      <div class="seg" role="group" aria-label="Кому выдать">
+        @if (hasCrew()) {
+          <button
+            type="button"
+            [class.on]="audience() === 'creators'"
+            [attr.aria-pressed]="audience() === 'creators'"
+            (click)="setAudience('creators')"
+          >
+            Креаторам
+          </button>
+        }
+        <button
+          type="button"
+          [class.on]="audience() === 'client'"
+          [attr.aria-pressed]="audience() === 'client'"
+          (click)="setAudience('client')"
+        >
+          Заказчику
+        </button>
+      </div>
+      @if (audience() === 'creators') {
+        <div class="people">
+          <label class="person">
+            <input type="checkbox" [checked]="toAll()" (change)="setAll(!toAll())" />
+            <span>Всем в составе</span>
+          </label>
+          @for (c of crew(); track c.user_id) {
+            <label class="person">
+              <input
+                type="checkbox"
+                [checked]="!toAll() && picked().has(c.user_id)"
+                (change)="togglePerson(c.user_id)"
+              />
+              <span>{{ c.display_name }}</span>
+            </label>
+          }
+          <small class="muted">выбрано {{ pickedCount() }}</small>
+        </div>
+      } @else {
+        <p class="client-line">
+          @if (clientName()) {
+            {{ clientName() }} <span class="muted">· заказчик проекта</span>
+          } @else {
+            <span class="muted">У проекта нет заказчика — выдавать некому.</span>
+          }
+        </p>
+      }
+    </div>
+
+    <div class="f">
+      <span class="lbl">Что выдать</span>
+      <div class="seg" role="group" aria-label="Источник документа">
+        <button
+          type="button"
+          [class.on]="source() === 'template'"
+          [attr.aria-pressed]="source() === 'template'"
+          [disabled]="!audienceTemplates().length"
+          (click)="source.set('template')"
+        >
+          Шаблон
+        </button>
+        <button
+          type="button"
+          [class.on]="source() === 'custom'"
+          [attr.aria-pressed]="source() === 'custom'"
+          (click)="source.set('custom')"
+        >
+          Своя ссылка
+        </button>
+      </div>
+      @if (source() === 'template') {
+        <div class="tpls" role="radiogroup" aria-label="Шаблон">
+          @for (t of audienceTemplates(); track t.id) {
+            <label class="tpl" [class.on]="templateId() === t.id">
+              <input
+                type="radio"
+                name="tpl"
+                [checked]="templateId() === t.id"
+                (change)="templateId.set(t.id)"
+              />
+              <span class="grow">
+                <b>{{ t.title }}</b>
+                <small class="muted">
+                  {{ kindLabel[t.kind] }}
+                  @if (t.current; as c) {
+                    · v{{ c.version }} · {{ c.published_at | date: 'd MMM' }}
+                  }
+                </small>
+              </span>
+            </label>
+          }
+        </div>
+      } @else {
+        <div class="chips" role="group" aria-label="Вид документа">
+          @for (k of kinds; track k) {
+            <button
+              type="button"
+              [class.on]="custom.kind === k"
+              [attr.aria-pressed]="custom.kind === k"
+              (click)="custom.kind = k"
+            >
+              {{ kindLabel[k] }}
+            </button>
+          }
+        </div>
+        <label class="f">
+          <span class="lbl">Название</span>
+          <input
+            class="inp"
+            [(ngModel)]="custom.title"
+            name="title"
+            placeholder="Акт за сентябрь"
+          />
+        </label>
+        <label class="f">
+          <span class="lbl">Ссылка</span>
+          <input
+            class="inp"
+            type="url"
+            inputmode="url"
+            [(ngModel)]="custom.url"
+            name="url"
+            placeholder="https://docs.google.com/…"
+          />
+        </label>
+      }
+    </div>
+
+    <label class="f">
+      <span class="lbl">Пояснение</span>
+      <textarea
+        class="inp"
+        rows="2"
+        [(ngModel)]="note"
+        name="note"
+        placeholder="подпишите и пришлите в комментарии"
+      ></textarea>
+    </label>
+
+    <div class="pd-form-ft">
+      <button type="submit" class="btn dark" [disabled]="!canSend()">Выдать</button>
+      @if (!touch) {
+        <button type="button" class="btn quiet" (click)="close()">Отмена</button>
+      }
+      <small class="muted">Адресат получит сообщение в бот.</small>
+    </div>
+  </form>
+</ng-template>

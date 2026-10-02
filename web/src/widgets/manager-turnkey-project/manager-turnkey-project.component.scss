@@ -306,8 +306,19 @@
 .prmarket[data-sec='review'] .sec-review,
 .prmarket[data-sec='team'] .sec-team,
 .prmarket[data-sec='pay'] .sec-pay,
+.prmarket[data-sec='docs'] .sec-docs,
 .prmarket[data-sec='talk'] .sec-talk {
   display: block;
+}
+
+// На телефоне своей вкладки у документов нет — места в нижней полосе не
+// хватает, — и они стоят во вкладке «Команда», под составом. Правило
+// здесь, а не только в тач-слое: правило вкладок выше тяжелее
+// глобального и перебивало его.
+@media (max-width: bp.$touch) {
+  .prmarket[data-sec='team'] .sec-docs {
+    display: block;
+  }
 }
 
 // Полоса вкладок липнет к верху: внутри раздела бывает длинно, а

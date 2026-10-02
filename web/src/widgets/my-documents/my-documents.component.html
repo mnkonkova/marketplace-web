@@ -1,0 +1,40 @@
+@if (items().length) {
+  <div class="panel" data-test="creator-docs">
+    <div class="panel-h">
+      <h2>Мои документы</h2>
+      <span class="sub">
+        {{
+          showProject()
+            ? 'договоры и акты по всем проектам, свежие сверху'
+            : 'договоры и акты проекта'
+        }}
+      </span>
+    </div>
+    <ul class="docs">
+      @for (d of items(); track d.id) {
+        <li class="doc" [class.contract]="d.kind === 'contract'">
+          <span class="k">{{ kindLabel[d.kind] }}</span>
+          <span class="body">
+            <a
+              [href]="d.url"
+              target="_blank"
+              rel="noopener"
+              (click)="opened(d)"
+              (auxclick)="opened(d)"
+              >{{ d.title }}</a
+            >
+            @if (d.source === 'personal' && !d.opened_at) {
+              <span class="new">новый</span>
+            }
+            @if (d.note) {
+              <span class="note">{{ d.note }}</span>
+            }
+          </span>
+          @if (showProject()) {
+            <span class="muted pr">{{ d.project_title }}</span>
+          }
+        </li>
+      }
+    </ul>
+  </div>
+}

@@ -27,6 +27,7 @@ export type CrmIconName =
   | 'repeat'
   | 'ok'
   | 'journal'
+  | 'doc'
   | 'close';
 
 /**
@@ -87,6 +88,10 @@ export type CrmIconName =
         @case ('price') {
           <path d="M4 12V5a1 1 0 0 1 1-1h7l8 8-8 8z" />
           <circle cx="8.5" cy="8.5" r="1.3" />
+        }
+        @case ('doc') {
+          <path d="M7 3h7l5 5v13H7z" />
+          <path d="M14 3v5h5M10 13h6M10 17h6" />
         }
         @case ('check') {
           <path d="M10 6h10M10 12h10M10 18h10" />

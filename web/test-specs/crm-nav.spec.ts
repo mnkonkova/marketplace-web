@@ -50,6 +50,7 @@ describe('crmNavGroups', () => {
       '/admin/specialists',
       '/admin/clients',
       '/admin/tariff',
+      '/admin/documents',
       '/admin/checklists',
       '/admin/pipelines',
       '/admin/productions',

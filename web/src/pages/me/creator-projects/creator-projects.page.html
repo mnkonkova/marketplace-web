@@ -85,23 +85,7 @@
            Блока нет вовсе, пока документов нет: пустая панель
            «документов пока нет» на входе в кабинет читается как
            недоделка, а не как состояние дел. -->
-      @if (docs().length) {
-      <div class="span-12 panel" data-test="creator-docs">
-        <div class="panel-h">
-          <h2>Мои документы</h2>
-          <span class="sub">договоры по всем проектам, свежие сверху</span>
-        </div>
-        <ul class="docs">
-          @for (d of docs(); track d.id) {
-          <li class="doc" [class.contract]="d.kind === 'contract'">
-            <span class="k">{{ kindLabel[d.kind] }}</span>
-            <a [href]="d.url" target="_blank" rel="noopener">{{ d.title }}</a>
-            <span class="muted pr">{{ d.project_title }}</span>
-          </li>
-          }
-        </ul>
-      </div>
-      }
+      <app-my-documents class="span-12" />
     </div>
   </main>
 </div>

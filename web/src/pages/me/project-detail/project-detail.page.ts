@@ -39,11 +39,13 @@ import { ProjectMaterialsComponent } from '@widgets/project-materials/project-ma
 import { SupportFooterComponent } from '@widgets/support-footer/support-footer.component';
 import { BackLinkComponent } from '@shared/nav/back-link.component';
 import { withFromPage } from '@shared/nav/from-page';
+import { MyDocumentsComponent } from '@widgets/my-documents/my-documents.component';
 
 @Component({
   selector: 'app-project-detail-page',
   standalone: true,
   imports: [
+    MyDocumentsComponent,
     CommonModule,
     FormsModule,
     NzCardModule,

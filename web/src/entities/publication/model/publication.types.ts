@@ -501,18 +501,6 @@ export interface Material {
   created_at: string;
 }
 
-/**
- * Документ креатора: тот же материал, но названный проектом.
- *
- * «Мои документы» отвечают на вопрос «на каких условиях я работаю», а
- * материалы проекта — на «как снимать». Поэтому список один на все
- * проекты: договор ищут, когда подписывают или выставляют счёт, и
- * помнить, в каком проекте он лежал, человек не обязан.
- */
-export interface CreatorDocument extends Material {
-  project_title: string;
-}
-
 export interface MaterialInput {
   title: string;
   kind: MaterialKind;

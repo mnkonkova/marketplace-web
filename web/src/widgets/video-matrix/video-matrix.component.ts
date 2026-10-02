@@ -456,11 +456,15 @@ export class VideoMatrixComponent {
 
   private totalSub(
     metric: MatrixMetric,
-    t: { views: number; growth: number | null; measured: number },
+    t: { views: number; growth: number | null; measured: number; missing?: unknown[] },
   ): string {
-    // Ни одного снимка — и подписи нет. Иначе под прочерком стояло бы
-    // «0», то есть ровно то число, которого мы в итоге не показываем.
-    if (!t.measured) return 'снимков нет';
+    // Ни одного снимка — и подписи числом нет. Иначе под прочерком стояло
+    // бы «0», то есть ровно то число, которого мы в итоге не показываем.
+    // Причину называем верно: ролик без единой ссылки не «без снимков» —
+    // ему просто нечего снимать.
+    if (!t.measured) {
+      return t.missing && t.missing.length === this.platforms.length ? 'ссылок нет' : 'снимков нет';
+    }
     if (metric !== 'views') return groupDigits(t.views);
     // Прирост суммы неизвестен, если хоть у одной площадки нет вчерашнего
     // снимка, — так и пишем, а не подставляем сумму известных.

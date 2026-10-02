@@ -1,0 +1,208 @@
+<section class="dt">
+  <div class="dt-head">
+    <div>
+      <h2>Шаблоны документов</h2>
+      <p class="sub">
+        Договоры, акты и NDA, которые менеджер выдаёт креаторам и заказчикам. Как прайс: правка —
+        новая версия, уже выданное не меняется.
+      </p>
+    </div>
+    <button type="button" class="btn primary" (click)="startNew()">Новый шаблон</button>
+  </div>
+
+  <div class="dt-filter" role="group" aria-label="Какие шаблоны показывать">
+    <button
+      type="button"
+      [class.on]="!showArchive()"
+      [attr.aria-pressed]="!showArchive()"
+      (click)="showArchive.set(false)"
+    >
+      Действующие
+    </button>
+    <button
+      type="button"
+      [class.on]="showArchive()"
+      [attr.aria-pressed]="showArchive()"
+      (click)="showArchive.set(true)"
+    >
+      Архив
+      @if (archivedCount()) {
+        <span class="cnt">{{ archivedCount() }}</span>
+      }
+    </button>
+  </div>
+
+  <!-- Форма на десктопе — панелью сверху списка; на телефоне — в шторке. -->
+  @if (form() && !touch) {
+    <div class="dt-form-wrap">
+      <h3>{{ formTitle() }}</h3>
+      <ng-container [ngTemplateOutlet]="formTpl" />
+    </div>
+  }
+
+  @if (loading()) {
+    <p class="muted">Загружаем…</p>
+  } @else if (!shown().length) {
+    <p class="muted dt-empty">
+      @if (showArchive()) {
+        В архиве пусто.
+      } @else {
+        Шаблонов ещё нет. Заведите первый — договор с креатором, например.
+      }
+    </p>
+  } @else {
+    <ul class="dt-list">
+      @for (t of shown(); track t.id) {
+        <li class="dt-card" [class.archived]="!!t.archived_at">
+          <div class="dt-top">
+            <span class="kind">{{ kindLabel[t.kind] }}</span>
+            <span class="aud">{{ audienceLabel[t.audience] }}</span>
+            @if (t.archived_at) {
+              <span class="arch">в архиве с {{ t.archived_at | date: 'd MMM' }}</span>
+            }
+          </div>
+          <b class="title">{{ t.title }}</b>
+          @if (t.current; as cur) {
+            <div class="cur">
+              <span class="ver">v{{ cur.version }}</span>
+              <span class="muted">от {{ cur.published_at | date: 'd MMM y' }}</span>
+              <a class="url" [href]="cur.url" target="_blank" rel="noopener">{{ cur.url }}</a>
+            </div>
+          }
+          <div class="dt-acts">
+            @if (t.versions && t.versions.length > 1) {
+              <button
+                type="button"
+                class="btn quiet sm"
+                [attr.aria-expanded]="openHistory() === t.id"
+                (click)="toggleHistory(t.id)"
+              >
+                {{ openHistory() === t.id ? 'Скрыть историю' : 'История · ' + t.versions.length }}
+              </button>
+            }
+            @if (!t.archived_at) {
+              <button type="button" class="btn sm" (click)="startVersion(t)">Новая версия</button>
+              <button
+                type="button"
+                class="btn quiet sm"
+                [disabled]="busy()"
+                (click)="setArchived(t, true)"
+              >
+                В архив
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="btn sm"
+                [disabled]="busy()"
+                (click)="setArchived(t, false)"
+              >
+                Вернуть
+              </button>
+            }
+          </div>
+          @if (openHistory() === t.id) {
+            <ol class="dt-history">
+              @for (v of t.versions; track v.id) {
+                <li>
+                  <span class="ver">v{{ v.version }}</span>
+                  <span class="muted">{{ v.published_at | date: 'd MMM y' }}</span>
+                  <a class="url" [href]="v.url" target="_blank" rel="noopener">{{ v.url }}</a>
+                  @if (v.note) {
+                    <span class="note">{{ v.note }}</span>
+                  }
+                </li>
+              }
+            </ol>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>
+
+@if (touch && form()) {
+  <app-sheet [open]="true" [title]="formTitle()" (closed)="cancel()">
+    <ng-container [ngTemplateOutlet]="formTpl" />
+  </app-sheet>
+}
+
+<ng-template #formTpl>
+  <form class="dt-form" (submit)="$event.preventDefault(); save()">
+    @if (form()?.kind === 'new') {
+      <div class="f wide">
+        <span class="lbl">Вид</span>
+        <div class="chips" role="group" aria-label="Вид документа">
+          @for (k of kinds; track k) {
+            <button
+              type="button"
+              [class.on]="draft.kind === k"
+              [attr.aria-pressed]="draft.kind === k"
+              (click)="draft.kind = k"
+            >
+              {{ kindLabel[k] }}
+            </button>
+          }
+        </div>
+      </div>
+      <div class="f wide">
+        <span class="lbl">Кому выдаётся</span>
+        <div class="chips" role="group" aria-label="Кому выдаётся">
+          <button
+            type="button"
+            [class.on]="draft.audience === 'creators'"
+            [attr.aria-pressed]="draft.audience === 'creators'"
+            (click)="draft.audience = 'creators'"
+          >
+            Креаторам
+          </button>
+          <button
+            type="button"
+            [class.on]="draft.audience === 'client'"
+            [attr.aria-pressed]="draft.audience === 'client'"
+            (click)="draft.audience = 'client'"
+          >
+            Заказчику
+          </button>
+        </div>
+      </div>
+      <label class="f wide">
+        <span class="lbl">Название</span>
+        <input
+          class="inp"
+          [(ngModel)]="draft.title"
+          name="title"
+          placeholder="Договор с креатором"
+        />
+      </label>
+    }
+    <label class="f wide">
+      <span class="lbl">Ссылка на документ</span>
+      <input
+        class="inp"
+        type="url"
+        inputmode="url"
+        [(ngModel)]="draft.url"
+        name="url"
+        placeholder="https://docs.google.com/…"
+      />
+    </label>
+    <label class="f wide">
+      <span class="lbl">{{ form()?.kind === 'version' ? 'Что изменилось' : 'Заметка' }}</span>
+      <input
+        class="inp"
+        [(ngModel)]="draft.note"
+        name="note"
+        [placeholder]="
+          form()?.kind === 'version' ? 'новый срок оплаты' : 'для истории, адресат не видит'
+        "
+      />
+    </label>
+    <div class="dt-form-ft">
+      <button type="submit" class="btn primary" [disabled]="!canSave()">
+        {{ form()?.kind === 'version' ? 'Опубликовать версию' : 'Завести шаблон' }}
+      </button>
+      <button type="button" class="btn quiet" (click)="cancel()">Отмена</button>
+    </div>
+  </form>
+</ng-template>

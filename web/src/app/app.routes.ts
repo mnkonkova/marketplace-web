@@ -275,6 +275,13 @@ export const routes: Routes = [
           import('@pages/admin/tariff/tariff.page').then((m) => m.AdminTariffPage),
       },
       {
+        // Шаблоны документов: договоры, акты, NDA. Версии и архив — как у
+        // прайса.
+        path: 'documents',
+        loadComponent: () =>
+          import('@pages/admin/documents/documents.page').then((m) => m.AdminDocumentsPage),
+      },
+      {
         // Чеклисты креаторов: что креатор отмечает перед сдачей ссылок.
         // Ведёт админ — пункты общие для всех проектов.
         path: 'checklists',
