@@ -624,6 +624,9 @@ export interface ReminderPrefs {
   due_today: boolean;
   overdue: boolean;
   incomplete: boolean;
+  // Ролик вышел, а просмотров почти нет. Включён по умолчанию:
+  // срабатывает редко и по делу, в отличие от day_before.
+  low_views?: boolean;
   manager_digest: boolean;
   /**
    * Напомнить накануне срока — умолчание проекта. Единственный вид,

@@ -81,6 +81,23 @@ export class PublicationApi {
     return this.http.get<ChecklistResp>(`${this.api}/me/creator/projects/${projectId}/checklist`);
   }
 
+  /**
+   * «Я исправил — проверьте ещё раз», не трогая ссылки.
+   *
+   * Нужна там, где правка идёт НА ПЛОЩАДКЕ и адрес ролика не меняется:
+   * новой ссылки у креатора в этом случае нет, а сказать «готово» надо.
+   * Ссылки и статистика остаются как есть — ролик тот же.
+   *
+   * 409 nothing_to_resubmit — ролик и так на проверке; это состояние, а
+   * не поломка.
+   */
+  public creatorResubmit(pubId: string): Observable<Publication> {
+    return this.http.post<Publication>(
+      `${this.api}/me/creator/publications/${pubId}/resubmit`,
+      {},
+    );
+  }
+
   public creatorReport(projectId: string): Observable<PublicationReport> {
     return this.http.get<PublicationReport>(`${this.api}/me/creator/projects/${projectId}/report`);
   }
