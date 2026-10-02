@@ -104,7 +104,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (row of sorted(); track row.i) {
+          @for (row of views.sorted(); track row.i) {
             <tr>
               <td data-label="от просмотров">
                 <input
@@ -113,7 +113,7 @@
                   min="0"
                   step="10000"
                   [ngModel]="row.r.fromViews"
-                  (ngModelChange)="setCell(row.i, 'fromViews', $event)"
+                  (ngModelChange)="views.setCell(row.i, 'fromViews', $event)"
                   aria-label="Порог просмотров"
                 />
               </td>
@@ -123,7 +123,7 @@
                   type="number"
                   min="0"
                   [ngModel]="row.r.clientFee"
-                  (ngModelChange)="setCell(row.i, 'clientFee', $event)"
+                  (ngModelChange)="views.setCell(row.i, 'clientFee', $event)"
                   aria-label="Цена периода заказчику, рублей"
                 />
               </td>
@@ -136,7 +136,7 @@
                   min="0"
                   placeholder="как клиенту"
                   [ngModel]="row.r.creatorFee"
-                  (ngModelChange)="setCell(row.i, 'creatorFee', $event)"
+                  (ngModelChange)="views.setCell(row.i, 'creatorFee', $event)"
                   aria-label="Оклад креатору на ступени, рублей"
                 />
               </td>
@@ -144,7 +144,7 @@
                 <button
                   type="button"
                   class="btn sm"
-                  (click)="removeRow(row.i)"
+                  (click)="views.remove(row.i)"
                   [attr.aria-label]="'Убрать ступень от ' + row.r.fromViews"
                 >
                   ×
@@ -164,7 +164,7 @@
     </div>
 
     <div class="tr-acts">
-      <button type="button" class="btn sm" (click)="addRow()">+ ступень</button>
+      <button type="button" class="btn sm" (click)="views.add()">+ ступень</button>
     </div>
   }
 
@@ -192,19 +192,136 @@
         <input class="inp num" type="number" min="0" [(ngModel)]="tailRate" />
         <span class="hint">Ниже основной намеренно: так виральный ролик не съедает бюджет.</span>
       </label>
-
-      <label>
-        <span class="lbl">Подписчик: платит заказчик, ₽</span>
-        <input class="inp num" type="number" min="0" [(ngModel)]="subscriberRate" />
-        <span class="hint">Число подписчиков вписывает менеджер — сборщика по ним нет.</span>
-      </label>
-
-      <label>
-        <span class="lbl">Подписчик: получает креатор, ₽</span>
-        <input class="inp num" type="number" min="0" [(ngModel)]="creatorSubscriberRate" />
-        <span class="hint">Пусто — столько же, сколько платит заказчик.</span>
-      </label>
     </div>
+
+    <!-- ДОПЛАТА ЗА ПОДПИСЧИКОВ. Та же развилка, что у просмотров, и
+         теми же двумя кнопками: «за одного» — умножение, «ступенями» —
+         пороги прироста за период. Поштучная цена на росте в сотню
+         тысяч даёт сумму, которую никто не закладывал, — отсюда вторая
+         форма. Непустая лесенка отменяет цену за одного: сервер
+         откажет, если пришли обе, и угадывать за менеджера нельзя. -->
+    <fieldset class="tr-mode tr-subs">
+      <legend class="lbl">Подписчики: доплата за прирост</legend>
+      <div class="modes">
+        <button
+          type="button"
+          class="mode"
+          [class.on]="subMode() === 'rate'"
+          [attr.aria-pressed]="subMode() === 'rate'"
+          (click)="setSubMode('rate')"
+        >
+          <b>За одного</b>
+          <span>Цена × прирост за период</span>
+        </button>
+        <button
+          type="button"
+          class="mode"
+          [class.on]="subMode() === 'steps'"
+          [attr.aria-pressed]="subMode() === 'steps'"
+          (click)="setSubMode('steps')"
+        >
+          <b>Ступенями</b>
+          <span>Цена периода растёт порогами прироста</span>
+        </button>
+      </div>
+    </fieldset>
+
+    <p class="muted tr-note">
+      Прирост считается ПО ЧЕЛОВЕКУ и за период: снимок подписчиков на входе, снимок в конце,
+      разница. Аккаунт, прикреплённый посреди периода, считается с момента прикрепления. Своё число
+      менеджера сильнее снятого.
+    </p>
+
+    @if (subMode() === 'rate') {
+      <div class="tr-grid">
+        <label>
+          <span class="lbl">Подписчик: платит заказчик, ₽</span>
+          <input class="inp num" type="number" min="0" [(ngModel)]="subscriberRate" />
+          <span class="hint">За одного подписчика прироста. Пусто — доплату не считаем.</span>
+        </label>
+
+        <label>
+          <span class="lbl">Подписчик: получает креатор, ₽</span>
+          <input class="inp num" type="number" min="0" [(ngModel)]="creatorSubscriberRate" />
+          <span class="hint">Пусто — столько же, сколько платит заказчик.</span>
+        </label>
+      </div>
+    } @else {
+      <div class="tbl-wrap">
+        <table class="tr-tbl">
+          <thead>
+            <tr>
+              <th>от подписчиков</th>
+              <th>клиенту, ₽</th>
+              <th>креатору, ₽</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of subs.sorted(); track row.i) {
+              <tr>
+                <td data-label="от подписчиков">
+                  <input
+                    class="inp num"
+                    type="number"
+                    min="0"
+                    step="1000"
+                    [ngModel]="row.r.fromViews"
+                    (ngModelChange)="subs.setCell(row.i, 'fromViews', $event)"
+                    aria-label="Порог прироста подписчиков"
+                  />
+                </td>
+                <td data-label="клиенту">
+                  <input
+                    class="inp num"
+                    type="number"
+                    min="0"
+                    [ngModel]="row.r.clientFee"
+                    (ngModelChange)="subs.setCell(row.i, 'clientFee', $event)"
+                    aria-label="Цена периода заказчику"
+                  />
+                </td>
+                <td data-label="креатору">
+                  <input
+                    class="inp num"
+                    type="number"
+                    min="0"
+                    placeholder="как заказчику"
+                    [ngModel]="row.r.creatorFee"
+                    (ngModelChange)="subs.setCell(row.i, 'creatorFee', $event)"
+                    aria-label="Из них креатору"
+                  />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    class="tr-del"
+                    [attr.aria-label]="'Убрать ступень от ' + row.r.fromViews + ' подписчиков'"
+                    (click)="subs.remove(row.i)"
+                  >
+                    ×
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4" class="muted">
+                  Порогов нет — доплата за подписчиков не считается. Добавьте первый.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tr-acts">
+        <button type="button" class="btn sm" (click)="subs.add()">+ ступень</button>
+      </div>
+    }
+
+    @if (subProblem(); as p) {
+      <p class="tr-bad">{{ p }}</p>
+    }
   </details>
 
   @if (problem(); as p) {

@@ -58,6 +58,11 @@ export interface BillingTerms {
   // Пусто — KPI не считается вовсе.
   subscriber_rate?: number;
   creator_subscriber_rate?: number;
+  // Лесенка ПО ПОДПИСЧИКАМ: пороги прироста за период и цена периода на
+  // каждом. Непустая отменяет subscriber_rate — «за одного» и
+  // «ступенями» две формы одной цены, и вписанные вместе они не
+  // уточняют друг друга, а спорят. Пороги считаются по человеку.
+  subscriber_steps?: TariffStep[];
   /**
    * Стоимость проекта за период, копейки. Называет менеджер.
    *
@@ -164,6 +169,9 @@ export interface BillingTermsInput {
   // значит «ставка задана и равна нулю».
   subscriber_rate?: number | null;
   creator_subscriber_rate?: number | null;
+  // Лесенка по подписчикам целиком, как и steps: сервер переписывает её
+  // заменой. Непустая отменяет subscriber_rate.
+  subscriber_steps?: TariffStep[];
   // Стоимость проекта за период, копейки. См. BillingTerms.project_cost.
   project_cost?: number;
 }
@@ -512,8 +520,10 @@ export interface SideTerms {
    * одним и тем же заработком.
    */
   steps?: SideTariffStep[];
-  /** Сколько стоит подписчик. Пусто — KPI по подписчикам не считается. */
+  /** Сколько стоит подписчик. Пусто — цена задана лесенкой или KPI не считается. */
   subscriber_rate?: number;
+  /** Лесенка по подписчикам его стороны. Непустая отменяет subscriber_rate. */
+  subscriber_steps?: SideTariffStep[];
   updated_at?: string;
 }
 

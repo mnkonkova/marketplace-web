@@ -47,6 +47,95 @@ interface Row {
 type Mode = 'steps' | 'rate';
 
 /**
+ * Лесенка порогов — одна механика на два тарифа.
+ *
+ * Их в форме две: по просмотрам и по подписчикам. Правила у них общие —
+ * порог больше нуля, пороги не повторяются, креатору не обещано больше,
+ * чем платит заказчик, — и держать их двумя наборами полей и двумя
+ * копиями проверок значит однажды поправить одну и забыть другую.
+ * Различаются только слово для порога («просмотров» / «подписчиков») и
+ * шаг кнопки «+ ступень».
+ */
+class Ladder {
+  public readonly rows = signal<Row[]>([]);
+
+  /**
+   * Пороги по возрастанию — как их читает счёт.
+   *
+   * Сортируется ПОКАЗ, а не сама таблица: строку добавляют в конец, и
+   * перестроение списка под курсором увело бы поле ввода из-под рук.
+   */
+  public readonly sorted = computed(() =>
+    this.rows()
+      .map((r, i) => ({ r, i }))
+      .sort((a, b) => (a.r.fromViews ?? 0) - (b.r.fromViews ?? 0)),
+  );
+
+  public constructor(
+    private readonly unit: string,
+    private readonly firstStep: number,
+  ) {}
+
+  public fill(steps: readonly TariffStep[] | undefined): void {
+    this.rows.set(
+      (steps ?? []).map((s) => ({
+        fromViews: s.from_views,
+        clientFee: toRubles(s.client_fee),
+        creatorFee:
+          s.creator_fee === null || s.creator_fee === undefined ? null : toRubles(s.creator_fee),
+      })),
+    );
+  }
+
+  public add(): void {
+    const last = this.rows()[this.rows().length - 1];
+    // Новая ступень начинается выше предыдущей: порог, равный соседнему,
+    // сервер отклонит, а нулевой означал бы второй фикс.
+    const from = last?.fromViews ? last.fromViews * 2 : this.firstStep;
+    this.rows.set([...this.rows(), { fromViews: from, clientFee: null, creatorFee: null }]);
+  }
+
+  public remove(i: number): void {
+    this.rows.set(this.rows().filter((_, idx) => idx !== i));
+  }
+
+  public setCell(i: number, field: keyof Row, value: number | null): void {
+    this.rows.set(this.rows().map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  }
+
+  /** Что не так с лесенкой. Пусто — можно сохранять. */
+  public problem(): string {
+    const seen = new Set<number>();
+    for (const r of this.rows()) {
+      if (r.fromViews === null || r.fromViews <= 0) {
+        return `Порог ступени — ${this.unit} больше нуля. Нулевой порог — это фикс, он выше.`;
+      }
+      if (r.clientFee === null || r.clientFee < 0) {
+        return 'У каждой ступени должна быть цена периода.';
+      }
+      if (seen.has(r.fromViews)) {
+        return 'Две ступени с одним порогом — непонятно, по какой считать.';
+      }
+      seen.add(r.fromViews);
+      if (r.creatorFee !== null && r.creatorFee > r.clientFee) {
+        return 'Креатору обещано больше, чем платит заказчик, — проверьте ступень.';
+      }
+    }
+    return '';
+  }
+
+  /** Лесенка к отправке. Пустая, когда выбрана другая форма цены. */
+  public steps(on: boolean): TariffStep[] {
+    if (!on) return [];
+    return this.rows().map((r) => ({
+      from_views: r.fromViews ?? 0,
+      client_fee: fromRubles(r.clientFee ?? 0),
+      creator_fee: r.creatorFee === null ? null : fromRubles(r.creatorFee),
+    }));
+  }
+}
+
+/**
  * Тариф ПРОЕКТА — таблица, а не копия общего прайса.
  *
  * Прайс площадки один на всех, и до сих пор это было единственным
@@ -87,7 +176,22 @@ export class ProjectTariffComponent {
 
   public readonly busy = signal(false);
 
-  public readonly rows = signal<Row[]>([]);
+  /**
+   * Лесенка по ПРОСМОТРАМ. Первая ступень предлагается с 300 тысяч: так
+   * звучит коммерческое предложение, с которого начинают разговор.
+   */
+  public readonly views = new Ladder('число просмотров', 300_000);
+
+  /**
+   * Лесенка по ПОДПИСЧИКАМ — вторая форма доплаты за аудиторию.
+   *
+   * Поштучная цена на росте в сотню тысяч даёт сумму, которую никто не
+   * закладывал; ступени ограничивают её сверху и заодно объясняют
+   * заказчику, за что он платит. Пороги считаются ПО ЧЕЛОВЕКУ, как у
+   * просмотров: у восьми креаторов «набрать 10 000» — восемь разных
+   * работ, а не одна общая.
+   */
+  public readonly subs = new Ladder('число подписчиков', 1_000);
 
   /**
    * Фикс за период — отдельным полем, а не строкой таблицы.
@@ -102,6 +206,16 @@ export class ProjectTariffComponent {
   public fixCreator: number | null = null;
 
   public readonly mode = signal<Mode>('steps');
+
+  /**
+   * Чем задана доплата за подписчиков: ценой за одного или ступенями.
+   *
+   * По умолчанию «за одного»: так это работало до ступеней, и у
+   * действующих проектов в снимке лежит именно ставка. Решение
+   * владельца от 2 октября — «за 1 или ступенями», и выбор за
+   * менеджером.
+   */
+  public readonly subMode = signal<Mode>('rate');
 
   /** Ставка за тысячу просмотров — вторая модель. */
   public rateClient: number | null = null;
@@ -174,53 +288,29 @@ export class ProjectTariffComponent {
       this.rateCreator = money(t?.creator_rate_per_1000_views);
     }
 
-    this.rows.set(
-      rest.map((s) => ({
-        fromViews: s.from_views,
-        clientFee: toRubles(s.client_fee),
-        creatorFee: money(s.creator_fee),
-      })),
-    );
+    this.views.fill(rest);
     this.guaranteeViews = t?.guarantee_views ?? null;
     this.tailRate = t?.rate_per_1000_views_over ? toRubles(t.rate_per_1000_views_over) : null;
     this.tailThreshold = t?.bonus_views_threshold || null;
-    this.subscriberRate = t?.subscriber_rate ? toRubles(t.subscriber_rate) : null;
-    this.creatorSubscriberRate = t?.creator_subscriber_rate
-      ? toRubles(t.creator_subscriber_rate)
-      : null;
-  }
-
-  public addRow(): void {
-    const last = this.rows()[this.rows().length - 1];
-    // Новая ступень начинается выше предыдущей: порог, равный соседнему,
-    // сервер отклонит, а нулевой в таблице означал бы второй фикс.
-    const from = last?.fromViews ? last.fromViews * 2 : 300_000;
-    this.rows.set([...this.rows(), { fromViews: from, clientFee: null, creatorFee: null }]);
+    // Какая из двух форм задана, видно по снимку: непустая лесенка
+    // отменяет ставку, и показывать поле ставки рядом со ступенями
+    // значит назвать два разных числа одной ценой.
+    const subSteps = t?.subscriber_steps ?? [];
+    this.subs.fill(subSteps);
+    this.subMode.set(subSteps.length ? 'steps' : 'rate');
+    this.subscriberRate =
+      subSteps.length || !t?.subscriber_rate ? null : toRubles(t.subscriber_rate);
+    this.creatorSubscriberRate =
+      subSteps.length || !t?.creator_subscriber_rate ? null : toRubles(t.creator_subscriber_rate);
   }
 
   public setMode(m: Mode): void {
     this.mode.set(m);
   }
 
-  public removeRow(i: number): void {
-    this.rows.set(this.rows().filter((_, idx) => idx !== i));
+  public setSubMode(m: Mode): void {
+    this.subMode.set(m);
   }
-
-  public setCell(i: number, field: keyof Row, value: number | null): void {
-    this.rows.set(this.rows().map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
-  }
-
-  /**
-   * Ступени по возрастанию порога — как их читает счёт.
-   *
-   * Сортируем ПОКАЗ, а не саму таблицу: строку добавляют в конец, и
-   * перестроение списка под курсором увело бы поле ввода из-под рук.
-   */
-  public readonly sorted = computed(() =>
-    this.rows()
-      .map((r, i) => ({ r, i }))
-      .sort((a, b) => (a.r.fromViews ?? 0) - (b.r.fromViews ?? 0)),
-  );
 
   /**
    * Что не так с тарифом. Пусто — можно сохранять.
@@ -233,6 +323,11 @@ export class ProjectTariffComponent {
   public problem(): string {
     const fix = this.fixState();
     if (fix) return fix;
+    // Доплата за подписчиков проверяется и здесь: своё сообщение она
+    // показывает рядом со своими полями, но уехать на сервер битой не
+    // должна.
+    const subs = this.subProblem();
+    if (subs) return subs;
     if (this.mode() === 'rate') {
       if (
         this.rateCreator !== null &&
@@ -243,20 +338,24 @@ export class ProjectTariffComponent {
       }
       return '';
     }
-    const seen = new Set<number>();
-    for (const r of this.rows()) {
-      if (r.fromViews === null || r.fromViews <= 0) {
-        return 'Порог ступени — число просмотров больше нуля. Нулевой порог — это фикс, он выше.';
-      }
-      if (r.clientFee === null || r.clientFee < 0)
-        return 'У каждой ступени должна быть цена периода.';
-      if (seen.has(r.fromViews)) {
-        return 'Две ступени с одним порогом — непонятно, по какой считать.';
-      }
-      seen.add(r.fromViews);
-      if (r.creatorFee !== null && r.creatorFee > r.clientFee) {
-        return 'Креатору обещано больше, чем платит заказчик, — проверьте ступень.';
-      }
+    return this.views.problem();
+  }
+
+  /**
+   * Что не так с доплатой за подписчиков.
+   *
+   * Отдельной строкой от problem(): доплата живёт в «Дополнительно», и
+   * ошибку по ней надо показать там же, а не над кнопкой «Сохранить»,
+   * где не видно, к какому полю она относится.
+   */
+  public subProblem(): string {
+    if (this.subMode() === 'steps') return this.subs.problem();
+    if (
+      this.creatorSubscriberRate !== null &&
+      this.subscriberRate !== null &&
+      this.creatorSubscriberRate > this.subscriberRate
+    ) {
+      return 'За подписчика креатору обещано больше, чем платит заказчик.';
     }
     return '';
   }
@@ -275,13 +374,12 @@ export class ProjectTariffComponent {
     const ladder = this.mode() === 'steps';
     // Нулевой ступени больше нет: её место занял фикс за ролик, и
     // отправлять её вместе с ним значило бы взять цену дважды.
-    const steps: TariffStep[] = ladder
-      ? this.rows().map((r) => ({
-          from_views: r.fromViews ?? 0,
-          client_fee: fromRubles(r.clientFee ?? 0),
-          creator_fee: r.creatorFee === null ? null : fromRubles(r.creatorFee),
-        }))
-      : [];
+    const steps = this.views.steps(ladder);
+    // Подписчики — та же развилка своей парой: ступени отменяют цену за
+    // одного, и наоборот. Сервер отказывает, если присланы обе, —
+    // угадывать за менеджера, что он имел в виду, нельзя.
+    const subStepped = this.subMode() === 'steps';
+    const subscriberSteps = this.subs.steps(subStepped);
     // Две модели не смешиваются: непустая лесенка отменяет ставку за
     // тысячу, и оставить в снимке числа от другого правила счёта значит
     // однажды посчитать проект дважды разными способами.
@@ -301,9 +399,13 @@ export class ProjectTariffComponent {
       bonus_views_threshold: this.tailThreshold ?? 0,
       steps,
       guarantee_views: this.guaranteeViews ?? null,
-      subscriber_rate: this.subscriberRate === null ? null : fromRubles(this.subscriberRate),
+      subscriber_steps: subscriberSteps,
+      subscriber_rate:
+        subStepped || this.subscriberRate === null ? null : fromRubles(this.subscriberRate),
       creator_subscriber_rate:
-        this.creatorSubscriberRate === null ? null : fromRubles(this.creatorSubscriberRate),
+        subStepped || this.creatorSubscriberRate === null
+          ? null
+          : fromRubles(this.creatorSubscriberRate),
     };
     this.busy.set(true);
     this.api.managerSaveTerms(this.projectId(), input).subscribe({
@@ -338,7 +440,7 @@ export class ProjectTariffComponent {
         // таблицу значило бы соврать: человек решит, что кнопка не
         // сработала, и нажмёт ещё раз.
         this.msg.success(
-          this.rows().length
+          this.views.rows().length
             ? 'Заполнили из прайса. Поправьте под проект и сохраните.'
             : 'В прайсе площадки ступеней нет — соберите таблицу сами.',
         );

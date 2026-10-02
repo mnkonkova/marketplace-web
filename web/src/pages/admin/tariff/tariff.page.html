@@ -203,17 +203,46 @@
   </div>
   }
 
-  <h2 class="sec">KPI по подписчикам</h2>
-  @if (subsOn(v)) {
+  <h2 class="sec">Доплата за подписчиков</h2>
+  @if (subSteps(v).length) {
+  <p class="sub">
+    Ступенями: набрал за период столько подписчиков — период стоит столько. Берётся последняя взятая
+    ступень, а не сумма пройденных. Прирост считается по человеку: снимок аудитории на входе, снимок
+    в конце, разница.
+  </p>
+  <div class="twrap">
+    <table>
+      <thead>
+        <tr>
+          <th>От подписчиков за период</th>
+          <th>Платит заказчик</th>
+          <th>Креатору</th>
+          <th>Остаётся площадке</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (st of subSteps(v); track st.from_views) {
+        <tr>
+          <td class="num">{{ st.from_views | number }}</td>
+          <td>{{ money(st.client_fee) }}</td>
+          <td>{{ money(stepCreatorFee(st)) }}</td>
+          <td>{{ money(st.client_fee - stepCreatorFee(st)) }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } @else if (subsOn(v)) {
   <p class="sub">
     {{ money(v.subscriber_rate) }} за подписчика с заказчика, креатору {{
-    money(v.creator_subscriber_rate ?? v.subscriber_rate) }}. Сборщика подписчиков у нас нет: число
-    за период вписывает менеджер руками — так же, как переходы по UTM.
+    money(v.creator_subscriber_rate ?? v.subscriber_rate) }}. Прирост считается по человеку и за
+    период: снимок аудитории на входе, снимок в конце, разница. Вписанное менеджером число сильнее
+    снятого.
   </p>
   } @else {
   <p class="sub">
-    Не считаем: ставка не объявлена. Объявите её в новой версии — и в проекте появится поле, куда
-    менеджер вписывает подписчиков за период.
+    Не считаем: цена не объявлена ни за одного, ни ступенями. Объявите её в новой версии — и в
+    проекте появится строка доплаты за прирост аудитории.
   </p>
   }
 
@@ -432,17 +461,74 @@
   }
   <button class="btn quiet" type="button" (click)="addStep()">Добавить ступень</button>
 
-  <h3 class="sec">KPI по подписчикам</h3>
+  <h3 class="sec">Доплата за подписчиков</h3>
   <p class="sub">
-    Подписчиков никто не собирает: сборщика по ним в продукте нет. Объявляем только ставку — число
-    за период вписывает менеджер руками, ровно так же, как переходы по UTM. Выключено — KPI не
-    входит в счёт вовсе; это не то же самое, что ставка ноль.
+    Прирост считается по человеку и за период: снимок аудитории на входе, снимок в конце, разница.
+    Снимки снимает обход аккаунтов; аккаунт, прикреплённый посреди периода, считается с момента
+    прикрепления. Вписанное менеджером число сильнее снятого. Выключено — доплата не входит в счёт
+    вовсе; это не то же самое, что цена ноль.
   </p>
   <label class="check">
     <input type="checkbox" [(ngModel)]="draft.countSubs" name="countSubs" />
     <span>Считать подписчиков</span>
   </label>
   @if (draft.countSubs) {
+  <!-- Две формы цены, и они взаимоисключающие: ступени отменяют цену за
+       одного. Поштучная цена на росте в сотню тысяч даёт сумму, которую
+       никто не закладывал, — отсюда вторая форма. -->
+  <label class="check">
+    <input type="checkbox" [(ngModel)]="draft.subStepped" name="subStepped" />
+    <span>Ступенями, а не за одного</span>
+  </label>
+  @if (draft.subStepped) {
+  <p class="sub">
+    Порог прироста и цена периода на нём: «набрал 10 000 подписчиков — период стоит столько-то».
+    Берётся последняя взятая ступень, а не сумма пройденных. Ступеней нет — доплата не считается.
+  </p>
+  @if (draft.subSteps.length) {
+  <div class="steps">
+    <div class="steps-head">
+      <span>От подписчиков</span>
+      <span>Платит заказчик, ₽</span>
+      <span>Креатору, ₽</span>
+      <span></span>
+    </div>
+    @for (st of draft.subSteps; track $index) {
+    <div class="step-row" [class.bad]="subStepProblem($index)">
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        step="1000"
+        placeholder="от скольких"
+        [(ngModel)]="st.fromViews"
+        [name]="'subfrom' + $index"
+      />
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        [(ngModel)]="st.clientFee"
+        [name]="'subfee' + $index"
+      />
+      <input
+        class="inp"
+        type="number"
+        min="0"
+        placeholder="как у заказчика"
+        [(ngModel)]="st.creatorFee"
+        [name]="'subcfee' + $index"
+      />
+      <button class="btn quiet sm" type="button" (click)="removeSubStep($index)">Убрать</button>
+      @if (subStepProblem($index); as problem) {
+      <span class="step-bad">{{ problem }}</span>
+      }
+    </div>
+    }
+  </div>
+  }
+  <button class="btn quiet" type="button" (click)="addSubStep()">Добавить ступень</button>
+  } @else {
   <div class="grid">
     <label>
       <span class="lbl">За подписчика, ₽</span>
@@ -460,7 +546,7 @@
       />
     </label>
   </div>
-  }
+  } }
 
   <h3 class="sec">Текст условий</h3>
   <p class="sub">С ним соглашается заказчик перед стартом проекта.</p>

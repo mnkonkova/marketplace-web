@@ -65,11 +65,17 @@ interface Draft {
   // неизвестно — живой клиент просит «оклад плюс KPI на 300 000», и
   // следом появляются четвёртая и пятая точка.
   steps: DraftStep[];
-  // KPI по подписчикам. Сборщика подписчиков нет — объявляем только
-  // ставку, число потом вписывает менеджер руками.
+  // Доплата за подписчиков. Форм две, и объявляет их прайс: цена за
+  // одного или ступени прироста. Само число прироста снимается обходом
+  // аккаунтов (снимок на входе, снимок в конце), а вписанное менеджером
+  // сильнее снятого.
   countSubs: boolean;
+  // subStepped — выбрана форма «ступенями». Ставка и ступени
+  // взаимоисключающие: сервер откажет, если присланы обе.
+  subStepped: boolean;
   subRate: number | null;
   creatorSubRate: number | null;
+  subSteps: DraftStep[];
   body: string;
 }
 
@@ -238,7 +244,12 @@ export class AdminTariffPage implements OnInit {
   }
 
   public subsOn(v: TermsVersion): boolean {
-    return v.subscriber_rate != null;
+    return v.subscriber_rate != null || (v.subscriber_steps ?? []).length > 0;
+  }
+
+  /** Ступени доплаты за подписчиков выпущенной версии — для показа. */
+  public subSteps(v: TermsVersion): TariffStep[] {
+    return v.subscriber_steps ?? [];
   }
 
   /**
@@ -260,15 +271,51 @@ export class AdminTariffPage implements OnInit {
    * — всплывашка гаснет, а строки остаются одинаковыми на вид.
    */
   public stepProblem(i: number): string {
-    const st = this.draft.steps[i];
+    return this.ladderProblem(this.draft.steps, i);
+  }
+
+  /**
+   * Что не так с одной строкой лесенки — любой из двух.
+   *
+   * Правила общие: порог задан и не повторяется. Вид лесенки в текст не
+   * попадает намеренно: подпись стоит ВНУТРИ своей строки, у таблицы
+   * свой заголовок («От просмотров» / «От подписчиков»), и приписка
+   * «(просмотров)» ничего не добавляла бы к тому, что человек уже
+   * видит.
+   */
+  private ladderProblem(steps: readonly DraftStep[], i: number): string {
+    const st = steps[i];
+    if (!st) return '';
     if (st.fromViews === null || Number.isNaN(st.fromViews)) return 'не задан порог';
-    const same = this.draft.steps.filter((o) => o.fromViews === st.fromViews).length;
+    const same = steps.filter((o) => o.fromViews === st.fromViews).length;
     return same > 1 ? 'такой порог уже есть' : '';
   }
 
   /** Есть ли в лесенке строки, с которыми прайс не выпустится. */
   public readonly stepsBroken = (): boolean =>
-    this.draft.steps.some((_, i) => this.stepProblem(i) !== '');
+    this.draft.steps.some((_, i) => this.stepProblem(i) !== '') ||
+    this.draft.subSteps.some((_, i) => this.subStepProblem(i) !== '');
+
+  /**
+   * Ступень доплаты за подписчиков. Отдельный список, а не признак у
+   * ступени просмотров: пороги независимы (300 000 просмотров и 10 000
+   * подписчиков — разные работы), и одной таблицей их не задать.
+   */
+  public addSubStep(): void {
+    this.draft.subSteps = [
+      ...this.draft.subSteps,
+      { fromViews: null, clientFee: 0, creatorFee: null },
+    ];
+  }
+
+  public removeSubStep(i: number): void {
+    this.draft.subSteps = this.draft.subSteps.filter((_, idx) => idx !== i);
+  }
+
+  /** То же, что stepProblem, но для лесенки подписчиков. */
+  public subStepProblem(i: number): string {
+    return this.ladderProblem(this.draft.subSteps, i);
+  }
 
   public removeStep(i: number): void {
     this.draft.steps = this.draft.steps.filter((_, idx) => idx !== i);
@@ -327,9 +374,25 @@ export class AdminTariffPage implements OnInit {
             client_fee: fromRubles(st.clientFee),
             creator_fee: st.creatorFee === null ? null : fromRubles(st.creatorFee),
           })),
-        subscriber_rate: d.countSubs && d.subRate !== null ? fromRubles(d.subRate) : null,
+        // Две формы доплаты за подписчиков взаимоисключающие: ступени
+        // отменяют цену за одного. Присланные вместе они не уточняют
+        // друг друга, а спорят, и сервер отвечает отказом.
+        subscriber_steps:
+          d.countSubs && d.subStepped
+            ? [...d.subSteps]
+                .sort((a, b) => (a.fromViews ?? 0) - (b.fromViews ?? 0))
+                .map((st) => ({
+                  from_views: Math.max(0, Math.round(st.fromViews ?? 0)),
+                  client_fee: fromRubles(st.clientFee),
+                  creator_fee: st.creatorFee === null ? null : fromRubles(st.creatorFee),
+                }))
+            : [],
+        subscriber_rate:
+          d.countSubs && !d.subStepped && d.subRate !== null ? fromRubles(d.subRate) : null,
         creator_subscriber_rate:
-          d.countSubs && d.creatorSubRate !== null ? fromRubles(d.creatorSubRate) : null,
+          d.countSubs && !d.subStepped && d.creatorSubRate !== null
+            ? fromRubles(d.creatorSubRate)
+            : null,
         body: d.body.trim(),
       })
       .subscribe({
@@ -365,6 +428,8 @@ function emptyDraft(): Draft {
     clickThreshold: null,
     clickRateOver: null,
     steps: [],
+    subStepped: false,
+    subSteps: [],
     countSubs: false,
     subRate: null,
     creatorSubRate: null,
@@ -399,9 +464,17 @@ function draftFrom(v: TermsVersion): Draft {
     })),
     // Пустая ставка за подписчика — это «KPI не считаем» целиком, а не
     // нулевая ставка: галочка и есть это различие.
-    countSubs: v.subscriber_rate != null,
+    // Включено, если задана любая из двух форм; какая именно — видно по
+    // непустой лесенке.
+    countSubs: v.subscriber_rate != null || (v.subscriber_steps ?? []).length > 0,
+    subStepped: (v.subscriber_steps ?? []).length > 0,
     subRate: opt(v.subscriber_rate),
     creatorSubRate: opt(v.creator_subscriber_rate),
+    subSteps: (v.subscriber_steps ?? []).map((st) => ({
+      fromViews: st.from_views,
+      clientFee: toRubles(st.client_fee),
+      creatorFee: st.creator_fee == null ? null : toRubles(st.creator_fee),
+    })),
     body: v.body,
   };
 }

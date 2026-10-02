@@ -83,7 +83,9 @@ describe('ProjectTariffComponent', () => {
     expect(cmp.mode()).toBe('steps');
     expect(cmp.fixClient).toBe(1_000);
     expect(cmp.fixCreator).toBe(500);
-    expect(cmp.rows()).toEqual([{ fromViews: 300_000, clientFee: 450_000, creatorFee: 280_000 }]);
+    expect(cmp.views.rows()).toEqual([
+      { fromViews: 300_000, clientFee: 450_000, creatorFee: 280_000 },
+    ]);
   });
 
   it('проект без ступеней открывается на ставке за тысячу', () => {
@@ -105,9 +107,9 @@ describe('ProjectTariffComponent', () => {
     cmp.setMode('steps');
     cmp.fixClient = 1_000;
     cmp.fixCreator = 500;
-    cmp.addRow();
-    cmp.setCell(0, 'fromViews', 1_000_000);
-    cmp.setCell(0, 'clientFee', 700_000);
+    cmp.views.add();
+    cmp.views.setCell(0, 'fromViews', 1_000_000);
+    cmp.views.setCell(0, 'clientFee', 700_000);
     cmp.save();
     const input = api.managerSaveTerms.calls.mostRecent().args[1];
     expect(input.fee_per_video).toBe(100_000);
@@ -164,9 +166,9 @@ describe('ProjectTariffComponent', () => {
     const { cmp, api } = setup();
     cmp.setMode('steps');
     cmp.fixClient = 1_000;
-    cmp.addRow();
-    cmp.setCell(0, 'fromViews', 500_000);
-    cmp.setCell(0, 'clientFee', 400_000);
+    cmp.views.add();
+    cmp.views.setCell(0, 'fromViews', 500_000);
+    cmp.views.setCell(0, 'clientFee', 400_000);
     cmp.save();
     const input = api.managerSaveTerms.calls.mostRecent().args[1];
     // И в фиксе за ролик, и в ступени — одно правило: пусто значит
@@ -179,12 +181,12 @@ describe('ProjectTariffComponent', () => {
   it('две ступени с одним порогом не дают сохранить', () => {
     const { cmp, api } = setup();
     cmp.setMode('steps');
-    cmp.addRow();
-    cmp.setCell(0, 'fromViews', 100_000);
-    cmp.setCell(0, 'clientFee', 300_000);
-    cmp.addRow();
-    cmp.setCell(1, 'fromViews', 100_000);
-    cmp.setCell(1, 'clientFee', 400_000);
+    cmp.views.add();
+    cmp.views.setCell(0, 'fromViews', 100_000);
+    cmp.views.setCell(0, 'clientFee', 300_000);
+    cmp.views.add();
+    cmp.views.setCell(1, 'fromViews', 100_000);
+    cmp.views.setCell(1, 'clientFee', 400_000);
     expect(cmp.problem()).toContain('одним порогом');
     cmp.save();
     expect(api.managerSaveTerms).not.toHaveBeenCalled();
@@ -194,9 +196,9 @@ describe('ProjectTariffComponent', () => {
   it('нулевой порог в таблице не принимается', () => {
     const { cmp } = setup();
     cmp.setMode('steps');
-    cmp.addRow();
-    cmp.setCell(0, 'fromViews', 0);
-    cmp.setCell(0, 'clientFee', 300_000);
+    cmp.views.add();
+    cmp.views.setCell(0, 'fromViews', 0);
+    cmp.views.setCell(0, 'clientFee', 300_000);
     expect(cmp.problem()).toContain('это фикс');
   });
 
@@ -208,10 +210,10 @@ describe('ProjectTariffComponent', () => {
     expect(cmp.problem()).toContain('Фикс креатору больше');
 
     cmp.fixCreator = null;
-    cmp.addRow();
-    cmp.setCell(0, 'fromViews', 500_000);
-    cmp.setCell(0, 'clientFee', 100_000);
-    cmp.setCell(0, 'creatorFee', 200_000);
+    cmp.views.add();
+    cmp.views.setCell(0, 'fromViews', 500_000);
+    cmp.views.setCell(0, 'clientFee', 100_000);
+    cmp.views.setCell(0, 'creatorFee', 200_000);
     expect(cmp.problem()).toContain('больше, чем платит заказчик');
   });
 
@@ -229,21 +231,21 @@ describe('ProjectTariffComponent', () => {
    */
   it('ступени показываются по возрастанию порога, не трогая порядок строк', () => {
     const { cmp } = setup();
-    cmp.addRow();
-    cmp.setCell(0, 'fromViews', 500_000);
-    cmp.setCell(0, 'clientFee', 700_000);
-    cmp.addRow();
-    cmp.setCell(1, 'fromViews', 0);
-    cmp.setCell(1, 'clientFee', 300_000);
-    expect(cmp.sorted().map((x) => x.r.fromViews)).toEqual([0, 500_000]);
-    expect(cmp.rows().map((r) => r.fromViews)).toEqual([500_000, 0]);
+    cmp.views.add();
+    cmp.views.setCell(0, 'fromViews', 500_000);
+    cmp.views.setCell(0, 'clientFee', 700_000);
+    cmp.views.add();
+    cmp.views.setCell(1, 'fromViews', 0);
+    cmp.views.setCell(1, 'clientFee', 300_000);
+    expect(cmp.views.sorted().map((x) => x.r.fromViews)).toEqual([0, 500_000]);
+    expect(cmp.views.rows().map((r) => r.fromViews)).toEqual([500_000, 0]);
   });
 
   /** У проекта без периодов ручка отвечает 404 — это не сбой. */
   it('проект без периодов открывается пустой таблицей', () => {
     const { cmp } = setup(null);
     expect(cmp.loading()).toBeFalse();
-    expect(cmp.rows()).toEqual([]);
+    expect(cmp.views.rows()).toEqual([]);
   });
 
   it('«заполнить из прайса» только подставляет числа — сохраняет человек', () => {
@@ -252,8 +254,96 @@ describe('ProjectTariffComponent', () => {
     // Фикс за ролик пришёл своим полем, ступени — строками таблицы.
     expect(cmp.fixClient).toBe(1_000);
     expect(cmp.fixCreator).toBe(500);
-    expect(cmp.rows()).toEqual([{ fromViews: 300_000, clientFee: 450_000, creatorFee: null }]);
+    expect(cmp.views.rows()).toEqual([
+      { fromViews: 300_000, clientFee: 450_000, creatorFee: null },
+    ]);
     // Кнопка называется «заполнить», а не «привязать»: сохраняет человек.
     expect(api.managerSaveTerms).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Доплата за подписчиков: «за одного» или ступенями.
+   *
+   * Поштучная цена на росте в сотню тысяч даёт сумму, которую никто не
+   * закладывал, — отсюда вторая форма. Формы взаимоисключающие: сервер
+   * отказывает, если присланы обе, и форма обязана отправить одну.
+   */
+  describe('подписчики', () => {
+    it('снимок со ставкой открывается на «за одного»', () => {
+      const { cmp } = setup(terms({ subscriber_rate: 30_000, creator_subscriber_rate: 20_000 }));
+      expect(cmp.subMode()).toBe('rate');
+      expect(cmp.subscriberRate).toBe(300);
+      expect(cmp.creatorSubscriberRate).toBe(200);
+      expect(cmp.subs.rows()).toEqual([]);
+    });
+
+    it('снимок с лесенкой открывается на ступенях, и ставка не показывается', () => {
+      const { cmp } = setup(
+        terms({
+          // Так и приходит с сервера: лесенка отменяет ставку, и
+          // показать их рядом значило бы назвать два разных числа одной
+          // ценой.
+          subscriber_steps: [{ from_views: 10_000, client_fee: 5_000_000, creator_fee: null }],
+          subscriber_rate: 30_000,
+        }),
+      );
+      expect(cmp.subMode()).toBe('steps');
+      expect(cmp.subs.rows()).toEqual([{ fromViews: 10_000, clientFee: 50_000, creatorFee: null }]);
+      expect(cmp.subscriberRate).withContext('ставка рядом со ступенями не живёт').toBeNull();
+    });
+
+    it('ступени уходят в subscriber_steps, а ставка — пустой', () => {
+      const { cmp, api } = setup();
+      cmp.setSubMode('steps');
+      cmp.subs.add();
+      cmp.subs.setCell(0, 'fromViews', 10_000);
+      cmp.subs.setCell(0, 'clientFee', 50_000);
+      cmp.subs.setCell(0, 'creatorFee', 30_000);
+      cmp.save();
+
+      const sent = api.managerSaveTerms.calls.mostRecent().args[1];
+      expect(sent.subscriber_steps).toEqual([
+        { from_views: 10_000, client_fee: 5_000_000, creator_fee: 3_000_000 },
+      ]);
+      expect(sent.subscriber_rate).withContext('две формы вместе сервер отвергнет').toBeNull();
+    });
+
+    it('«за одного» уходит ставкой, а лесенка — пустой', () => {
+      const { cmp, api } = setup();
+      cmp.setSubMode('rate');
+      cmp.subscriberRate = 300;
+      cmp.creatorSubscriberRate = 200;
+      // Строки могли остаться от переключения туда-обратно — уехать они
+      // не должны: выбрана другая форма.
+      cmp.subs.add();
+      cmp.subs.setCell(0, 'fromViews', 10_000);
+      cmp.subs.setCell(0, 'clientFee', 50_000);
+      cmp.save();
+
+      const sent = api.managerSaveTerms.calls.mostRecent().args[1];
+      expect(sent.subscriber_rate).toBe(30_000);
+      expect(sent.creator_subscriber_rate).toBe(20_000);
+      expect(sent.subscriber_steps).toEqual([]);
+    });
+
+    it('битая лесенка подписчиков не даёт сохранить и объясняет, что не так', () => {
+      const { cmp, api } = setup();
+      cmp.setSubMode('steps');
+      cmp.subs.add();
+      cmp.subs.setCell(0, 'fromViews', 0);
+      cmp.subs.setCell(0, 'clientFee', 50_000);
+      expect(cmp.subProblem()).toContain('подписчиков');
+      expect(cmp.problem()).withContext('битое не должно уехать на сервер').not.toBe('');
+      cmp.save();
+      expect(api.managerSaveTerms).not.toHaveBeenCalled();
+    });
+
+    it('креатору за подписчика больше, чем платит заказчик, — отказ', () => {
+      const { cmp } = setup();
+      cmp.setSubMode('rate');
+      cmp.subscriberRate = 100;
+      cmp.creatorSubscriberRate = 200;
+      expect(cmp.subProblem()).toContain('больше');
+    });
   });
 });
