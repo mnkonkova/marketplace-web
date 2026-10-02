@@ -79,7 +79,13 @@ describe('таблица роликов по площадкам', () => {
       [pub()],
       [
         row(),
-        row({ link_id: 'l2', platform: 'vk', views: 0, collected_at: undefined, collect_error: reason }),
+        row({
+          link_id: 'l2',
+          platform: 'vk',
+          views: 0,
+          collected_at: undefined,
+          collect_error: reason,
+        }),
       ],
     );
     const vk = m.videos[0].cells.vk;
@@ -181,6 +187,74 @@ describe('таблица роликов по площадкам', () => {
     expect(summarize(igor).totals.find((t) => t.platform === 'tiktok')?.links).toBe(1);
     // Отфильтровали Игоря — его выкладка всё равно вторая по плану.
     expect(igor[0].title).toBe('Выкладка 02');
+  });
+
+  /**
+   * Площадка, по которой сборщик отказал по ВСЕМ ссылкам, даёт в итоге
+   * не ноль, а неизвестность.
+   *
+   * Клетка такую подмену не делала с самого начала, а итог делал:
+   * сумма складывалась из нулей и выходила честным на вид нулём. По
+   * нему менеджер объяснял заказчику, что площадка не работает, — хотя
+   * не работал сбор. Отличает одно от другого measured: сколько из
+   * links дали снимок.
+   */
+  it('отказ по всем ссылкам площадки: links есть, measured ноль', () => {
+    const m = buildVideoMatrix(
+      [pub({ id: 'p1' }), pub({ id: 'p2', due_date: '2026-09-05' })],
+      [
+        row({
+          publication_id: 'p1',
+          link_id: 'l1',
+          platform: 'vk',
+          views: 0,
+          collected_at: undefined,
+        }),
+        row({
+          publication_id: 'p2',
+          link_id: 'l2',
+          platform: 'vk',
+          views: 0,
+          collected_at: undefined,
+        }),
+        row({ publication_id: 'p1', link_id: 'l3', platform: 'tiktok', views: 1000 }),
+      ].map((r) =>
+        r.platform === 'vk' ? { ...r, collect_error: 'Метрики отдельных постов не поддержаны' } : r,
+      ),
+      '2026-09-30',
+    );
+    const vk = m.totals.find((t) => t.platform === 'vk')!;
+    expect(vk.links).toBe(2);
+    expect(vk.measured).withContext('ни одного снимка').toBe(0);
+
+    const tiktok = m.totals.find((t) => t.platform === 'tiktok')!;
+    expect(tiktok.links).toBe(1);
+    expect(tiktok.measured).toBe(1);
+
+    // Площадка без ссылок вовсе — и то, и другое ноль: такую от
+    // «отказала» отличает именно links.
+    const shorts = m.totals.find((t) => t.platform === 'youtube')!;
+    expect(shorts.links).toBe(0);
+    expect(shorts.measured).toBe(0);
+  });
+
+  it('ролик, где не собралось ничего: measured ноль при трёх ссылках', () => {
+    const m = buildVideoMatrix(
+      [pub()],
+      ['tiktok', 'instagram', 'vk'].map((platform, i) =>
+        row({
+          link_id: 'l' + i,
+          platform: platform as VideoRow['platform'],
+          views: 0,
+          collected_at: undefined,
+          collect_error: 'ролик не найден',
+        }),
+      ),
+      '2026-09-30',
+    );
+    expect(m.videos.length).toBe(1);
+    expect(m.videos[0].measured).withContext('итог ролика неизвестен, а не ноль').toBe(0);
+    expect(m.measured).toBe(0);
   });
 
   it('насыщенность: корень доли, без числа — ноль', () => {

@@ -20,6 +20,25 @@ export function groupDigits(n: number): string {
   return String(Math.trunc(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
 }
 
+/**
+ * Прирост со знаком: «+1 200», «−1 200», «0».
+ *
+ * groupDigits берёт модуль — он для сумм, которые не бывают
+ * отрицательными. Прирост бывает: площадки пересчитывают просмотры,
+ * убирают накрутку, ограничивают ролик. На таких числах «'+' +
+ * groupDigits(-1200)» давало «+1 200» — убыль, показанная как рост, и
+ * ровно того же размера. Минус — типографский (U+2212), как в деньгах.
+ *
+ * У нуля знака нет: «+0» — это не рост на ноль, а «за сутки не
+ * прибавилось», и так оно и читается без плюса.
+ */
+export function signedDigits(n: number): string {
+  const d = groupDigits(n);
+  if (Math.trunc(n) > 0) return '+' + d;
+  if (Math.trunc(n) < 0) return '\u2212' + d;
+  return d;
+}
+
 // Копейки → строка с рублями. Дробную часть показываем только когда она
 // есть: «180 000 ₽», но «746,35 ₽».
 export function formatMoney(kopecks: number | null | undefined): string {

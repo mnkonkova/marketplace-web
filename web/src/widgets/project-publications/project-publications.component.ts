@@ -59,6 +59,7 @@ import {
   SchedulePublicationsData,
   SchedulePublicationsDialogComponent,
 } from '@features/schedule-publications/schedule-publications.dialog';
+import { signedDigits } from '@entities/billing/lib/money';
 import { parseApiError } from '@shared/api/api-error';
 import { ProjectAutopingComponent } from '@widgets/project-autoping/project-autoping.component';
 import { ProjectChecklistComponent } from '@widgets/project-checklist/project-checklist.component';
@@ -104,6 +105,18 @@ function avatarClass(id: string): string {
   ],
 })
 export class ProjectPublicationsComponent {
+  /**
+   * Прирост за сутки в отчёте по площадкам.
+   *
+   * Прочерк, когда вчерашнего снимка нет: «+0» читалось бы как «ролик
+   * встал», а это другое утверждение — измерения просто нет. Знак берём
+   * у числа, а не приписываем плюс: убыль бывает (площадка пересчитала
+   * просмотры), и «+−1 200» — это то, что здесь стояло.
+   */
+  public growthText(n: number | null): string {
+    return n === null ? '—' : signedDigits(n);
+  }
+
   private readonly pubApi = inject(PublicationApi);
 
   private readonly orderApi = inject(OrderApi);
@@ -447,9 +460,7 @@ export class ProjectPublicationsComponent {
         // просроченным роликом должен читаться как проблемный, даже
         // если рядом два вышедших.
         const alarm = { late: 3, planned: 2, partial: 1, done: 0 };
-        const state = pubs
-          .map(stateOf)
-          .reduce((worst, s) => (alarm[s] > alarm[worst] ? s : worst));
+        const state = pubs.map(stateOf).reduce((worst, s) => (alarm[s] > alarm[worst] ? s : worst));
         const label = {
           done: 'вышел на всех площадках',
           late: 'просрочен',

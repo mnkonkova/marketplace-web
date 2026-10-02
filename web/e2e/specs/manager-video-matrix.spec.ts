@@ -48,7 +48,9 @@ test('таблица показывает ролик по каждой площ�
   await expect(cells.nth(0)).toContainText(grouped(STATS.today.tiktok));
   await expect(cells.nth(1)).toContainText(grouped(STATS.today.instagram));
   await expect(cells.nth(4)).toContainText(grouped(STATS.today.likee));
-  await expect(cells.nth(5), 'итог ролика — сумма площадок').toContainText(grouped(STATS.totalToday));
+  await expect(cells.nth(5), 'итог ролика — сумма площадок').toContainText(
+    grouped(STATS.totalToday),
+  );
 
   // Клетка — ссылка на сам ролик на площадке.
   await expect(cells.nth(0).locator('a')).toHaveAttribute('href', /tiktok/);
@@ -78,7 +80,27 @@ WHERE p.id = l.publication_id AND p.project_id = '${box.projectId}' AND l.platfo
     'title',
     /не поддержаны/,
   );
-  await expect(vk).not.toContainText(/^\s*0\s*$/);
+  // Числа в клетке нет вовсе — ни нуля, ни любого другого.
+  //
+  // Здесь стояло `not.toContainText(/^\s*0\s*$/)`: анкеры ^$ по всему
+  // тексту клетки, в которой уже стоит подпись отказа, — совпасть такой
+  // шаблон не мог никогда, и проверка держалась зелёной при любом
+  // поведении, включая то, против которого её писали.
+  await expect(vk, 'в клетке отказа цифр нет').not.toContainText(/\d/);
+
+  // И в итоге по столбцу — прочерк. Отказ по всем ссылкам площадки
+  // складывался в сумму из нулей, и внизу стоял честный на вид ноль:
+  // по нему менеджер объяснял заказчику, что площадка не работает,
+  // хотя не работал сбор.
+  const foot = page.locator('app-video-matrix tfoot tr td').nth(3);
+  await expect(foot.locator('b'), 'итог по VK — прочерк, а не ноль').toHaveText('—');
+  await expect(foot, 'ссылка при этом посчитана').toContainText('ссылок: 1');
+
+  // А «какая площадка тянет» про неё молчит: с нулём просмотров и долей
+  // «0,0%» она сказала бы «тут не смотрят» вместо «тут не собралось».
+  await expect(
+    page.locator('app-video-matrix .vm-sum .vm-sum-row .pn', { hasText: 'VK' }),
+  ).toHaveCount(0);
 });
 
 test('на телефоне ролики — вкладка с карточками по площадкам', async ({ page }) => {
@@ -91,7 +113,10 @@ test('на телефоне ролики — вкладка с карточка�
   const card = page.locator('app-video-matrix .vm-card').first();
   await expect(card).toBeVisible();
   await expect(card.locator('.vm-prow').first()).toContainText(grouped(STATS.today.tiktok));
-  await expect(page.locator('app-video-matrix table.vm'), 'таблица на телефоне не рисуется').toBeHidden();
+  await expect(
+    page.locator('app-video-matrix table.vm'),
+    'таблица на телефоне не рисуется',
+  ).toBeHidden();
 
   const de = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,

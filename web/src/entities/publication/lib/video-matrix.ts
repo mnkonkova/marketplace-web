@@ -52,6 +52,10 @@ export interface MatrixVideo {
   growth: number | null;
   er: number | null;
   erPartial: boolean;
+  // Сколько клеток реально замерено. Ноль при непустых links означает
+  // «ссылки есть, а чисел нет» — показывать такой итог нулём нельзя по
+  // той же причине, по которой нулём не показывают клетку.
+  measured: number;
   // Площадки без ссылки — для «напомнить» на телефоне.
   missing: Platform[];
 }
@@ -63,6 +67,10 @@ export interface PlatformTotal {
   er: number | null;
   erPartial: boolean;
   links: number;
+  // Из links — сколько со снимком. Площадка, где сборщик отказал по
+  // всем ссылкам, даёт links=3 и measured=0: сумма по ней НЕ ноль, она
+  // неизвестна.
+  measured: number;
 }
 
 export interface MatrixTotals {
@@ -71,6 +79,7 @@ export interface MatrixTotals {
   growth: number | null;
   er: number | null;
   erPartial: boolean;
+  measured: number;
 }
 
 export interface VideoMatrix extends MatrixTotals {
@@ -91,6 +100,9 @@ class Sum {
   public views = 0;
   public growth: number | null = 0;
   public links = 0;
+  // Сколько клеток дали число. Отличать от links обязательно: иначе
+  // пять отказов сборщика складываются в честный на вид ноль.
+  public measured = 0;
   // Хоть одна вошедшая в ER клетка — без репостов: итог занижен тоже.
   public erPartial = false;
   private erWeighted = 0;
@@ -100,6 +112,7 @@ class Sum {
     if (c.kind === 'none') return;
     this.links++;
     if (c.kind !== 'ok') return;
+    this.measured++;
     this.views += c.views;
     if (c.growth === null) this.growth = null;
     else if (this.growth !== null) this.growth += c.growth;
@@ -147,10 +160,7 @@ function toCell(r: VideoRow): MatrixCell {
 function numbering(pubs: Publication[]): Map<string, number> {
   const live = pubs
     .filter((p) => p.status !== 'cancelled')
-    .sort(
-      (a, b) =>
-        a.due_date.localeCompare(b.due_date) || (a.day_slot ?? 1) - (b.day_slot ?? 1),
-    );
+    .sort((a, b) => a.due_date.localeCompare(b.due_date) || (a.day_slot ?? 1) - (b.day_slot ?? 1));
   return new Map(live.map((p, i) => [p.id, i + 1]));
 }
 
@@ -201,6 +211,7 @@ export function buildVideoMatrix(
       growth: sum.growth,
       er: sum.er,
       erPartial: sum.erPartial,
+      measured: sum.measured,
       missing: ALL_PLATFORMS.filter((pl) => cells[pl].kind === 'none'),
     });
   }
@@ -237,12 +248,14 @@ export function summarize(videos: readonly MatrixVideo[]): MatrixTotals {
         er: s.er,
         erPartial: s.erPartial,
         links: s.links,
+        measured: s.measured,
       };
     }),
     views: total.views,
     growth: total.growth,
     er: total.er,
     erPartial: total.erPartial,
+    measured: total.measured,
   };
 }
 

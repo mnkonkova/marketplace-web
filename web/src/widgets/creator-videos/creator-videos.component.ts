@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
-import { groupDigits } from '@entities/billing/lib/money';
+import { groupDigits, signedDigits } from '@entities/billing/lib/money';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import { collectErrorLabel } from '@entities/publication/lib/collect-error';
 import {
@@ -124,9 +124,7 @@ export class CreatorVideosComponent {
         date: it.pub.published_at ?? it.pub.due_date,
       };
     });
-    return this.sort() === 'views'
-      ? [...list].sort((a, b) => b.pub.views - a.pub.views)
-      : list;
+    return this.sort() === 'views' ? [...list].sort((a, b) => b.pub.views - a.pub.views) : list;
   });
 
   /** Итог по площадкам — нижняя строка таблицы. */
@@ -136,10 +134,17 @@ export class CreatorVideosComponent {
     return {
       cells: this.platforms().map((pl) => {
         const p = by.get(pl);
-        return { platform: pl, text: p && p.links ? groupDigits(p.views) : '—', links: p?.links ?? 0 };
+        return {
+          platform: pl,
+          // Сданные ссылки без единого снимка — прочерк, а не ноль:
+          // сборщик по ним отказал, и ноль сказал бы креатору, что его
+          // ролик на этой площадке не посмотрел никто.
+          text: p?.measured ? groupDigits(p.views) : '—',
+          links: p?.links ?? 0,
+        };
       }),
       views: groupDigits(t.views),
-      growth: t.growth === null ? '' : '+' + groupDigits(t.growth) + ' за сутки',
+      growth: t.growth === null ? '' : signedDigits(t.growth) + ' за сутки',
     };
   });
 
@@ -162,7 +167,7 @@ export class CreatorVideosComponent {
       kind: 'ok',
       url: c.url,
       text: groupDigits(c.views),
-      sub: c.growth === null ? 'первый замер' : '+' + groupDigits(c.growth),
+      sub: c.growth === null ? 'первый замер' : signedDigits(c.growth),
       heat: heat(c.views, max),
     };
   }

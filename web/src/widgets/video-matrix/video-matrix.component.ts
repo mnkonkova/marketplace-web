@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
-import { groupDigits } from '@entities/billing/lib/money';
+import { groupDigits, signedDigits } from '@entities/billing/lib/money';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import { collectErrorLabel } from '@entities/publication/lib/collect-error';
 import {
@@ -170,16 +170,16 @@ export class VideoMatrixComponent {
     return this.creators().length > 1 ? 'Итого по всем' : 'Итого';
   });
 
-  private readonly max = computed(() =>
-    matrixMax({ videos: this.shownVideos() }, this.metric()),
-  );
+  private readonly max = computed(() => matrixMax({ videos: this.shownVideos() }, this.metric()));
 
   private toRow(v: MatrixVideo, metric: MatrixMetric, max: number) {
     return {
       ...v,
       shown: this.platforms.map((pl) => this.show(pl, v.cells[pl], metric, max)),
-      totalText: this.fmt(metric, metric === 'views' ? v.views : metric === 'growth' ? v.growth : v.er),
-      totalSub: this.totalSub(metric, v.views, v.growth),
+      totalText: v.measured
+        ? this.fmt(metric, metric === 'views' ? v.views : metric === 'growth' ? v.growth : v.er)
+        : '—',
+      totalSub: this.totalSub(metric, v),
       erPct: v.er,
       erPartial: v.erPartial,
       // Полоска площадки на телефоне — от лучшей площадки этого ролика.
@@ -240,16 +240,25 @@ export class VideoMatrixComponent {
       count,
       cells: t.totals.map((p) => ({
         platform: p.platform,
-        // Ни одной ссылки на площадке — считать нечего: прочерк, а не
-        // ноль. Ноль читался бы как «выложили, и никто не посмотрел».
-        text: !p.links
-          ? '—'
-          : this.fmt(metric, metric === 'views' ? p.views : metric === 'growth' ? p.growth : p.er),
+        // Нечего считать — прочерк, а не ноль. Ноль читался бы как
+        // «выложили, и никто не посмотрел».
+        //
+        // «Нечего» — это два разных случая, и оба здесь: ни одной
+        // ссылки на площадке и ни одного снимка по сданным ссылкам.
+        // Второй дороже: сборщик отказал по всем трём ссылкам, сумма
+        // сложилась из трёх нулей, и в итоговой строке стоял честный на
+        // вид ноль — по нему менеджер объяснял заказчику, что площадка
+        // не работает, хотя на деле не работал сбор.
+        text: p.measured
+          ? this.fmt(metric, metric === 'views' ? p.views : metric === 'growth' ? p.growth : p.er)
+          : '—',
         links: p.links,
-        erPct: p.links ? p.er : null,
+        erPct: p.measured ? p.er : null,
         erPartial: p.erPartial,
       })),
-      grand: this.fmt(metric, metric === 'views' ? t.views : metric === 'growth' ? t.growth : t.er),
+      grand: t.measured
+        ? this.fmt(metric, metric === 'views' ? t.views : metric === 'growth' ? t.growth : t.er)
+        : '—',
       grandEr: t.er,
       grandErPartial: t.erPartial,
     };
@@ -265,19 +274,25 @@ export class VideoMatrixComponent {
   public readonly summary = computed(() => {
     const m = this.scope();
     const best = Math.max(0, ...m.totals.map((t) => t.views));
-    return [...m.totals]
-      .filter((t) => t.links > 0)
-      .sort((x, y) => y.views - x.views)
-      .map((t) => ({
-        platform: t.platform,
-        views: groupDigits(t.views),
-        share: m.views ? ((t.views / m.views) * 100).toFixed(1).replace('.', ',') + '%' : '—',
-        growth: t.growth === null ? 'первый замер' : '+' + groupDigits(t.growth),
-        er: t.er,
-        erPartial: t.erPartial,
-        bar: best ? Math.max(1, Math.round((t.views / best) * 100)) : 0,
-        color: PLATFORM_COLOR[t.platform],
-      }));
+    return (
+      [...m.totals]
+        // Площадка без единого снимка тянуть не может: в сводке она
+        // стояла бы с нулём просмотров и долей «0,0%», то есть говорила
+        // бы «тут не смотрят» вместо «тут не собралось». Что со сбором
+        // не так, отвечает таблица ниже — там у клетки стоит причина.
+        .filter((t) => t.measured > 0)
+        .sort((x, y) => y.views - x.views)
+        .map((t) => ({
+          platform: t.platform,
+          views: groupDigits(t.views),
+          share: m.views ? ((t.views / m.views) * 100).toFixed(1).replace('.', ',') + '%' : '—',
+          growth: t.growth === null ? 'первый замер' : signedDigits(t.growth),
+          er: t.er,
+          erPartial: t.erPartial,
+          bar: best ? Math.max(1, Math.round((t.views / best) * 100)) : 0,
+          color: PLATFORM_COLOR[t.platform],
+        }))
+    );
   });
 
   // ---- ссылки ролика ----
@@ -429,7 +444,7 @@ export class VideoMatrixComponent {
             metric === 'views'
               ? c.growth === null
                 ? 'первый замер'
-                : '+' + groupDigits(c.growth)
+                : signedDigits(c.growth)
               : groupDigits(c.views),
           heat: heat(v, max),
           erPct: c.er,
@@ -439,17 +454,23 @@ export class VideoMatrixComponent {
     }
   }
 
-  private totalSub(metric: MatrixMetric, views: number, growth: number | null): string {
-    if (metric !== 'views') return groupDigits(views);
+  private totalSub(
+    metric: MatrixMetric,
+    t: { views: number; growth: number | null; measured: number },
+  ): string {
+    // Ни одного снимка — и подписи нет. Иначе под прочерком стояло бы
+    // «0», то есть ровно то число, которого мы в итоге не показываем.
+    if (!t.measured) return 'снимков нет';
+    if (metric !== 'views') return groupDigits(t.views);
     // Прирост суммы неизвестен, если хоть у одной площадки нет вчерашнего
     // снимка, — так и пишем, а не подставляем сумму известных.
-    return growth === null ? 'есть первый замер' : '+' + groupDigits(growth);
+    return t.growth === null ? 'есть первый замер' : signedDigits(t.growth);
   }
 
   public fmt(metric: MatrixMetric, v: number | null): string {
     if (v === null) return metric === 'growth' ? 'первый замер' : '—';
     if (metric === 'er') return v.toFixed(1).replace('.', ',') + '%';
-    if (metric === 'growth') return '+' + groupDigits(v);
+    if (metric === 'growth') return signedDigits(v);
     return groupDigits(v);
   }
 }
