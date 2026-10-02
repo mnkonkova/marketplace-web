@@ -103,6 +103,7 @@ describe('CreatorProjectPage: итог за прошлый период', () => 
             // «Мои аккаунты» — аккаунты проекта, тянутся вместе со страницей.
             creatorAccounts: () => of({ items: [], secrets_enabled: true }),
             creatorReport: () => of({ collapsed: false }),
+            creatorRefreshStats: () => of({ saved: 0 }),
           },
         },
         {

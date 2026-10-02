@@ -55,8 +55,10 @@ const toggleIn = (page: import('@playwright/test').Page) =>
  * и без этого тест падал бы «элемент не найден», а не «настройка не
  * сохранилась».
  */
+// Автопинг стоит в разделе плана: колокольчики в сетке и тумблеры на
+// проект — один разговор.
 const openCrew = async (page: import('@playwright/test').Page) => {
-  await openManagerTab(page, 'Креаторы');
+  await openManagerTab(page, 'План выкладок');
 };
 
 const isOn = async (page: import('@playwright/test').Page): Promise<boolean> => {

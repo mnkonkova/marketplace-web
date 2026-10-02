@@ -80,6 +80,7 @@ describe('CreatorProjectPage: опорный месяц календарей', (
             creatorSuggestions: () => of({ items: [] }),
             creatorAccounts: () => of({ items: [], secrets_enabled: true }),
             creatorReport: () => of({ collapsed: false }),
+            creatorRefreshStats: () => of({ saved: 0 }),
           },
         },
         { provide: BillingApi, useValue: { creatorEarnings: () => of({ periods: [] }) } },
@@ -99,7 +100,7 @@ describe('CreatorProjectPage: опорный месяц календарей', (
       .months()
       .map((m) => m.key);
 
-    expect(keys).toEqual([monthKey(shifted(-1)), monthKey(now), monthKey(shifted(1))]);
+    expect(keys).toEqual([monthKey(now)]);
   });
 
   it('несданная выкладка в следующем месяце подтягивает окно к ней', () => {
@@ -107,9 +108,9 @@ describe('CreatorProjectPage: опорный месяц календарей', (
       .months()
       .map((m) => m.key);
 
-    // Опора — месяц выкладки, значит текущий стоит первым, а пустой
-    // прошлый из окна уходит.
-    expect(keys).toEqual([monthKey(now), monthKey(shifted(1)), monthKey(shifted(2))]);
+    // Опора — месяц выкладки: календарь открывается на нём, а не на
+    // пустом текущем.
+    expect(keys).toEqual([monthKey(shifted(1))]);
   });
 
   it('сданные выкладки опору не тянут — их смотреть не надо', () => {
@@ -120,7 +121,7 @@ describe('CreatorProjectPage: опорный месяц календарей', (
       .months()
       .map((m) => m.key);
 
-    expect(keys).toEqual([monthKey(shifted(-1)), monthKey(now), monthKey(shifted(1))]);
+    expect(keys).toEqual([monthKey(now)]);
   });
 
   it('просрочка прошлого месяца окно назад не тянет', () => {
@@ -132,7 +133,7 @@ describe('CreatorProjectPage: опорный месяц календарей', (
       .months()
       .map((m) => m.key);
 
-    expect(keys).toEqual([monthKey(shifted(-1)), monthKey(now), monthKey(shifted(1))]);
+    expect(keys).toEqual([monthKey(now)]);
   });
 
   it('отменённая выкладка опорой не бывает', () => {
@@ -142,17 +143,29 @@ describe('CreatorProjectPage: опорный месяц календарей', (
       .months()
       .map((m) => m.key);
 
-    expect(keys).toEqual([monthKey(shifted(-1)), monthKey(now), monthKey(shifted(1))]);
+    expect(keys).toEqual([monthKey(now)]);
   });
 
   it('подсветка «сегодня» остаётся на сегодня, даже когда окно уехало', () => {
     const page = setup([pub({ due_date: `${monthKey(shifted(1))}-07T00:00:00Z` })]);
+    // Окно открылось на следующем месяце — там «сегодня» нет.
+    expect(page.months().flatMap((m) => m.cells).filter((c) => c.today).length).toBe(0);
+
+    // Стрелкой назад — текущий месяц, и «сегодня» в нём ровно одно.
+    page.shiftMonth(-1);
     const todays = page
       .months()
       .flatMap((m) => m.cells)
       .filter((c) => c.today);
-
     expect(todays.length).toBe(1);
     expect(todays[0].date).toBe(`${monthKey(now)}-${String(now.getDate()).padStart(2, '0')}`);
+  });
+
+  it('стрелки листают месяц от опорного', () => {
+    const page = setup([]);
+    page.shiftMonth(1);
+    expect(page.months().map((m) => m.key)).toEqual([monthKey(shifted(1))]);
+    page.shiftMonth(-2);
+    expect(page.months().map((m) => m.key)).toEqual([monthKey(shifted(-1))]);
   });
 });

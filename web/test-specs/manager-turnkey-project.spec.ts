@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { EMPTY, of, throwError } from 'rxjs';
 
 import { BillingApi } from '@entities/billing/api/billing.api';
 import type { Payment, PaymentStatus } from '@entities/billing/model/billing.types';
@@ -82,7 +82,10 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
       // Заявка заказчика на следующий месяц: карточка читает её при
       // загрузке — из неё собирается плашка в «Где сейчас горит».
       'managerMonthRequest',
+      // Цифры дособираются при открытии карточки; здесь — «нечего».
+      'managerRefreshStats',
     ]);
+    api.managerRefreshStats.and.returnValue(EMPTY as never);
     api.managerList.and.returnValue(of({ items }) as never);
     api.managerCreators.and.returnValue(
       of({
@@ -250,6 +253,13 @@ describe('ManagerTurnkeyProjectComponent: шапка проекта', () => {
       .phoneTabs()
       .map((t) => t.key);
     expect(creators).toEqual(['alerts', 'plan', 'links', 'review', 'team', 'pay']);
+    // Вкладка «Ролики», а не «Ссылки»: в ней теперь цифры каждого
+    // ролика по площадкам, а ссылки — под ними.
+    expect(
+      setup([pub({ id: 'a' })])
+        .phoneTabs()
+        .find((t) => t.key === 'links')?.title,
+    ).toBe('Ролики');
 
     const brand = setup([pub({ id: 'a' })], [], 'brand_turnkey').phoneTabs();
     // Вкладки «Проверка» у этого вида быть не должно: она открыла бы

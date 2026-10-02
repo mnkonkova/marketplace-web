@@ -360,7 +360,7 @@
     }
 
     .review {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     // Да/нет в проверке — настоящие кнопки, а не буквы. Проверку
@@ -505,6 +505,19 @@
 
     .stairs-x span {
       font-size: 8px;
+    }
+
+    // Подпись через две: двенадцать «2500т» в 290 px не помещаются ни при
+    // каком кегле, а через одну — всё ещё обрезаются. visibility, а не
+    // display: место остаётся, оставшиеся подписи стоят под своими
+    // ступенями и занимают место соседних, пустых.
+    .stairs-x span {
+      overflow: visible;
+      white-space: nowrap;
+    }
+
+    .stairs-x span:not(:nth-child(3n + 1)) {
+      visibility: hidden;
     }
 
     // ── переписка ────────────────────────────────────────

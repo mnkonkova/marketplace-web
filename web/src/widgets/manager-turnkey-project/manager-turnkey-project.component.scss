@@ -140,9 +140,9 @@
   align-items: start;
 }
 
-// Разбор роликов одного креатора: медиана, крайние и столбики по
-// выпускам. Раскрывается прямо под строкой — сравнивать человека надо,
-// не теряя из виду остальных.
+// Разбор роликов одного креатора: медиана, крайние ролики и площадки.
+// Раскрывается прямо под строкой — сравнивать человека надо, не теряя из
+// виду остальных.
 .crew-stats > td {
   padding: 4px 14px 16px;
   background: var(--surface-2, rgba(0, 0, 0, 0.02));
@@ -187,51 +187,27 @@
   }
 }
 
-// Столбики: высота от лучшего ролика этого же человека. Сравнивать надо
-// со своим потолком, а не с чужим — иначе у слабого креатора весь ряд
-// прижат к нулю и разбора не видно вовсе.
-.cs-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 64px;
-  padding: 0;
-}
-
-.cs-bar {
-  display: flex;
-  align-items: flex-end;
-  flex: 1 1 6px;
-  min-width: 6px;
-  max-width: 28px;
-  height: 100%;
-
-  i {
-    display: block;
-    width: 100%;
-    border-radius: 3px 3px 0 0;
-    background: var(--accent-soft, #dfe3ff);
-  }
-
-  &.best i {
-    background: var(--accent);
-  }
-
-  &.worst i {
-    background: var(--crit-soft, #f8e0da);
-  }
-
-  &:hover i {
-    filter: brightness(0.94);
-  }
-}
-
 .cs-note {
   margin: 8px 0 0;
 }
 
 @media (max-width: bp.$touch) {
+  // Блоком, а не строкой: на телефоне таблица состава становится
+  // карточками, и общее правило делает каждую ячейку флекс-строкой
+  // «подпись — значение». Ячейка разбора под него попадала, и цифры,
+  // площадки и пояснение вставали в ряд шире экрана — страница уезжала
+  // вбок вместе с нижней полосой, кнопки пропадали.
+  // Три действия креатора на 320 px в одну строку не помещаются —
+  // переносятся, а не растягивают карточку за экран.
+  .crew-acts {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
   .crew-stats > td {
+    display: block;
+    width: 100%;
+    min-width: 0;
     padding: 8px 0 14px;
   }
 
@@ -239,16 +215,6 @@
     gap: 10px 18px;
   }
 
-  // На телефоне столбики выше: ряд в 64 пикселя на узком экране
-  // превращается в полоску, по которой ничего не сравнить.
-  .cs-bars {
-    height: 80px;
-  }
-
-  .cs-bar {
-    min-height: 44px;
-    align-items: flex-end;
-  }
 }
 
 // Строка-переключатель. Такая же, как в автопинге рядом: там она живёт в
@@ -325,4 +291,123 @@
   flex-wrap: wrap;
   gap: 4px 12px;
   margin-top: 2px;
+}
+
+// Разделы на десктопе — вкладками, как на телефоне: виден один. Правило
+// то же, что в тач-слое (data-sec на корне), только без медиа-запроса и
+// с перепиской, у которой на телефоне своей вкладки нет.
+.prmarket[data-sec] .sec {
+  display: none;
+}
+
+.prmarket[data-sec='alerts'] .sec-alerts,
+.prmarket[data-sec='plan'] .sec-plan,
+.prmarket[data-sec='links'] .sec-links,
+.prmarket[data-sec='review'] .sec-review,
+.prmarket[data-sec='team'] .sec-team,
+.prmarket[data-sec='pay'] .sec-pay,
+.prmarket[data-sec='talk'] .sec-talk {
+  display: block;
+}
+
+// Полоса вкладок липнет к верху: внутри раздела бывает длинно, а
+// переключиться надо одним нажатием.
+.secnav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 0 14px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+
+    &.on {
+      background: var(--ink);
+      color: var(--surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+  }
+}
+
+.secnav-badge {
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--crit);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 17px;
+}
+
+// Шапка «Состава и аккаунтов»: счёт людей и «Добавить креатора» рядом —
+// добавляют туда же, где смотрят.
+.crew-h-r {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.crname {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+// Разбор креатора по площадкам — строка значков с числом и долей.
+.cs-plats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cs-plat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+
+  .ic {
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 10.5px;
+  }
+
+  &.off b {
+    color: var(--faint);
+  }
 }

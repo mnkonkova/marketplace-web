@@ -32,6 +32,7 @@ import type {
   Payment,
 } from '@entities/billing/model/billing.types';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
+import { buildVideoMatrix, summarize } from '@entities/publication/lib/video-matrix';
 import { PublicationApi } from '@entities/publication/api/publication.api';
 import type { MonthRequest } from '@entities/publication/model/publication.types';
 import type {
@@ -89,9 +90,8 @@ import { ProjectChecklistComponent } from '@widgets/project-checklist/project-ch
 import { ProjectMaterialsComponent } from '@widgets/project-materials/project-materials.component';
 import { ProjectReviewComponent } from '@widgets/project-review/project-review.component';
 import { ProjectAutopingComponent } from '@widgets/project-autoping/project-autoping.component';
-import { ProjectStatsComponent } from '@widgets/project-stats/project-stats.component';
-import { ProjectLinksComponent } from '@widgets/project-links/project-links.component';
 import { PublicationPlanComponent } from '@widgets/publication-plan/publication-plan.component';
+import { VideoMatrixComponent } from '@widgets/video-matrix/video-matrix.component';
 import { PrMarketAvaComponent } from '@shared/ui/prmarket-ava/prmarket-ava.component';
 import {
   PrMarketTopComponent,
@@ -148,9 +148,8 @@ import { isTouchDevice, prefersSheet } from '@shared/lib/touch';
     ProjectMaterialsComponent,
     ProjectReviewComponent,
     ProjectAutopingComponent,
-    ProjectStatsComponent,
-    ProjectLinksComponent,
     PublicationPlanComponent,
+    VideoMatrixComponent,
     PrMarketAvaComponent,
     PrMarketTopComponent,
     PrMarketTabbarComponent,
@@ -1060,7 +1059,7 @@ export class ManagerTurnkeyProjectComponent {
    * туда. `block: 'start'` со сдвигом на липкую полосу пути: без сдвига
    * заголовок блока прячется под ней.
    */
-  private scrollToSection(section: string): void {
+  public scrollToSection(section: string): void {
     requestAnimationFrame(() => {
       const el = document.querySelector<HTMLElement>(`.sec-${section}`);
       if (!el) return;
@@ -1115,10 +1114,26 @@ export class ManagerTurnkeyProjectComponent {
    * сверху вниз. На телефоне та же лента не прокручивается, поэтому
    * разделы показываются по одному (см. data-sec в тач-слое).
    */
-  public readonly section = signal('alerts');
+  public readonly section = signal(this.sectionFromUrl());
 
+  /**
+   * Раздел живёт и в адресе (?sec=plan): на десктопе разделы теперь
+   * вкладками, и без этого перезагрузка страницы возвращала на «Горит»,
+   * а ссылкой на раздел нельзя было поделиться.
+   */
   public setSection(key: string): void {
     this.section.set(key);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { sec: key === 'alerts' ? null : key },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private sectionFromUrl(): string {
+    const sec = this.route.snapshot.queryParamMap.get('sec');
+    return sec && /^(alerts|plan|links|review|team|pay|talk)$/.test(sec) ? sec : 'alerts';
   }
 
   /**
@@ -1135,7 +1150,10 @@ export class ManagerTurnkeyProjectComponent {
     ];
     if (b.publications) {
       tabs.push({ key: 'plan', title: 'План', icon: 'cal' });
-      tabs.push({ key: 'links', title: 'Ссылки', icon: 'grid' });
+      // «Ролики», а не «Ссылки»: здесь теперь цифры каждого ролика по
+      // площадкам, а ссылки — под ними. На телефоне статистики по
+      // роликам до этого не было вовсе.
+      tabs.push({ key: 'links', title: 'Ролики', icon: 'chart' });
     }
     if (b.review) {
       tabs.push({ key: 'review', title: 'Проверка', icon: 'check', badge: this.toReview() });
@@ -1151,6 +1169,20 @@ export class ManagerTurnkeyProjectComponent {
     }
     if (b.billing || b.cost) {
       tabs.push({ key: 'pay', title: 'Деньги', icon: 'wallet' });
+    }
+    return tabs;
+  });
+
+  /**
+   * Вкладки на десктопе — те же, что внизу на телефоне, плюс переписка.
+   * На телефоне ей места нет (шесть целей — предел для пальца), а на
+   * десктопе без своей вкладки она стала бы недостижима: разделы теперь
+   * показываются по одному.
+   */
+  public readonly deskTabs = computed<PrMarketTab[]>(() => {
+    const tabs = [...this.phoneTabs()];
+    if (this.blocks().internalComments) {
+      tabs.push({ key: 'talk', title: 'Переписка', icon: 'chat' });
     }
     return tabs;
   });
@@ -1334,6 +1366,35 @@ export class ManagerTurnkeyProjectComponent {
    * Посчитав его нулём, можно уронить медиану вдвое одной свежей
    * выкладкой и объявить человека слабым на ровном месте.
    */
+  /**
+   * Просмотры креатора по площадкам — для разбора под строкой состава.
+   *
+   * Из того же отчёта и тем же подсчётом, что таблица роликов
+   * (summarize): два разных подсчёта одного числа разошлись бы на
+   * первом же ролике с несобранной площадкой.
+   */
+  public readonly crewPlatforms = computed(() => {
+    const m = buildVideoMatrix(this.publications(), this.report()?.videos_table ?? []);
+    const out = new Map<string, { platform: Platform; views: number; share: string }[]>();
+    for (const c of this.crew()) {
+      const mine = m.videos.filter((v) => v.creatorUserId === c.user_id);
+      if (!mine.length) continue;
+      const t = summarize(mine);
+      out.set(
+        c.user_id,
+        t.totals
+          .filter((p) => p.links > 0)
+          .sort((a, b) => b.views - a.views)
+          .map((p) => ({
+            platform: p.platform,
+            views: p.views,
+            share: t.views ? Math.round((p.views / t.views) * 100) + '%' : '',
+          })),
+      );
+    }
+    return out;
+  });
+
   public crewStats(userID: string) {
     const measured = this.publications()
       .filter((p) => p.creator_user_id === userID && p.status !== 'cancelled' && p.views > 0)
@@ -1348,32 +1409,19 @@ export class ManagerTurnkeyProjectComponent {
       byViews.length % 2
         ? byViews[mid].views
         : Math.round((byViews[mid - 1].views + byViews[mid].views) / 2);
-    const max = byViews[byViews.length - 1].views;
-    const spread = max > byViews[0].views;
-
     return {
       median,
       basis: measured.length,
       best: byViews[byViews.length - 1],
       worst: byViews[0],
       // Есть ли вообще разброс. Когда все ролики набрали поровну,
-      // «лучший» и «слабее всех» — одно и то же число, а подсветка
-      // столбиков назначает кого-то худшим по порядку в списке. Это не
-      // разбор, а выдумка: сказать «разброса нет» честнее.
+      // «лучший» и «слабее всех» — одно и то же число: сказать «разброса
+      // нет» честнее, чем назначить кого-то худшим по порядку в списке.
       spread: byViews[byViews.length - 1].views > byViews[0].views,
-      // Столбики в порядке выхода: так видно не только разброс, но и
-      // куда он движется. Высота от лучшего — сравнивать надо со своим
-      // же потолком, а не с чужим.
-      bars: measured.map((p) => ({
-        pub: p,
-        height: max > 0 ? Math.max(4, Math.round((p.views / max) * 100)) : 4,
-        best: spread && p.id === byViews[byViews.length - 1].id,
-        worst: spread && p.id === byViews[0].id,
-      })),
     };
   }
 
-  /** Куда ведёт столбик — на сам ролик, а не в пустоту. */
+  /** Куда ведёт ролик в разборе — на него самого на площадке. */
   public pubUrl(p: Publication): string {
     return p.links[0]?.url ?? '';
   }
@@ -1560,6 +1608,42 @@ export class ManagerTurnkeyProjectComponent {
   public readonly report = signal<PublicationReport | null>(null);
 
   /**
+   * Идёт обход площадок прямо сейчас.
+   *
+   * Один на всю карточку: обход уходит пачкой, и показывать его по
+   * каждой строке значило бы обещать, что строки обновляются порознь.
+   */
+  public readonly statsRefreshing = signal(false);
+
+  /**
+   * Обновить просмотры по заходу в карточку.
+   *
+   * Отчёт показываем сразу, не дожидаясь обхода: цифры, пусть и
+   * вчерашние, лучше пустого экрана. Пока обход идёт, рядом с числом
+   * просмотров стоит подпись, и когда цифры приходят — перечитываем
+   * отчёт.
+   *
+   * Кого обходить, решает сервер по возрасту ролика, поэтому звать это
+   * на каждом открытии безопасно: свежее своего шага он не трогает, а
+   * несобранную ни разу ссылку берёт всегда. Ошибки молчаливые: красная
+   * плашка поверх живого отчёта говорила бы, что сломан он.
+   */
+  private refreshStats(id: string): void {
+    this.statsRefreshing.set(true);
+    this.api.managerRefreshStats(id).subscribe({
+      next: (r) => {
+        this.statsRefreshing.set(false);
+        if (!r.saved) return;
+        this.api.managerReport(id).subscribe({
+          next: (fresh) => this.report.set(fresh),
+          error: () => undefined,
+        });
+      },
+      error: () => this.statsRefreshing.set(false),
+    });
+  }
+
+  /**
    * Этап согласования черновика — настройка ПРОЕКТА, а не выкладки: у
    * всех выкладок он один.
    *
@@ -1689,7 +1773,10 @@ export class ManagerTurnkeyProjectComponent {
       error: () => this.settings.set(null),
     });
     this.api.managerReport(id).subscribe({
-      next: (r) => this.report.set(r),
+      next: (r) => {
+        this.report.set(r);
+        this.refreshStats(id);
+      },
       error: () => this.report.set(null),
     });
     // Список периодов — для выпадашки. Пустой список у проекта без

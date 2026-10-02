@@ -1,0 +1,572 @@
+@use 'touch' as touch;
+
+// Словарь кабинета (.prmarket) даёт .panel-h, .btn, .muted, .num и
+// переключатели .no-phone / .only-phone; здесь — устройство таблицы.
+// Цвета только токенами: у кабинета есть тёмная схема, и захардкоженный
+// цвет в ней становится светлым островом.
+:host {
+  display: block;
+}
+
+.vm-metric {
+  display: flex;
+  gap: 6px;
+
+  button {
+    padding: 5px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+
+  button.on {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--surface);
+  }
+}
+
+// Чьи ролики — тот же вид переключателя, что у метрики.
+.vm-who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+
+  button {
+    padding: 5px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+
+  button.on {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--surface);
+  }
+}
+
+// Итог креатора — строкой после его роликов, отделён сверху линией.
+.vm-sub {
+  th,
+  td {
+    border-top: 1px solid var(--line);
+  }
+
+  .vid b {
+    font-weight: 700;
+  }
+}
+
+.cell.sub-grand {
+  background: color-mix(in srgb, var(--ink) 12%, var(--surface-2));
+}
+
+// ── какая площадка тянет ────────────────────────────────
+.vm-sum {
+  margin-bottom: 22px;
+}
+
+.vm-sum-row {
+  display: grid;
+  grid-template-columns: 30px 96px minmax(0, 1fr) 120px 64px 110px 64px;
+  gap: 14px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  .ic {
+    padding: 2px 0;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 10.5px;
+    text-align: center;
+  }
+
+  .bar {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--surface-2);
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: 4px;
+    }
+  }
+
+  .r {
+    text-align: right;
+  }
+
+  .opt {
+    color: var(--muted);
+  }
+
+  .grow-c {
+    color: var(--warn);
+  }
+}
+
+.vm-sum-head {
+  padding: 0 0 4px;
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+.vm-head {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.vm-note,
+.vm-empty {
+  margin: -6px 0 12px;
+  font-size: 12.5px;
+}
+
+.vm-scroll {
+  overflow-x: auto;
+}
+
+.vm {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 3px;
+  table-layout: fixed;
+
+  thead th {
+    padding: 4px 10px 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-align: right;
+  }
+
+  th.l {
+    width: 26%;
+    text-align: left;
+    padding-left: 2px;
+  }
+
+  th.tot-h {
+    color: var(--ink);
+  }
+
+  td {
+    padding: 0;
+  }
+}
+
+// Название ролика — заголовок строки: по нему её и читают.
+.vid {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 8px 0 2px;
+  text-align: left;
+  font-weight: 400;
+  // Заголовок строки — название ролика, а не подпись колонки: общий
+  // стиль таблиц кабинета делает th заглавными, и тридцать названий
+  // капсом читаются как крик.
+  text-transform: none;
+  letter-spacing: normal;
+
+  b {
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: var(--muted);
+    font-size: 12px;
+  }
+}
+
+// «Ссылки» и «Напомнить» у названия ролика.
+.vm-acts {
+  display: flex;
+  gap: 12px;
+}
+
+.vm-card-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+// «Ссылки» у названия ролика: открывает правку ссылок строкой ниже.
+.vm-links-btn {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    color: var(--faint);
+    cursor: default;
+  }
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  text-decoration: none;
+
+  b {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  small {
+    font-size: 11px;
+    opacity: 0.75;
+    white-space: nowrap;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+}
+
+// Насыщенность — доля акцента в фоне. Одна краска, а не радуга: здесь
+// цвет отвечает на «больше / меньше», и разные оттенки заставили бы
+// читать легенду.
+.cell.ok {
+  background: color-mix(in srgb, var(--accent) calc(6% + var(--heat, 0) * 84%), transparent);
+
+  &:hover {
+    outline: 1px solid var(--accent);
+  }
+}
+
+// На насыщенной клетке тёмная цифра тонет — переходим на светлую. В
+// тёмной схеме --accent-ink тёмный, а акцент светлый, и правило то же.
+.cell.ok.hot {
+  color: var(--accent-ink);
+}
+
+// Пустая клетка — кнопка «добавить ссылку»: сбрасываем вид кнопки.
+button.cell {
+  width: 100%;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cell.none {
+  border: 1px dashed var(--line);
+
+  small {
+    color: var(--accent);
+    opacity: 0;
+  }
+
+  &:hover small,
+  &:focus-visible small {
+    opacity: 1;
+  }
+
+  b {
+    color: var(--faint);
+    font-family: inherit;
+    font-weight: 400;
+    font-size: 12px;
+  }
+}
+
+.cell.pending {
+  background: var(--surface-2);
+
+  b {
+    color: var(--muted);
+    font-family: inherit;
+    font-weight: 500;
+    font-size: 12px;
+  }
+}
+
+// Сборщик отказал — наша забота, а не креатора: красим тоном тревоги,
+// чтобы отказ не путали ни с «собираем», ни с нулём.
+.cell.failed {
+  background: var(--warn-soft);
+  cursor: help;
+
+  b {
+    color: var(--warn);
+    font-family: inherit;
+    font-size: 12px;
+    white-space: normal;
+    text-align: right;
+  }
+}
+
+.cell.total {
+  background: var(--surface-2);
+}
+
+.cell.grand {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+tfoot .vid b {
+  font-weight: 700;
+}
+
+// ── правка ссылок ролика ────────────────────────────────
+.vm-edit td {
+  padding: 4px 0 10px;
+}
+
+.vm-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.vm-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+
+  .ic {
+    flex: none;
+    min-width: 30px;
+    padding: 3px 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 10.5px;
+    text-align: center;
+  }
+
+  .grow {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .url {
+    overflow: hidden;
+    color: var(--accent);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.vm-card-links {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+
+// ── телефон ─────────────────────────────────────────────
+.vm-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vm-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.vm-card-h {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 4px;
+
+  .grow {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+
+    b {
+      font-size: 15px;
+      line-height: 1.3;
+    }
+  }
+}
+
+.vm-card-sum {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+
+  b {
+    font-size: 17px;
+  }
+
+  small {
+    color: var(--warn);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+}
+
+.vm-prow {
+  display: grid;
+  grid-template-columns: 30px 72px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 30px;
+  font-size: 13px;
+
+  .ic {
+    padding: 2px 0;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 10.5px;
+    text-align: center;
+  }
+
+  .pn {
+    color: var(--muted);
+  }
+
+  .bar {
+    height: 6px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--surface-2);
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: 3px;
+      background: var(--accent);
+    }
+  }
+
+  .pv {
+    font-family: var(--mono);
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  &.off .pv {
+    color: var(--faint);
+    font-family: inherit;
+    font-weight: 400;
+    font-size: 12px;
+  }
+
+  // Отказ сборщика — тем же тоном тревоги, что и на десктопе.
+  &.failed .pv {
+    color: var(--warn);
+    font-weight: 500;
+  }
+}
+
+.vm-miss {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--warn-soft);
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+@include touch.phone {
+  .panel-h {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vm-metric button {
+    flex: 1;
+    min-height: touch.$tap-sm;
+    padding: 5px 8px;
+    white-space: nowrap;
+  }
+
+  .vm-more,
+  .vm-card-links,
+  .vm-who button {
+    min-height: touch.$tap;
+  }
+
+  // Сводка площадок на телефоне — значок, название, полоска, число.
+  .vm-sum-row {
+    grid-template-columns: 30px 72px minmax(0, 1fr) auto;
+    gap: 10px;
+
+    .opt {
+      display: none;
+    }
+  }
+
+  .vm-link {
+    flex-wrap: wrap;
+
+    .btn {
+      min-height: touch.$tap;
+    }
+
+    .inp {
+      flex: 1 0 100%;
+    }
+  }
+}

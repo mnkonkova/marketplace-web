@@ -101,7 +101,7 @@ describe('ProjectAccountsComponent', () => {
   it('пароль в списке не показан — только точки', () => {
     const { fixture } = setup({ items: [account()] });
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(text).toContain('••••••••');
+    expect(text).toContain('••••••');
     expect(text).not.toContain('Autumn-2026!');
   });
 

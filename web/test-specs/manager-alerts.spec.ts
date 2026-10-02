@@ -65,7 +65,10 @@ describe('ManagerTurnkeyProjectComponent: тревоги', () => {
       // Заявка заказчика на следующий месяц: карточка читает её при
       // загрузке — из неё собирается плашка в «Где сейчас горит».
       'managerMonthRequest',
+      // Цифры дособираются при открытии карточки; здесь — «нечего».
+      'managerRefreshStats',
     ]);
+    api.managerRefreshStats.and.returnValue(EMPTY as never);
     api.managerList.and.returnValue(of({ items: opts.pubs ?? [] }) as never);
     api.managerCreators.and.returnValue(of({ items: [] }) as never);
     api.managerRemind.and.returnValue(of({ sent: true }) as never);

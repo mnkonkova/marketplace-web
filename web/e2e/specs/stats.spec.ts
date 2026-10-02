@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { AUTH_KEY, STATS } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
-import { openCreatorTab, openManagerTab } from '../fixtures/ui';
+import { openCreatorTab } from '../fixtures/ui';
 
 /**
  * Отрисовка статистики.
@@ -53,42 +53,31 @@ function signIn(page: Page, role: 'manager' | 'client' | 'creator') {
 test.describe('менеджер', () => {
   test.beforeEach(async ({ page }) => signIn(page, 'manager'));
 
-  test('плитки, график и разбивка по площадкам показывают собранные цифры', async ({ page }) => {
+  test('«Ролики»: площадки и итог показывают собранные цифры', async ({ page }) => {
     await page.goto(`/manager/projects/${box.projectId}`);
-    // Статистика у «креаторов под ключ» — отдельная вкладка.
-    await openManagerTab(page, 'Статистика');
+    // Отдельного блока «Статистика» у менеджера больше нет: какая
+    // площадка тянет и каждый ролик по площадкам — вкладка «Ролики».
+    await page.locator('.secnav button', { hasText: 'Ролики' }).click();
+    const vm = page.locator('app-video-matrix');
+    await expect(vm).toBeVisible({ timeout: 15_000 });
 
-    const stats = page.locator('app-project-stats');
-    await expect(stats).toBeVisible({ timeout: 15_000 });
-
-    // Итог за сегодня и прирост относительно вчера.
-    await expect(stats).toContainText(grouped(STATS.totalToday));
-    await expect(stats).toContainText(grouped(STATS.growth));
-
-    // Пустого состояния быть не должно: цифры есть.
-    await expect(stats).not.toContainText('Цифр пока нет');
-
-    // График рисуется по двум дням — линия с двумя точками.
-    const polyline = stats.locator('svg[aria-label="Просмотры нарастающим итогом"] polyline');
-    await expect(polyline).toHaveCount(1);
-    const points = (await polyline.getAttribute('points')) ?? '';
-    expect(points.trim().split(/\s+/).length, 'точек на графике по числу дней').toBeGreaterThan(1);
-
-    // Разбивка: пять площадок, у каждой своя цифра. Именно здесь ломается
+    // Сводка: пять площадок, у каждой своя цифра. Именно здесь ломается
     // тихо — доля площадки легко считается от неправильного знаменателя.
-    const rows = stats.locator('.byplat li');
+    const rows = vm.locator('.vm-sum-row:not(.vm-sum-head)');
     await expect(rows).toHaveCount(5);
+    // Ищем по ячейке просмотров, а не по тексту строки: в склеенном
+    // тексте за числом сразу идёт доля, и цифры слипаются.
     for (const [platform, views] of Object.entries(STATS.today)) {
-      await expect(rows.filter({ hasText: grouped(views) }), platform).toHaveCount(1);
+      await expect(rows.locator('b.num').filter({ hasText: grouped(views) }), platform).toHaveCount(1);
     }
+    const share = ((STATS.today.tiktok / STATS.totalToday) * 100).toFixed(1).replace('.', ',');
+    await expect(rows.first(), 'доля TikTok от общего числа').toContainText(`${share}%`);
 
-    // Доля TikTok — две трети от трёх миллионов. Проверяем ширину полосы:
-    // это единственное место, где видно, от чего считали процент.
-    const tiktokBar = rows.first().locator('.bar i');
-    const width = await tiktokBar.evaluate((el) => (el as HTMLElement).style.width);
-    expect(Math.round(parseFloat(width)), 'доля TikTok от общего числа').toBe(
-      Math.round((STATS.today.tiktok / STATS.totalToday) * 100),
-    );
+    // Итог за сегодня и прирост относительно вчера — в нижней строке.
+    const grand = vm.locator('tfoot .cell.grand');
+    await expect(grand).toContainText(grouped(STATS.totalToday));
+    await vm.getByRole('button', { name: 'За сутки' }).click();
+    await expect(grand).toContainText(grouped(STATS.growth));
   });
 
   test('в сравнении креаторов имя, а не uuid', async ({ page }) => {
@@ -98,6 +87,7 @@ test.describe('менеджер', () => {
     // человека — сколько сдал, сколько набрал. Идентификатору здесь
     // взяться неоткуда, и это ровно то, что проверяется: менеджер
     // сверяет людей, а не строки базы.
+    await page.locator('.secnav button', { hasText: 'Команда' }).click();
     const table = page.locator('.sec-team');
     await expect(table.getByText(box.creator.name).first()).toBeVisible({ timeout: 15_000 });
     await expect(table, 'в таблицах имя, а не идентификатор').not.toContainText(
@@ -141,33 +131,24 @@ test.describe('креатор', () => {
 
     await openCreatorTab(page, 'Мои выкладки');
 
-    // Ищем внутри строки посеянной выкладки, а не по всей странице: в
-    // проекте могут стоять и другие ролики, и у каждого свои площадки —
-    // без привязки к строке локатор находит их все. Вышедшие выкладки
-    // живут списком, отдельной карточки у них больше нет.
-    const card = page.locator('.posts2 .row').filter({ hasText: box.publicationTitle });
-    await expect(card).toHaveCount(1);
+    // Вышедшие ролики — таблицей «ролик × площадка», как «Ролики» у
+    // менеджера, только по своим роликам.
+    const row = page
+      .locator('app-creator-videos table.cv tbody tr')
+      .filter({ hasText: box.publicationTitle });
+    await expect(row).toHaveCount(1);
 
-    // Цифры площадок стоят рядом с их кодами, прямо в строке ролика:
-    // «где зашло» — вопрос, ради которого креатор сюда и смотрит, и
-    // прятать на него ответ под кнопку значит не отвечать.
-    //
-    // Проверяем по значку площадки, а не по тексту всей строки: рядом
-    // стоит общий итог ролика, и в склеенном тексте цифры слипаются —
-    // поиск подстрокой начинает врать.
-    const rows: Record<string, string> = {
-      TT: String(STATS.today.tiktok),
-      IG: String(STATS.today.instagram),
-      YT: String(STATS.today.youtube),
-      VK: String(STATS.today.vk),
-      LK: String(STATS.today.likee),
-    };
-    for (const [short, views] of Object.entries(rows)) {
-      const chip = card.locator('.plat').filter({ hasText: short });
-      await expect(chip.locator('.v'), short).toHaveText(grouped(Number(views)));
+    // Колонки — в порядке площадок проекта; в клетке — просмотры этой
+    // площадки. «Где зашло» — вопрос, ради которого креатор сюда и
+    // смотрит.
+    const cells = row.locator('td .cell:not(.total)');
+    await expect(cells).toHaveCount(5);
+    const views = Object.values(STATS.today);
+    for (let i = 0; i < views.length; i += 1) {
+      await expect(cells.nth(i).locator('b')).toHaveText(grouped(views[i]));
     }
 
-    // И общий итог по ролику — в той же строке.
-    await expect(card.locator('.views-cell')).toContainText(grouped(STATS.totalToday));
+    // И общий итог по ролику — в последней клетке строки.
+    await expect(row.locator('.cell.total')).toContainText(grouped(STATS.totalToday));
   });
 });

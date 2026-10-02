@@ -1,7 +1,7 @@
 import { test, expect, request as pwRequest } from '@playwright/test';
 import { AUTH_KEY, psql } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
-import { openCreatorTab } from '../fixtures/ui';
+import { openCreatorTab, openManagerTab } from '../fixtures/ui';
 
 /**
  * Название ролика даёт креатор при сдаче.
@@ -101,7 +101,7 @@ test('креатор называет ролик, и название видят
     await page.goto(`/me/creator/projects/${box.projectId}`);
 
     await page
-      .locator('.posts2')
+      .locator('.posts-stack')
       .getByRole('button', { name: 'Сдать', exact: true })
       .first()
       .click();
@@ -136,7 +136,7 @@ test('креатор называет ролик, и название видят
     // Креатор видит его вместо номера выкладки — в своём разделе
     // выкладок: список кабинета ушёл под вкладку.
     await openCreatorTab(page, 'Мои выкладки');
-    await expect(page.locator('.posts2 .row').filter({ hasText: TITLE })).toHaveCount(1);
+    await expect(page.locator('.posts-stack .row').filter({ hasText: TITLE })).toHaveCount(1);
 
     // И то, ради чего название вообще заводили: менеджер видит его в
     // плане, а заказчик — в ленте роликов. Проверка на стороне креатора
@@ -146,15 +146,12 @@ test('креатор называет ролик, и название видят
       await signIn(asManager, 'manager');
       const mgr = await asManager.newPage();
       await mgr.goto(`/manager/projects/${box.projectId}`);
-      // У менеджера название стоит в «Ссылках на ролики»: в сетке плана
-      // клетка отвечает за состояние, а не за подпись. Список свёрнут
-      // по людям — разворачиваем своего.
-      const links = mgr.locator('.sec-links');
-      await links
-        .getByRole('button', { name: new RegExp(box.creator.name) })
-        .first()
-        .click();
-      await expect(links.getByText(TITLE)).toHaveCount(1, { timeout: 15_000 });
+      // У менеджера название стоит в таблице «Ролики»: строка ролика
+      // подписана им, а не номером выкладки.
+      await openManagerTab(mgr, 'Ролики');
+      await expect(mgr.locator('app-video-matrix table.vm').getByText(TITLE)).toHaveCount(1, {
+        timeout: 15_000,
+      });
     } finally {
       await asManager.close();
     }

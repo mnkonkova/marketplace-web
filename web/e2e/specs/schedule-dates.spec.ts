@@ -1,6 +1,7 @@
 import { test, expect, request as pwRequest } from '@playwright/test';
 import { AUTH_KEY, psql } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { openManagerTab } from '../fixtures/ui';
 
 /**
  * Убрать созданную пачку.
@@ -44,6 +45,8 @@ test.beforeEach(async ({ context, page }) => {
     [AUTH_KEY, box.sessions.manager] as const,
   );
   await page.goto(`/manager/projects/${box.projectId}`);
+  // На десктопе разделы — вкладками; план — своя.
+  await openManagerTab(page, 'План выкладок');
 });
 
 // nz-modal не связывает заголовок с ролью dialog через aria-labelledby,

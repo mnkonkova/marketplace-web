@@ -1,12 +1,14 @@
+@use 'touch' as touch;
+
 // Доступы к аккаунтам бренда. Плотный список, а не карточки: строк
 // обычно пять, и каждая — набор коротких полей, которые читают глазами
 // и копируют по одному.
 .acc-block {
   margin-top: 18px;
   padding: 18px;
-  border: 1px solid var(--line, #2c313a);
+  border: 1px solid var(--line);
   border-radius: 14px;
-  background: var(--card, #14161a);
+  background: var(--surface);
 }
 
 .acc-head {
@@ -24,7 +26,7 @@
 
 .note {
   margin: 6px 0 0;
-  color: var(--muted, #98a1ad);
+  color: var(--muted);
   font-size: 12.5px;
   max-width: 64ch;
 
@@ -39,87 +41,143 @@
   }
 }
 
-.acc-row {
+// Группа — один креатор: имя слева, «Добавить аккаунт» справа, под ними
+// его аккаунты. Без разделителя группы сливались: «Править / Удалить»
+// последнего аккаунта упирались в имя следующего человека.
+.acc-group {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid var(--line-2, #23272e);
+  border-top: 1px solid var(--line);
+}
 
-  &:first-of-type {
-    border-top: 0;
+.acc-group-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  b {
+    font-size: 14.5px;
+  }
+}
+
+// Аккаунт: площадка и ссылка, под ними логин и пароль, действия справа.
+.acc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 16px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+
+  > * {
+    grid-column: 1;
   }
 
   &.is-form {
-    border-top: 1px dashed var(--line-2, #23272e);
+    border-style: dashed;
+  }
+
+  // Форма правки — во всю ширину карточки, под её строками.
+  > .acc-form {
+    grid-column: 1 / -1;
   }
 }
 
 .acc-main {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 
   .ttl {
-    font-size: 14.5px;
+    flex: none;
+    font-size: 14px;
   }
 
-  .plat {
-    color: var(--muted-2, #7a828d);
+  .acc-plat {
+    flex: none;
+    color: var(--muted);
     font-size: 12px;
   }
 
   .lnk {
-    color: var(--link, #6ea8fe);
+    overflow: hidden;
+    min-width: 0;
+    color: var(--accent);
     font-size: 12.5px;
-    overflow-wrap: anywhere;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
 .acc-creds {
   display: flex;
-  gap: 22px;
+  gap: 4px 22px;
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .fld {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 32px;
   font-size: 13px;
 
   .k {
-    color: var(--muted-2, #7a828d);
+    color: var(--faint);
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
 
   .v {
-    color: var(--text, #e9edf2);
+    overflow: hidden;
+    min-width: 0;
+    color: var(--ink);
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     &.mono {
-      font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+      font-family: var(--mono, ui-monospace, Menlo, monospace);
+    }
+
+    // Точки скрытого пароля не обрезаем: многоточие после трёх точек
+    // читалось как поломка.
+    &.mono:not(.none) {
+      overflow: visible;
+      letter-spacing: -0.08em;
     }
 
     &.none {
-      color: var(--muted-2, #7a828d);
-      font-style: normal;
+      color: var(--faint);
+      font-weight: 400;
     }
   }
 }
 
 .acc-note {
-  margin: 8px 0 0;
-  color: var(--muted, #98a1ad);
+  margin: 6px 0 0;
+  color: var(--muted);
   font-size: 12.5px;
   max-width: 64ch;
 }
 
 .acc-actions {
   display: flex;
+  align-self: center;
   gap: 8px;
-  margin-top: 10px;
+}
+
+// Колонка действий — справа на всю высоту карточки. Селектор той же
+// формы, что «.acc-row > *» выше: иначе тот перебивает его весом.
+.acc-row > .acc-actions {
+  grid-column: 2;
+  grid-row: 1 / span 3;
 }
 
 .acc-form {
@@ -129,14 +187,14 @@
   margin-top: 12px;
   padding: 14px;
   border-radius: 12px;
-  background: var(--bg-elevated, #191c21);
+  background: var(--surface-2);
 
   .f {
     display: flex;
     flex-direction: column;
     gap: 4px;
     font-size: 12px;
-    color: var(--muted, #98a1ad);
+    color: var(--muted);
 
     &.wide {
       grid-column: span 2;
@@ -150,10 +208,10 @@
     select {
       height: 36px;
       padding: 0 10px;
-      border: 1px solid var(--line, #2c313a);
+      border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--card, #14161a);
-      color: var(--text, #e9edf2);
+      background: var(--surface);
+      color: var(--ink);
       font: inherit;
       font-size: 13.5px;
     }
@@ -172,7 +230,43 @@
   flex-wrap: wrap;
 
   .hint {
-    color: var(--muted-2, #7a828d);
+    color: var(--faint);
     font-size: 12px;
+  }
+}
+
+// Телефон: всё столбиком. Логин и пароль — ровными строками «подпись —
+// значение — действие», действия аккаунта — под ним. Раньше поля шли
+// флексом с переносом, и у каждой кнопки высотой в палец получалась своя
+// строка с пустотой под ней.
+@include touch.phone {
+  .acc-block {
+    padding: 14px;
+  }
+
+  .acc-row {
+    grid-template-columns: minmax(0, 1fr);
+
+    > .acc-actions {
+      grid-column: 1;
+      grid-row: auto;
+      margin-top: 6px;
+    }
+  }
+
+  .acc-creds {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .fld {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) auto auto;
+    min-height: touch.$tap;
+  }
+
+  .acc-actions button,
+  .acc-group-hd button {
+    min-height: touch.$tap-sm;
   }
 }

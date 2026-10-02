@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { AUTH_KEY, seedPublicationStats } from '../fixtures/world';
 import { callAs, createSandbox, dropProject, dropSandbox, type Sandbox } from '../fixtures/sandbox';
-import { openClientTab } from '../fixtures/ui';
+import { openClientTab, openManagerTab } from '../fixtures/ui';
 
 /**
  * Проект «бренд под ключ»: план выкладок есть, людей нет.
@@ -82,9 +82,12 @@ test.describe('менеджер', () => {
 
     // Карточка та же, что у «креаторов под ключ»: второго почти такого
     // же виджета для нового вида заводить не стали.
+    // Разделы — вкладками: план и ролики (с их ссылками) есть.
+    await openManagerTab(page, 'План выкладок');
     await expect(page.locator('.sec-plan')).toBeVisible({ timeout: 20_000 });
-    await expect(page.locator('.sec-links')).toBeVisible();
-    await expect(page.locator('.sec-stats')).toBeVisible();
+    await openManagerTab(page, 'Ролики');
+    await expect(page.locator('app-video-matrix')).toBeVisible();
+    await expect(page.locator('.secnav button', { hasText: 'Проверка' })).toHaveCount(0);
 
     // А этих секций нет в разметке вовсе — не спрятаны, а отсутствуют.
     await expect(page.locator('.sec-review')).toHaveCount(0);
@@ -93,6 +96,7 @@ test.describe('менеджер', () => {
     await expect(page.getByRole('heading', { name: 'Чек-лист проекта' })).toHaveCount(0);
 
     // Аккаунты остаются: с них ролики и выходят.
+    await openManagerTab(page, 'Креаторы');
     await expect(page.locator('.sec-team')).toBeVisible();
 
     // Тумблер черновика уходит вместе с креаторами: согласовывать
@@ -115,6 +119,7 @@ test.describe('менеджер', () => {
    */
   test('ставит даты пачкой, не выбирая креаторов', async ({ page }) => {
     await page.goto(`/manager/projects/${brandId}`);
+    await openManagerTab(page, 'План выкладок');
     const plan = page.locator('.sec-plan');
     await expect(plan).toBeVisible({ timeout: 20_000 });
 
@@ -179,6 +184,7 @@ test.describe('менеджер', () => {
    */
   test('ставит одну дату прямо в сетке плана', async ({ page }) => {
     await page.goto(`/manager/projects/${brandId}`);
+    await openManagerTab(page, 'План выкладок');
     const plan = page.locator('.sec-plan');
     await expect(plan).toBeVisible({ timeout: 20_000 });
 
@@ -224,13 +230,20 @@ test.describe('менеджер', () => {
    */
   test('ставит ссылку на ролик проекта', async ({ page }) => {
     await page.goto(`/manager/projects/${brandId}`);
-    const links = page.locator('.sec-links');
-    await expect(links).toBeVisible({ timeout: 20_000 });
+    // Ссылки правят в таблице «Ролики»: у проекта без креаторов первую
+    // ссылку ставит менеджер, и строка ролика с наступившим сроком есть
+    // в таблице, даже пока ссылок нет.
+    await openManagerTab(page, 'Ролики');
+    const vm = page.locator('app-video-matrix');
+    await expect(vm).toBeVisible({ timeout: 20_000 });
+    await expect(vm, 'тупиковая надпись про состав ушла').not.toContainText('Состав пуст');
 
-    await expect(links, 'тупиковая надпись про состав ушла').not.toContainText('Состав пуст');
-    await expect(links).toContainText('Ролики проекта');
-    // Площадки ролика на месте — значит по ним и правят адрес.
-    await expect(links.locator('.pl-plats').first()).toBeVisible();
+    await vm.locator('.vm-links-btn', { hasText: 'Ссылки' }).first().click();
+    const editor = vm.locator('.vm-links').first();
+    await expect(editor.locator('.vm-link')).toHaveCount(5);
+    await expect(editor.getByRole('button', { name: 'Добавить' }).first()).toBeVisible();
+    // Напоминать некому: креаторов у проекта нет.
+    await expect(vm.getByRole('button', { name: 'Напомнить' })).toHaveCount(0);
   });
 
   /**
@@ -242,6 +255,7 @@ test.describe('менеджер', () => {
    */
   test('в автопингах остаётся только сводка менеджерам', async ({ page }) => {
     await page.goto(`/manager/projects/${brandId}`);
+    await openManagerTab(page, 'План выкладок');
     const ping = page.locator('.ping-block');
     await expect(ping).toBeVisible({ timeout: 20_000 });
 
@@ -256,6 +270,7 @@ test.describe('менеджер', () => {
 
   test('называет стоимость проекта и видит цену тысячи просмотров', async ({ page }) => {
     await page.goto(`/manager/projects/${brandId}`);
+    await openManagerTab(page, 'Начисления');
     const input = page.locator('[data-test="project-cost"]');
     await expect(input).toBeVisible({ timeout: 20_000 });
 
@@ -328,6 +343,7 @@ test.describe('менеджер: стоимость до первого роли
     });
 
     await page.goto(`/manager/projects/${freshId}`);
+    await openManagerTab(page, 'Начисления');
     const input = page.locator('[data-test="project-cost"]');
     await expect(input).toBeVisible({ timeout: 20_000 });
     await expect(input, 'сумма на месте, хотя периодов ещё нет').toHaveValue('100000');

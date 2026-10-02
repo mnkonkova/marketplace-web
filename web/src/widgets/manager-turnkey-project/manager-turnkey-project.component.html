@@ -30,9 +30,35 @@
         @if (collectedAt(); as ts) {
           <span class="server">сервер · {{ ts | date: 'd.MM, HH:mm' }}</span>
         }
+        <!-- Обход площадок идёт прямо сейчас. Подпись, а не крутилка
+             поверх числа: прежняя цифра читается всё это время, просто
+             скоро станет свежее. -->
+        @if (statsRefreshing()) {
+          <span class="server">обновляем просмотры…</span>
+        }
       </div>
     </div>
   }
+
+  <!-- Разделы на десктопе — вкладки, как нижняя полоса на телефоне:
+       виден один раздел. Одной лентой страница была в пять экранов, и
+       до цифр проекта не доходили. Переписка здесь отдельной вкладкой —
+       в ленте она стояла последней. -->
+  <nav class="secnav no-phone" aria-label="Разделы проекта">
+    @for (t of deskTabs(); track t.key) {
+      <button
+        type="button"
+        [class.on]="section() === t.key"
+        [attr.aria-current]="section() === t.key ? 'page' : null"
+        (click)="setSection(t.key)"
+      >
+        {{ t.title }}
+        @if (t.badge) {
+          <span class="secnav-badge">{{ t.badge }}</span>
+        }
+      </button>
+    }
+  </nav>
 
   <main>
     <div class="role">
@@ -136,18 +162,20 @@
              См. features/schedule-publications. -->
       </div>
 
-      <!-- ССЫЛКИ. Отдельно от проверки: проверка показывает ОДИН ролик,
-           тот, что сейчас на очереди, а принятый месяц назад в неё уже
-           не попадает — и когда он исчезает с площадки, менять адрес
-           менеджеру негде. -->
-      <div class="span-12 panel sec sec-links">
-        <app-project-links
-          [creators]="crew()"
-          [crew]="blocks().crew"
-          [publications]="publications()"
-          (changed)="reload()"
-        />
-      </div>
+      <!-- РОЛИКИ. Вместо прежних «Статистики» и «Ссылок на ролики»: какая
+           площадка тянет, каждый ролик на каждой площадке и правка его
+           ссылок — одним блоком. Менеджер замечает битую ссылку по клетке
+           без цифр, и чинить её надо там же, а не в другом конце
+           страницы. Креатору эта разбивка не показывается. -->
+      @if (blocks().stats) {
+        <div class="span-12 panel sec sec-links sec-videos">
+          <app-video-matrix
+            [publications]="publications()"
+            [report]="report()"
+            (changed)="reload()"
+          />
+        </div>
+      }
 
       <!-- ПРОВЕРКА РОЛИКА и ЧЕК-ЛИСТ проекта — рядом: по чек-листу
            ролик и принимают. Обоих не бывает там, где нет креаторов:
@@ -181,11 +209,20 @@
           <div class="subgrid">
             @if (blocks().roster) {
               <div class="span-12 panel">
+                <!-- Состав и аккаунты — один блок. Раньше «Состав» шёл
+                     отдельной панелью ниже и повторял тех же людей вторым
+                     списком: в одном — цифры и пинг, в другом — «Убрать» и
+                     дата. Менеджер искал человека дважды. -->
                 <div class="panel-h">
-                  <h2>Креаторы и аккаунты</h2>
-                  <span class="sub">
-                    {{ crew().length }}
-                    {{ plural(crew().length, 'человек', 'человека', 'человек') }} в составе
+                  <h2>Состав и аккаунты</h2>
+                  <span class="crew-h-r">
+                    <span class="sub">
+                      {{ crew().length }}
+                      {{ plural(crew().length, 'человек', 'человека', 'человек') }} в составе
+                    </span>
+                    <button type="button" class="btn sm" (click)="addCreator()">
+                      Добавить креатора
+                    </button>
                   </span>
                 </div>
                 @if (!crew().length) {
@@ -212,7 +249,14 @@
                                   [src]="c.person.avatar_url"
                                   [size]="28"
                                 />
-                                <span>{{ c.person.display_name }}</span>
+                                <span class="crname">
+                                  <span>{{ c.person.display_name }}</span>
+                                  @if (c.person.added_at) {
+                                    <span class="muted small">
+                                      в проекте с {{ c.person.added_at | date: 'dd.MM' }}
+                                    </span>
+                                  }
+                                </span>
                               </span>
                             </td>
                             <td class="r mono" data-label="Роликов">
@@ -228,7 +272,7 @@
                                 <span class="pill ok">в графике</span>
                               }
                             </td>
-                            <td class="r">
+                            <td class="r crew-acts">
                               <button type="button" class="btn sm" (click)="remindCreator(c)">
                                 Пингнуть
                               </button>
@@ -239,14 +283,28 @@
                               >
                                 {{ openCrew() === c.person.user_id ? 'Свернуть' : 'Ролики' }}
                               </button>
+                              <!-- Вывести из состава. Мягко: выкладки, ссылки и
+                                   цифры человека остаются в проекте и в
+                                   начислениях — иначе «убрал не того»
+                                   переписывало бы историю и ломало уже
+                                   посчитанные деньги. -->
+                              <button
+                                type="button"
+                                class="btn sm quiet"
+                                [disabled]="crewBusy() === c.person.user_id"
+                                [attr.aria-label]="'Вывести из состава: ' + c.person.display_name"
+                                (click)="removeCreator(c.person)"
+                              >
+                                Убрать
+                              </button>
                             </td>
                           </tr>
 
                           <!-- РАЗБОР РОЛИКОВ. В строке стоит сумма просмотров,
                            а сумма одинаково выглядит и у ровного
                            исполнителя, и у того, у кого один ролик
-                           выстрелил, а остальные девять пустые. Медиана и
-                           столбики отвечают на вопрос, который менеджер
+                           выстрелил, а остальные девять пустые. Медиана,
+                           крайние ролики и площадки отвечают на вопрос, который менеджер
                            задаёт про человека на самом деле: звать ли его
                            в следующий месяц. -->
                           @if (openCrew() === c.person.user_id) {
@@ -256,9 +314,8 @@
                                   @if (st.basis === 1) {
                                     <!-- Один измеренный ролик: медиана,
                                      лучший и слабейший — это он же. Одно
-                                     число, повторённое трижды, и столбик
-                                     в одиночку читаются как поломка, а не
-                                     как разбор. Пока роликов мало,
+                                     число, повторённое трижды, читается
+                                     как поломка, а не как разбор. Пока роликов мало,
                                      честнее сказать это словами. -->
                                     <div class="cs-head one">
                                       <span class="cs-num">
@@ -301,33 +358,25 @@
                                       }
                                     </div>
 
-                                    <!-- Столбики в порядке выхода: видно не
-                                   только разброс, но и куда он движется. -->
-                                    <div class="cs-bars" role="list">
-                                      @for (b of st.bars; track b.pub.id) {
-                                        <a
-                                          role="listitem"
-                                          class="cs-bar"
-                                          [class.best]="b.best"
-                                          [class.worst]="b.worst"
-                                          [href]="pubUrl(b.pub)"
-                                          target="_blank"
-                                          rel="noopener"
-                                          [title]="
-                                            (b.pub.title || 'Без названия') +
-                                            ' · ' +
-                                            digits(b.pub.views) +
-                                            ' просмотров'
-                                          "
-                                        >
-                                          <i [style.height.%]="b.height"></i>
-                                        </a>
-                                      }
-                                    </div>
                                     <p class="muted small cs-note">
                                       Считаем по измеренным роликам: свежий, ещё не собранный, — это
                                       не ноль просмотров, а отсутствие замера.
                                     </p>
+                                  }
+                                  <!-- Где человек набирает. Сумма и медиана не
+                                       говорят, на какой площадке: у одного всё
+                                       в TikTok, у другого ровно по пяти, и звать
+                                       их в следующий месяц надо под разное. -->
+                                  @if (crewPlatforms().get(c.person.user_id); as plats) {
+                                    <div class="cs-plats" aria-label="Просмотры по площадкам">
+                                      @for (pl of plats; track pl.platform) {
+                                        <span class="cs-plat" [class.off]="!pl.views">
+                                          <span class="ic">{{ platformShort[pl.platform] }}</span>
+                                          <b class="mono">{{ pl.views ? digits(pl.views) : '—' }}</b>
+                                          <span class="muted small">{{ pl.share }}</span>
+                                        </span>
+                                      }
+                                    </div>
                                   }
                                 } @else {
                                   <p class="muted">
@@ -343,7 +392,8 @@
                     </table>
                   </div>
                   <p class="muted table-note">
-                    Ссылки, логины и пароли — ниже: это те самые аккаунты, с которых выходят ролики.
+                    В пакет берутся только креаторы — блогеры и авторы UGC. Ссылки, логины и пароли —
+                    ниже: это те самые аккаунты, с которых выходят ролики.
                   </p>
                 }
 
@@ -533,44 +583,6 @@
                 </div>
               }
 
-              <div class="span-12 panel">
-                <div class="panel-h">
-                  <h2>Состав</h2>
-                  <span class="sub">кто снимает в этом проекте</span>
-                </div>
-                <div class="list">
-                  @for (c of crew(); track c.user_id) {
-                    <div class="row">
-                      <app-prmarket-ava [name]="c.display_name" [src]="c.avatar_url" [size]="28" />
-                      <div class="grow">
-                        <div class="t">{{ c.display_name }}</div>
-                        <div class="muted small">в проекте с {{ c.added_at | date: 'dd.MM' }}</div>
-                      </div>
-                      <!-- Вывести из состава. Мягко: выкладки, ссылки и
-                           цифры человека остаются в проекте и в
-                           начислениях — иначе «убрал не того» переписывало
-                           бы историю и ломало уже посчитанные деньги. -->
-                      <button
-                        type="button"
-                        class="btn sm quiet"
-                        [disabled]="crewBusy() === c.user_id"
-                        [attr.aria-label]="'Вывести из состава: ' + c.display_name"
-                        (click)="removeCreator(c)"
-                      >
-                        Убрать
-                      </button>
-                    </div>
-                  } @empty {
-                    <p class="muted">Пока никого.</p>
-                  }
-                </div>
-                <p class="faint roster-note">
-                  В пакет берутся только креаторы — блогеры и авторы UGC.
-                </p>
-                <button type="button" class="btn sm roster-btn" (click)="addCreator()">
-                  Добавить креатора
-                </button>
-              </div>
             }
 
             <!-- Отдельной панелью аккаунты стоят только там, где состава
@@ -943,22 +955,6 @@
               </div>
             }
           </div>
-        </div>
-      }
-
-      <!-- ЦИФРЫ ПРОЕКТА. Те же, что видит заказчик, и из того же отчёта:
-           менеджер отвечает на «сколько набрали» и решает, кого звать в
-           следующий месяц, — за этим он не должен уходить с экрана. -->
-      @if (blocks().stats) {
-        <div class="span-12 panel sec sec-stats">
-          <div class="panel-h">
-            <h2>Статистика</h2>
-            <span class="sub">просмотры, прирост и разбивка по площадкам</span>
-          </div>
-          <!-- Разбор по креаторам — только там, где они есть: пустая
-             таблица «кто сколько набрал» читается как поломка сбора, а
-             не как «делить не по кому». -->
-          <app-project-stats [report]="report()" [showCreators]="blocks().roster" />
         </div>
       }
 

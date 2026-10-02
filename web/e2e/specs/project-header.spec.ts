@@ -1,6 +1,7 @@
 import { test, expect, request as pwRequest, type Page } from '@playwright/test';
 import { AUTH_KEY, psql } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
+import { openManagerTab } from '../fixtures/ui';
 
 /**
  * Шапка проекта у менеджера говорит то же, что план.
@@ -160,6 +161,7 @@ test.describe('обратный отсчёт', () => {
 
   test('о закрытой выкладке план не говорит «просрочено»', async ({ page }) => {
     await page.goto(`/manager/projects/${box.projectId}`);
+    await openManagerTab(page, 'План выкладок');
 
     // Вышедшая выкладка помечена в сетке своим состоянием — галочкой, а
     // не восклицательным знаком: срок к закрытой работе не относится, и

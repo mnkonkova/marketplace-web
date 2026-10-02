@@ -224,7 +224,7 @@
         </div>
       </div>
 
-      <!-- МОИ ВЫКЛАДКИ: три месяца календарём и два списка. -->
+      <!-- МОИ ВЫКЛАДКИ: месяц календарём и два списка. -->
       <div class="span-12 sec sec-posts">
         <div class="subgrid">
           <div class="span-12 panel">
@@ -233,6 +233,10 @@
               <span class="sub">
                 {{ closed() }} из {{ total() }} сдано · {{ links().done }} из {{ links().total }} {{
                 plural(links().total, 'ссылка', 'ссылки', 'ссылок') }}
+                <!-- Обход площадок идёт прямо сейчас. Подпись, а не
+                     крутилка поверх цифр: прежние числа читаются всё это
+                     время, просто скоро станут свежее. -->
+                @if (statsRefreshing()) { · обновляем просмотры… }
               </span>
             </div>
 
@@ -303,181 +307,162 @@
                   @if (pub.review?.decided_by_name) { {{ pub.review?.decided_by_name }}, } сдача {{
                   pub.review?.round }}
                 </span>
-                <button type="button" class="btn sm dark" (click)="openSubmit(pub)">
-                  Пересдать
+                <!-- Две разные кнопки, и это не дубль.
+                     «Исправил — проверьте» про САМ РОЛИК: правку сделали
+                     на площадке, адрес не изменился, и новой ссылки нет.
+                     «Заменить ссылку» про АДРЕС: ролик перезалили, и
+                     тогда это другой ролик — счётчики по нему начнутся
+                     заново. Раньше была только вторая, и первый случай
+                     упирался в «Вставьте хотя бы одну новую ссылку». -->
+                <button
+                  type="button"
+                  class="btn sm dark"
+                  [disabled]="busy()"
+                  (click)="resubmitForReview(pub)"
+                >
+                  Исправил — проверьте
+                </button>
+                <button type="button" class="btn sm" (click)="openSubmit(pub)">
+                  Заменить ссылку
                 </button>
               </div>
             </div>
             } @if (!total()) {
             <p class="muted">Дат выкладок пока нет — их проставит менеджер.</p>
             } @else {
-            <div class="months">
-              @for (m of months(); track m.key) {
-              <div class="mcal">
-                <div class="mcal-h">{{ m.name }}</div>
-                <div class="mcal-g">
-                  @for (w of weekdays; track w) {
-                  <span class="wd">{{ w }}</span>
-                  } @for (b of m.blanks; track b) {
-                  <span></span>
-                  } @for (c of m.cells; track c.date) {
-                  <span
-                    class="c"
-                    [class.d]="c.state === 'd'"
-                    [class.l]="c.state === 'l'"
-                    [class.p]="c.state === 'p'"
-                    [class.today]="c.today"
-                    [title]="c.hint"
-                    >{{ c.num }}</span
-                  >
-                  }
+            <!-- Календарь слева, списки справа. Раньше три месяца стояли
+                 в ряд во всю ширину и занимали больше места, чем сами
+                 ролики, а на телефоне — полторы тысячи пикселей прокрутки
+                 до списка. Теперь месяц один, остальные — стрелками. -->
+            <div class="posts-grid">
+              <div class="cal-col">
+                @for (m of months(); track m.key) {
+                <div class="mcal">
+                  <div class="mcal-nav">
+                    <button
+                      type="button"
+                      class="btn sm"
+                      aria-label="Предыдущий месяц"
+                      (click)="shiftMonth(-1)"
+                    >
+                      ‹
+                    </button>
+                    <div class="mcal-h">{{ m.name }}</div>
+                    <button
+                      type="button"
+                      class="btn sm"
+                      aria-label="Следующий месяц"
+                      (click)="shiftMonth(1)"
+                    >
+                      ›
+                    </button>
+                  </div>
+                  <div class="mcal-g">
+                    @for (w of weekdays; track w) {
+                    <span class="wd">{{ w }}</span>
+                    } @for (b of m.blanks; track b) {
+                    <span></span>
+                    } @for (c of m.cells; track c.date) {
+                    <span
+                      class="c"
+                      [class.d]="c.state === 'd'"
+                      [class.l]="c.state === 'l'"
+                      [class.p]="c.state === 'p'"
+                      [class.today]="c.today"
+                      [title]="c.hint"
+                      >{{ c.num }}</span
+                    >
+                    }
+                  </div>
+                </div>
+                }
+                <div class="mcal-legend muted">
+                  <span><i class="c d">✓</i>вышел</span>
+                  <span><i class="c l">!</i>просрочен</span>
+                  <span><i class="c p"></i>в плане</span>
+                  <span><i class="c today"></i>сегодня</span>
                 </div>
               </div>
-              }
-            </div>
-            <div class="mcal-legend muted">
-              <span><i class="c d">✓</i>вышел</span>
-              <span><i class="c l">!</i>просрочен</span>
-              <span><i class="c p"></i>в плане</span>
-              <span><i class="c today"></i>сегодня</span>
-            </div>
 
-            <div class="posts2">
-              <div>
-                <div class="label list-h">Надо сдать · {{ plannedList().length }}</div>
-                @if (!plannedList().length) {
-                <p class="muted">Всё сдано. Свободные даты можно взять кнопкой выше.</p>
-                } @else {
-                <div class="list">
-                  @for (pub of plannedList(); track pub.id) {
-                  <div class="row">
-                    <div
-                      class="date"
-                      [class.crit]="dateTone(pub) === 'crit'"
-                      [class.next]="dateTone(pub) === 'next'"
-                      [class.done]="dateTone(pub) === 'done'"
-                    >
-                      <b>{{ dayNum(pub.due_date) }}</b>
-                      <span>{{ dayWord(pub.due_date) }}</span>
-                    </div>
-                    <div class="grow">
-                      <div class="t">
-                        {{ pub.title || 'Выкладка ' + index(pub) }} @if (pub.overdue) {
-                        <span class="pill crit">просрочена</span>
-                        } @else if (pub.id === nearestId()) {
-                        <span class="pill acc">{{ daysLeft(pub) }} {{ daysWord(pub) }}</span>
-                        } @if (selfAdded(pub)) {
-                        <span class="pill neu">сверх плана</span>
+              <div class="posts-stack">
+                <div>
+                  <div class="label list-h">Надо сдать · {{ plannedList().length }}</div>
+                  @if (!plannedList().length) {
+                  <p class="muted">Всё сдано. Свободные даты можно взять кнопкой выше.</p>
+                  } @else {
+                  <div class="list">
+                    @for (pub of plannedList(); track pub.id) {
+                    <div class="row prow">
+                      <div
+                        class="date"
+                        [class.crit]="dateTone(pub) === 'crit'"
+                        [class.next]="dateTone(pub) === 'next'"
+                        [class.done]="dateTone(pub) === 'done'"
+                      >
+                        <b>{{ dayNum(pub.due_date) }}</b>
+                        <span>{{ dayWord(pub.due_date) }}</span>
+                      </div>
+                      <div class="grow">
+                        <div class="t">
+                          {{ pub.title || 'Выкладка ' + index(pub) }} @if (pub.overdue) {
+                          <span class="pill crit">просрочена</span>
+                          } @else if (pub.id === nearestId()) {
+                          <span class="pill acc">{{ daysLeft(pub) }} {{ daysWord(pub) }}</span>
+                          } @if (selfAdded(pub)) {
+                          <span class="pill neu">сверх плана</span>
+                          }
+                        </div>
+                        <div class="muted small">
+                          @if (reviewLabel(pub)) {
+                          <span class="pill" [class]="'pill ' + reviewTone(pub)">
+                            {{ reviewLabel(pub) }}
+                          </span>
+                          } @if (pub.pending_date_request) { просьба о переносе на {{
+                          due(pub.pending_date_request.requested_date) }} — ждём менеджера } @else if
+                          (pub.status === 'partial') { сданы не все площадки: осталось {{
+                          missing(pub).length }} } @else { {{ urgentHint(pub) }} }
+                        </div>
+                      </div>
+                      <div class="acts">
+                        @if (!pub.pending_date_request) {
+                        <button
+                          type="button"
+                          class="btn sm"
+                          (click)="openDateRequest(pub)"
+                          title="Попросить перенести дату"
+                        >
+                          Перенести
+                        </button>
+                        } @if (canSubmit(pub)) {
+                        <button
+                          type="button"
+                          class="btn sm"
+                          [class.dark]="pub.overdue || pub.id === nearestId()"
+                          (click)="openSubmit(pub)"
+                        >
+                          Сдать
+                        </button>
                         }
                       </div>
-                      <div class="muted small">
-                        @if (reviewLabel(pub)) {
-                        <span class="pill" [class]="'pill ' + reviewTone(pub)">
-                          {{ reviewLabel(pub) }}
-                        </span>
-                        } @if (pub.pending_date_request) { просьба о переносе на {{
-                        due(pub.pending_date_request.requested_date) }} — ждём менеджера } @else if
-                        (pub.status === 'partial') { сданы не все площадки: осталось {{
-                        missing(pub).length }} } @else { {{ urgentHint(pub) }} }
-                      </div>
                     </div>
-                    @if (canSubmit(pub)) {
-                    <button
-                      type="button"
-                      class="btn sm"
-                      [class.dark]="pub.overdue || pub.id === nearestId()"
-                      (click)="openSubmit(pub)"
-                    >
-                      Сдать
-                    </button>
-                    } @if (!pub.pending_date_request) {
-                    <button
-                      type="button"
-                      class="btn sm"
-                      (click)="openDateRequest(pub)"
-                      title="Попросить перенести дату"
-                    >
-                      Перенести
-                    </button>
                     }
                   </div>
                   }
                 </div>
-                }
-              </div>
 
-              <div>
-                <div class="label list-h">Вышли · {{ doneList().length }}</div>
-                @if (!doneList().length) {
-                <p class="muted">Пока ничего не вышло.</p>
-                } @else {
-                <div class="list">
-                  @for (pub of doneList(); track pub.id) {
-                  <div class="row">
-                    <div class="date done">
-                      <b>{{ dayNum(pub.published_at || pub.due_date) }}</b>
-                      <span>{{ dayWord(pub.published_at || pub.due_date) }}</span>
-                    </div>
-                    <div class="grow">
-                      <div class="t">
-                        {{ pub.title || 'Выкладка ' + index(pub) }} @if (reviewLabel(pub)) {
-                        <span class="pill" [class]="'pill ' + reviewTone(pub)">
-                          {{ reviewLabel(pub) }}
-                        </span>
-                        }
-                      </div>
-                      <!-- Площадки ролика с ЕГО ЦИФРАМИ. Одни только
-                           значки отвечали на «сдал ли я», но не на «где
-                           зашло»: креатор решает по этой строке, куда
-                           выкладываться в следующий раз. Цифра стоит
-                           рядом со значком, а не в подсказке — на
-                           телефоне подсказки нет вовсе. -->
-                      <div class="chips links-row">
-                        @for (p of projectPlatforms(); track p) { @if (link(pub, p); as l) {
-                        <a
-                          class="plat p2"
-                          [href]="l.url"
-                          target="_blank"
-                          rel="noopener"
-                          [title]="
-                            collectIssue(pub, p)
-                              ? platformLabel[p] + ' · ' + collectIssue(pub, p)
-                              : platformLabel[p]
-                          "
-                          >{{ platformShort[p] }}@if (viewsOf(pub, p); as v) {
-                          <b class="v">{{ digits(v) }}</b>
-                          } @else if (collectIssue(pub, p)) {
-                          <!-- Значок площадки без числа читается как «ноль
-                               просмотров». Это не ноль: цифр нет потому,
-                               что собрать их не вышло, и причина — в
-                               подсказке. -->
-                          <b class="v nd-mark">{{ collectIssue(pub, p) }}</b>
-                          }</a
-                        >
-                        } @else {
-                        <span class="plat nd" title="Ссылка не прислана"
-                          >{{ platformShort[p] }}</span
-                        >
-                        } }
-                      </div>
-                    </div>
-                    <div class="views-cell">
-                      <div class="mono strong">{{ digits(pub.views) }}</div>
-                      @if (pub.er_percent !== undefined) {
-                      <div class="muted small">ER {{ pub.er_percent.toFixed(1) }}%</div>
-                      }
-                    </div>
-                    <!-- Ролик вышел — это не значит, что ссылка на
-                             него будет жить вечно: аккаунт
-                             перевыкладывают, ролик удаляют, короткая
-                             ссылка протухает. Заменить её надо и здесь,
-                             а не только пока выкладка открыта. -->
-                    <button type="button" class="btn sm" (click)="openSubmit(pub)">Ссылки</button>
-                  </div>
-                  }
-                </div>
-                }
               </div>
+            </div>
+
+            <!-- ВЫШЛИ — той же таблицей «ролик × площадка», что «Ролики» у
+                 менеджера, но без цифр площадок: в клетке — на месте ли
+                 ссылка и считается ли она, просмотры — одним числом. -->
+            <div class="done-block">
+              <app-creator-videos
+                [items]="doneItems()"
+                [report]="report()"
+                [platforms]="projectPlatforms()"
+                (changed)="afterLinksChanged()"
+              />
             </div>
             }
           </div>

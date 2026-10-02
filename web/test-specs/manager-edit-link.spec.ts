@@ -68,6 +68,8 @@ describe('ProjectPublicationsComponent: правка ссылки', () => {
       'managerReport',
       'managerProjectSettings',
       'managerEditLink',
+          // Цифры дособираются при открытии карточки; здесь — «нечего».
+      'managerRefreshStats',
     ]);
     api.managerProjectSettings.and.returnValue(
       of({ draft_required: false, client_sees_stats: true }),
@@ -79,6 +81,7 @@ describe('ProjectPublicationsComponent: правка ссылки', () => {
       }) as never,
     );
     api.managerReport.and.returnValue(of({ videos_table: [row()] } as never) as never);
+    api.managerRefreshStats.and.returnValue(EMPTY as never);
     api.managerEditLink.and.returnValue((editResult ?? of(pub())) as never);
 
     const orders = jasmine.createSpyObj<OrderApi>('orders', ['managerProjectOrder']);

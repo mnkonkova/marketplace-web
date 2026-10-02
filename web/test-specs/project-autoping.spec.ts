@@ -59,13 +59,14 @@ describe('ProjectAutopingComponent', () => {
     return { cmp: fixture.componentInstance, api, msg };
   }
 
-  it('видов пять, и «накануне» стоит первым — им пользуются чаще', () => {
+  it('видов шесть, и «накануне» стоит первым — им пользуются чаще', () => {
     const { cmp } = setup();
     expect(cmp.rows().map((r) => r.field)).toEqual([
       'day_before',
       'due_today',
       'overdue',
       'incomplete',
+      'low_views',
       'manager_digest',
     ]);
   });

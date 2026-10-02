@@ -1,7 +1,6 @@
 import { test, expect, type Locator, type Page, request as pwRequest } from '@playwright/test';
 import { AUTH_KEY } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
-import { openManagerTab } from '../fixtures/ui';
 
 /**
  * Звёздочка у вовлечённости там, где репостов не отдали.
@@ -109,13 +108,16 @@ test('заказчику про занижённый ER сказано слов�
 test('в отчёте менеджера оговорка та же, а не только у заказчика', async ({ context, page }) => {
   await signIn(context, 'manager');
   await page.goto(`/manager/projects/${box.projectId}`);
-  await openManagerTab(page, 'Статистика');
-
-  const stats = page.locator('app-project-stats');
-  await expect(stats).toBeVisible({ timeout: 15_000 });
-  await expect(shown(stats)).not.toHaveCount(0);
+  // У менеджера ER живёт в таблице роликов: колонка ER сводки площадок и
+  // режим «ER» самой таблицы.
+  await page.locator('.secnav button', { hasText: 'Ролики' }).click();
+  const vm = page.locator('app-video-matrix');
+  await expect(vm).toBeVisible({ timeout: 15_000 });
+  await vm.getByRole('button', { name: 'ER', exact: true }).click();
+  await expect(shown(vm)).not.toHaveCount(0);
 
   // Менеджер объясняет заказчику цифры и не может делать это по числу,
   // про которое сам не знает, что оно занижено.
-  expect(await stars(stats).count()).toBe(await shown(stats).count());
+  expect(await stars(vm).count()).toBe(await shown(vm).count());
 });
+

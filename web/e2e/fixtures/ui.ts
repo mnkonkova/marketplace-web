@@ -102,7 +102,10 @@ export async function openCreatorTab(page: Page, _name: CreatorTab): Promise<voi
 
 /** Разделы карточки проекта у менеджера. */
 export type ManagerTab =
+  | 'Горит'
   | 'План выкладок'
+  | 'Ролики'
+  | 'Проверка'
   | 'Креаторы'
   | 'Комментарии'
   | 'Статистика'
@@ -110,13 +113,42 @@ export type ManagerTab =
   | 'Материалы';
 
 /**
+ * Вкладка десктопа, на которой живёт раздел. Имена разделов в спеках
+ * старше вкладок, поэтому здесь словарь, а не переименование по всем
+ * файлам: «Статистика» и «Ссылки» стали «Роликами», «Креаторы» —
+ * «Командой», «Комментарии» — «Перепиской».
+ */
+const DESK_TAB: Record<ManagerTab, string[]> = {
+  Горит: ['Горит'],
+  'План выкладок': ['План'],
+  Ролики: ['Ролики'],
+  Проверка: ['Проверка'],
+  Креаторы: ['Команда', 'Аккаунты'],
+  Комментарии: ['Переписка'],
+  Статистика: ['Ролики'],
+  Начисления: ['Деньги'],
+  // Материалы стоят рядом с чек-листом, а там, где его нет, — в команде.
+  Материалы: ['Проверка', 'Команда', 'Аккаунты'],
+};
+
+/**
  * Открыть раздел карточки проекта у менеджера.
  *
- * Как и у креатора: на десктопе это одна страница, разделы прячет
- * только тач-слой.
+ * На десктопе разделы — вкладками (видно по одному), на телефоне —
+ * нижней полосой. Здесь — десктоп: на телефоне спеки нажимают полосу
+ * сами, и там этот помощник только ждёт карточку.
  */
-export async function openManagerTab(page: Page, _name: ManagerTab): Promise<void> {
+export async function openManagerTab(page: Page, name: ManagerTab): Promise<void> {
   await expect(page.locator('.prmarket').first(), 'карточка проекта нарисована').toBeVisible({
     timeout: 15_000,
   });
+  const nav = page.locator('.secnav');
+  if (!(await nav.isVisible({ timeout: 5_000 }).catch(() => false))) return;
+  for (const title of DESK_TAB[name]) {
+    const btn = nav.locator('button', { hasText: title });
+    if (!(await btn.count())) continue;
+    await btn.first().click();
+    if (name !== 'Материалы') return;
+    if (await page.locator('app-project-materials').first().isVisible()) return;
+  }
 }

@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { AUTH_KEY, psql } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
-import { openManagerTab } from '../fixtures/ui';
 
 /**
  * Ноль в отчёте должен быть подписан.
@@ -49,11 +48,12 @@ test('у менеджера на месте нуля — причина, а не
     [AUTH_KEY, box.sessions.manager] as const,
   );
   await page.goto(`/manager/projects/${box.projectId}`);
-  await openManagerTab(page, 'Статистика');
+  // Причина стоит прямо в клетке таблицы «Ролики»: на месте цифры.
+  await page.locator('.secnav button', { hasText: 'Ролики' }).click();
 
-  const cell = page.locator('td.nocount').first();
+  const cell = page.locator('app-video-matrix .cell.failed').first();
   await expect(cell).toBeVisible({ timeout: 20_000 });
-  await expect(cell).toHaveText('площадка не собирается');
+  await expect(cell).toContainText('площадка не собирается');
   // Исходный ответ сборщика остаётся виден: наша короткая подпись
   // устареет, когда на той стороне поменяют формулировку.
   await expect(cell).toHaveAttribute('title', /не поддержан/);
@@ -68,7 +68,11 @@ test('у креатора значок площадки подписан, а н�
   );
   await page.goto(`/me/creator/projects/${box.projectId}`);
 
-  const mark = page.locator('.links-row .plat .nd-mark').first();
-  await expect(mark).toBeVisible({ timeout: 20_000 });
-  await expect(mark).toHaveText('ролик не найден');
+  // Причина — прямо в клетке площадки таблицы «Вышли», исходный ответ
+  // сборщика — в подсказке. Без неё пустая площадка читается как «ролик
+  // никто не посмотрел», то есть как работа креатора, хотя это наша.
+  const cell = page.locator('app-creator-videos table.cv .cell.failed').first();
+  await expect(cell).toBeVisible({ timeout: 20_000 });
+  await expect(cell).toContainText('ролик не найден');
+  await expect(cell).toHaveAttribute('title', /не найден/);
 });

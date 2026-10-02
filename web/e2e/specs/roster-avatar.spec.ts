@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { AUTH_KEY, psql } from '../fixtures/world';
+import { openManagerTab } from '../fixtures/ui';
 import { callAs, createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
 
 /**
@@ -40,6 +41,7 @@ test.beforeEach(async ({ context }) => {
 
 test('портрет из профиля доезжает до состава, плана и ссылок', async ({ page }) => {
   await page.goto(`/manager/projects/${box.projectId}`);
+  await openManagerTab(page, 'План выкладок');
   await expect(page.locator('.sec-plan')).toBeVisible({ timeout: 20_000 });
 
   // Ручка состава отдаёт адрес — без него фронту нечего рисовать.

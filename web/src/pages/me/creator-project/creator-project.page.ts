@@ -48,13 +48,16 @@ import {
   MAX_PER_DAY,
   ymdLocal,
 } from '@entities/publication/lib/extra-publication';
-import { collectErrorLabel } from '@entities/publication/lib/collect-error';
 import { formatMoney, groupDigits } from '@entities/billing/lib/money';
 import { periodTitle } from '@entities/billing/lib/period';
 import { projectBlocks } from '@entities/publication/lib/project-blocks';
 import { MATERIAL_KIND_LABEL, isDocument } from '@entities/publication/lib/materials';
 import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { CreatorAvailabilityComponent } from '@widgets/creator-availability/creator-availability.component';
+import {
+  CreatorVideoItem,
+  CreatorVideosComponent,
+} from '@widgets/creator-videos/creator-videos.component';
 import { TelegramLinkComponent } from '@features/telegram-link/telegram-link.component';
 import { BillingApi } from '@entities/billing/api/billing.api';
 import type { CreatorEarnings } from '@entities/billing/model/billing.types';
@@ -96,6 +99,7 @@ const SUGGEST_FOLD_AT = 3;
   selector: 'app-creator-project-page',
   standalone: true,
   imports: [
+    CreatorVideosComponent,
     CommonModule,
     FormsModule,
     RouterLink,
@@ -562,7 +566,7 @@ export class CreatorProjectPage {
     return rows.find((a) => a.period_start.slice(0, 10) === prev.starts_on.slice(0, 10)) ?? null;
   });
 
-  // ---- календари трёх месяцев ----
+  // ---- календарь месяца ----
 
   public readonly weekdays = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 
@@ -596,12 +600,20 @@ export class CreatorProjectPage {
   });
 
   /**
-   * Три месяца подряд: перед опорным, опорный и следующий.
+   * На сколько месяцев сдвинут календарь от опорного — стрелками.
    *
-   * Ровно как в макете, и это не украшение: выкладки живут по месяцам, и
-   * человеку надо видеть, что было, что идёт и что уже назначено дальше,
-   * — иначе «свободных дней в сентябре» он не найдёт.
+   * Месяц один, а не три подряд: три в ряд занимали больше места, чем
+   * сами ролики, а на телефоне шли столбиком на полторы тысячи пикселей
+   * до списка. Что было и что назначено дальше, по-прежнему видно — на
+   * одно нажатие, а не на прокрутку вслепую.
    */
+  public readonly monthShift = signal(0);
+
+  public shiftMonth(delta: number): void {
+    this.monthShift.update((n) => n + delta);
+  }
+
+  /** Показанный месяц: опорный плюс сдвиг стрелками. Массив из одного — шаблону так проще. */
   public readonly months = computed(() => {
     const now = this.anchorMonth();
     const names = [
@@ -627,7 +639,7 @@ export class CreatorProjectPage {
       byDate.set(k, [...(byDate.get(k) ?? []), p]);
     }
 
-    return [-1, 0, 1].map((shift) => {
+    return [this.monthShift()].map((shift) => {
       const base = new Date(now.getFullYear(), now.getMonth() + shift, 1);
       const key = this.monthKey(base);
       const days = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
@@ -687,6 +699,26 @@ export class CreatorProjectPage {
   public readonly doneList = computed(() =>
     [...this.ordered().filter((p) => this.isDone(p))].reverse(),
   );
+
+  /**
+   * Вышедшие ролики для таблицы: с подписью и отметкой проверки. Порядок
+   * («новые» / «по просмотрам») выбирают в самой таблице.
+   */
+  public readonly doneItems = computed<CreatorVideoItem[]>(() =>
+    this.doneList().map((pub) => {
+      const label = this.reviewLabel(pub);
+      return {
+        pub,
+        title: pub.title || 'Выкладка ' + this.index(pub),
+        review: label ? { label, tone: this.reviewTone(pub) } : undefined,
+      };
+    }),
+  );
+
+  /** Ссылку заменили в таблице — перечитываем выкладки и отчёт тихо. */
+  public afterLinksChanged(): void {
+    this.fetch(this.projectId(), true);
+  }
 
   /** Ближайший несданный — у него в списке синяя дата. */
   public readonly nearestId = computed(() => {
@@ -1016,31 +1048,6 @@ export class CreatorProjectPage {
     };
   }
 
-  public viewsOf(pub: Publication, platform: Platform): number | null {
-    const rep = this.report();
-    if (!rep) return null;
-    const row = rep.videos_table.find(
-      (r) => r.publication_id === pub.id && r.platform === platform,
-    );
-    return row ? row.views : null;
-  }
-
-  /**
-   * Почему по этой площадке нет цифры.
-   *
-   * Пусто — цифра есть либо её ещё не собирали. Непусто значит «мы
-   * спросили, и нам отказали»: площадка не собирается, ролик удалён.
-   * Без этой подписи значок площадки без числа читается как «ролик
-   * никто не посмотрел» — то есть как работа креатора, хотя это наша.
-   */
-  public collectIssue(pub: Publication, platform: Platform): string {
-    const row = this.report()?.videos_table.find(
-      (r) => r.publication_id === pub.id && r.platform === platform,
-    );
-    if (!row?.collect_error || row.views) return '';
-    return collectErrorLabel(row.collect_error);
-  }
-
   // ---- сдача ссылок ----
 
   public readonly submitFor = signal<Publication | null>(null);
@@ -1129,6 +1136,38 @@ export class CreatorProjectPage {
     this.urls.set(filled);
     this.checked.set(new Set());
     this.flagged.set(new Set());
+  }
+
+  /**
+   * Отправить возвращённый ролик на проверку заново.
+   *
+   * Отдельно от «Пересдать», и это не дубль. «Пересдать» открывает окно
+   * сдачи — оно про ССЫЛКИ: дослать площадку, заменить адрес. А когда
+   * менеджер вернул ролик за то, что правится на самой площадке
+   * («нет ссылки в шапке профиля»), адрес не меняется, и окно сдачи
+   * упирается в «Вставьте хотя бы одну новую ссылку». До этой кнопки
+   * выход был один — написать менеджеру в переписку.
+   */
+  public resubmitForReview(pub: Publication): void {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.api.creatorResubmit(pub.id).subscribe({
+      next: (saved) => {
+        this.busy.set(false);
+        this.items.set(this.items().map((p) => (p.id === saved.id ? saved : p)));
+        this.msg.success('Отправили менеджеру на проверку.');
+      },
+      error: (e) => {
+        this.busy.set(false);
+        const err = parseApiError(e, 'Не удалось отправить на проверку.');
+        // Ролик уже у менеджера — это факт, а не отказ.
+        if (err.code === 'nothing_to_resubmit') {
+          this.msg.info('Ролик уже на проверке у менеджера.');
+          return;
+        }
+        this.msg.error(err.message);
+      },
+    });
   }
 
   public closeSubmit(): void {
@@ -1443,6 +1482,37 @@ export class CreatorProjectPage {
 
   // ---- загрузка ----
 
+  /**
+   * Идёт обход площадок прямо сейчас.
+   *
+   * Один на весь кабинет: обход уходит пачкой, и показывать его по
+   * каждой строке значило бы обещать, что строки обновляются порознь.
+   */
+  public readonly statsRefreshing = signal(false);
+
+  /**
+   * Обновить просмотры по заходу в проект.
+   *
+   * Креатор смотрит на свои цифры теми же глазами, что менеджер, и ноль
+   * у вышедшего ролика объясняется ему так же плохо. Кого обходить,
+   * решает сервер по возрасту ролика: свежее своего шага он не трогает,
+   * а несобранную ни разу ссылку берёт всегда.
+   *
+   * Ошибки молчаливые: человек пришёл сюда сдавать работу, а не
+   * обновлять цифры, и красная плашка поверх живого отчёта говорила бы,
+   * что сломан отчёт.
+   */
+  private refreshStats(id: string): void {
+    this.statsRefreshing.set(true);
+    this.api.creatorRefreshStats(id).subscribe({
+      next: (r) => {
+        this.statsRefreshing.set(false);
+        if (r.saved) this.reloadReport();
+      },
+      error: () => this.statsRefreshing.set(false),
+    });
+  }
+
   private reloadReport(): void {
     this.api.creatorReport(this.projectId()).subscribe({
       next: (r) => this.report.set(r),
@@ -1513,6 +1583,7 @@ export class CreatorProjectPage {
       next: (r) => {
         this.report.set(r);
         this.reportCollapsed.set(r.collapsed);
+        this.refreshStats(id);
       },
       error: (e) => {
         const err = parseApiError(e, '');

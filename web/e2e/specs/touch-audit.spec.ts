@@ -153,11 +153,76 @@ test('карточка проекта у менеджера на телефон�
   await signIn(page, box.sessions.manager);
   await page.goto(`/manager/projects/${box.projectId}`);
   await expect(page.locator('app-prmarket-tabbar')).toBeVisible({ timeout: 20_000 });
-  for (const t of ['Горит', 'План', 'Ссылки']) {
+  for (const t of ['Горит', 'План', 'Ролики']) {
     const b = page.locator('app-prmarket-tabbar button', { hasText: t }).first();
     if (!(await b.count())) continue;
     await b.click();
     await reachable(page, `менеджер / проект › ${t}`);
+  }
+});
+
+/**
+ * Проверка ролика на самом узком телефоне.
+ *
+ * Сетка блока на телефоне стояла `1fr` — не уже самого длинного адреса
+ * ролика, — и на 320 px «Проверка» выезжала за экран на три десятка
+ * пикселей: страница прокручивалась вбок, правый край с «нет» и
+ * «Принять» обрезался. Обход на 390 этого не видел. А на 390 ссылка
+ * разваливалась на три строки — значок, адрес, «Заменить», — и пять
+ * площадок отодвигали чек-лист за второй экран.
+ */
+test('проверка ролика у менеджера помещается в 320 px, ссылка — одной строкой', async ({
+  page,
+}) => {
+  await signIn(page, box.sessions.manager);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto(`/manager/projects/${box.projectId}`);
+  const tab = page.locator('app-prmarket-tabbar button', { hasText: 'Пров' }).first();
+  await expect(tab).toBeVisible({ timeout: 20_000 });
+  await tab.click();
+  const link = page.locator('app-project-review .revlink').first();
+  await expect(link).toBeVisible({ timeout: 15_000 });
+
+  const de = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(de.scroll, 'страница не прокручивается вбок').toBeLessThanOrEqual(de.client);
+
+  const url = await link.locator('a.grow').boundingBox();
+  const btn = await link.getByRole('button', { name: 'Заменить' }).boundingBox();
+  expect(url && btn, 'адрес и «Заменить» на месте').toBeTruthy();
+  expect(Math.abs(url!.y + url!.height / 2 - (btn!.y + btn!.height / 2)), 'одна строка').toBeLessThan(
+    btn!.height / 2,
+  );
+});
+
+/**
+ * Разбор креатора в «Команде» на телефоне.
+ *
+ * Таблица состава на телефоне — карточки, и общее правило делает каждую
+ * ячейку строкой «подпись — значение». Ячейка разбора под него попадала:
+ * цифры, столбики и пояснение вставали в ряд шире экрана, страница
+ * уезжала вбок, и нижняя полоса с кнопками пропадала из виду.
+ */
+test('разбор креатора в «Команде» не ломает телефон', async ({ page }) => {
+  await signIn(page, box.sessions.manager);
+  await page.goto(`/manager/projects/${box.projectId}`);
+  const tab = page.locator('app-prmarket-tabbar button', { hasText: 'Команда' }).first();
+  await expect(tab).toBeVisible({ timeout: 20_000 });
+  await tab.click();
+  await page.locator('.sec-team table.cards').getByRole('button', { name: 'Ролики' }).first().click();
+  await expect(page.locator('.crew-stats').first()).toBeVisible();
+
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 700 });
+    await page.waitForTimeout(300);
+    const de = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+    }));
+    expect(de.scroll, `${width} px: страница не прокручивается вбок`).toBeLessThanOrEqual(de.client);
+    await expect(page.locator('app-prmarket-tabbar'), 'нижняя полоса на месте').toBeInViewport();
   }
 });
 

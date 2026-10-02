@@ -1560,9 +1560,13 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
     gap: 16px;
   }
 
+  // minmax(0, 1fr), а не 1fr: в одну колонку `1fr` не уже своего
+  // содержимого, а лесенка ступеней широкая, — и на телефоне колонка
+  // распиралась за край карточки, где её срезал overflow: hidden. Сумма
+  // «Итого» и знак рубля уезжали за правую границу.
   @media (max-width: 900px) {
     .earn {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .earn-l {
@@ -1671,6 +1675,10 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
 
     span {
       flex: 1;
+      // Без min-width: 0 подпись не уже своего текста, и дюжина подписей
+      // распирала ряд шире карточки.
+      min-width: 0;
+      overflow: hidden;
       text-align: center;
       font-family: var(--mono);
       font-size: 9.5px;
@@ -2464,9 +2472,13 @@ body:has(.crm-shell) .ant-modal-confirm-body > .anticon + span {
     gap: 16px;
   }
 
+  // minmax(0, 1fr) и здесь — по той же причине, что выше: в одну колонку
+  // `1fr` не уже самого длинного адреса ролика, и на 320 px блок
+  // проверки выезжал за экран на три десятка пикселей вместе с
+  // «да/нет» и «Принять».
   @media (max-width: 560px) {
     .review {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 

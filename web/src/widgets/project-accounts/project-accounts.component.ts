@@ -214,6 +214,21 @@ export class ProjectAccountsComponent {
     return p === 'other' ? 'Другое' : PLATFORM_LABEL[p];
   }
 
+  /**
+   * Нужна ли приписка с площадкой рядом с названием.
+   *
+   * Не нужна, когда название и есть площадка: «TikTok TikTok» — это не
+   * уточнение, а шум, и на телефоне он съедает целую строку. Приписка
+   * осмысленна там, где аккаунт назвали по-своему: «Основной бренда» —
+   * и рядом видно, чей он площадки.
+   */
+  public showPlatformTag(a: ProjectAccount): boolean {
+    // Без учёта регистра и пробелов: название «tiktok » у аккаунта TikTok
+    // ничего не уточняет, а приписка рядом повторяла бы площадку дважды.
+    const norm = (x: string) => x.trim().toLowerCase();
+    return norm(this.label(a)) !== norm(this.platformLabel(a.platform as Platform | 'other'));
+  }
+
   public password(a: ProjectAccount): string | null {
     return this.revealed()[a.id] ?? null;
   }

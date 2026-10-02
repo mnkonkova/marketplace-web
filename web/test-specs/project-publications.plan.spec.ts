@@ -46,6 +46,8 @@ function setup(items: Publication[], opts: Opts = {}) {
     'managerReport',
     // Переключатели проекта грузятся тем же проходом.
     'managerProjectSettings',
+      // Цифры дособираются при открытии карточки; здесь — «нечего».
+    'managerRefreshStats',
   ]);
   api.managerProjectSettings.and.returnValue(
     opts.settings === null
@@ -66,6 +68,7 @@ function setup(items: Publication[], opts: Opts = {}) {
     }) as never,
   );
   api.managerReport.and.returnValue(of((opts.report ?? {}) as never) as never);
+  api.managerRefreshStats.and.returnValue(EMPTY as never);
 
   // Заказ, из которого вырос проект, тем же проходом. Здесь его нет:
   // план выкладок от очереди приглашений не зависит, а EMPTY — это

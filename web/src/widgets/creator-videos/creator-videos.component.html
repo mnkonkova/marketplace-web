@@ -1,0 +1,249 @@
+<!-- Правка ссылок одного ролика — одна разметка на таблицу и карточку. -->
+<ng-template #linksEditor let-pub>
+  <div class="cv-links">
+    @if (!canEdit(pub)) {
+      <p class="muted small cv-closed">
+        Выкладку закрыл менеджер — ссылки теперь меняет он. Напишите ему в переписке.
+      </p>
+    }
+    @for (pl of platforms(); track pl) {
+      @let l = link(pub, pl);
+      <div class="cv-link">
+        <span class="ic">{{ platformShort[pl] }}</span>
+        @if (isEditing(pub, pl)) {
+          <input
+            class="inp grow"
+            type="url"
+            [(ngModel)]="editUrl"
+            [attr.aria-label]="'Адрес ролика: ' + label(pl)"
+            placeholder="https://…"
+          />
+          <button
+            type="button"
+            class="btn sm primary"
+            [disabled]="busy() || !editUrl.trim()"
+            (click)="save(pub, pl)"
+          >
+            Сохранить
+          </button>
+          <button type="button" class="btn sm quiet" (click)="cancelEdit()">Отмена</button>
+        } @else {
+          @if (l) {
+            <a class="grow url" [href]="l.url" target="_blank" rel="noopener">{{ l.url }}</a>
+          } @else {
+            <span class="grow muted">{{ label(pl) }}: ссылки нет</span>
+          }
+          @if (canEdit(pub)) {
+            <button type="button" class="btn sm" (click)="startEdit(pub, pl)">
+              {{ l ? 'Заменить' : 'Добавить' }}
+            </button>
+          }
+        }
+      </div>
+    }
+  </div>
+</ng-template>
+
+<div class="cv-head">
+  <span class="label">Вышли · {{ items().length }}</span>
+  @if (items().length > 1) {
+    <div class="cv-sort" role="group" aria-label="Порядок роликов">
+      <button
+        type="button"
+        [class.on]="sort() === 'date'"
+        [attr.aria-pressed]="sort() === 'date'"
+        (click)="sort.set('date')"
+      >
+        Новые
+      </button>
+      <button
+        type="button"
+        [class.on]="sort() === 'views'"
+        [attr.aria-pressed]="sort() === 'views'"
+        (click)="sort.set('views')"
+      >
+        По просмотрам
+      </button>
+    </div>
+  }
+</div>
+
+@if (!items().length) {
+  <p class="muted">Пока ничего не вышло.</p>
+} @else {
+  <p class="muted cv-note no-phone">
+    Просмотры каждого ролика на каждой площадке: чем насыщеннее клетка, тем больше. Клетка открывает
+    ролик; пунктир — ссылки нет.
+  </p>
+
+  <!-- ДЕСКТОП: таблица, как «Ролики» у менеджера. -->
+  <div class="cv-scroll no-phone">
+    <table class="cv">
+      <thead>
+        <tr>
+          <th class="l" scope="col">Ролик</th>
+          @for (pl of platforms(); track pl) {
+            <th scope="col">{{ label(pl) }}</th>
+          }
+          <th scope="col" class="tot-h">Просмотры</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of rows(); track r.pub.id) {
+          <tr>
+            <th scope="row" class="vid">
+              <b>{{ r.title }}</b>
+              <small>
+                {{ r.date | date: 'd MMM' }}
+                @if (r.review; as rv) {
+                  <span class="pill" [class]="'pill ' + rv.tone">{{ rv.label }}</span>
+                }
+              </small>
+              <button
+                type="button"
+                class="cv-links-btn"
+                [attr.aria-expanded]="openLinks() === r.pub.id"
+                (click)="toggleLinks(r.pub.id)"
+              >
+                {{ openLinks() === r.pub.id ? 'Свернуть ссылки' : 'Ссылки' }}
+              </button>
+            </th>
+            @for (c of r.cells; track c.platform) {
+              <td>
+                @if (c.url) {
+                  <a
+                    [class]="'cell ' + c.kind"
+                    [class.hot]="c.heat > 0.55"
+                    [style.--heat]="c.heat"
+                    [href]="c.url"
+                    target="_blank"
+                    rel="noopener"
+                    [attr.title]="c.title || null"
+                    [attr.aria-label]="label(c.platform) + ': ' + c.text"
+                  >
+                    <b>{{ c.text }}</b>
+                    @if (c.sub) {
+                      <small>{{ c.sub }}</small>
+                    }
+                  </a>
+                } @else if (canEdit(r.pub)) {
+                  <button
+                    type="button"
+                    class="cell none"
+                    [attr.aria-label]="'Добавить ссылку: ' + label(c.platform)"
+                    (click)="startEdit(r.pub, c.platform)"
+                  >
+                    <b>нет ссылки</b>
+                    <small>добавить</small>
+                  </button>
+                } @else {
+                  <span class="cell none"><b>нет ссылки</b></span>
+                }
+              </td>
+            }
+            <td>
+              <span class="cell total">
+                <b class="num">{{ r.views }}</b>
+                <span class="cv-bar" aria-hidden="true"
+                  ><i [class.best]="r.isBest" [style.width.%]="r.bar"></i
+                ></span>
+                @if (r.pub.er_percent !== undefined) {
+                  <small
+                    >ER
+                    <app-er-value
+                      [percent]="r.pub.er_percent"
+                      [withoutShares]="!!r.pub.er_without_shares"
+                  /></small>
+                }
+              </span>
+            </td>
+          </tr>
+          @if (openLinks() === r.pub.id) {
+            <tr class="cv-edit">
+              <td [attr.colspan]="platforms().length + 2">
+                <ng-container *ngTemplateOutlet="linksEditor; context: { $implicit: r.pub }" />
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+      <tfoot>
+        <tr>
+          <th scope="row" class="vid">
+            <b>Итого</b>
+            <small>{{ items().length }} {{ items().length === 1 ? 'ролик' : 'роликов' }}</small>
+          </th>
+          @for (t of totals().cells; track t.platform) {
+            <td>
+              <span class="cell total">
+                <b class="num">{{ t.text }}</b>
+                <small>ссылок: {{ t.links }}</small>
+              </span>
+            </td>
+          }
+          <td>
+            <span class="cell grand">
+              <b class="num">{{ totals().views }}</b>
+              @if (totals().growth) {
+                <small>{{ totals().growth }}</small>
+              }
+            </span>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- ТЕЛЕФОН: ролик — карточка, площадка — строка. Раскладка — на
+       внутреннем блоке: свой display на самом .only-phone перебил бы
+       глобальное «на десктопе не показывать». -->
+  <div class="only-phone">
+    <div class="cv-cards">
+      @for (r of rows(); track r.pub.id) {
+        <article class="cv-card">
+          <div class="cv-card-h">
+            <div class="grow">
+              <small class="muted">{{ r.date | date: 'd MMM' }}</small>
+              <b>{{ r.title }}</b>
+              @if (r.review; as rv) {
+                <span class="pill" [class]="'pill ' + rv.tone">{{ rv.label }}</span>
+              }
+            </div>
+            <div class="cv-card-sum">
+              <b class="num">{{ r.views }}</b>
+              @if (r.pub.er_percent !== undefined) {
+                <small
+                  >ER
+                  <app-er-value
+                    [percent]="r.pub.er_percent"
+                    [withoutShares]="!!r.pub.er_without_shares"
+                /></small>
+              }
+            </div>
+          </div>
+          <span class="cv-bar wide" aria-hidden="true"
+            ><i [class.best]="r.isBest" [style.width.%]="r.bar"></i
+          ></span>
+          @for (c of r.cells; track c.platform) {
+            <div class="cv-prow" [class]="'cv-prow ' + c.kind">
+              <span class="ic">{{ platformShort[c.platform] }}</span>
+              <span class="pn">{{ label(c.platform) }}</span>
+              <span class="pv" [attr.title]="c.title || null">{{ c.text }}</span>
+            </div>
+          }
+          <button
+            type="button"
+            class="btn sm cv-card-links"
+            [attr.aria-expanded]="openLinks() === r.pub.id"
+            (click)="toggleLinks(r.pub.id)"
+          >
+            {{ openLinks() === r.pub.id ? 'Свернуть ссылки' : 'Ссылки' }}
+          </button>
+          @if (openLinks() === r.pub.id) {
+            <ng-container *ngTemplateOutlet="linksEditor; context: { $implicit: r.pub }" />
+          }
+        </article>
+      }
+    </div>
+  </div>
+}

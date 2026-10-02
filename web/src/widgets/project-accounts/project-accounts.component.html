@@ -84,7 +84,11 @@
   <div class="acc-row">
     <div class="acc-main">
       <b class="ttl">{{ label(a) }}</b>
-      <span class="plat">{{ platformLabel(a.platform) }}</span>
+      <!-- Приписка с площадкой — только когда название своё. «TikTok
+           TikTok» ничего не уточняет, а на телефоне занимает строку. -->
+      @if (showPlatformTag(a)) {
+        <span class="acc-plat">{{ platformLabel(a.platform) }}</span>
+      }
       @if (a.url) {
         <a class="lnk" [href]="a.url" target="_blank" rel="noopener">{{ a.url }}</a>
       }
@@ -117,7 +121,7 @@
               Скрыть
             </button>
           } @else {
-            <b class="v mono">••••••••</b>
+            <b class="v mono">••••••</b>
             <button
               nz-button
               nzSize="small"

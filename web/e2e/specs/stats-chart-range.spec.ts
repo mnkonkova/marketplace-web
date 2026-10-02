@@ -8,7 +8,7 @@ import {
 } from '@playwright/test';
 import { AUTH_KEY } from '../fixtures/world';
 import { createSandbox, dropSandbox, type Sandbox } from '../fixtures/sandbox';
-import { openClientTab, openManagerTab } from '../fixtures/ui';
+import { openClientTab } from '../fixtures/ui';
 
 /**
  * Глубина графика переключается там, где стоит график.
@@ -92,7 +92,7 @@ async function pointsOn(stats: Locator): Promise<number> {
  * Ряд короче тридцати дней специально: «30 дней» показывает всё
  * собранное, «7 дней» — последнюю неделю, и разница видна числом точек.
  */
-async function checksRangeSwitch(page: Page, all: number, root = 'app-project-stats'): Promise<void> {
+async function checksRangeSwitch(page: Page, all: number, root: string): Promise<void> {
   const stats = page.locator(root);
   await expect(stats).toBeVisible({ timeout: 15_000 });
 
@@ -113,17 +113,9 @@ async function checksRangeSwitch(page: Page, all: number, root = 'app-project-st
   await expect.poll(() => pointsOn(stats)).toBe(all);
 }
 
-test('менеджер переключает глубину графика', async ({ context, page }) => {
-  const all = await collectedDays();
-  expect(all, 'мир обязан собрать больше недели: иначе кнопки нечему менять').toBeGreaterThan(7);
-  expect(all, 'и меньше месяца: иначе «7» и «30» дают один и тот же хвост').toBeLessThan(30);
-
-  await signIn(context, 'manager');
-  await page.goto(`/manager/projects/${box.projectId}`);
-  await openManagerTab(page, 'Статистика');
-  await checksRangeSwitch(page, all);
-});
-
+// У менеджера графика больше нет: его «Статистика» стала вкладкой
+// «Ролики» — какая площадка тянет и каждый ролик по площадкам (см.
+// manager-video-matrix.spec). Переключатель глубины остался у заказчика.
 test('заказчик переключает глубину графика на своей карточке', async ({ context, page }) => {
   const all = await collectedDays();
   await signIn(context, 'client');
@@ -132,14 +124,4 @@ test('заказчик переключает глубину графика на
   // У заказчика график живёт прямо в карточке проекта, своим блоком:
   // отдельного виджета статистики на этом экране нет.
   await checksRangeSwitch(page, all, '.panel:has(app-line-chart)');
-});
-
-test('админ в чужом проекте видит тот же переключатель', async ({ context, page }) => {
-  // Админ смотрит менеджерскую карточку, и «у менеджера есть, а у меня
-  // нет» здесь было бы не правом доступа, а забытыми кнопками.
-  const all = await collectedDays();
-  await signIn(context, 'admin');
-  await page.goto(`/manager/projects/${box.projectId}`);
-  await openManagerTab(page, 'Статистика');
-  await checksRangeSwitch(page, all);
 });

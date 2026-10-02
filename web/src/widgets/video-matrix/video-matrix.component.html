@@ -1,0 +1,370 @@
+<!-- Правка ссылок одного ролика — одна разметка на таблицу и карточку. -->
+<ng-template #linksEditor let-pubId>
+  <div class="vm-links">
+    @for (pl of platforms; track pl) {
+      @let l = link(pubId, pl);
+      <div class="vm-link">
+        <span class="ic">{{ platformShort[pl] }}</span>
+        @if (isEditing(pubId, pl)) {
+          <input
+            class="inp grow"
+            type="url"
+            [(ngModel)]="editUrl"
+            [attr.aria-label]="'Адрес ролика: ' + label(pl)"
+            placeholder="https://…"
+          />
+          <button
+            type="button"
+            class="btn sm primary"
+            [disabled]="busy() || !editUrl.trim()"
+            (click)="save(pubId, pl)"
+          >
+            Сохранить
+          </button>
+          <button type="button" class="btn sm quiet" (click)="cancelEdit()">Отмена</button>
+        } @else {
+          @if (l) {
+            <a class="grow url" [href]="l.url" target="_blank" rel="noopener">{{ l.url }}</a>
+          } @else {
+            <span class="grow muted">{{ label(pl) }}: ссылки нет</span>
+          }
+          <button type="button" class="btn sm" (click)="startEdit(pubId, pl)">
+            {{ l ? 'Заменить' : 'Добавить' }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+</ng-template>
+
+@if (!rows().length) {
+  <div class="panel-h">
+    <h2>Ролики по площадкам</h2>
+  </div>
+  <!-- Пусто — ещё не вышел ни один ролик. Пустая таблица с пятью
+       колонками читалась бы как поломка сбора. -->
+  <p class="muted vm-empty">Ни один ролик ещё не вышел — таблица заполнится по первым ссылкам.</p>
+} @else {
+  <!-- Чьи ролики: креаторов бывает несколько, и итог нужен и по каждому,
+       и по всем. Фильтр меняет и сводку площадок, и таблицу. -->
+  @if (creators().length > 1) {
+    <div class="vm-who" role="group" aria-label="Чьи ролики показывать">
+      <button
+        type="button"
+        [class.on]="!creatorFilter()"
+        [attr.aria-pressed]="!creatorFilter()"
+        (click)="setCreator('')"
+      >
+        Все креаторы
+      </button>
+      @for (c of creators(); track c.id) {
+        <button
+          type="button"
+          [class.on]="creatorFilter() === c.id"
+          [attr.aria-pressed]="creatorFilter() === c.id"
+          (click)="setCreator(c.id)"
+        >
+          {{ c.name }}
+        </button>
+      }
+    </div>
+  }
+
+  <!-- КАКАЯ ПЛОЩАДКА ТЯНЕТ — итог той же таблицы по столбцам. -->
+  <section class="vm-sum" aria-label="Какая площадка тянет">
+    <div class="panel-h">
+      <h2>Какая площадка тянет</h2>
+      <span class="sub">{{ scopeSub() }}</span>
+    </div>
+    <div class="vm-sum-row vm-sum-head no-phone" aria-hidden="true">
+      <span></span><span>Площадка</span><span>Доля просмотров</span><span class="r">Просмотры</span>
+      <span class="r">Доля</span><span class="r">За сутки</span><span class="r">ER</span>
+    </div>
+    @for (p of summary(); track p.platform) {
+      <div class="vm-sum-row">
+        <span class="ic">{{ platformShort[p.platform] }}</span>
+        <span class="pn">{{ label(p.platform) }}</span>
+        <span class="bar"><i [style.width.%]="p.bar" [style.background]="p.color"></i></span>
+        <b class="r num">{{ p.views }}</b>
+        <span class="r num opt">{{ p.share }}</span>
+        <span class="r num opt grow-c">{{ p.growth }}</span>
+        <span class="r num opt"><app-er-value [percent]="p.er" [withoutShares]="p.erPartial" /></span>
+      </div>
+    }
+  </section>
+
+  <div class="panel-h vm-head">
+    <h2>Каждый ролик на каждой площадке</h2>
+    <div class="vm-metric" role="group" aria-label="Что показывать в клетках">
+      @for (m of metrics; track m.key) {
+        <button
+          type="button"
+          [class.on]="metric() === m.key"
+          [attr.aria-pressed]="metric() === m.key"
+          (click)="setMetric(m.key)"
+        >
+          {{ m.title }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <p class="muted vm-note no-phone">
+    Чем насыщеннее клетка, тем больше значение; клетка открывает ролик на площадке. Пунктир — ссылки
+    нет.
+  </p>
+
+  <!-- ДЕСКТОП: таблица. На телефоне шесть колонок не помещаются ни при
+       каком кегле — там та же таблица карточками (ниже). -->
+  <div class="vm-scroll no-phone">
+    <table class="vm">
+      <thead>
+        <tr>
+          <th class="l" scope="col">Ролик</th>
+          @for (pl of platforms; track pl) {
+            <th scope="col">{{ label(pl) }}</th>
+          }
+          <th scope="col" class="tot-h">Всего</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (g of groups(); track g.key) {
+        @for (r of g.rows; track r.publicationId) {
+          <tr>
+            <th scope="row" class="vid">
+              <b>{{ r.title }}</b>
+              <small>
+                @if (r.creatorName) {
+                  {{ r.creatorName }},
+                }
+                {{ r.date | date: 'd MMM' }}
+              </small>
+              <span class="vm-acts">
+                <button
+                  type="button"
+                  class="vm-links-btn"
+                  [attr.aria-expanded]="openLinks() === r.publicationId"
+                  (click)="toggleLinks(r.publicationId)"
+                >
+                  {{ openLinks() === r.publicationId ? 'Свернуть ссылки' : 'Ссылки' }}
+                </button>
+                <!-- Напомнить — там, где ссылок не хватает и есть кому
+                     писать. У проекта без креаторов ссылки ставит сам
+                     менеджер, напоминать некому. -->
+                @if (r.missing.length && r.creatorUserId) {
+                  <button
+                    type="button"
+                    class="vm-links-btn"
+                    [disabled]="reminding() === r.publicationId"
+                    (click)="remind(r.publicationId, r.creatorName)"
+                  >
+                    Напомнить
+                  </button>
+                }
+              </span>
+            </th>
+            @for (c of r.shown; track c.platform) {
+              <td>
+                @if (c.url) {
+                  <a
+                    [class]="'cell ' + c.kind"
+                    [class.hot]="c.heat > 0.55"
+                    [style.--heat]="c.heat"
+                    [href]="c.url"
+                    target="_blank"
+                    rel="noopener"
+                    [attr.title]="c.title || null"
+                    [attr.aria-label]="label(c.platform) + ': ' + c.text"
+                  >
+                    <b>
+                      @if (metric() === 'er' && c.kind === 'ok') {
+                        <app-er-value [percent]="c.erPct" [withoutShares]="c.erPartial" />
+                      } @else {
+                        {{ c.text }}
+                      }
+                    </b>
+                    @if (c.sub) {
+                      <small>{{ c.sub }}</small>
+                    }
+                  </a>
+                } @else {
+                  <button
+                    type="button"
+                    class="cell none"
+                    [attr.aria-label]="'Добавить ссылку: ' + label(c.platform)"
+                    (click)="openLinks.set(r.publicationId); startEdit(r.publicationId, c.platform)"
+                  >
+                    <b>нет ссылки</b>
+                    <small>добавить</small>
+                  </button>
+                }
+              </td>
+            }
+            <td>
+              <span class="cell total">
+                <b>
+                  @if (metric() === 'er') {
+                    <app-er-value [percent]="r.erPct" [withoutShares]="r.erPartial" />
+                  } @else {
+                    {{ r.totalText }}
+                  }
+                </b>
+                <small>{{ r.totalSub }}</small>
+              </span>
+            </td>
+          </tr>
+          @if (openLinks() === r.publicationId) {
+            <tr class="vm-edit">
+              <td colspan="7">
+                <ng-container
+                  *ngTemplateOutlet="linksEditor; context: { $implicit: r.publicationId }"
+                />
+              </td>
+            </tr>
+          }
+        }
+        @if (g.subtotal; as st) {
+          <tr class="vm-sub">
+            <th scope="row" class="vid">
+              <b>{{ g.title }}</b>
+              <small>{{ st.count }} {{ st.count === 1 ? 'ролик' : 'роликов' }}</small>
+            </th>
+            @for (t of st.cells; track t.platform) {
+              <td>
+                <span class="cell total">
+                  <b>
+                    @if (metric() === 'er') {
+                      <app-er-value [percent]="t.erPct" [withoutShares]="t.erPartial" />
+                    } @else {
+                      {{ t.text }}
+                    }
+                  </b>
+                  <small>ссылок: {{ t.links }}</small>
+                </span>
+              </td>
+            }
+            <td>
+              <span class="cell total sub-grand"
+                ><b>
+                  @if (metric() === 'er') {
+                    <app-er-value [percent]="st.grandEr" [withoutShares]="st.grandErPartial" />
+                  } @else {
+                    {{ st.grand }}
+                  }
+                </b></span
+              >
+            </td>
+          </tr>
+        }
+        }
+      </tbody>
+      <tfoot>
+        <tr>
+          <th scope="row" class="vid">
+            <b>{{ scopeTitle() }}</b>
+            <small>{{ footer().count }} {{ footer().count === 1 ? 'ролик' : 'роликов' }}</small>
+          </th>
+          @for (t of footer().cells; track t.platform) {
+            <td>
+              <span class="cell total">
+                <b>
+                  @if (metric() === 'er') {
+                    <app-er-value [percent]="t.erPct" [withoutShares]="t.erPartial" />
+                  } @else {
+                    {{ t.text }}
+                  }
+                </b>
+                <small>ссылок: {{ t.links }}</small>
+              </span>
+            </td>
+          }
+          <td>
+            <span class="cell grand"
+              ><b>
+                @if (metric() === 'er') {
+                  <app-er-value
+                    [percent]="footer().grandEr"
+                    [withoutShares]="footer().grandErPartial"
+                  />
+                } @else {
+                  {{ footer().grand }}
+                }
+              </b></span
+            >
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- ТЕЛЕФОН: ролик — карточка, площадка — строка с полоской.
+       Раскладка — на внутреннем блоке: свой display на самом
+       .only-phone перебил бы глобальное «на десктопе не показывать». -->
+  <div class="only-phone">
+    <div class="vm-cards">
+      @for (r of phoneRows(); track r.publicationId) {
+        <article class="vm-card">
+          <div class="vm-card-h">
+            <div class="grow">
+              <small class="muted">
+                @if (r.creatorName) {
+                  {{ r.creatorName }},
+                }
+                {{ r.date | date: 'd MMM' }}
+              </small>
+              <b>{{ r.title }}</b>
+            </div>
+            <div class="vm-card-sum">
+              <b class="num">{{ r.totalText }}</b>
+              <small>{{ r.totalSub }}</small>
+            </div>
+          </div>
+          @for (c of r.shown; track c.platform) {
+            <div class="vm-prow" [class.off]="c.kind !== 'ok'" [class.failed]="c.kind === 'failed'">
+              <span class="ic">{{ platformShort[c.platform] }}</span>
+              <span class="pn">{{ label(c.platform) }}</span>
+              <span class="bar"
+                ><i [style.width.%]="bar(views(r.cells[c.platform]), r.best)"></i
+              ></span>
+              <span class="pv" [attr.title]="c.title || null">{{ c.text }}</span>
+            </div>
+          }
+          <div class="vm-card-acts">
+          <button
+            type="button"
+            class="btn sm vm-card-links"
+            [attr.aria-expanded]="openLinks() === r.publicationId"
+            (click)="toggleLinks(r.publicationId)"
+          >
+            @if (openLinks() === r.publicationId) {
+              Свернуть ссылки
+            } @else if (r.missing.length) {
+              Ссылки · нет на {{ r.missing.length }}
+            } @else {
+              Ссылки
+            }
+          </button>
+          @if (r.missing.length && r.creatorUserId) {
+            <button
+              type="button"
+              class="btn sm vm-card-links"
+              [disabled]="reminding() === r.publicationId"
+              (click)="remind(r.publicationId, r.creatorName)"
+            >
+              Напомнить
+            </button>
+          }
+          </div>
+          @if (openLinks() === r.publicationId) {
+            <ng-container *ngTemplateOutlet="linksEditor; context: { $implicit: r.publicationId }" />
+          }
+        </article>
+      }
+      @if (rows().length > phoneLimit()) {
+        <button type="button" class="btn vm-more" (click)="showMore()">
+          Ещё {{ rows().length - phoneLimit() }}
+        </button>
+      }
+    </div>
+  </div>
+}

@@ -131,7 +131,7 @@ async function openSubmit(page: Page, projectId: string): Promise<void> {
   await page.goto(`/me/creator/projects/${projectId}`);
   // Кнопка в строке выкладки называется коротко — «Сдать»; «сдать
   // ролик» осталось заголовком окна, которое она открывает.
-  const submit = page.locator('.posts2').getByRole('button', { name: 'Сдать', exact: true }).first();
+  const submit = page.locator('.posts-stack').getByRole('button', { name: 'Сдать', exact: true }).first();
   await expect(submit, 'у открытой выкладки есть чем сдать').toBeVisible({ timeout: 15_000 });
   await submit.click();
   await expect(page.locator('.modal').filter({ hasText: 'сдать ролик' })).toBeVisible();

@@ -106,7 +106,10 @@ test('своя выкладка добавляется, и после этого
 
     // Список выкладок — в своём разделе кабинета.
     await openCreatorTab(page, 'Мои выкладки');
-    const slots = page.locator('.posts2 .row');
+    // Строки выкладок — в «Надо сдать» и в таблице вышедших.
+    const slots = page.locator(
+      '.posts-stack .row, app-creator-videos table.cv tbody tr:not(.cv-edit)',
+    );
     await expect(slots.first()).toBeVisible({ timeout: 15_000 });
     const before = await slots.count();
 
@@ -165,7 +168,7 @@ test('своя выкладка добавляется, и после этого
     }
 
     // И окно сдачи открывается.
-    const submit = page.locator('.posts2').getByRole('button', { name: /^(Сдать|Ссылки)$/ }).first();
+    const submit = page.locator('.posts-stack').getByRole('button', { name: /^(Сдать|Ссылки)$/ }).first();
     await submit.click();
     await expect(page.locator('.modal').filter({ hasText: 'сдать ролик' })).toBeVisible();
 

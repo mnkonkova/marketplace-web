@@ -47,6 +47,7 @@ describe('CreatorProjectPage: «это ваш ролик?»', () => {
       'creatorChecklist',
       'creatorMaterials',
       'creatorReport',
+      'creatorRefreshStats',
       'creatorSuggestions',
       'creatorAccounts',
       'creatorLinkSuggestion',
@@ -57,6 +58,7 @@ describe('CreatorProjectPage: «это ваш ролик?»', () => {
     api.creatorChecklist.and.returnValue(of({ items: [] }) as never);
     api.creatorMaterials.and.returnValue(of({ items: [] }) as never);
     api.creatorReport.and.returnValue(of({ collapsed: false }) as never);
+    api.creatorRefreshStats.and.returnValue(of({ saved: 0 }) as never);
     api.creatorSuggestions.and.returnValue(of({ items }) as never);
     api.creatorAccounts.and.returnValue(of({ items: [], secrets_enabled: true }) as never);
     api.creatorLinkSuggestion.and.returnValue(of({ id: 'p9' }) as never);

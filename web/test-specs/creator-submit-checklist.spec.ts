@@ -87,6 +87,7 @@ describe('CreatorProjectPage: чек-лист при сдаче ролика', (
             // «Мои аккаунты» — аккаунты проекта, тянутся вместе со страницей.
             creatorAccounts: () => of({ items: [], secrets_enabled: true }),
             creatorReport: () => of({ collapsed: false }),
+            creatorRefreshStats: () => of({ saved: 0 }),
           },
         },
         { provide: BillingApi, useValue: { creatorEarnings: () => of({ periods: [] }) } },

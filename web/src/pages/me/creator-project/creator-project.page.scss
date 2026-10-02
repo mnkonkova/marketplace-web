@@ -1,6 +1,9 @@
 // Кабинет креатора. Словарь кабинета — общий (.prmarket); здесь только то,
 // чего в макете не было отдельным классом.
 
+@use 'breakpoints' as bp;
+@use 'touch' as touch;
+
 :host {
   display: block;
 }
@@ -69,26 +72,83 @@
   margin-bottom: 4px;
 }
 
-.links-row {
-  margin-top: 3px;
+// ── месяц слева, списки справа ──────────────────────────
+.posts-grid {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 28px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
 }
 
-// «площадка не собирается» вместо числа у значка площадки.
-//
-// Значок без числа читается как «ноль просмотров», то есть как работа
-// креатора. Поэтому подпись словами, а не прочерк, и помельче самого
-// числа: это объяснение, а не показатель.
-.links-row .plat .nd-mark {
-  font-weight: 400;
-  font-style: italic;
-  font-size: 10.5px;
-  opacity: 0.8;
-  margin-left: 4px;
+@media (max-width: 900px) {
+  .posts-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
 }
 
-.views-cell {
-  text-align: right;
-  min-width: 84px;
+.mcal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+
+  .mcal-h {
+    margin: 0;
+  }
+
+  .btn {
+    min-width: 32px;
+    justify-content: center;
+  }
+}
+
+.posts-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+.done-block {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.prow .acts {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+// На телефоне строка в две ступени: дата и текст на всю ширину, действия
+// и число — под ними. Раньше всё стояло в одну строку, и на 390 px текст
+// сжимался до слова в строке, а значки площадок вставали столбиком.
+@include touch.phone {
+  .prow {
+    flex-wrap: wrap;
+    align-items: flex-start;
+
+    .grow {
+      flex: 1 1 calc(100% - 60px);
+    }
+
+    .acts {
+      flex: 1 1 100%;
+      justify-content: flex-end;
+      padding-left: 56px;
+    }
+
+      }
+
+  .mcal-nav .btn {
+    min-width: touch.$tap;
+    min-height: touch.$tap;
+  }
 }
 
 // Задание
