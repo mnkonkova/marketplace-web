@@ -129,9 +129,12 @@ export class AuthSessionStore {
    * кнопку в проекте, и это рабочий путь, а не поломка. Кричать о ней
    * посреди регистрации — пугать на ровном месте.
    */
-  private claimTelegram(): void {
+  public claimTelegram(): void {
     const code = pendingTelegramTicket();
     if (!code) return;
+    // Гасим только при живой сессии: ручка закрыта авторизацией, и без
+    // неё билет сгорел бы впустую — второго Telegram не выдаст.
+    if (!this.session()) return;
     clearTelegramTicket();
     this.http.post(`${this.api}/me/telegram/claim`, { code }).subscribe({
       error: () => undefined,

@@ -90,3 +90,68 @@ describe('AuthSessionStore: восстановление прав CRM', () => {
     expect(auth.isLoggedIn()).toBeFalse();
   });
 });
+
+/**
+ * Билет привязки телеграма гасится и у того, кто УЖЕ вошёл.
+ *
+ * Раньше он гасился только при записи новой пары токенов, то есть ровно
+ * при свежем входе. А самый частый путь другой: человек уже сидит на
+ * сайте, открывает мини-апп, жмёт «Войти на сайте» — браузер открывает
+ * сайт, где входить уже не надо, токены не перезаписываются, и билет
+ * остаётся лежать непогашенным. Сколько раз ни повтори — каждый проход
+ * одинаков.
+ *
+ * Дороже всех это стоило аккаунту из Яндекса: пароля у него нет вовсе,
+ * и войти в мини-апп по паролю он не может в принципе — привязка через
+ * билет была для него единственным путём.
+ */
+describe('AuthSessionStore: билет привязки телеграма', () => {
+  const TICKET = 'prmarket.tg.claim';
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    TestBed.configureTestingModule({ imports: [HttpClientTestingModule] });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  function loggedIn(): void {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ access_token: 'a', refresh_token: 'r', kind: 'specialist', is_manager: false }),
+    );
+  }
+
+  it('гасит билет у уже вошедшего — без повторного входа', () => {
+    loggedIn();
+    sessionStorage.setItem(TICKET, 'CODE-1');
+
+    TestBed.inject(AuthSessionStore).claimTelegram();
+
+    const req = http.expectOne((r) => r.url.endsWith('/me/telegram/claim'));
+    expect(req.request.body).toEqual({ code: 'CODE-1' });
+    req.flush({});
+    // Второй раз не шлём: билет одноразовый, и повтор получил бы отказ.
+    expect(sessionStorage.getItem(TICKET)).toBeNull();
+  });
+
+  /**
+   * У гостя билет остаётся лежать: ручка закрыта авторизацией, и
+   * погасить его сейчас значило бы сжечь впустую — второго Telegram не
+   * выдаст.
+   */
+  it('у гостя билет не трогает', () => {
+    sessionStorage.setItem(TICKET, 'CODE-2');
+
+    TestBed.inject(AuthSessionStore).claimTelegram();
+
+    http.expectNone((r) => r.url.endsWith('/me/telegram/claim'));
+    expect(sessionStorage.getItem(TICKET)).toBe('CODE-2');
+  });
+});

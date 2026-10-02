@@ -5,6 +5,7 @@ import { filter } from 'rxjs';
 
 import { NavHistoryService } from '@shared/nav/nav-history.service';
 import { captureTelegramTicket } from '@shared/lib/telegram-claim';
+import { AuthSessionStore } from '@entities/auth/model/auth-session.store';
 import { trackKeyboardInset } from '@shared/lib/keyboard-inset';
 import { initTelegramApp } from '@shared/lib/telegram-webapp';
 
@@ -30,11 +31,25 @@ export class AppComponent {
 
   private readonly location = inject(Location);
 
+  private readonly auth = inject(AuthSessionStore);
+
   public constructor() {
     // Билет привязки телеграма, приехавший из мини-аппа в адресе
     // анкеты. Снимаем ДО первой навигации: роутер вычистит query, и
     // после него брать будет неоткуда.
     captureTelegramTicket();
+    // И сразу гасим, если человек УЖЕ вошёл.
+    //
+    // Раньше билет гасился только при записи новой пары токенов, то
+    // есть ровно при свежем входе. А самый частый путь другой: человек
+    // уже сидит на сайте (вошёл почтой или через Яндекс), открывает
+    // мини-апп, жмёт «Войти на сайте» — браузер открывает сайт, где
+    // входить уже не надо, токены не перезаписываются, и билет остаётся
+    // лежать непогашенным. Сколько раз ни повтори — ничего не меняется:
+    // каждый проход одинаков. Аккаунту из Яндекса это стоило дороже
+    // всех: пароля у него нет, и войти в мини-апп по паролю он не может
+    // в принципе.
+    this.auth.claimTelegram();
 
     // Высота экранной клавиатуры — в CSS-переменную. Свойство всего
     // приложения, как и мини-апп ниже: формы в нижних шторках есть на
